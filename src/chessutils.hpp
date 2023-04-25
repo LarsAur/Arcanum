@@ -5,6 +5,13 @@
 #include <bitset>
 #include <sstream>
 
+#if __x86_64__ || _WIN64
+// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html
+#include <intrin.h>
+#endif
+
+#define IBM1
+
 namespace ChessEngine2
 {
     typedef uint64_t bitboard_t;
@@ -37,10 +44,20 @@ namespace ChessEngine2
         }
     }
 
+    // static inline int POPCNT(bitboard_t* bitboard)
+    // {
+    //     #if 
+    //         int cnt = _mm_popcnt_u64(*bitboard);
+    // }
+
     // Source: https://www.chessprogramming.org/BitScan
     // returns the index of the lsb 1 bit and sets it to zero 
     static inline int popLS1B(bitboard_t* bitboard)
     {
+    #ifdef IBM1
+        int popIdx = _tzcnt_u64(*bitboard);
+        *bitboard = _blsr_u64(*bitboard);
+    #else
         /**
          * bitScanForward
          * @author Kim Walisch (2012)
@@ -66,11 +83,16 @@ namespace ChessEngine2
         int popIdx = popLS1B_index64[((*bitboard ^ (*bitboard-1)) * debruijn64) >> 58];
         // Pop the bit
         *bitboard &= ~(0b1LL << popIdx);
+    #endif
         return popIdx;
     }
 
     static inline int LS1B(bitboard_t bitboard)
     {
+    #ifdef IBM1
+        int popIdx = _tzcnt_u64(bitboard);
+        return popIdx;
+    #else
         /**
          * bitScanForward
          * @author Kim Walisch (2012)
@@ -94,6 +116,7 @@ namespace ChessEngine2
         const static bitboard_t debruijn64 = bitboard_t(0x03f79d71b4cb0a89);
         // assert (bitboard != 0);
         return popLS1B_index64[((bitboard ^ (bitboard-1)) * debruijn64) >> 58];
+    #endif
     }
 
     static inline bitboard_t bitReverse(bitboard_t v) 

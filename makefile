@@ -1,12 +1,12 @@
 
-PROJECT = chessEngine2.2
+PROJECT = chessEngine2
 SOURCEDIR = src
 HEADERDIR = src	
 BUILDDIR = build
 
 CC = g++
-CFLAGS = -Wall -O3
-LDFLAGS = -lm -lstdc++
+CFLAGS = -Wall -O3 -mbmi -mpopcnt -mtune=native
+LDFLAGS = -lm -lstdc++ 
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 SOURCES := $(call rwildcard, $(SOURCEDIR)/, %.cpp)							     # Recursive search all files in source directory
