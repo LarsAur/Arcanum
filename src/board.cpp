@@ -316,19 +316,14 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
     }
 }
 
-void Board::attemptAddPseudoLegalKingMove(Move move)
+void Board::attemptAddPseudoLegalKingMove(Move move, bitboard_t oponentAttacks)
 {
-    bitboard_t bbFrom = (0b1LL << move.from);
     bitboard_t bbTo = (0b1LL << move.to);
 
-    // TODO: It is probably more efficient to generate all oponent attack moves before moving the king, as the king cannot make a discovered check in itself
-    m_bbKing[m_turn] = bbTo;
-    
-    if(!isChecked(m_turn))
+    if((oponentAttacks & bbTo) == 0LL)
     {
         m_legalMoves.push_back(move);
     }
-    m_bbKing[m_turn] = bbFrom;
 }
 
 std::vector<Move>* Board::getLegalMoves()
@@ -337,8 +332,11 @@ std::vector<Move>* Board::getLegalMoves()
     m_legalMoves.clear();
     m_legalMoves.reserve(64);
 
+    // Create bitboard for where the king would be attacked
+    bitboard_t oponentAttacks = getOponentAttacks();
+
     // Use a different function for generating moves when in check
-    bool wasChecked = isChecked(m_turn);
+    bool wasChecked = (m_bbKing[m_turn] & oponentAttacks) != 0LL;
     if(wasChecked)
     {
         // TODO: Generate moves when in check
@@ -348,19 +346,11 @@ std::vector<Move>* Board::getLegalMoves()
     // King moves
     uint8_t kingIdx = LS1B(m_bbKing[m_turn]);
     bitboard_t kMoves = getKingMoves(kingIdx);
-    kMoves &= ~m_bbPieces[m_turn];
+    kMoves &= ~(m_bbPieces[m_turn] | oponentAttacks);
     while(kMoves)
     {
         uint8_t target = popLS1B(&kMoves);
-        // Test if the target is in attack range of oponent king
-        bitboard_t oponentKingMask = getKingMoves(target);
-        if(m_bbKing[m_turn ^ 1] & oponentKingMask)
-        {
-            continue;
-        }
-
-        // TODO: This can probably be simplified with a different function doing only king moves
-        attemptAddPseudoLegalMove(Move(kingIdx, target, MOVE_INFO_KING), target, 0LL, 0LL, true);
+        m_legalMoves.push_back(Move(kingIdx, target, MOVE_INFO_KING));
     }
 
     // TODO: We can check if the piece is blocking a check, this way we know we cannot move the piece and will not have to test all the moves
@@ -393,7 +383,8 @@ std::vector<Move>* Board::getLegalMoves()
             attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
-    
+
+    #if 1 // Parallel pawn attack
     // TODO: Should be possible to do all left and then all right attacks in parallel
     while (pawns)
     {
@@ -429,6 +420,75 @@ std::vector<Move>* Board::getLegalMoves()
             attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_DOUBLE_MOVE | MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
+    #else // Parallel pawn attack
+
+    // TODO: make one large if statement
+    bitboard_t pawnAttacksLeft   = m_turn == WHITE ? getWhitePawnAttacksLeft(pawns) : getBlackPawnAttacksLeft(pawns);
+    bitboard_t pawnAttacksRight  = m_turn == WHITE ? getWhitePawnAttacksRight(pawns) : getBlackPawnAttacksRight(pawns);
+    pawnAttacksLeft  &= m_bbPieces[m_turn ^ 1] | (m_enPassantSquare != 64 ? (0b1LL << m_enPassantSquare) : 0LL); // TODO: Make single expression for enpassant square bitboard 
+    pawnAttacksRight &= m_bbPieces[m_turn ^ 1] | (m_enPassantSquare != 64 ? (0b1LL << m_enPassantSquare) : 0LL);
+    // bitboard_t pawnAttacksLeftOrigin   = m_turn == WHITE ? getBlackPawnAttacksRight(pawnAttacksLeft) : getWhitePawnAttacksRight(pawnAttacksLeft); // TODO: Origins does not have to check for board edges (does not need bitmask)
+    // bitboard_t pawnAttacksRightOrigin  = m_turn == WHITE ? getBlackPawnAttacksLeft(pawnAttacksRight) : getWhitePawnAttacksLeft(pawnAttacksRight);
+    bitboard_t pawnAttacksLeftOrigin   = m_turn == WHITE ? pawnAttacksLeft >> 7 : pawnAttacksLeft << 9; // TODO: Origins does not have to check for board edges (does not need bitmask)
+    bitboard_t pawnAttacksRightOrigin  = m_turn == WHITE ? pawnAttacksRight >> 9 : pawnAttacksRight << 7;
+    
+    while (pawnAttacksLeft)
+    {
+        uint8_t target = popLS1B(&pawnAttacksLeft);
+        uint8_t pawnIdx = popLS1B(&pawnAttacksLeftOrigin);
+
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // TODO: If one promotion move is legal, all are legal
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK),  kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+        else
+        {
+            // TODO:
+            // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
+            Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT : 0) | MOVE_INFO_PAWN_MOVE);
+            attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
+        }
+    }
+
+    while (pawnAttacksRight)
+    {
+        uint8_t target = popLS1B(&pawnAttacksRight);
+        uint8_t pawnIdx = popLS1B(&pawnAttacksRightOrigin);
+
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // TODO: If one promotion move is legal, all are legal
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK),  kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+        else
+        {
+            // TODO:
+            // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
+            Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT : 0) | MOVE_INFO_PAWN_MOVE);
+            attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
+        }
+    }
+
+    while (pawns)
+    {
+        // TODO: do all in parallel
+        int pawnIdx = popLS1B(&pawns);
+        // Double move
+        bitboard_t doubleMoves = m_turn == WHITE ? ((0b1LL << pawnIdx) << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & ~(m_bbAllPieces) : ((0b1LL << pawnIdx) >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & ~(m_bbAllPieces);
+        if (doubleMoves)
+        {
+            uint8_t target = LS1B(doubleMoves);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_DOUBLE_MOVE | MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+    }
+    #endif // Parallel pawn attack
 
     // Rook moves
     bitboard_t rooks = m_bbRooks[m_turn];
@@ -636,9 +696,6 @@ Board::Board(const Board& board)
 
 void Board::performMove(Move move)
 {
-    // TODO: Castle
-    // m_legalMoves.clear();
-
     bitboard_t bbFrom = 0b1LL << move.from;
     bitboard_t bbTo = 0b1LL << move.to;
 
@@ -745,27 +802,50 @@ void Board::performMove(Move move)
         m_enPassantSquare = (move.to + move.from) >> 1; // Average of the two squares is the middle
     }
 
-    m_fullMoves += m_turn == WHITE; // Note turn is flipped
+    m_fullMoves += (m_turn == WHITE); // Note turn is flipped
     m_halfMoves++;
 }
 
 // Generates a bitboard of all attacks of oponents
 // The moves does not check if the move will make the oponent become checked, or if the attack is on its own pieces
 // Used for checking if the king is in check after king moves.
-// inline bitboard_t Board::getOponentAttacks()
-// {
-//     Color oponent = Color(m_turn ^ 1);
+inline bitboard_t Board::getOponentAttacks()
+{
+    Color oponent = Color(m_turn ^ 1);
 
-//     // Pawns
-//     bitboard_t attacks = oponent == WHITE ? getWhitePawnAttacks(m_bbPawns[WHITE]) : getBlackPawnAttacks(m_bbPawns[WHITE]);
+    // Pawns
+    bitboard_t attacks = oponent == WHITE ? getWhitePawnAttacks(m_bbPawns[WHITE]) : getBlackPawnAttacks(m_bbPawns[BLACK]);
 
+    // King
+    attacks |= getKingMoves(LS1B(m_bbKing[oponent]));
 
-//     // King
+    // Knight
+    bitboard_t tmpKnights = m_bbKnights[oponent];
+    while (tmpKnights)
+    {
+        attacks |= getKnightAttacks(popLS1B(&tmpKnights));
+    }
 
-//     // Knight
+    // Remove the king from the occupied mask such that when it moves, the previous king position will not block
+    bitboard_t allPiecesNoKing = m_bbAllPieces & ~m_bbKing[m_turn];
+    
+    // Queens and bishops
+    bitboard_t tmpBishops = m_bbBishops[oponent] | m_bbQueens[oponent];
+    while (tmpBishops)
+    {
+        attacks |= getBishopMoves(allPiecesNoKing, popLS1B(&tmpBishops));
+    }
 
-//     // 
-// }
+    // Queens and rooks
+    bitboard_t tmpRooks = m_bbRooks[oponent] | m_bbQueens[oponent];
+    while (tmpRooks)
+    {
+        // Remove the king from the occupied mask such that when it moves, the previous king position will not block
+        attacks |= getRookMoves(allPiecesNoKing, popLS1B(&tmpRooks));
+    }
+
+    return attacks;
+}
 
 bool Board::isChecked(Color color)
 {   

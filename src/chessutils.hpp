@@ -152,12 +152,36 @@ namespace ChessEngine2
         return pawnAttacks;
     }
 
+    static inline bitboard_t getWhitePawnAttacksLeft(bitboard_t bitboard)
+    {
+        const static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
+        return ((bitboard & nAFile) << 7);
+    }
+
+    static inline bitboard_t getWhitePawnAttacksRight(bitboard_t bitboard)
+    {
+        const static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
+        return ((bitboard & nHFile) << 9);
+    }
+
     static inline bitboard_t getBlackPawnAttacks(bitboard_t bitboard)
     {
         const static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
         const static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
         bitboard_t pawnAttacks = ((bitboard & nHFile) >> 7) | ((bitboard & nAFile) >> 9);
         return pawnAttacks;
+    }
+
+    static inline bitboard_t getBlackPawnAttacksLeft(bitboard_t bitboard)
+    {
+        const static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
+        return ((bitboard & nAFile) >> 9);
+    }
+
+    static inline bitboard_t getBlackPawnAttacksRight(bitboard_t bitboard)
+    {
+        const static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
+        return ((bitboard & nHFile) >> 7);
     }
 
     static inline bitboard_t getWhitePawnMoves(bitboard_t bitboard)

@@ -47,7 +47,7 @@ namespace ChessEngine2
         
         if(count != expected)
         {
-            CHESS_ENGINE2_ERR("Failed perft with " << fen << " at " << +ply << " depth")
+            CHESS_ENGINE2_ERR("Failed perft with " << fen << " at " << +ply << " depth. Expected: " << expected << " Got: " << count)
         }
         else
         {

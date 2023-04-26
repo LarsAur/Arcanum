@@ -110,7 +110,6 @@ namespace ChessEngine2
     // occupancy index is used for one diagonal
     // to get both diagonals, lookup occupancy index of both diagonals 
     // individually and use bitwise or with corresponding diagonal mask
-    // TODO: This should be possible with 8 * (1 << 6) elements
     bitboard_t bishopMoves[8 * (1 << 6)] = {0LL};
     
     // Diagonal bottom left to upper right

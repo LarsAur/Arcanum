@@ -83,11 +83,9 @@ int main()
 /**
  * Create function to generate set of legal moves when in check
  * 
- * Create function to generate (only) attacks (without checking for self-check) from oponents pieces  
  * Create function to generate attack bitboard from king
  * When we do a move we only have to check for sliding checks, except when moving the king
  * When a piece is moved, we only have to check for sliding checks if the moved piece was positioned on a queens move from the king
- * 
 */
 
 /**
@@ -96,4 +94,5 @@ int main()
  * Use tzcnt and blsr: ~140M nps
  * Improve rook generator: 154M nps
  * Do all pawn forward moves in parallel: 162M nps
+ * Change king move checking by generating oponentAttacks: 162M nps
 */

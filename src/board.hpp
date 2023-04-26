@@ -41,7 +41,6 @@ namespace ChessEngine2
     #define MOVE_INFO_CASTLE_WHITE_KING 16
     #define MOVE_INFO_CASTLE_BLACK_QUEEN 32
     #define MOVE_INFO_CASTLE_BLACK_KING 64
-    // TODO Promo and king, rook moves
     #define MOVE_INFO_KING 128
     #define MOVE_INFO_ROOK 256
     #define MOVE_INFO_PROMOTE_ROOK 512
@@ -85,9 +84,9 @@ namespace ChessEngine2
 
             std::vector<Move> m_legalMoves;
             // Tests if the king will be checked before adding the move
-        void attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
+            void attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
             // void attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
-            void attemptAddPseudoLegalKingMove(Move move);
+            void attemptAddPseudoLegalKingMove(Move move, bitboard_t oponentAttacks);
         public:
             Board(const Board& board);
             Board(std::string fen);
