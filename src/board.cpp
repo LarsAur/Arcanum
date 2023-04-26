@@ -169,11 +169,32 @@ Board::Board(std::string fen)
         exit(-1);
     }
 
+    chr = fen[fenPosition++];
+    if(chr < '0' || chr > '9')
+    {   
+        std::cout << chr << std::endl; 
+        std::cout << "Number of half moves is not a number" << std::endl; 
+        exit(-1);
+    }
+
     // Read half moves
     m_halfMoves = atoi(fen.c_str() + fenPosition);
 
     // Skip until space
-    while(fen[fenPosition++] != ' ');
+    while(fen[fenPosition++] != ' ' && fenPosition < (int) fen.length());
+
+    if(fenPosition == (int) fen.length())
+    {
+        std::cout << "Missing number of full moves" << std::endl; 
+        exit(-1);
+    }
+
+    chr = fen[fenPosition];
+    if(chr < '0' || chr > '9')
+    {   
+        std::cout << "Number of full moves is not a number" << std::endl; 
+        exit(-1);
+    }
 
     // Read full moves
     m_fullMoves = atoi(fen.c_str() + fenPosition);
@@ -347,6 +368,7 @@ std::vector<Move>* Board::getLegalMoves()
     bitboard_t kingStraights = (0xffLL << (kingIdx & ~0b111)) | (0x0101010101010101LL << (kingIdx & 0b111));
 
     // Pawn moves 
+    // TODO: make one large if statement
     bitboard_t pawns = m_bbPawns[m_turn];
     bitboard_t pawnMoves = m_turn == WHITE ? getWhitePawnMoves(pawns) : getBlackPawnMoves(pawns);
     pawnMoves &= ~m_bbAllPieces;
@@ -372,11 +394,10 @@ std::vector<Move>* Board::getLegalMoves()
         }
     }
     
+    // TODO: Should be possible to do all left and then all right attacks in parallel
     while (pawns)
     {
         uint8_t pawnIdx = popLS1B(&pawns);
-
-
         // Attack move and enpassant
         // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
         bitboard_t attacks = m_turn == WHITE ? getWhitePawnAttacks(0b1LL << pawnIdx) : getBlackPawnAttacks(0b1LL << pawnIdx);

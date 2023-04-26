@@ -95,5 +95,5 @@ int main()
  * Initial move generator: ~120M nps
  * Use tzcnt and blsr: ~140M nps
  * Improve rook generator: 154M nps
- * 
+ * Do all pawn forward moves in parallel: 162M nps
 */
