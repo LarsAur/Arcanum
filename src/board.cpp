@@ -348,33 +348,37 @@ std::vector<Move>* Board::getLegalMoves()
 
     // Pawn moves 
     bitboard_t pawns = m_bbPawns[m_turn];
+    bitboard_t pawnMoves = m_turn == WHITE ? getWhitePawnMoves(pawns) : getBlackPawnMoves(pawns);
+    pawnMoves &= ~m_bbAllPieces;
+    bitboard_t pawnMovesOrigin = m_turn == WHITE ? getBlackPawnMoves(pawnMoves) : getWhitePawnMoves(pawnMoves);
+
+    // Forward move
+    while(pawnMoves)
+    {
+        uint8_t target = popLS1B(&pawnMoves);
+        uint8_t pawnIdx = popLS1B(&pawnMovesOrigin);
+        
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // TODO: If one promotion move is legal, all are legal
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+        else
+        {
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+    }
+    
     while (pawns)
     {
         uint8_t pawnIdx = popLS1B(&pawns);
 
-        // Forward move
-        // TODO: It might be possible to do all pawn moves using one bitboard        
-        bitboard_t pawnMoves = m_turn == WHITE ? getWhitePawnMove(pawnIdx) : getBlackPawnMove(pawnIdx);
-        pawnMoves &= ~m_bbAllPieces;
-        if(pawnMoves)
-        {
-            uint8_t target = LS1B(pawnMoves);
-            if(pawnMoves & 0xff000000000000ffLL)
-            {
-                // TODO: If one promotion move is legal, all are legal
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK), kingIdx, kingDiagonals, kingStraights, wasChecked);
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP), kingIdx, kingDiagonals, kingStraights, wasChecked);
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            }
-            else
-            {
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            }
-        }
 
         // Attack move and enpassant
-        // Note: The captured piece in enpassant cannot uncover a check
+        // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
         bitboard_t attacks = m_turn == WHITE ? getWhitePawnAttacks(0b1LL << pawnIdx) : getBlackPawnAttacks(0b1LL << pawnIdx);
         attacks &= m_bbPieces[m_turn ^ 1] | (m_enPassantSquare != 64 ? (0b1LL << m_enPassantSquare) : 0LL);
         while (attacks)
@@ -723,6 +727,24 @@ void Board::performMove(Move move)
     m_fullMoves += m_turn == WHITE; // Note turn is flipped
     m_halfMoves++;
 }
+
+// Generates a bitboard of all attacks of oponents
+// The moves does not check if the move will make the oponent become checked, or if the attack is on its own pieces
+// Used for checking if the king is in check after king moves.
+// inline bitboard_t Board::getOponentAttacks()
+// {
+//     Color oponent = Color(m_turn ^ 1);
+
+//     // Pawns
+//     bitboard_t attacks = oponent == WHITE ? getWhitePawnAttacks(m_bbPawns[WHITE]) : getBlackPawnAttacks(m_bbPawns[WHITE]);
+
+
+//     // King
+
+//     // Knight
+
+//     // 
+// }
 
 bool Board::isChecked(Color color)
 {   

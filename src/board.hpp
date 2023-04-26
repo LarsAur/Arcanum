@@ -99,6 +99,7 @@ namespace ChessEngine2
             bool isDiagonalChecked(Color color);
             bool isStraightChecked(Color color);
 
+            bitboard_t getOponentAttacks();
             std::vector<Move>* getLegalMoves();
             std::string getBoardString();
             
