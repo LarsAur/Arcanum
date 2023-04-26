@@ -11,6 +11,7 @@
 #endif
 
 #define IBM1
+#define POPCNT
 
 namespace ChessEngine2
 {
@@ -44,11 +45,16 @@ namespace ChessEngine2
         }
     }
 
-    // static inline int POPCNT(bitboard_t* bitboard)
-    // {
-    //     #if 
-    //         int cnt = _mm_popcnt_u64(*bitboard);
-    // }
+    static inline int CNTSBITS(bitboard_t* bitboard)
+    {
+        #ifdef POPCNT
+            return _popcnt64 (*bitboard);
+        #else
+            
+            CHESS_ENGINE2_ERR("CNTSBITS not implemented")
+            return 0;
+        #endif
+    }
 
     // Source: https://www.chessprogramming.org/BitScan
     // returns the index of the lsb 1 bit and sets it to zero 
@@ -208,44 +214,28 @@ namespace ChessEngine2
         int file = rookIdx & 0b111;
         int rank8 = rookIdx & ~0b111; // 8 * rank
 
-        // Lookup of file is quick because the bits are already ordered
-        bitboard_t occupied = allPiecesBitboard ^ (0b1LL << rookIdx);
         // Shift the file down to the first rank and get the 6 middle squares
-        bitboard_t fileOccupied = (occupied >> (rank8 + 1)) & 0b111111LL;
+        bitboard_t fileOccupied = (allPiecesBitboard >> (rank8 + 1)) & 0b111111LL;
         // Read the move bitboard and shift it to the correct rank
         bitboard_t fileMoves = rookFileMoves[(file << 6) | fileOccupied] << rank8; 
 
-        // Lookup for the rank is not that fast 
-        // TODO: Try the subtracting rook method https://www.chessprogramming.org/Subtracting_a_Rook_from_a_Blocking_Piece
-        // TODO: Use a more efficient generation of occupied index https://www.chessprogramming.org/Kindergarten_Bitboards
-        // Shift the file to the A file (No bitmask required, as we sample bits individually in the next step)
-        bitboard_t rankOccupied = (occupied >> file); 
-        // Sample occupied bits into a byte (only sample the 6 middle squares)
-        bitboard_t rankOccupiedIdx = (
-            ((rankOccupied >> 8)  & 0b000001) | 
-            ((rankOccupied >> 15) & 0b000010) | 
-            ((rankOccupied >> 22) & 0b000100) | 
-            ((rankOccupied >> 29) & 0b001000) | 
-            ((rankOccupied >> 36) & 0b010000) | 
-            ((rankOccupied >> 43) & 0b100000)
-        );
-
+        // Shift the file to the A file and mask it
+        bitboard_t rankOccupied = (allPiecesBitboard >> file) & (0x0101010101010101LL); 
+        // Find the occupancy index using https://www.chessprogramming.org/Kindergarten_Bitboards
+        bitboard_t rankOccupiedIdx = (rankOccupied * 0x4081020408000LL) >> 58;
         bitboard_t rankMoves = rookRankMoves[(rank8 << 3) | rankOccupiedIdx] << file;
 
         return fileMoves | rankMoves;
     }
 
-    // Assumes single-rook bitboard TODO: use square index instead of bitboard
     // https://www.chessprogramming.org/Efficient_Generation_of_Sliding_Piece_Attacks
     static inline bitboard_t getBishopMoves(bitboard_t allPiecesBitboard, uint8_t bishopIdx)
     {
         int file = bishopIdx & 0b111;
 
-        bitboard_t occupancy = allPiecesBitboard ^ (0b1LL << bishopIdx);
-
         const static bitboard_t bFile = 0x0202020202020202LL;
-        bitboard_t diagonalOccupancy     = ((diagonal[bishopIdx] & occupancy) * bFile) >> 58;
-        bitboard_t antiDiagonalOccupancy = ((antiDiagonal[bishopIdx] & occupancy) * bFile) >> 58;
+        bitboard_t diagonalOccupancy     = ((diagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
+        bitboard_t antiDiagonalOccupancy = ((antiDiagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
         bitboard_t moves = (
             (diagonal[bishopIdx] & bishopMoves[file << 6 | diagonalOccupancy]) |
             (antiDiagonal[bishopIdx] & bishopMoves[file << 6 | antiDiagonalOccupancy])
