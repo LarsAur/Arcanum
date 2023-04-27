@@ -380,44 +380,6 @@ Move* Board::getLegalMoves()
         }
     }
 
-    #if 1 // Parallel pawn attack
-    // TODO: Should be possible to do all left and then all right attacks in parallel
-    while (pawns)
-    {
-        uint8_t pawnIdx = popLS1B(&pawns);
-        // Attack move and enpassant
-        // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
-        bitboard_t attacks = m_turn == WHITE ? getWhitePawnAttacks(0b1LL << pawnIdx) : getBlackPawnAttacks(0b1LL << pawnIdx);
-        attacks &= m_bbPieces[m_turn ^ 1] | (m_enPassantSquare != 64 ? (0b1LL << m_enPassantSquare) : 0LL);
-        while (attacks)
-        {
-            if(attacks & 0xff000000000000ffLL)
-            {
-                uint8_t target = popLS1B(&attacks);
-                // TODO: If one promotion move is legal, all are legal
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK),  kingIdx, kingDiagonals, kingStraights, wasChecked);
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP), kingIdx, kingDiagonals, kingStraights, wasChecked);
-                attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            }
-            else
-            {
-                uint8_t target = popLS1B(&attacks);
-                Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT : 0) | MOVE_INFO_PAWN_MOVE);
-                attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
-            }
-        }
-
-        // Double move
-        bitboard_t doubleMoves = m_turn == WHITE ? ((0b1LL << pawnIdx) << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & ~(m_bbAllPieces) : ((0b1LL << pawnIdx) >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & ~(m_bbAllPieces);
-        if (doubleMoves)
-        {
-            uint8_t target = LS1B(doubleMoves);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_DOUBLE_MOVE | MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
-        }
-    }
-    #else // Parallel pawn attack
-
     // TODO: make one large if statement
     bitboard_t pawnAttacksLeft   = m_turn == WHITE ? getWhitePawnAttacksLeft(pawns) : getBlackPawnAttacksLeft(pawns);
     bitboard_t pawnAttacksRight  = m_turn == WHITE ? getWhitePawnAttacksRight(pawns) : getBlackPawnAttacksRight(pawns);
@@ -443,7 +405,7 @@ Move* Board::getLegalMoves()
         }
         else
         {
-            // TODO:
+            // TODO: optimize
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
             Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT : 0) | MOVE_INFO_PAWN_MOVE);
             attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
@@ -472,19 +434,15 @@ Move* Board::getLegalMoves()
         }
     }
 
-    while (pawns)
+    // Double move
+    bitboard_t doubleMoves       = m_turn == WHITE ? (pawns << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & ~(m_bbAllPieces) : (pawns >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & ~(m_bbAllPieces);
+    bitboard_t doubleMovesOrigin = m_turn == WHITE ? doubleMoves >> 16 : doubleMoves << 16;
+    while (doubleMoves)
     {
-        // TODO: do all in parallel
-        int pawnIdx = popLS1B(&pawns);
-        // Double move
-        bitboard_t doubleMoves = m_turn == WHITE ? ((0b1LL << pawnIdx) << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & ~(m_bbAllPieces) : ((0b1LL << pawnIdx) >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & ~(m_bbAllPieces);
-        if (doubleMoves)
-        {
-            uint8_t target = LS1B(doubleMoves);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_DOUBLE_MOVE | MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
-        }
+        int target = popLS1B(&doubleMoves);
+        int pawnIdx = popLS1B(&doubleMovesOrigin);
+        attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_DOUBLE_MOVE | MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
     }
-    #endif // Parallel pawn attack
 
     // Rook moves
     bitboard_t rooks = m_bbRooks[m_turn];
