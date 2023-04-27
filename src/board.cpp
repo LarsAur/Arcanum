@@ -247,7 +247,6 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         Color oponent = Color(m_turn ^ 1);
         
         // Remove potential captures
-
         m_bbAllPieces        &= ~(m_enPassantTarget != 64 && (move.moveInfo & MOVE_INFO_ENPASSANT) ? 0b1LL << m_enPassantTarget : 0LL);
         m_bbPieces[oponent]  &= ~(bbTo | (m_enPassantTarget != 64 && (move.moveInfo & MOVE_INFO_ENPASSANT) ? 0b1LL << m_enPassantTarget : 0LL));
         m_bbPawns[oponent]   &= ~(bbTo | (m_enPassantTarget != 64 && (move.moveInfo & MOVE_INFO_ENPASSANT) ? 0b1LL << m_enPassantTarget : 0LL));
@@ -257,10 +256,9 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         m_bbQueens[oponent]  &= ~bbTo;
         m_bbRooks[oponent]   &= ~bbTo;
 
-        // std::cout << +move.to << std::endl;
         if(!isChecked(m_turn))
         {
-            m_legalMoves.push_back(move);
+            m_legalMoves[m_numLegalMoves++] = move;
         }
 
         m_bbAllPieces       = bbAllPieces;
@@ -294,7 +292,7 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         
         if ((diagonalAttacks & queenAndBishops) == 0)
         {
-            m_legalMoves.push_back(move);
+            m_legalMoves[m_numLegalMoves++] = move;
         }
     } 
     else if(bbFrom & kingStraights)
@@ -306,13 +304,13 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         
         if ((straightAttacks & queenAndRooks) == 0)
         {
-            m_legalMoves.push_back(move);
+            m_legalMoves[m_numLegalMoves++] = move;
         }
     }
     // It is safe to add the move if it is not potentially a discoverd check
     else 
     {
-        m_legalMoves.push_back(move);
+        m_legalMoves[m_numLegalMoves++] = move;
     }
 }
 
@@ -322,15 +320,16 @@ void Board::attemptAddPseudoLegalKingMove(Move move, bitboard_t oponentAttacks)
 
     if((oponentAttacks & bbTo) == 0LL)
     {
-        m_legalMoves.push_back(move);
+        m_legalMoves[m_numLegalMoves++] = move;
     }
 }
 
-std::vector<Move>* Board::getLegalMoves()
+Move* Board::getLegalMoves()
 {
     // TODO: Configure for best performance
-    m_legalMoves.clear();
-    m_legalMoves.reserve(64);
+    m_numLegalMoves = 0;
+    // m_legalMoves.clear();
+    // m_legalMoves.reserve(64);
 
     // Create bitboard for where the king would be attacked
     bitboard_t oponentAttacks = getOponentAttacks();
@@ -350,7 +349,7 @@ std::vector<Move>* Board::getLegalMoves()
     while(kMoves)
     {
         uint8_t target = popLS1B(&kMoves);
-        m_legalMoves.push_back(Move(kingIdx, target, MOVE_INFO_KING));
+        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MOVE_INFO_KING);
     }
 
     // TODO: We can check if the piece is blocking a check, this way we know we cannot move the piece and will not have to test all the moves
@@ -587,7 +586,7 @@ std::vector<Move>* Board::getLegalMoves()
                         bitboard_t rookMask = getRookMoves(m_bbAllPieces, 2) | getRookMoves(m_bbAllPieces, 3) | getRookMoves(m_bbAllPieces, 4);
                         if(! ((m_bbRooks[BLACK] | m_bbQueens[BLACK]) & rookMask) )
                         {
-                            m_legalMoves.push_back(Move(4, 2, MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_KING));
+                            m_legalMoves[m_numLegalMoves++] = Move(4, 2, MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_KING);
                         }
                     }
                 }
@@ -609,7 +608,7 @@ std::vector<Move>* Board::getLegalMoves()
                         bitboard_t rookMask = getRookMoves(m_bbAllPieces, 4) | getRookMoves(m_bbAllPieces, 5) | getRookMoves(m_bbAllPieces, 6);
                         if(! ((m_bbRooks[BLACK] | m_bbQueens[BLACK]) & rookMask) )
                         {
-                            m_legalMoves.push_back(Move(4, 6, MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_KING));
+                            m_legalMoves[m_numLegalMoves++] = Move(4, 6, MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_KING);
                         }
                     }
                 }
@@ -633,7 +632,7 @@ std::vector<Move>* Board::getLegalMoves()
                         bitboard_t rookMask = getRookMoves(m_bbAllPieces, 58) | getRookMoves(m_bbAllPieces, 59) | getRookMoves(m_bbAllPieces, 60);
                         if(! ((m_bbRooks[WHITE] | m_bbQueens[WHITE]) & rookMask) )
                         {
-                            m_legalMoves.push_back(Move(60, 58, MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_KING));
+                            m_legalMoves[m_numLegalMoves++] = Move(60, 58, MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_KING);
                         }
                     }
                 }
@@ -655,7 +654,7 @@ std::vector<Move>* Board::getLegalMoves()
                         bitboard_t rookMask = getRookMoves(m_bbAllPieces, 60) | getRookMoves(m_bbAllPieces, 61) | getRookMoves(m_bbAllPieces, 62);
                         if(! ((m_bbRooks[WHITE] | m_bbQueens[WHITE]) & rookMask) )
                         {
-                            m_legalMoves.push_back(Move(60, 62, MOVE_INFO_CASTLE_BLACK_KING | MOVE_INFO_KING));
+                            m_legalMoves[m_numLegalMoves++] = Move(60, 62, MOVE_INFO_CASTLE_BLACK_KING | MOVE_INFO_KING);
                         }
                     }
                 }
@@ -663,7 +662,12 @@ std::vector<Move>* Board::getLegalMoves()
         }
     }
     
-    return &m_legalMoves;
+    return m_legalMoves;
+}
+
+uint8_t Board::getNumLegalMoves()
+{
+    return m_numLegalMoves;
 }
 
 Board::Board(const Board& board)
@@ -784,9 +788,11 @@ void Board::performMove(Move move)
     m_turn = Color(m_turn ^ 1);
     
     // Remove potential captures
-    m_bbAllPieces       &= ~((move.moveInfo & MOVE_INFO_ENPASSANT) ? (0b1LL << m_enPassantTarget) : 0LL); // TODO: Improve 
-    m_bbPieces[m_turn]  &= ~(bbTo | ((move.moveInfo & MOVE_INFO_ENPASSANT) ? (0b1LL << m_enPassantTarget) : 0LL)); // Does not need to use guard for target = 64, as it is handled when generating the move
-    m_bbPawns[m_turn]   &= ~(bbTo | ((move.moveInfo & MOVE_INFO_ENPASSANT) ? (0b1LL << m_enPassantTarget) : 0LL)); // TODO: Improve
+    // Does not need to use guard for target = 64, as it is handled when generating the move
+    bitboard_t enpassantMask = (move.moveInfo & MOVE_INFO_ENPASSANT) ? (0b1LL << m_enPassantTarget) : 0LL;
+    m_bbAllPieces       &= ~enpassantMask;
+    m_bbPieces[m_turn]  &= ~(bbTo | enpassantMask); 
+    m_bbPawns[m_turn]   &= ~(bbTo | enpassantMask); 
     m_bbKing[m_turn]    &= ~bbTo;
     m_bbKnights[m_turn] &= ~bbTo;
     m_bbBishops[m_turn] &= ~bbTo;

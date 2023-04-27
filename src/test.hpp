@@ -7,8 +7,10 @@ namespace ChessEngine2
 {
     void findNumMovesAtDepth(int depth, ChessEngine2::Board *board, uint64_t *count, bool top = true)
     {
-        std::vector<Move>* legalMoves = board->getLegalMoves();
-        if(legalMoves->size() == 0)
+        Move* legalMoves = board->getLegalMoves();
+        uint8_t numLegalMoves = board->getNumLegalMoves();
+
+        if(numLegalMoves == 0)
         {
             *count += 0;
             return;
@@ -16,14 +18,14 @@ namespace ChessEngine2
         
         if(depth == 1)
         {
-            *count += legalMoves->size();
+            *count += numLegalMoves;
             return;
         }
 
-        for(auto it = legalMoves->begin(); it != legalMoves->end(); it++)
+        for(int i = 0; i < numLegalMoves; i++)
         {
             Board newBoard = Board(*board);
-            newBoard.performMove(*it);
+            newBoard.performMove(legalMoves[i]);
 
             if(top)
             {

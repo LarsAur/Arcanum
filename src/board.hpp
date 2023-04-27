@@ -54,6 +54,7 @@ namespace ChessEngine2
         uint8_t to;
         uint16_t moveInfo;
 
+        Move(){}
         Move(uint8_t _from, uint8_t _to, uint16_t _moveInfo = 0)
         {
             from = _from;
@@ -82,7 +83,9 @@ namespace ChessEngine2
             bitboard_t m_bbQueens[NUM_COLORS];
             bitboard_t m_bbRooks[NUM_COLORS];
 
-            std::vector<Move> m_legalMoves;
+            uint8_t m_numLegalMoves;
+            Move m_legalMoves[218];
+
             // Tests if the king will be checked before adding the move
             void attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
             // void attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
@@ -99,7 +102,8 @@ namespace ChessEngine2
             bool isStraightChecked(Color color);
 
             bitboard_t getOponentAttacks();
-            std::vector<Move>* getLegalMoves();
+            Move* getLegalMoves();
+            uint8_t getNumLegalMoves();
             std::string getBoardString();
             
     };
