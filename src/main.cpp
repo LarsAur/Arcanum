@@ -96,5 +96,5 @@ int main()
  * Do all pawn forward moves in parallel: 162M nps
  * Change king move checking by generating oponentAttacks: 162M nps
  * Allocate legal move list on the stack: 260M nps
- * Parallel pawn attacks and double moves: 269.8M nps
+ * Parallel pawn attacks and double moves: 270M nps
 */

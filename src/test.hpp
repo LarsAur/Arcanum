@@ -77,7 +77,7 @@ namespace ChessEngine2
         auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
         float deltaTime = micros.count() / 1000000.0f;
 
-        CHESS_ENGINE2_LOG("Running all perft completed. " << (sum / deltaTime) << " Nodes / Sec")
+        CHESS_ENGINE2_LOG("Running all perft completed in " << micros.count() / 1000 << "ms. " << (sum / deltaTime) << " Nodes / Sec")
     }
 
 }

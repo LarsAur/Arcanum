@@ -73,6 +73,9 @@ namespace ChessEngine2
             // set to >63 for invalid enpassant
             uint8_t m_enPassantSquare; // Square moved to when capturing
             uint8_t m_enPassantTarget; // Square of the captured piece
+            bitboard_t m_bbEnPassantSquare; // Square moved to when capturing
+            bitboard_t m_bbEnPassantTarget; // Square moved to when capturing
+
 
             bitboard_t m_bbAllPieces;
             bitboard_t m_bbPieces[NUM_COLORS];

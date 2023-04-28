@@ -138,6 +138,10 @@ Board::Board(std::string fen)
     }
 
     // Read enpassant square
+    m_enPassantSquare = 64;
+    m_enPassantTarget = 64;
+    m_bbEnPassantSquare = 0LL;
+    m_bbEnPassantTarget = 0LL;
     chr = fen[fenPosition++];
     if(chr != '-')
     {
@@ -151,14 +155,18 @@ Board::Board(std::string fen)
         }
 
         m_enPassantSquare = (rank << 3) | file;
+        m_bbEnPassantSquare = 1LL << m_enPassantSquare;
         if(rank == 2)
         {
             m_enPassantTarget = m_enPassantSquare + 8;
+            m_bbEnPassantTarget = 1LL << m_enPassantTarget;
         } 
         else
         {
-            m_enPassantTarget = m_enPassantSquare  -8;
+            m_enPassantTarget = m_enPassantSquare - 8;
+            m_bbEnPassantTarget = 1LL << m_enPassantTarget;
         }
+        
     }
 
     // Skip space
@@ -247,9 +255,9 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         Color oponent = Color(m_turn ^ 1);
         
         // Remove potential captures
-        m_bbAllPieces        &= ~(m_enPassantTarget != 64 && (move.moveInfo & MOVE_INFO_ENPASSANT) ? 0b1LL << m_enPassantTarget : 0LL);
-        m_bbPieces[oponent]  &= ~(bbTo | (m_enPassantTarget != 64 && (move.moveInfo & MOVE_INFO_ENPASSANT) ? 0b1LL << m_enPassantTarget : 0LL));
-        m_bbPawns[oponent]   &= ~(bbTo | (m_enPassantTarget != 64 && (move.moveInfo & MOVE_INFO_ENPASSANT) ? 0b1LL << m_enPassantTarget : 0LL));
+        m_bbAllPieces        &= ~((move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL);
+        m_bbPieces[oponent]  &= ~(bbTo | ((move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL));
+        m_bbPawns[oponent]   &= ~(bbTo | ((move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL));
         m_bbKing[oponent]    &= ~bbTo;
         m_bbKnights[oponent] &= ~bbTo;
         m_bbBishops[oponent] &= ~bbTo;
@@ -383,8 +391,8 @@ Move* Board::getLegalMoves()
     // TODO: make one large if statement
     bitboard_t pawnAttacksLeft   = m_turn == WHITE ? getWhitePawnAttacksLeft(pawns) : getBlackPawnAttacksLeft(pawns);
     bitboard_t pawnAttacksRight  = m_turn == WHITE ? getWhitePawnAttacksRight(pawns) : getBlackPawnAttacksRight(pawns);
-    pawnAttacksLeft  &= m_bbPieces[m_turn ^ 1] | (m_enPassantSquare != 64 ? (0b1LL << m_enPassantSquare) : 0LL); // TODO: Make single expression for enpassant square bitboard 
-    pawnAttacksRight &= m_bbPieces[m_turn ^ 1] | (m_enPassantSquare != 64 ? (0b1LL << m_enPassantSquare) : 0LL);
+    pawnAttacksLeft  &= m_bbPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+    pawnAttacksRight &= m_bbPieces[m_turn ^ 1] | m_bbEnPassantSquare;
     // bitboard_t pawnAttacksLeftOrigin   = m_turn == WHITE ? getBlackPawnAttacksRight(pawnAttacksLeft) : getWhitePawnAttacksRight(pawnAttacksLeft); // TODO: Origins does not have to check for board edges (does not need bitmask)
     // bitboard_t pawnAttacksRightOrigin  = m_turn == WHITE ? getBlackPawnAttacksLeft(pawnAttacksRight) : getWhitePawnAttacksLeft(pawnAttacksRight);
     bitboard_t pawnAttacksLeftOrigin   = m_turn == WHITE ? pawnAttacksLeft >> 7 : pawnAttacksLeft << 9; // TODO: Origins does not have to check for board edges (does not need bitmask)
@@ -633,6 +641,8 @@ Board::Board(const Board& board)
     m_castleRights = board.m_castleRights;
     m_enPassantSquare = board.m_enPassantSquare;
     m_enPassantTarget = board.m_enPassantTarget;
+    m_bbEnPassantSquare = board.m_bbEnPassantSquare;
+    m_bbEnPassantTarget = board.m_bbEnPassantTarget;
 
     m_bbAllPieces = board.m_bbAllPieces;
     
@@ -743,8 +753,7 @@ void Board::performMove(Move move)
     m_turn = Color(m_turn ^ 1);
     
     // Remove potential captures
-    // Does not need to use guard for target = 64, as it is handled when generating the move
-    bitboard_t enpassantMask = (move.moveInfo & MOVE_INFO_ENPASSANT) ? (0b1LL << m_enPassantTarget) : 0LL;
+    bitboard_t enpassantMask = (move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL;
     m_bbAllPieces       &= ~enpassantMask;
     m_bbPieces[m_turn]  &= ~(bbTo | enpassantMask); 
     m_bbPawns[m_turn]   &= ~(bbTo | enpassantMask); 
@@ -756,11 +765,16 @@ void Board::performMove(Move move)
 
     // Required to reset
     m_enPassantSquare = 64;
-    m_enPassantTarget = 64; 
+    m_enPassantTarget = 64;
+    m_bbEnPassantSquare = 0LL;
+    m_bbEnPassantTarget = 0LL;
+    // TODO: Also include an enpassant bitboard, will be 0 if non available
     if(move.moveInfo & MOVE_INFO_DOUBLE_MOVE)
     {
         m_enPassantTarget = move.to;
         m_enPassantSquare = (move.to + move.from) >> 1; // Average of the two squares is the middle
+        m_bbEnPassantSquare = 1LL << m_enPassantSquare; 
+        m_bbEnPassantTarget = 1LL << m_enPassantTarget; 
     }
 
     m_fullMoves += (m_turn == WHITE); // Note turn is flipped
