@@ -97,4 +97,6 @@ int main()
  * Change king move checking by generating oponentAttacks: 162M nps
  * Allocate legal move list on the stack: 260M nps
  * Parallel pawn attacks and double moves: 270M nps
+ * Use enpassant bitboards 274M nps
+ * Use one promotion move to verify all 296M nps
 */

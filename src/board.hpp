@@ -90,7 +90,7 @@ namespace ChessEngine2
             Move m_legalMoves[218];
 
             // Tests if the king will be checked before adding the move
-            void attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
+            bool attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
             // void attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
             void attemptAddPseudoLegalKingMove(Move move, bitboard_t oponentAttacks);
         public:

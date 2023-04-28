@@ -213,11 +213,12 @@ Board::~Board()
 
 }
 
-inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked)
+inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked)
 {
     bitboard_t bbFrom = (0b1LL << move.from);
     bitboard_t bbTo = (0b1LL << move.to);
     Color oponent = Color(m_turn ^ 1);
+    bool added = false;
 
     // TODO: Remove when having a separate isChecked generator
     if(wasChecked)
@@ -267,6 +268,7 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         if(!isChecked(m_turn))
         {
             m_legalMoves[m_numLegalMoves++] = move;
+            added = true;
         }
 
         m_bbAllPieces       = bbAllPieces;
@@ -288,7 +290,7 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         m_bbRooks[BLACK]    = bbRooksBlack  ;
         m_castleRights      = castleRights  ;
 
-        return;
+        return added;
     }
 
     if(bbFrom & kingDiagonals)
@@ -301,6 +303,7 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         if ((diagonalAttacks & queenAndBishops) == 0)
         {
             m_legalMoves[m_numLegalMoves++] = move;
+            return true;
         }
     } 
     else if(bbFrom & kingStraights)
@@ -313,13 +316,17 @@ inline void Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         if ((straightAttacks & queenAndRooks) == 0)
         {
             m_legalMoves[m_numLegalMoves++] = move;
+            return true;
         }
     }
     // It is safe to add the move if it is not potentially a discoverd check
     else 
     {
         m_legalMoves[m_numLegalMoves++] = move;
+        return true;
     }
+
+    return false;
 }
 
 void Board::attemptAddPseudoLegalKingMove(Move move, bitboard_t oponentAttacks)
@@ -341,11 +348,6 @@ Move* Board::getLegalMoves()
 
     // Use a different function for generating moves when in check
     bool wasChecked = (m_bbKing[m_turn] & oponentAttacks) != 0LL;
-    if(wasChecked)
-    {
-        // TODO: Generate moves when in check
-        // return &m_legalMoves;
-    }
 
     // King moves
     uint8_t kingIdx = LS1B(m_bbKing[m_turn]);
@@ -376,11 +378,14 @@ Move* Board::getLegalMoves()
         
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
-            // TODO: If one promotion move is legal, all are legal
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            // If one promotion move is legal, all are legal
+            bool added = attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added)
+            {
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT);
+            }
         }
         else
         {
@@ -388,15 +393,25 @@ Move* Board::getLegalMoves()
         }
     }
 
-    // TODO: make one large if statement
-    bitboard_t pawnAttacksLeft   = m_turn == WHITE ? getWhitePawnAttacksLeft(pawns) : getBlackPawnAttacksLeft(pawns);
-    bitboard_t pawnAttacksRight  = m_turn == WHITE ? getWhitePawnAttacksRight(pawns) : getBlackPawnAttacksRight(pawns);
-    pawnAttacksLeft  &= m_bbPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-    pawnAttacksRight &= m_bbPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-    // bitboard_t pawnAttacksLeftOrigin   = m_turn == WHITE ? getBlackPawnAttacksRight(pawnAttacksLeft) : getWhitePawnAttacksRight(pawnAttacksLeft); // TODO: Origins does not have to check for board edges (does not need bitmask)
-    // bitboard_t pawnAttacksRightOrigin  = m_turn == WHITE ? getBlackPawnAttacksLeft(pawnAttacksRight) : getWhitePawnAttacksLeft(pawnAttacksRight);
-    bitboard_t pawnAttacksLeftOrigin   = m_turn == WHITE ? pawnAttacksLeft >> 7 : pawnAttacksLeft << 9; // TODO: Origins does not have to check for board edges (does not need bitmask)
-    bitboard_t pawnAttacksRightOrigin  = m_turn == WHITE ? pawnAttacksRight >> 9 : pawnAttacksRight << 7;
+    bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin; 
+    if(m_turn == WHITE)
+    {
+        pawnAttacksLeft = getWhitePawnAttacksLeft(pawns);
+        pawnAttacksRight = getWhitePawnAttacksRight(pawns);
+        pawnAttacksLeft  &= m_bbPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+        pawnAttacksRight &= m_bbPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+        pawnAttacksLeftOrigin = pawnAttacksLeft >> 7; 
+        pawnAttacksRightOrigin = pawnAttacksRight >> 9;
+    }
+    else
+    {
+        pawnAttacksLeft = getBlackPawnAttacksLeft(pawns);
+        pawnAttacksRight = getBlackPawnAttacksRight(pawns);
+        pawnAttacksLeft  &= m_bbPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+        pawnAttacksRight &= m_bbPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+        pawnAttacksLeftOrigin = pawnAttacksLeft << 9; 
+        pawnAttacksRightOrigin = pawnAttacksRight << 7;
+    }
     
     while (pawnAttacksLeft)
     {
@@ -405,11 +420,14 @@ Move* Board::getLegalMoves()
 
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
-            // TODO: If one promotion move is legal, all are legal
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK),  kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            // If one promotion move is legal, all are legal
+            bool added = attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added)
+            {
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT);
+            }
         }
         else
         {
@@ -427,11 +445,14 @@ Move* Board::getLegalMoves()
 
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
-            // TODO: If one promotion move is legal, all are legal
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK),  kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP), kingIdx, kingDiagonals, kingStraights, wasChecked);
-            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            // If one promotion move is legal, all are legal
+            bool added = attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added)
+            {
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT);
+            }
         }
         else
         {
