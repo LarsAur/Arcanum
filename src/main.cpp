@@ -22,33 +22,28 @@ Iter select_randomly(Iter start, Iter end) {
     return select_randomly(start, end, gen);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
     ChessEngine2::initGenerateKnightAttacks();
     ChessEngine2::initGenerateKingMoves();
     ChessEngine2::initGenerateRookMoves();
     ChessEngine2::initGenerateBishopMoves();
 
-    // runAllPerft();
-    // runAllCaptureMoves();
+    for(int i = 1; i < argc; i++)
+    {
+        if(!strncmp("--test", argv[i], 7))
+        {
+            runAllPerft();
+            runAllCaptureMoves();
+        }
+    }
 
     ChessEngine2::Board board = ChessEngine2::Board(ChessEngine2::startFEN);
     std::cout << board.getBoardString();
-    // uint64_t count = 0;
-    // findNumMovesAtDepth(9, &board, &count);
-    // std::cout << count << std::endl;
 
     // std::vector<ChessEngine2::Move>* legalMoves = board.getLegalMoves();
     // for(auto it = legalMoves->begin(); it != legalMoves->end(); it++)
     // {
-    //     if(it->moveInfo & (MOVE_INFO_ENPASSANT))
-    //     {
-    //         std::cout << ChessEngine2::getArithmeticNotation(it->from) << " -> " << ChessEngine2::getArithmeticNotation(it->to) << " EnPassant" << std::endl;
-    //     }
-    //     else if(it->moveInfo & (MOVE_INFO_CASTLE_BLACK_KING | MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_CASTLE_WHITE_QUEEN))
-    //     {
-    //         std::cout << ChessEngine2::getArithmeticNotation(it->from) << " -> " << ChessEngine2::getArithmeticNotation(it->to) << " Castle" << std::endl;
-    //     }
     //     else if(it->moveInfo & MOVE_INFO_PROMOTE_QUEEN)
     //     {
     //         std::cout << ChessEngine2::getArithmeticNotation(it->from) << " -> " << ChessEngine2::getArithmeticNotation(it->to) << " Promote: Q" << std::endl;
@@ -64,10 +59,6 @@ int main()
     //     else if(it->moveInfo & MOVE_INFO_PROMOTE_KNIGHT)
     //     {
     //         std::cout << ChessEngine2::getArithmeticNotation(it->from) << " -> " << ChessEngine2::getArithmeticNotation(it->to) << " Promote: N" << std::endl;
-    //     }
-    //     else if(it->moveInfo & MOVE_INFO_KING)
-    //     {
-    //         std::cout << ChessEngine2::getArithmeticNotation(it->from) << " -> " << ChessEngine2::getArithmeticNotation(it->to) << " King" << std::endl;
     //     }
     //     else
     //     {

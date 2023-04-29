@@ -21,6 +21,9 @@ all: setup $(BUILDDIR)/$(PROJECT).exe
 run: $(BUILDDIR)/$(PROJECT).exe
 	./$^
 
+test: $(BUILDDIR)/$(PROJECT).exe
+	./$^ --test
+
 clean: 
 	-rmdir $(BUILDDIR) /s /q
 
