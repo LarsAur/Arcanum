@@ -45,10 +45,10 @@ namespace ChessEngine2
         }
     }
 
-    static inline int CNTSBITS(bitboard_t* bitboard)
+    static inline int CNTSBITS(bitboard_t bitboard)
     {
         #ifdef POPCNT
-            return _popcnt64 (*bitboard);
+            return _popcnt64 (bitboard);
         #else
             
             CHESS_ENGINE2_ERR("CNTSBITS not implemented")

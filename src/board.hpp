@@ -102,6 +102,9 @@ namespace ChessEngine2
             bool isDiagonalChecked(Color color);
             bool isStraightChecked(Color color);
 
+            int64_t evaluate();
+
+            Color getTurn();
             bitboard_t getOponentAttacks();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();

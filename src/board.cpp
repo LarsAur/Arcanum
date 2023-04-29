@@ -1,4 +1,5 @@
 #include <board.hpp>
+#include <utils.hpp>
 #include <sstream>
 
 using namespace ChessEngine2;
@@ -1085,11 +1086,69 @@ inline bool Board::isStraightChecked(Color color)
     return (straightAttacks & queenAndRooks) != 0;
 }
 
+// Evaluates positive value for WHITE
+int64_t Board::evaluate()
+{
+    // Check for stalemate and checkmate
+    // TODO: Create function hasLegalMoves
+    getLegalMoves();
+    if(getNumLegalMoves() == 0)
+    {
+        if(isChecked(m_turn))
+        {
+            // TODO: define checkmate score
+            return -10000000LL;
+        }
+
+        return 0LL;
+    }
+
+    // TODO: Use model parameters
+    int64_t pieceScore;
+    pieceScore  = /* PAWN value */ CNTSBITS(m_bbPawns[WHITE])   - CNTSBITS(m_bbPawns[BLACK]);
+    pieceScore += /* ROOK value */ 5 * (CNTSBITS(m_bbRooks[WHITE])   - CNTSBITS(m_bbRooks[BLACK]));
+    pieceScore += /* KNIGHT value */ 3 * (CNTSBITS(m_bbKnights[WHITE]) - CNTSBITS(m_bbKnights[BLACK]));
+    pieceScore += /* BISHOP value */ 3 * (CNTSBITS(m_bbBishops[WHITE]) - CNTSBITS(m_bbBishops[BLACK]));
+    pieceScore += /* QUEEN value */ 9 * (CNTSBITS(m_bbQueens[WHITE])  - CNTSBITS(m_bbQueens[BLACK]));
+
+    int64_t mobility = m_numLegalMoves;
+
+    m_turn = Color(m_turn ^ 1);
+    m_numLegalMoves = 0;
+    getLegalMoves();
+    int64_t oponentMobility = m_numLegalMoves;
+    m_turn = Color(m_turn ^ 1);
+
+    int64_t mobilityScore = 0.1 * (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
+
+    bitboard_t wPawns = m_bbPawns[WHITE]; 
+    bitboard_t bPawns = m_bbPawns[BLACK]; 
+
+    int64_t pawnScore = 0LL;
+    while (wPawns)
+    {
+        pawnScore += popLS1B(&wPawns) >> 3;
+    }
+    
+    while (bPawns)
+    {
+        pawnScore -= (8 - (popLS1B(&bPawns) >> 3));
+    }
+    
+
+    return pieceScore + mobilityScore + pawnScore;
+}
+
+Color Board::getTurn()
+{
+    return m_turn;
+}
+
 std::string Board::getBoardString()
 {
     std::stringstream ss;
-    ss << "    abcdefgh" << std::endl;
-    ss << "    --------" << std::endl;
+    ss << "    a b c d e f g h " << std::endl;
+    ss << "  +-----------------+" << std::endl;
 
     for(int y = 7; y >= 0; y--)
     {
@@ -1098,36 +1157,36 @@ std::string Board::getBoardString()
         {
             bitboard_t mask = (1LL << ((y << 3) | x));
             if(m_bbPawns[WHITE] & mask)
-                ss << "P";
+                ss << "P ";
             else if(m_bbRooks[WHITE] & mask)
-                ss << "R";
+                ss << "R ";
             else if(m_bbKnights[WHITE] & mask)
-                ss << "N";
+                ss << "N ";
             else if(m_bbBishops[WHITE] & mask)
-                ss << "B";
+                ss << "B ";
             else if(m_bbQueens[WHITE] & mask)
-                ss << "Q";
+                ss << "Q ";
             else if(m_bbKing[WHITE] & mask)
-                ss << "K";
+                ss << "K ";
             else if(m_bbPawns[BLACK] & mask)
-                ss << "p";
+                ss << "p ";
             else if(m_bbRooks[BLACK] & mask)
-                ss << "r";
+                ss << "r ";
             else if(m_bbKnights[BLACK] & mask)
-                ss << "n";
+                ss << "n ";
             else if(m_bbBishops[BLACK] & mask)
-                ss << "b";
+                ss << "b ";
             else if(m_bbQueens[BLACK] & mask)
-                ss << "q";
+                ss << "q ";
             else if(m_bbKing[BLACK] & mask)
-                ss << "k";
+                ss << "k ";
             else 
-                ss << ".";
+                ss << (((x + y) % 2 == 0) ? CHESS_ENGINE2_COLOR_GREEN : CHESS_ENGINE2_COLOR_WHITE) << ". " << CHESS_ENGINE2_COLOR_WHITE;
         }
-        ss << " | " << y+1 << std::endl;
+        ss << "| " << y+1 << std::endl;
     }
-    ss << "    --------" << std::endl;
-    ss << "    abcdefgh" << std::endl;
+    ss << "  +-----------------+" << std::endl;
+    ss << "    a b c d e f g h " << std::endl;
 
     return ss.str();
 }
