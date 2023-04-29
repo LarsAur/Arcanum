@@ -223,11 +223,12 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
     // TODO: Remove when having a separate isChecked generator
     if(wasChecked)
     {
+
+        // TODO: Get piece type as input to enable use of switchcase
         bitboard_t bbAllPieces = m_bbAllPieces;
 
         bitboard_t bbPiecesWhite  = m_bbPieces[WHITE];
         bitboard_t bbPawnsWhite   = m_bbPawns[WHITE];
-        bitboard_t bbKingWhite    = m_bbKing[WHITE];
         bitboard_t bbKnightsWhite = m_bbKnights[WHITE];
         bitboard_t bbBishopsWhite = m_bbBishops[WHITE];
         bitboard_t bbQueensWhite  = m_bbQueens[WHITE];
@@ -235,23 +236,40 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
 
         bitboard_t bbPiecesBlack  = m_bbPieces[BLACK];
         bitboard_t bbPawnsBlack   = m_bbPawns[BLACK];
-        bitboard_t bbKingBlack    = m_bbKing[BLACK];
         bitboard_t bbKnightsBlack = m_bbKnights[BLACK];
         bitboard_t bbBishopsBlack = m_bbBishops[BLACK];
         bitboard_t bbQueensBlack  = m_bbQueens[BLACK];
         bitboard_t bbRooksBlack   = m_bbRooks[BLACK];
 
-        uint8_t castleRights = m_castleRights;
         m_bbAllPieces = (m_bbAllPieces | bbTo) & ~bbFrom;
         m_bbPieces[m_turn] = (m_bbPieces[m_turn] | bbTo) & ~bbFrom;
 
         // Move the piece
-        m_bbPawns[m_turn]   = (m_bbPawns[m_turn] & bbFrom) ? ((m_bbPawns[m_turn] & ~(bbFrom)) | bbTo) : m_bbPawns[m_turn];
-        m_bbKing[m_turn]    = (m_bbKing[m_turn] & bbFrom) ? ((m_bbKing[m_turn] & ~(bbFrom)) | bbTo) : m_bbKing[m_turn];
-        m_bbKnights[m_turn] = (m_bbKnights[m_turn] & bbFrom) ? ((m_bbKnights[m_turn] & ~(bbFrom)) | bbTo) : m_bbKnights[m_turn];
-        m_bbBishops[m_turn] = (m_bbBishops[m_turn] & bbFrom) ? ((m_bbBishops[m_turn] & ~(bbFrom)) | bbTo) : m_bbBishops[m_turn];
-        m_bbQueens[m_turn]  = (m_bbQueens[m_turn] & bbFrom) ? ((m_bbQueens[m_turn] & ~(bbFrom)) | bbTo) : m_bbQueens[m_turn];
-        m_bbRooks[m_turn]   = (m_bbRooks[m_turn] & bbFrom) ? ((m_bbRooks[m_turn] & ~(bbFrom)) | bbTo) : m_bbRooks[m_turn];
+
+        if (m_bbPawns[m_turn] & bbFrom)
+        {
+            m_bbPawns[m_turn]   = (m_bbPawns[m_turn] & ~(bbFrom)) | bbTo;
+        }
+        else if (m_bbKnights[m_turn] & bbFrom)
+        {
+            m_bbKnights[m_turn] = (m_bbKnights[m_turn] & ~(bbFrom)) | bbTo;
+        }
+        else if (m_bbBishops[m_turn] & bbFrom)
+        {
+            m_bbBishops[m_turn] = (m_bbBishops[m_turn] & ~(bbFrom)) | bbTo;
+        } 
+        else if (m_bbRooks[m_turn] & bbFrom)
+        {
+            m_bbRooks[m_turn]   = (m_bbRooks[m_turn] & ~(bbFrom)) | bbTo;
+        }
+        else if (m_bbQueens[m_turn] & bbFrom)
+        {
+            m_bbQueens[m_turn]  = (m_bbQueens[m_turn] & ~(bbFrom)) | bbTo;
+        }
+        else if (m_bbKing[m_turn] & bbFrom) // This is never hit, but removing it makes it about 3-5% slower
+        {
+            m_bbKing[m_turn]    = (m_bbKing[m_turn] & ~(bbFrom)) | bbTo;
+        }
 
         Color oponent = Color(m_turn ^ 1);
         
@@ -275,7 +293,6 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
 
         m_bbPieces[WHITE]   = bbPiecesWhite ;
         m_bbPawns[WHITE]    = bbPawnsWhite  ;
-        m_bbKing[WHITE]     = bbKingWhite   ;
         m_bbKnights[WHITE]  = bbKnightsWhite;
         m_bbBishops[WHITE]  = bbBishopsWhite;
         m_bbQueens[WHITE]   = bbQueensWhite ;
@@ -283,12 +300,10 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
 
         m_bbPieces[BLACK]   = bbPiecesBlack ;
         m_bbPawns[BLACK]    = bbPawnsBlack  ;
-        m_bbKing[BLACK]     = bbKingBlack   ;
         m_bbKnights[BLACK]  = bbKnightsBlack;
         m_bbBishops[BLACK]  = bbBishopsBlack;
         m_bbQueens[BLACK]   = bbQueensBlack ;
         m_bbRooks[BLACK]    = bbRooksBlack  ;
-        m_castleRights      = castleRights  ;
 
         return added;
     }
