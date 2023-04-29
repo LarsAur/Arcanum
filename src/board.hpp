@@ -70,7 +70,7 @@ namespace ChessEngine2
             uint16_t m_halfMoves;
             uint16_t m_fullMoves;
             uint8_t m_castleRights;
-            // set to >63 for invalid enpassant
+            // set to 64 for invalid enpassant
             uint8_t m_enPassantSquare; // Square moved to when capturing
             uint8_t m_enPassantTarget; // Square of the captured piece
             bitboard_t m_bbEnPassantSquare; // Square moved to when capturing
@@ -91,8 +91,6 @@ namespace ChessEngine2
 
             // Tests if the king will be checked before adding the move
             bool attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
-            // void attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
-            void attemptAddPseudoLegalKingMove(Move move, bitboard_t oponentAttacks);
         public:
             Board(const Board& board);
             Board(std::string fen);
@@ -106,6 +104,7 @@ namespace ChessEngine2
 
             bitboard_t getOponentAttacks();
             Move* getLegalMoves();
+            Move* getLegalCaptureMoves();
             uint8_t getNumLegalMoves();
             std::string getBoardString();
             

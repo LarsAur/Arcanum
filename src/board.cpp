@@ -208,6 +208,36 @@ Board::Board(std::string fen)
     m_fullMoves = atoi(fen.c_str() + fenPosition);
 }
 
+Board::Board(const Board& board)
+{
+    m_turn = board.m_turn;
+    m_halfMoves = board.m_halfMoves;
+    m_fullMoves = board.m_fullMoves;
+    m_castleRights = board.m_castleRights;
+    m_enPassantSquare = board.m_enPassantSquare;
+    m_enPassantTarget = board.m_enPassantTarget;
+    m_bbEnPassantSquare = board.m_bbEnPassantSquare;
+    m_bbEnPassantTarget = board.m_bbEnPassantTarget;
+
+    m_bbAllPieces = board.m_bbAllPieces;
+    
+    m_bbPieces[WHITE] = board.m_bbPieces[WHITE];
+    m_bbPawns[WHITE] = board.m_bbPawns[WHITE];
+    m_bbKing[WHITE] = board.m_bbKing[WHITE];
+    m_bbKnights[WHITE] = board.m_bbKnights[WHITE];
+    m_bbBishops[WHITE] = board.m_bbBishops[WHITE];
+    m_bbQueens[WHITE] = board.m_bbQueens[WHITE];
+    m_bbRooks[WHITE] = board.m_bbRooks[WHITE];
+
+    m_bbPieces[BLACK] = board.m_bbPieces[BLACK];
+    m_bbPawns[BLACK] = board.m_bbPawns[BLACK];
+    m_bbKing[BLACK] = board.m_bbKing[BLACK];
+    m_bbKnights[BLACK] = board.m_bbKnights[BLACK];
+    m_bbBishops[BLACK] = board.m_bbBishops[BLACK];
+    m_bbQueens[BLACK] = board.m_bbQueens[BLACK];
+    m_bbRooks[BLACK] = board.m_bbRooks[BLACK];
+}
+
 Board::~Board()
 {
 
@@ -223,7 +253,6 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
     // TODO: Remove when having a separate isChecked generator
     if(wasChecked)
     {
-
         // TODO: Get piece type as input to enable use of switchcase
         bitboard_t bbAllPieces = m_bbAllPieces;
 
@@ -341,16 +370,6 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
     }
 
     return false;
-}
-
-void Board::attemptAddPseudoLegalKingMove(Move move, bitboard_t oponentAttacks)
-{
-    bitboard_t bbTo = (0b1LL << move.to);
-
-    if((oponentAttacks & bbTo) == 0LL)
-    {
-        m_legalMoves[m_numLegalMoves++] = move;
-    }
 }
 
 Move* Board::getLegalMoves()
@@ -672,39 +691,179 @@ Move* Board::getLegalMoves()
     return m_legalMoves;
 }
 
+// Generates the set of legal captures or moves to get out of check
+// If in check, the existing function for generating legal moves will be used
+Move* Board::getLegalCaptureMoves()
+{
+    m_numLegalMoves = 0;
+
+    // Create bitboard for where the king would be attacked
+    bitboard_t oponentAttacks = getOponentAttacks();
+
+    // Use a different function for generating moves when in check
+    bool wasChecked = (m_bbKing[m_turn] & oponentAttacks) != 0LL;
+    // If in check, the existing function for generating legal moves will be used
+    if(wasChecked)
+    {
+        return getLegalMoves();
+    }
+
+    // Everything below is generating moves when not in check, thus we can filter for capturing moves
+    Color oponent = Color(m_turn ^ 1);
+
+    // King moves
+    uint8_t kingIdx = LS1B(m_bbKing[m_turn]);
+    bitboard_t kMoves = getKingMoves(kingIdx);
+    kMoves &= ~(m_bbPieces[m_turn] | oponentAttacks) & m_bbPieces[oponent];
+    while(kMoves)
+    {
+        uint8_t target = popLS1B(&kMoves);
+        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MOVE_INFO_KING);
+    }
+
+    // TODO: We can check if the piece is blocking a check, this way we know we cannot move the piece and will not have to test all the moves
+    bitboard_t kingDiagonals = diagonal[kingIdx] | antiDiagonal[kingIdx];
+    bitboard_t kingStraights = (0xffLL << (kingIdx & ~0b111)) | (0x0101010101010101LL << (kingIdx & 0b111));
+
+    // Pawn moves 
+    bitboard_t pawns = m_bbPawns[m_turn];
+    bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin; 
+    if(m_turn == WHITE)
+    {
+        pawnAttacksLeft = getWhitePawnAttacksLeft(pawns);
+        pawnAttacksRight = getWhitePawnAttacksRight(pawns);
+        pawnAttacksLeft  &= m_bbPieces[oponent] | m_bbEnPassantSquare;
+        pawnAttacksRight &= m_bbPieces[oponent] | m_bbEnPassantSquare;
+        pawnAttacksLeftOrigin = pawnAttacksLeft >> 7; 
+        pawnAttacksRightOrigin = pawnAttacksRight >> 9;
+    }
+    else
+    {
+        pawnAttacksLeft = getBlackPawnAttacksLeft(pawns);
+        pawnAttacksRight = getBlackPawnAttacksRight(pawns);
+        pawnAttacksLeft  &= m_bbPieces[oponent] | m_bbEnPassantSquare;
+        pawnAttacksRight &= m_bbPieces[oponent] | m_bbEnPassantSquare;
+        pawnAttacksLeftOrigin = pawnAttacksLeft << 9; 
+        pawnAttacksRightOrigin = pawnAttacksRight << 7;
+    }
+    
+    while (pawnAttacksLeft)
+    {
+        uint8_t target = popLS1B(&pawnAttacksLeft);
+        uint8_t pawnIdx = popLS1B(&pawnAttacksLeftOrigin);
+
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // If one promotion move is legal, all are legal
+            bool added = attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added)
+            {
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT);
+            }
+        }
+        else
+        {
+            // TODO: optimize
+            // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
+            Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT | MOVE_INFO_PAWN_MOVE : MOVE_INFO_PAWN_MOVE));
+            attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
+        }
+    }
+
+    while (pawnAttacksRight)
+    {
+        uint8_t target = popLS1B(&pawnAttacksRight);
+        uint8_t pawnIdx = popLS1B(&pawnAttacksRightOrigin);
+
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // If one promotion move is legal, all are legal
+            bool added = attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added)
+            {
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT);
+            }
+        }
+        else
+        {
+            // TODO:
+            // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
+            Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT | MOVE_INFO_PAWN_MOVE : MOVE_INFO_PAWN_MOVE));
+            attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
+        }
+    }
+
+    // Rook moves
+    bitboard_t rooks = m_bbRooks[m_turn];
+    while (rooks)
+    {
+        uint8_t rookIdx = popLS1B(&rooks);
+        bitboard_t rookMoves = getRookMoves(m_bbAllPieces, rookIdx);
+        rookMoves &= ~m_bbPieces[m_turn] & m_bbPieces[oponent];
+
+        while(rookMoves)
+        {
+            uint8_t target = popLS1B(&rookMoves);
+            attemptAddPseudoLegalMove(Move(rookIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+    }
+
+    // Knight moves
+    bitboard_t knights = m_bbKnights[m_turn];
+
+    while (knights)
+    {
+        uint8_t knightIdx = popLS1B(&knights);
+        bitboard_t knightMoves = getKnightAttacks(knightIdx);
+        knightMoves &= ~m_bbPieces[m_turn] & m_bbPieces[oponent];
+
+        while(knightMoves)
+        {
+            uint8_t target = popLS1B(&knightMoves);
+            attemptAddPseudoLegalMove(Move(knightIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+    }
+
+    // Bishop moves
+    bitboard_t bishops = m_bbBishops[m_turn];
+    while (bishops)
+    {
+        uint8_t bishopIdx = popLS1B(&bishops);
+        bitboard_t bishopMoves = getBishopMoves(m_bbAllPieces, bishopIdx);
+        bishopMoves &= ~m_bbPieces[m_turn] & m_bbPieces[oponent];
+
+        while(bishopMoves)
+        {
+            uint8_t target = popLS1B(&bishopMoves);
+            attemptAddPseudoLegalMove(Move(bishopIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+    }
+
+    // Queen moves
+    bitboard_t queens = m_bbQueens[m_turn];
+    while (queens)
+    {
+        uint8_t queenIdx = popLS1B(&queens);
+        bitboard_t queenMoves = getQueenMoves(m_bbAllPieces, queenIdx);
+        queenMoves &= ~m_bbPieces[m_turn] & m_bbPieces[oponent];
+
+        while(queenMoves)
+        {
+            uint8_t target = popLS1B(&queenMoves);
+            attemptAddPseudoLegalMove(Move(queenIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+    }
+
+    return m_legalMoves;
+}
+
 uint8_t Board::getNumLegalMoves()
 {
     return m_numLegalMoves;
-}
-
-Board::Board(const Board& board)
-{
-    m_turn = board.m_turn;
-    m_halfMoves = board.m_halfMoves;
-    m_fullMoves = board.m_fullMoves;
-    m_castleRights = board.m_castleRights;
-    m_enPassantSquare = board.m_enPassantSquare;
-    m_enPassantTarget = board.m_enPassantTarget;
-    m_bbEnPassantSquare = board.m_bbEnPassantSquare;
-    m_bbEnPassantTarget = board.m_bbEnPassantTarget;
-
-    m_bbAllPieces = board.m_bbAllPieces;
-    
-    m_bbPieces[WHITE] = board.m_bbPieces[WHITE];
-    m_bbPawns[WHITE] = board.m_bbPawns[WHITE];
-    m_bbKing[WHITE] = board.m_bbKing[WHITE];
-    m_bbKnights[WHITE] = board.m_bbKnights[WHITE];
-    m_bbBishops[WHITE] = board.m_bbBishops[WHITE];
-    m_bbQueens[WHITE] = board.m_bbQueens[WHITE];
-    m_bbRooks[WHITE] = board.m_bbRooks[WHITE];
-
-    m_bbPieces[BLACK] = board.m_bbPieces[BLACK];
-    m_bbPawns[BLACK] = board.m_bbPawns[BLACK];
-    m_bbKing[BLACK] = board.m_bbKing[BLACK];
-    m_bbKnights[BLACK] = board.m_bbKnights[BLACK];
-    m_bbBishops[BLACK] = board.m_bbBishops[BLACK];
-    m_bbQueens[BLACK] = board.m_bbQueens[BLACK];
-    m_bbRooks[BLACK] = board.m_bbRooks[BLACK];
 }
 
 void Board::performMove(Move move)

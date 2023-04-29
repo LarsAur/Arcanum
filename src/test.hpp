@@ -80,4 +80,34 @@ namespace ChessEngine2
         CHESS_ENGINE2_LOG("Running all perft completed in " << micros.count() / 1000 << "ms. " << (sum / deltaTime) << " Nodes / Sec")
     }
 
+    uint64_t runCaptureMoves(std::string fen, uint64_t expected)
+    {
+        Board board = Board(fen);
+        board.getLegalCaptureMoves();
+        uint64_t count = board.getNumLegalMoves();
+
+        if(count != expected)
+        {
+            CHESS_ENGINE2_ERR("Failed capture moves test with " << fen << " Expected: " << expected << " Got: " << count)
+        }
+        else
+        {
+            CHESS_ENGINE2_SUCCESS("Success capture moves test with " << fen)
+        }
+
+        return count;
+    }
+
+    void runAllCaptureMoves()
+    {
+        CHESS_ENGINE2_LOG("Running all capture moves")
+        runCaptureMoves("k7/8/1r1b1n2/8/q2Q2p1/2P5/1q1p1p2/7K w - - 0 1", 7);
+        runCaptureMoves("k7/8/1r1b1n2/5K2/q2Q2p1/2P5/1q1p1p2/8 w - - 0 1", 8);
+        runCaptureMoves("8/8/3q1p2/2r3p1/4N3/2r3P1/3K1P2/8 w - - 0 1", 3);
+        runCaptureMoves("8/8/3q1p2/2r3p1/4N3/2r3P1/3P1P2/7K w - - 0 1", 6);
+        runCaptureMoves("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1", 0);
+        runCaptureMoves("k7/4b3/8/8/3QR1n1/8/4p3/K7 w - - 0 1", 3);
+        runCaptureMoves("7k/1q6/8/5n2/4B3/8/2R5/Kb5p w - - 0 1", 3);
+        runCaptureMoves("8/8/8/2bpb3/3K4/4b3/8/8 w - - 0 1", 3);
+    }
 }

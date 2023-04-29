@@ -30,6 +30,7 @@ int main()
     ChessEngine2::initGenerateBishopMoves();
 
     runAllPerft();
+    runAllCaptureMoves();
 
     // std::string fen = ChessEngine2::startFEN;
     // ChessEngine2::Board board = ChessEngine2::Board(fen);
@@ -82,10 +83,7 @@ int main()
 // -- Plan
 /**
  * Create function to generate set of legal moves when in check
- * 
- * Create function to generate attack bitboard from king
- * When we do a move we only have to check for sliding checks, except when moving the king
- * When a piece is moved, we only have to check for sliding checks if the moved piece was positioned on a queens move from the king
+ * Create a function for generating only the capturing or get out of check moves
 */
 
 /**
