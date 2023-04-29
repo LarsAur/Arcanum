@@ -29,12 +29,11 @@ int main()
     ChessEngine2::initGenerateRookMoves();
     ChessEngine2::initGenerateBishopMoves();
 
-    runAllPerft();
-    runAllCaptureMoves();
+    // runAllPerft();
+    // runAllCaptureMoves();
 
-    // std::string fen = ChessEngine2::startFEN;
-    // ChessEngine2::Board board = ChessEngine2::Board(fen);
-
+    ChessEngine2::Board board = ChessEngine2::Board(ChessEngine2::startFEN);
+    std::cout << board.getBoardString();
     // uint64_t count = 0;
     // findNumMovesAtDepth(9, &board, &count);
     // std::cout << count << std::endl;

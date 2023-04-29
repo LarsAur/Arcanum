@@ -1088,17 +1088,46 @@ inline bool Board::isStraightChecked(Color color)
 std::string Board::getBoardString()
 {
     std::stringstream ss;
-    // for(int y = 0; y < 8; y++)
-    // {
-    //     for(int x = 0; x < 8; x++)
-    //     {
-    //         Piece *piece = m_board[x + y * 8];
-    //         if(piece)
-    //         {
-    //             ss.put(piece->getChar());
-    //         }
-    //     }
-    // }
+    ss << "    abcdefgh" << std::endl;
+    ss << "    --------" << std::endl;
+
+    for(int y = 7; y >= 0; y--)
+    {
+        ss << y+1 << " | ";
+        for(int x = 0; x < 8; x++)
+        {
+            bitboard_t mask = (1LL << ((y << 3) | x));
+            if(m_bbPawns[WHITE] & mask)
+                ss << "P";
+            else if(m_bbRooks[WHITE] & mask)
+                ss << "R";
+            else if(m_bbKnights[WHITE] & mask)
+                ss << "N";
+            else if(m_bbBishops[WHITE] & mask)
+                ss << "B";
+            else if(m_bbQueens[WHITE] & mask)
+                ss << "Q";
+            else if(m_bbKing[WHITE] & mask)
+                ss << "K";
+            else if(m_bbPawns[BLACK] & mask)
+                ss << "p";
+            else if(m_bbRooks[BLACK] & mask)
+                ss << "r";
+            else if(m_bbKnights[BLACK] & mask)
+                ss << "n";
+            else if(m_bbBishops[BLACK] & mask)
+                ss << "b";
+            else if(m_bbQueens[BLACK] & mask)
+                ss << "q";
+            else if(m_bbKing[BLACK] & mask)
+                ss << "k";
+            else 
+                ss << ".";
+        }
+        ss << " | " << y+1 << std::endl;
+    }
+    ss << "    --------" << std::endl;
+    ss << "    abcdefgh" << std::endl;
 
     return ss.str();
 }
