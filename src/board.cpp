@@ -433,7 +433,7 @@ Move* Board::getLegalMoves()
         {
             // TODO: optimize
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
-            Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT : 0) | MOVE_INFO_PAWN_MOVE);
+            Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT | MOVE_INFO_PAWN_MOVE : MOVE_INFO_PAWN_MOVE));
             attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
         }
     }
@@ -458,7 +458,7 @@ Move* Board::getLegalMoves()
         {
             // TODO:
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
-            Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT : 0) | MOVE_INFO_PAWN_MOVE);
+            Move move = Move(pawnIdx, target, ((target == m_enPassantSquare) ? MOVE_INFO_ENPASSANT | MOVE_INFO_PAWN_MOVE : MOVE_INFO_PAWN_MOVE));
             attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
         }
     }
