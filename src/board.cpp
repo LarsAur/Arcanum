@@ -245,7 +245,6 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         m_bbPieces[m_turn] = (m_bbPieces[m_turn] | bbTo) & ~bbFrom;
 
         // Move the piece
-
         if (m_bbPawns[m_turn] & bbFrom)
         {
             m_bbPawns[m_turn]   = (m_bbPawns[m_turn] & ~(bbFrom)) | bbTo;
@@ -379,11 +378,20 @@ Move* Board::getLegalMoves()
     bitboard_t kingStraights = (0xffLL << (kingIdx & ~0b111)) | (0x0101010101010101LL << (kingIdx & 0b111));
 
     // Pawn moves 
-    // TODO: make one large if statement
     bitboard_t pawns = m_bbPawns[m_turn];
-    bitboard_t pawnMoves = m_turn == WHITE ? getWhitePawnMoves(pawns) : getBlackPawnMoves(pawns);
-    pawnMoves &= ~m_bbAllPieces;
-    bitboard_t pawnMovesOrigin = m_turn == WHITE ? getBlackPawnMoves(pawnMoves) : getWhitePawnMoves(pawnMoves);
+    bitboard_t pawnMoves, pawnMovesOrigin;
+    if(m_turn == WHITE)
+    {
+        pawnMoves= getWhitePawnMoves(pawns);
+        pawnMoves &= ~m_bbAllPieces;
+        pawnMovesOrigin = getBlackPawnMoves(pawnMoves);
+    }
+    else
+    {
+        pawnMoves= getBlackPawnMoves(pawns);
+        pawnMoves &= ~m_bbAllPieces;
+        pawnMovesOrigin = getWhitePawnMoves(pawnMoves);
+    }
 
     // Forward move
     while(pawnMoves)

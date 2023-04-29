@@ -99,4 +99,5 @@ int main()
  * Parallel pawn attacks and double moves: 270M nps
  * Use enpassant bitboards 274M nps
  * Use one promotion move to verify all 296M nps
+ * Use if-else on attemptAddPseudoLegalMove to move the piece from the correct bitboard 305M nps
 */
