@@ -12,6 +12,7 @@ namespace ChessEngine2
         // TODO: Hashtables etc.
 
             int64_t m_alphaBeta(Board board, int64_t alpha, int64_t beta, int depth, Color evalFor);
+            int64_t m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int depth, Color evalFor);
             
         public:
             Searcher();

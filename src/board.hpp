@@ -107,9 +107,8 @@ namespace ChessEngine2
             Color getTurn();
             bitboard_t getOponentAttacks();
             Move* getLegalMoves();
-            Move* getLegalCaptureMoves();
+            Move* getLegalCaptureAndCheckMoves();
             uint8_t getNumLegalMoves();
             std::string getBoardString();
-            
     };
 }

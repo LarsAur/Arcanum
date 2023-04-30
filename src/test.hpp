@@ -83,7 +83,7 @@ namespace ChessEngine2
     uint64_t runCaptureMoves(std::string fen, uint64_t expected)
     {
         Board board = Board(fen);
-        board.getLegalCaptureMoves();
+        board.getLegalCaptureAndCheckMoves();
         uint64_t count = board.getNumLegalMoves();
 
         if(count != expected)

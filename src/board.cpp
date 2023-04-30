@@ -692,9 +692,9 @@ Move* Board::getLegalMoves()
     return m_legalMoves;
 }
 
-// Generates the set of legal captures or moves to get out of check
+// Generates the set of legal captures, checks or moves to get out of check 
 // If in check, the existing function for generating legal moves will be used
-Move* Board::getLegalCaptureMoves()
+Move* Board::getLegalCaptureAndCheckMoves()
 {
     m_numLegalMoves = 0;
 
@@ -726,8 +726,55 @@ Move* Board::getLegalCaptureMoves()
     bitboard_t kingDiagonals = diagonal[kingIdx] | antiDiagonal[kingIdx];
     bitboard_t kingStraights = (0xffLL << (kingIdx & ~0b111)) | (0x0101010101010101LL << (kingIdx & 0b111));
 
-    // Pawn moves 
+    // Positions where pieces can move to set the oponent in check
+    uint8_t oponentKingIdx = LS1B(m_bbKing[oponent]);
+    bitboard_t pawnCheckPositions;
+    bitboard_t knightCheckPositions = getKnightAttacks(oponentKingIdx);
+    bitboard_t rookCheckPositions = getRookMoves(m_bbAllPieces, oponentKingIdx);
+    bitboard_t bishopCheckPositions = getBishopMoves(m_bbAllPieces, oponentKingIdx);
+     // Pawn moves 
     bitboard_t pawns = m_bbPawns[m_turn];
+    bitboard_t pawnMoves, pawnMovesOrigin;
+    if(m_turn == WHITE)
+    {
+        pawnMoves= getWhitePawnMoves(pawns);
+        pawnMoves &= ~m_bbAllPieces;
+        pawnMoves &= getBlackPawnAttacks(m_bbKing[oponent]);
+        pawnMovesOrigin = getBlackPawnMoves(pawnMoves);
+    }
+    else
+    {
+        pawnMoves= getBlackPawnMoves(pawns);
+        pawnMoves &= ~m_bbAllPieces;
+        pawnMoves &= getWhitePawnAttacks(m_bbKing[oponent]);
+        pawnMovesOrigin = getWhitePawnMoves(pawnMoves);
+    }
+
+    // Forward move
+    while(pawnMoves)
+    {
+        uint8_t target = popLS1B(&pawnMoves);
+        uint8_t pawnIdx = popLS1B(&pawnMovesOrigin);
+        
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // If one promotion move is legal, all are legal
+            bool added = attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added)
+            {
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_KNIGHT);
+            }
+        }
+        else
+        {
+            attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        }
+    }
+
+    // Pawn captues
+    pawns = m_bbPawns[m_turn];
     bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin; 
     if(m_turn == WHITE)
     {
@@ -804,8 +851,7 @@ Move* Board::getLegalCaptureMoves()
     {
         uint8_t rookIdx = popLS1B(&rooks);
         bitboard_t rookMoves = getRookMoves(m_bbAllPieces, rookIdx);
-        rookMoves &= ~m_bbPieces[m_turn] & m_bbPieces[oponent];
-
+        rookMoves &= ~m_bbPieces[m_turn] & (m_bbPieces[oponent] | rookCheckPositions);
         while(rookMoves)
         {
             uint8_t target = popLS1B(&rookMoves);
@@ -820,8 +866,7 @@ Move* Board::getLegalCaptureMoves()
     {
         uint8_t knightIdx = popLS1B(&knights);
         bitboard_t knightMoves = getKnightAttacks(knightIdx);
-        knightMoves &= ~m_bbPieces[m_turn] & m_bbPieces[oponent];
-
+        knightMoves &= ~m_bbPieces[m_turn] & (m_bbPieces[oponent] | knightCheckPositions);
         while(knightMoves)
         {
             uint8_t target = popLS1B(&knightMoves);
@@ -835,7 +880,7 @@ Move* Board::getLegalCaptureMoves()
     {
         uint8_t bishopIdx = popLS1B(&bishops);
         bitboard_t bishopMoves = getBishopMoves(m_bbAllPieces, bishopIdx);
-        bishopMoves &= ~m_bbPieces[m_turn] & m_bbPieces[oponent];
+        bishopMoves &= ~m_bbPieces[m_turn] & (m_bbPieces[oponent] | bishopCheckPositions);
 
         while(bishopMoves)
         {
@@ -850,7 +895,7 @@ Move* Board::getLegalCaptureMoves()
     {
         uint8_t queenIdx = popLS1B(&queens);
         bitboard_t queenMoves = getQueenMoves(m_bbAllPieces, queenIdx);
-        queenMoves &= ~m_bbPieces[m_turn] & m_bbPieces[oponent];
+        queenMoves &= ~m_bbPieces[m_turn] & (m_bbPieces[oponent] | bishopCheckPositions | rookCheckPositions);
 
         while(queenMoves)
         {
@@ -1097,7 +1142,7 @@ int64_t Board::evaluate()
         if(isChecked(m_turn))
         {
             // TODO: define checkmate score
-            return -10000000LL;
+            return m_turn == WHITE ? -10000000LL : 10000000LL;
         }
 
         return 0LL;
@@ -1119,7 +1164,7 @@ int64_t Board::evaluate()
     int64_t oponentMobility = m_numLegalMoves;
     m_turn = Color(m_turn ^ 1);
 
-    int64_t mobilityScore = 0.1 * (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
+    int64_t mobilityScore = 0.5 * (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
 
     bitboard_t wPawns = m_bbPawns[WHITE]; 
     bitboard_t bPawns = m_bbPawns[BLACK]; 
@@ -1132,7 +1177,7 @@ int64_t Board::evaluate()
     
     while (bPawns)
     {
-        pawnScore -= (8 - (popLS1B(&bPawns) >> 3));
+        pawnScore -= (7 - (popLS1B(&bPawns) >> 3));
     }
     
 
