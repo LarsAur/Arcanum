@@ -3,6 +3,7 @@
 #include <iostream>
 #include <test.hpp>
 #include <search.hpp>
+#include <player.hpp>
 
 using namespace ChessEngine2;
 
@@ -24,50 +25,42 @@ int main(int argc, char *argv[])
 
     ChessEngine2::Board board = ChessEngine2::Board(ChessEngine2::startFEN);
     std::cout << board.getBoardString();
-    std::cout << board.evaluate() << std::endl;
+
 
     Searcher searcher = Searcher();
+    Player player = Player();
 
     srand(3425645);
-    for(int i = 0; i < 200; i++)
+    for(int i = 0; i < 100; i++)
     {
-        std::cout << board.getBoardString();
-        std::cout << board.evaluate() << std::endl;
-        std::cout << "Turn: " << board.getTurn() << std::endl;
+
+        board.getLegalMoves();
+        if(board.getNumLegalMoves() == 0)
+        {
+            std::cout << "Game Ended" << std::endl;    
+            break;
+        }
 
         Move move;
         if(board.getTurn() == WHITE)
         {
-            move = searcher.getBestMove(board, 6);
+            move = player.promptForMove(board);
+            // move = searcher.getBestMove(board, 6);
         }
         else
         {
-            Move* moves = board.getLegalMoves();
-            int num = board.getNumLegalMoves();
-            move = moves[rand() % num];
+            move = searcher.getBestMove(board, 6);
+            // move = searcher.getBestMove(board, 6);
+            // Move* moves = board.getLegalMoves();
+            // int num = board.getNumLegalMoves();
+            // move = moves[rand() % num];
         }
+        
         board.performMove(move);
 
-        if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)
-        {
-            std::cout << ChessEngine2::getArithmeticNotation(move.from) << " -> " << ChessEngine2::getArithmeticNotation(move.to) << " Promote: Q" << std::endl;
-        }
-        else if(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)
-        {
-            std::cout << ChessEngine2::getArithmeticNotation(move.from) << " -> " << ChessEngine2::getArithmeticNotation(move.to) << " Promote: R" << std::endl;
-        }
-        else if(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP)
-        {
-            std::cout << ChessEngine2::getArithmeticNotation(move.from) << " -> " << ChessEngine2::getArithmeticNotation(move.to) << " Promote: B" << std::endl;
-        }
-        else if(move.moveInfo & MOVE_INFO_PROMOTE_KNIGHT)
-        {
-            std::cout << ChessEngine2::getArithmeticNotation(move.from) << " -> " << ChessEngine2::getArithmeticNotation(move.to) << " Promote: N" << std::endl;
-        }
-        else
-        {
-            std::cout << ChessEngine2::getArithmeticNotation(move.from) << " -> " << ChessEngine2::getArithmeticNotation(move.to) << std::endl;
-        }
+        std::cout << board.getBoardString();
+        std::cout << board.evaluate() << std::endl;
+        std::cout << "Turn: " << board.getTurn() << std::endl;
     }
 
     return 0;

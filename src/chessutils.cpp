@@ -1,6 +1,7 @@
 #include <chessutils.hpp>
 #include <iostream>
 #include <bitset>
+#include <board.hpp>
 
 namespace ChessEngine2
 {
@@ -215,4 +216,31 @@ namespace ChessEngine2
             }
         }
     }
+
+    static inline std::string getUCINotation(Move move)
+    {
+        std::stringstream ss;
+
+        ss << ChessEngine2::getArithmeticNotation(move.from) << ChessEngine2::getArithmeticNotation(move.to);
+
+        if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)
+        {
+            ss << "q";
+        }
+        else if(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)
+        {
+            ss << "r";
+        }
+        else if(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP)
+        {
+            ss << "b";
+        }
+        else if(move.moveInfo & MOVE_INFO_PROMOTE_KNIGHT)
+        {
+            ss << "n";
+        }
+
+        return ss.str();
+    }
+
 }

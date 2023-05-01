@@ -1142,7 +1142,9 @@ int64_t Board::evaluate()
         if(isChecked(m_turn))
         {
             // TODO: define checkmate score
-            return m_turn == WHITE ? -10000000LL : 10000000LL;
+            // subtract number of full moves from the score to have incentive for fastest checkmate
+            // If there are more checkmates and this is not done, it might be "confused" and move between
+            return m_turn == WHITE ? (-10000000LL + m_fullMoves) : (10000000LL - m_fullMoves);
         }
 
         return 0LL;
@@ -1164,7 +1166,7 @@ int64_t Board::evaluate()
     int64_t oponentMobility = m_numLegalMoves;
     m_turn = Color(m_turn ^ 1);
 
-    int64_t mobilityScore = 0.5 * (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
+    int64_t mobilityScore = 0.1 * (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
 
     bitboard_t wPawns = m_bbPawns[WHITE]; 
     bitboard_t bPawns = m_bbPawns[BLACK]; 
@@ -1180,8 +1182,8 @@ int64_t Board::evaluate()
         pawnScore -= (7 - (popLS1B(&bPawns) >> 3));
     }
     
-
-    return pieceScore + mobilityScore + pawnScore;
+    // return pieceScore;
+    return pieceScore + mobilityScore + 0.1 * pawnScore;
 }
 
 Color Board::getTurn()
