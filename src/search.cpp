@@ -1,4 +1,5 @@
 #include <search.hpp>
+#include <algorithm>
 
 using namespace ChessEngine2;
 
@@ -31,7 +32,7 @@ int64_t Searcher::m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int
 
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
-        board.performMove(moves[i]);
+        new_board.performMove(moves[i]);
         int64_t score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1));
         if( score >= beta )
             return beta;   //  fail hard beta-cutoff
@@ -52,7 +53,7 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
 {
     if(depth == 0)
     {
-        return m_alphaBetaQuiet(board, alpha, beta, 4, evalFor); // TODO: quiesce( alpha, beta );
+        return m_alphaBetaQuiet(board, alpha, beta, 0, evalFor); // TODO: quiesce( alpha, beta );
     }
 
     Move* moves = board.getLegalMoves();
@@ -67,17 +68,12 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
 
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
-        board.performMove(moves[i]);
-        int64_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1));
-        if( score >= beta )
-            return beta;   //  fail hard beta-cutoff
-        if( score > bestScore )
+        new_board.performMove(moves[i]);
+        bestScore = std::max(bestScore, -m_alphaBeta(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1)));
+        alpha = std::max(alpha, bestScore);
+        if( alpha >= beta)
         {
-            bestScore = score;
-            if( score > alpha)
-            {
-                alpha = score; // alpha acts like max in MiniMax
-            }
+            break;
         } 
     }
 
