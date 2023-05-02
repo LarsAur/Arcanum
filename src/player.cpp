@@ -55,7 +55,7 @@ Move Player::promptForMove(Board& board)
     int selected;
     std::cin >> selected;
 
-    while(selected < 0 && selected >= numLegalMoves)
+    while(selected < 0 || selected >= numLegalMoves)
     {
         std::cout << "Try again" << std::endl;
         std::cin >> selected;
