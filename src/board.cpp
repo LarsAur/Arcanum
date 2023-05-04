@@ -4,6 +4,15 @@
 
 using namespace ChessEngine2;
 
+static std::unordered_map<hash_t, uint8_t> s_boardHistory;
+
+std::unordered_map<hash_t, uint8_t>* Board::getBoardHistory()
+{
+    return &s_boardHistory;
+}
+
+static Zobrist s_zobrist;
+
 Board::Board(std::string fen)
 {
     // -- Create empty board
@@ -207,10 +216,13 @@ Board::Board(std::string fen)
 
     // Read full moves
     m_fullMoves = atoi(fen.c_str() + fenPosition);
+
+    m_hash = s_zobrist.getHash(*this);
 }
 
 Board::Board(const Board& board)
 {
+    m_hash = board.m_hash;
     m_turn = board.m_turn;
     m_halfMoves = board.m_halfMoves;
     m_fullMoves = board.m_fullMoves;
@@ -399,7 +411,7 @@ Move* Board::getLegalMoves()
         while(queenMoves)
         {
             uint8_t target = popLS1B(&queenMoves);
-            attemptAddPseudoLegalMove(Move(queenIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(queenIdx, target, MOVE_INFO_QUEEN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
 
@@ -414,7 +426,7 @@ Move* Board::getLegalMoves()
         while(knightMoves)
         {
             uint8_t target = popLS1B(&knightMoves);
-            attemptAddPseudoLegalMove(Move(knightIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(knightIdx, target, MOVE_INFO_KNIGHT_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
 
@@ -429,7 +441,7 @@ Move* Board::getLegalMoves()
         while(bishopMoves)
         {
             uint8_t target = popLS1B(&bishopMoves);
-            attemptAddPseudoLegalMove(Move(bishopIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(bishopIdx, target, MOVE_INFO_BISHOP_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
 
@@ -444,7 +456,7 @@ Move* Board::getLegalMoves()
         while(rookMoves)
         {
             uint8_t target = popLS1B(&rookMoves);
-            attemptAddPseudoLegalMove(Move(rookIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(rookIdx, target, MOVE_INFO_ROOK_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
 
@@ -573,7 +585,7 @@ Move* Board::getLegalMoves()
     while(kMoves)
     {
         uint8_t target = popLS1B(&kMoves);
-        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MOVE_INFO_KING);
+        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MOVE_INFO_KING_MOVE);
     }
 
     // Castle
@@ -612,7 +624,7 @@ Move* Board::getLegalMoves()
                         bitboard_t rookMask = getRookMoves(m_bbAllPieces, 2) | getRookMoves(m_bbAllPieces, 3) | getRookMoves(m_bbAllPieces, 4);
                         if(! ((m_bbRooks[BLACK] | m_bbQueens[BLACK]) & rookMask) )
                         {
-                            m_legalMoves[m_numLegalMoves++] = Move(4, 2, MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_KING);
+                            m_legalMoves[m_numLegalMoves++] = Move(4, 2, MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_KING_MOVE);
                         }
                     }
                 }
@@ -634,7 +646,7 @@ Move* Board::getLegalMoves()
                         bitboard_t rookMask = getRookMoves(m_bbAllPieces, 4) | getRookMoves(m_bbAllPieces, 5) | getRookMoves(m_bbAllPieces, 6);
                         if(! ((m_bbRooks[BLACK] | m_bbQueens[BLACK]) & rookMask) )
                         {
-                            m_legalMoves[m_numLegalMoves++] = Move(4, 6, MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_KING);
+                            m_legalMoves[m_numLegalMoves++] = Move(4, 6, MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_KING_MOVE);
                         }
                     }
                 }
@@ -658,7 +670,7 @@ Move* Board::getLegalMoves()
                         bitboard_t rookMask = getRookMoves(m_bbAllPieces, 58) | getRookMoves(m_bbAllPieces, 59) | getRookMoves(m_bbAllPieces, 60);
                         if(! ((m_bbRooks[WHITE] | m_bbQueens[WHITE]) & rookMask) )
                         {
-                            m_legalMoves[m_numLegalMoves++] = Move(60, 58, MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_KING);
+                            m_legalMoves[m_numLegalMoves++] = Move(60, 58, MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_KING_MOVE);
                         }
                     }
                 }
@@ -680,7 +692,7 @@ Move* Board::getLegalMoves()
                         bitboard_t rookMask = getRookMoves(m_bbAllPieces, 60) | getRookMoves(m_bbAllPieces, 61) | getRookMoves(m_bbAllPieces, 62);
                         if(! ((m_bbRooks[WHITE] | m_bbQueens[WHITE]) & rookMask) )
                         {
-                            m_legalMoves[m_numLegalMoves++] = Move(60, 62, MOVE_INFO_CASTLE_BLACK_KING | MOVE_INFO_KING);
+                            m_legalMoves[m_numLegalMoves++] = Move(60, 62, MOVE_INFO_CASTLE_BLACK_KING | MOVE_INFO_KING_MOVE);
                         }
                     }
                 }
@@ -693,6 +705,7 @@ Move* Board::getLegalMoves()
 
 // Generates the set of legal captures, checks or moves to get out of check 
 // If in check, the existing function for generating legal moves will be used
+// Note: Does not include castle
 Move* Board::getLegalCaptureAndCheckMoves()
 {
     m_numLegalMoves = 0;
@@ -732,7 +745,7 @@ Move* Board::getLegalCaptureAndCheckMoves()
         while(queenMoves)
         {
             uint8_t target = popLS1B(&queenMoves);
-            attemptAddPseudoLegalMove(Move(queenIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(queenIdx, target, MOVE_INFO_QUEEN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
 
@@ -746,7 +759,7 @@ Move* Board::getLegalCaptureAndCheckMoves()
         while(knightMoves)
         {
             uint8_t target = popLS1B(&knightMoves);
-            attemptAddPseudoLegalMove(Move(knightIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(knightIdx, target,  MOVE_INFO_KNIGHT_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
 
@@ -761,7 +774,7 @@ Move* Board::getLegalCaptureAndCheckMoves()
         while(bishopMoves)
         {
             uint8_t target = popLS1B(&bishopMoves);
-            attemptAddPseudoLegalMove(Move(bishopIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(bishopIdx, target, MOVE_INFO_BISHOP_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
 
@@ -775,7 +788,7 @@ Move* Board::getLegalCaptureAndCheckMoves()
         while(rookMoves)
         {
             uint8_t target = popLS1B(&rookMoves);
-            attemptAddPseudoLegalMove(Move(rookIdx, target), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            attemptAddPseudoLegalMove(Move(rookIdx, target, MOVE_INFO_ROOK_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
         }
     }
 
@@ -898,7 +911,7 @@ Move* Board::getLegalCaptureAndCheckMoves()
     while(kMoves)
     {
         uint8_t target = popLS1B(&kMoves);
-        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MOVE_INFO_KING);
+        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MOVE_INFO_KING_MOVE);
     }
 
 
@@ -937,7 +950,7 @@ void Board::performMove(Move move)
         m_bbAllPieces = (m_bbAllPieces & ~0x8000000000000000LL) | 0x2000000000000000LL;
     }
 
-    if(move.moveInfo & MOVE_INFO_KING)
+    if(move.moveInfo & MOVE_INFO_KING_MOVE)
     {
         if(m_turn == WHITE)
         {
@@ -973,42 +986,77 @@ void Board::performMove(Move move)
     m_bbPieces[m_turn] = (m_bbPieces[m_turn] | bbTo) & ~bbFrom;
 
     // Move the piece
-    m_bbPawns[m_turn]   = (m_bbPawns[m_turn] & bbFrom) ? ((m_bbPawns[m_turn] & ~(bbFrom)) | (bbTo & 0x00ffffffffffff00LL)) : m_bbPawns[m_turn]; // Bitmask prevents setting a pawn on the promotion square
-    m_bbKing[m_turn]    = (m_bbKing[m_turn] & bbFrom) ? ((m_bbKing[m_turn] & ~(bbFrom)) | bbTo) : m_bbKing[m_turn];
-    m_bbKnights[m_turn] = (m_bbKnights[m_turn] & bbFrom) ? ((m_bbKnights[m_turn] & ~(bbFrom)) | bbTo) : m_bbKnights[m_turn];
-    m_bbBishops[m_turn] = (m_bbBishops[m_turn] & bbFrom) ? ((m_bbBishops[m_turn] & ~(bbFrom)) | bbTo) : m_bbBishops[m_turn];
-    m_bbQueens[m_turn]  = (m_bbQueens[m_turn] & bbFrom) ? ((m_bbQueens[m_turn] & ~(bbFrom)) | bbTo) : m_bbQueens[m_turn];
-    m_bbRooks[m_turn]   = (m_bbRooks[m_turn] & bbFrom) ? ((m_bbRooks[m_turn] & ~(bbFrom)) | bbTo) : m_bbRooks[m_turn];
+    if(move.moveInfo & MOVE_INFO_PAWN_MOVE)
+    {
+        m_bbPawns[m_turn]   = (m_bbPawns[m_turn] & bbFrom) ? ((m_bbPawns[m_turn] & ~(bbFrom)) | (bbTo & 0x00ffffffffffff00LL)) : m_bbPawns[m_turn]; // Bitmask prevents setting a pawn on the promotion square
 
-    if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)
+        if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)
+        {
+            m_bbQueens[m_turn] |= bbTo;
+        } 
+        else if(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP)
+        {
+            m_bbBishops[m_turn] |= bbTo;
+        } 
+        else if(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)
+        {
+            m_bbRooks[m_turn] |= bbTo;
+        } 
+        else if(move.moveInfo & MOVE_INFO_PROMOTE_KNIGHT)
+        {
+            m_bbKnights[m_turn] |= bbTo;
+        }
+    }
+    else if(move.moveInfo & MOVE_INFO_QUEEN_MOVE)
     {
-        m_bbQueens[m_turn] |= bbTo;
-    } 
-    else if(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP)
+        m_bbQueens[m_turn]  = (m_bbQueens[m_turn] & bbFrom) ? ((m_bbQueens[m_turn] & ~(bbFrom)) | bbTo) : m_bbQueens[m_turn];
+    }
+    else if(move.moveInfo & MOVE_INFO_KNIGHT_MOVE)
     {
-        m_bbBishops[m_turn] |= bbTo;
-    } 
-    else if(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)
+        m_bbKnights[m_turn] = (m_bbKnights[m_turn] & bbFrom) ? ((m_bbKnights[m_turn] & ~(bbFrom)) | bbTo) : m_bbKnights[m_turn];
+    }
+    else if(move.moveInfo & MOVE_INFO_BISHOP_MOVE)
     {
-        m_bbRooks[m_turn] |= bbTo;
-    } 
-    else if(move.moveInfo & MOVE_INFO_PROMOTE_KNIGHT)
+        m_bbBishops[m_turn] = (m_bbBishops[m_turn] & bbFrom) ? ((m_bbBishops[m_turn] & ~(bbFrom)) | bbTo) : m_bbBishops[m_turn];
+    }
+    else if(move.moveInfo & MOVE_INFO_ROOK_MOVE)
     {
-        m_bbKnights[m_turn] |= bbTo;
+        m_bbRooks[m_turn]   = (m_bbRooks[m_turn] & bbFrom) ? ((m_bbRooks[m_turn] & ~(bbFrom)) | bbTo) : m_bbRooks[m_turn];
+    }
+    else if(move.moveInfo & MOVE_INFO_KING_MOVE)
+    {
+        m_bbKing[m_turn]    = (m_bbKing[m_turn] & bbFrom) ? ((m_bbKing[m_turn] & ~(bbFrom)) | bbTo) : m_bbKing[m_turn];
     }
 
-    m_turn = Color(m_turn ^ 1);
+    Color oponent = Color(m_turn ^ 1);
     
     // Remove potential captures
     bitboard_t enpassantMask = (move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL;
     m_bbAllPieces       &= ~enpassantMask;
-    m_bbPieces[m_turn]  &= ~(bbTo | enpassantMask); 
-    m_bbPawns[m_turn]   &= ~(bbTo | enpassantMask); 
-    m_bbKing[m_turn]    &= ~bbTo;
-    m_bbKnights[m_turn] &= ~bbTo;
-    m_bbBishops[m_turn] &= ~bbTo;
-    m_bbQueens[m_turn]  &= ~bbTo;
-    m_bbRooks[m_turn]   &= ~bbTo;
+    m_bbPieces[oponent]  &= ~(bbTo | enpassantMask); 
+    if(m_bbPawns[oponent] & (bbTo | enpassantMask))
+    {
+        m_bbPawns[oponent]   &= ~(bbTo | enpassantMask);
+        move.moveInfo |= MOVE_INFO_CAPTURE_PAWN;
+    }else if(m_bbQueens[oponent] & bbTo)
+    {
+        m_bbQueens[oponent]   &= ~bbTo;
+        move.moveInfo |= MOVE_INFO_CAPTURE_QUEEN;
+    }else if(m_bbBishops[oponent] & bbTo)
+    {
+        m_bbBishops[oponent]   &= ~bbTo;
+        move.moveInfo |= MOVE_INFO_CAPTURE_BISHOP;
+    }else if(m_bbKnights[oponent] & bbTo)
+    {
+        m_bbKnights[oponent]   &= ~bbTo;
+        move.moveInfo |= MOVE_INFO_CAPTURE_KNIGHT;
+    }else if(m_bbRooks[oponent] & bbTo)
+    {
+        m_bbRooks[oponent]   &= ~bbTo;
+        move.moveInfo |= MOVE_INFO_CAPTURE_ROOK;
+    }
+
+    m_hash = s_zobrist.getUpdatedHash(*this, move);
 
     // Required to reset
     m_enPassantSquare = 64;
@@ -1024,9 +1072,30 @@ void Board::performMove(Move move)
         m_bbEnPassantTarget = 1LL << m_enPassantTarget; 
     }
 
+    m_turn = oponent;
     m_fullMoves += (m_turn == WHITE); // Note turn is flipped
     m_halfMoves++;
 }
+
+void Board::addBoardToHistory()
+{
+    auto it = s_boardHistory.find(m_hash);
+    if(it == s_boardHistory.end())
+    {
+        s_boardHistory.emplace(m_hash, 1);
+    }
+    else
+    {
+        it->second += 1;
+    }
+}
+
+hash_t Board::getHash()
+{
+    return m_turn;
+}
+
+
 
 // Generates a bitboard of all attacks of oponents
 // The moves does not check if the move will make the oponent become checked, or if the attack is on its own pieces
@@ -1150,11 +1219,11 @@ int64_t Board::evaluate()
 
     // TODO: Use model parameters
     int64_t pieceScore;
-    pieceScore  = /* PAWN value */ CNTSBITS(m_bbPawns[WHITE])   - CNTSBITS(m_bbPawns[BLACK]);
-    pieceScore += /* ROOK value */ 5 * (CNTSBITS(m_bbRooks[WHITE])   - CNTSBITS(m_bbRooks[BLACK]));
-    pieceScore += /* KNIGHT value */ 3 * (CNTSBITS(m_bbKnights[WHITE]) - CNTSBITS(m_bbKnights[BLACK]));
-    pieceScore += /* BISHOP value */ 3 * (CNTSBITS(m_bbBishops[WHITE]) - CNTSBITS(m_bbBishops[BLACK]));
-    pieceScore += /* QUEEN value */ 9 * (CNTSBITS(m_bbQueens[WHITE])  - CNTSBITS(m_bbQueens[BLACK]));
+    pieceScore  = 100 * (CNTSBITS(m_bbPawns[WHITE])    - CNTSBITS(m_bbPawns[BLACK]));
+    pieceScore += 300 * (CNTSBITS(m_bbKnights[WHITE]) - CNTSBITS(m_bbKnights[BLACK]));
+    pieceScore += 300 * (CNTSBITS(m_bbBishops[WHITE]) - CNTSBITS(m_bbBishops[BLACK]));
+    pieceScore += 500 * (CNTSBITS(m_bbRooks[WHITE])   - CNTSBITS(m_bbRooks[BLACK]));
+    pieceScore += 900 * (CNTSBITS(m_bbQueens[WHITE])  - CNTSBITS(m_bbQueens[BLACK]));
 
     int64_t mobility = m_numLegalMoves;
 
@@ -1164,7 +1233,7 @@ int64_t Board::evaluate()
     int64_t oponentMobility = m_numLegalMoves;
     m_turn = Color(m_turn ^ 1);
 
-    int64_t mobilityScore = 0.1 * (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
+    int64_t mobilityScore = (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
 
     bitboard_t wPawns = m_bbPawns[WHITE]; 
     bitboard_t bPawns = m_bbPawns[BLACK]; 
@@ -1181,7 +1250,7 @@ int64_t Board::evaluate()
     }
     
     // return pieceScore;
-    return pieceScore + mobilityScore + 0.1 * pawnScore;
+    return pieceScore + mobilityScore + pawnScore;
 }
 
 Color Board::getTurn()

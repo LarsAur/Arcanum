@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
     }
 
     ChessEngine2::Board board = ChessEngine2::Board(ChessEngine2::startFEN);
+    board.addBoardToHistory();
     std::cout << board.getBoardString();
 
 
@@ -57,6 +58,7 @@ int main(int argc, char *argv[])
         }
         
         board.performMove(move);
+        board.addBoardToHistory();
 
         std::cout << board.getBoardString();
         std::cout << board.evaluate() << std::endl;

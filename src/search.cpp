@@ -20,6 +20,16 @@ int64_t Searcher::m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int
         return evalFor == WHITE ? board.evaluate() : -board.evaluate();
     }
 
+    std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+    auto it = boardHistory->find(board.getHash());
+    if(it != boardHistory->end())
+    {
+        if(it->second == 2)
+        {
+            return 0LL;
+        }
+    }
+
     Move* moves = board.getLegalCaptureAndCheckMoves();
     uint8_t numMoves = board.getNumLegalMoves();
 
@@ -47,7 +57,17 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
 {
     if(depth == 0)
     {
-        return m_alphaBetaQuiet(board, alpha, beta, 0, evalFor); // TODO: quiesce( alpha, beta );
+        return m_alphaBetaQuiet(board, alpha, beta, 4, evalFor); // TODO: quiesce( alpha, beta );
+    }
+
+    std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+    auto it = boardHistory->find(board.getHash());
+    if(it != boardHistory->end())
+    {
+        if(it->second == 2)
+        {
+            return 0LL;
+        }
     }
 
     Move* moves = board.getLegalMoves();
