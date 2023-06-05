@@ -111,4 +111,65 @@ namespace ChessEngine2
         runCaptureMoves("8/8/8/2bpb3/3K4/4b3/8/8 w - - 0 1", 3);
         CHESS_ENGINE2_LOG("Completed all capture moves")
     }
+
+    void runAllZobristTests()
+    {
+        CHESS_ENGINE2_LOG("Testing Zobrist")
+
+        // Move Rook
+        Board board1 = Board("k5r1/8/8/8/8/8/8/1R5K w - - 0 1");
+        board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE));
+        Board board2 = Board("k5r1/8/8/8/8/8/8/2R4K b - - 0 1");
+        if(board1.getHash() != board2.getHash())
+        {
+            CHESS_ENGINE2_ERR("ROOK: Zobrist did not match")
+        }
+        else
+        {
+            CHESS_ENGINE2_SUCCESS("ROOK: Zobrist matched")
+        }
+
+        // Capture Rook
+        board1 = Board("k7/8/8/8/8/8/8/1Rr4K w - - 0 1");
+        board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE));
+        board2 = Board("k7/8/8/8/8/8/8/2R4K b - - 0 1");
+        if(board1.getHash() != board2.getHash())
+        {
+            CHESS_ENGINE2_ERR("Capture rook: Zobrist did not match")
+        }
+        else
+        {
+            CHESS_ENGINE2_SUCCESS("Capture rook: Zobrist matched")
+        }
+
+        // Move back and forth
+        board1 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
+        board2 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
+        board1.performMove(Move(3, 2, MOVE_INFO_QUEEN_MOVE));
+        board1.performMove(Move(59, 58, MOVE_INFO_QUEEN_MOVE));
+        board1.performMove(Move(2, 3, MOVE_INFO_QUEEN_MOVE));
+        board1.performMove(Move(58, 59, MOVE_INFO_QUEEN_MOVE));
+        if(board1.getHash() != board2.getHash())
+        {
+            CHESS_ENGINE2_ERR("Repeat: Zobrist did not match")
+        }
+        else
+        {
+            CHESS_ENGINE2_SUCCESS("Repeat: Zobrist matched")
+        }
+
+        // Recreate board
+        board1 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
+        board2 = Board(board1);
+        if(board1.getHash() != board2.getHash())
+        {
+            CHESS_ENGINE2_ERR("Recreate: Zobrist did not match")
+        }
+        else
+        {
+            CHESS_ENGINE2_SUCCESS("Recreate: Zobrist matched")
+        }
+
+        CHESS_ENGINE2_LOG("Completed all Zobrist tests")
+    }
 }

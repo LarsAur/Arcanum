@@ -20,6 +20,7 @@ int main(int argc, char *argv[])
         {
             runAllPerft();
             runAllCaptureMoves();
+            runAllZobristTests();
         }
     }
 
@@ -28,10 +29,11 @@ int main(int argc, char *argv[])
     std::cout << board.getBoardString();
 
 
-    Searcher searcher = Searcher();
+    // Use two different searchers so they use separate transposition tables
+    Searcher searcher1 = Searcher(); 
+    Searcher searcher2 = Searcher();
     Player player = Player();
 
-    srand(3425645);
     for(int i = 0; i < 100; i++)
     {
 
@@ -45,16 +47,12 @@ int main(int argc, char *argv[])
         Move move;
         if(board.getTurn() == WHITE)
         {
-            move = player.promptForMove(board);
-            // move = searcher.getBestMove(board, 6);
+            // move = player.promptForMove(board);
+            move = searcher1.getBestMove(board, 4);
         }
         else
         {
-            move = searcher.getBestMove(board, 6);
-            // move = searcher.getBestMove(board, 6);
-            // Move* moves = board.getLegalMoves();
-            // int num = board.getNumLegalMoves();
-            // move = moves[rand() % num];
+            move = searcher2.getBestMove(board, 1);
         }
         
         board.performMove(move);

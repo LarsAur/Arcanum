@@ -8,15 +8,17 @@ using namespace ChessEngine2;
 Zobrist::Zobrist()
 {
     // TODO: Should castle rights be a part of the hash
-    srand(0xC00L);
+    std::default_random_engine generator;
+    std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
+
     for(int i = 0; i < 12; i++)
     {
         for(int j = 0; j < 64; j++)
         {
-            m_tables[i][j] = (((uint64_t) rand()) << 32) | rand();
+            m_tables[i][j] = distribution(generator);
         }
     }
-    m_blackToMove = (((uint64_t) rand()) << 32) | rand();
+    m_blackToMove = distribution(generator);
 }
 
 Zobrist::~Zobrist()

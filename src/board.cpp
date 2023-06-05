@@ -1092,10 +1092,8 @@ void Board::addBoardToHistory()
 
 hash_t Board::getHash()
 {
-    return m_turn;
+    return m_hash;
 }
-
-
 
 // Generates a bitboard of all attacks of oponents
 // The moves does not check if the move will make the oponent become checked, or if the attack is on its own pieces
