@@ -6,7 +6,7 @@ using namespace ChessEngine2;
 
 Searcher::Searcher()
 {
-    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(26));
+    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(18));
 }
 
 Searcher::~Searcher()
@@ -81,7 +81,7 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
 
     if(depth == 0)
     {
-        return m_alphaBetaQuiet(board, alpha, beta, 4, evalFor); // TODO: quiesce( alpha, beta );
+        return m_alphaBetaQuiet(board, alpha, beta, 4, evalFor);
     }
 
     // Check for repeated possition

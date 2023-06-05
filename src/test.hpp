@@ -1,5 +1,6 @@
 #include <board.hpp>
 #include <utils.hpp>
+#include <search.hpp>
 #include <cstdint>
 #include <chrono>
 
@@ -171,5 +172,40 @@ namespace ChessEngine2
         }
 
         CHESS_ENGINE2_LOG("Completed all Zobrist tests")
+    }
+
+    // 10 searches of 6 + 4 depth
+    // With Transposition tables size 1:   61_859ms
+    // With Transposition tables size 10:  55_831ms
+    // With Transposition tables size 12:  51_262ms
+    // With Transposition tables size 16:  50_117ms
+    // With Transposition tables size 18:  49_694ms
+    // With Transposition tables size 19: 102_686ms
+    // With Transposition tables size 20: 102_775ms
+    // With Transposition tables size 26: 108_189ms
+
+    void runSearchPerformanceTest()
+    {
+        CHESS_ENGINE2_LOG("Starting search performance test")
+
+        Searcher whiteSearcher = Searcher();
+        Searcher blackSearcher = Searcher();
+        Board board = Board(ChessEngine2::startFEN);
+
+        auto start = std::chrono::high_resolution_clock::now();
+        // Search for 16 moves
+        for(int i = 0; i < 10; i++)
+        {
+            CHESS_ENGINE2_DEBUG("PERF: " << i << "/" << 10)
+            Move whiteMove = whiteSearcher.getBestMove(board, 6);
+            board.performMove(whiteMove);
+            Move blackMove = blackSearcher.getBestMove(board, 6);
+            board.performMove(blackMove);
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> diff = end - start;
+        auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
+
+        CHESS_ENGINE2_LOG("Completed search performance in " << micros.count() / 1000 << "ms")
     }
 }

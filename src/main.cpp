@@ -14,14 +14,32 @@ int main(int argc, char *argv[])
     ChessEngine2::initGenerateRookMoves();
     ChessEngine2::initGenerateBishopMoves();
 
+    bool exitAfterTesting = false;
     for(int i = 1; i < argc; i++)
     {
-        if(!strncmp("--test", argv[i], 8))
+        if(!strncmp("--perft", argv[i], 8))
         {
             runAllPerft();
+            exitAfterTesting = true;
+        }
+
+        if(!strncmp("--test", argv[i], 8))
+        {
             runAllCaptureMoves();
             runAllZobristTests();
+            exitAfterTesting = true;
         }
+
+        if(!strncmp("--perf", argv[i], 8))
+        {
+            runSearchPerformanceTest();
+            exitAfterTesting = true;
+        }
+    }
+
+    if(exitAfterTesting)
+    {
+        exit(0);
     }
 
     ChessEngine2::Board board = ChessEngine2::Board(ChessEngine2::startFEN);

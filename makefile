@@ -24,6 +24,12 @@ run: $(BUILDDIR)/$(PROJECT).exe
 test: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --test
 
+perft: $(BUILDDIR)/$(PROJECT).exe
+	./$^ --perft
+
+perf: $(BUILDDIR)/$(PROJECT).exe
+	./$^ --perf
+
 clean: 
 	-rmdir $(BUILDDIR) /s /q
 
