@@ -9,12 +9,12 @@ TranspositionTable::TranspositionTable(uint8_t indexSize)
     m_size = 1LL << m_indexSize;
     m_table = new ttEntry_t[m_size];
     m_indexBitmask = m_size - 1;
-    CHESS_ENGINE2_DEBUG(m_indexBitmask)
     m_stats = {
         .entriesAdded = 0LL,
         .replacements = 0LL,
         .lookups      = 0LL,
         .lookupMisses = 0LL,
+        .blockedReplacements = 0LL,
     };
 
     // Set all table enties to be invalid
@@ -50,18 +50,42 @@ ttEntry_t TranspositionTable::getEntry(hash_t hash)
     return entry;
 }
 
+inline bool m_replaceCondition(ttEntry_t newEntry, ttEntry_t oldEntry)
+{
+    return newEntry.depth >= oldEntry.depth;
+}
+
 void TranspositionTable::addEntry(ttEntry_t entry)
 {
     hash_t tableIndex = m_getTableIndex(entry.hash);
-    #if TT_RECORD_STATS == 1
-    m_stats.entriesAdded++;
     ttEntry_t _entry = m_table[tableIndex];
-    if((_entry.flags & TT_FLAG_VALID) && (_entry.hash != entry.hash))
+
+    // Add the entry if the existing entry is invalid
+    if(!(_entry.flags & TT_FLAG_VALID))
     {
-        m_stats.replacements++;
+        #if TT_RECORD_STATS == 1
+        m_stats.entriesAdded++;
+        #endif
+        m_table[tableIndex] = entry;
+    }
+    // Replace the entry only if it passes the replace condition
+    else if(m_replaceCondition(entry, _entry))
+    {
+        #if TT_RECORD_STATS == 1
+        if(_entry.hash != entry.hash)
+        {
+            m_stats.replacements++;
+        }
+        m_stats.entriesAdded++;
+        #endif
+        m_table[tableIndex] = entry;
+    }
+    #if TT_RECORD_STATS == 1
+    else
+    {
+        m_stats.blockedReplacements++;
     }
     #endif
-    m_table[tableIndex] = entry;
 }
 
 ttStats_t TranspositionTable::getStats()

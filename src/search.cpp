@@ -6,7 +6,7 @@ using namespace ChessEngine2;
 
 Searcher::Searcher()
 {
-    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(18));
+    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(22));
 }
 
 Searcher::~Searcher()
@@ -54,8 +54,19 @@ int64_t Searcher::m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int
     return bestScore;
 }
 
-int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int depth, Color evalFor)
+int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int depth, int quietDepth, Color evalFor)
 {
+    // Check for repeated possition
+    std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+    auto it = boardHistory->find(board.getHash());
+    if(it != boardHistory->end())
+    {
+        if(it->second == 2)
+        {
+            return 0LL;
+        }
+    }
+
     int64_t originalAlpha = alpha;
     ttEntry_t entry = m_tt->getEntry(board.getHash());
     if((entry.flags & TT_FLAG_VALID) && (entry.hash == board.getHash()) && entry.depth >= depth)
@@ -81,18 +92,7 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
 
     if(depth == 0)
     {
-        return m_alphaBetaQuiet(board, alpha, beta, 4, evalFor);
-    }
-
-    // Check for repeated possition
-    std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
-    auto it = boardHistory->find(board.getHash());
-    if(it != boardHistory->end())
-    {
-        if(it->second == 2)
-        {
-            return 0LL;
-        }
+        return m_alphaBetaQuiet(board, alpha, beta, quietDepth, evalFor);
     }
 
     Move* moves = board.getLegalMoves();
@@ -103,11 +103,37 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
         return evalFor == WHITE ? board.evaluate() : -board.evaluate();
     }
 
+    // First search the move found to be best previously
     int64_t bestScore = -INF;
+    Move bestMove = Move(0, 0);
+    if((entry.flags & TT_FLAG_VALID) && (entry.hash == board.getHash()))
+    {
+        Board new_board = Board(board);
+        bestMove = entry.bestMove;
+        new_board.performMove(bestMove);
+        bestScore = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
+        alpha = std::max(alpha, bestScore);
+        if(alpha >= beta)
+        {
+            goto skipFullSearch;
+        } 
+    }
+    
     for (int i = 0; i < numMoves; i++)  {
+        // Skip searching the best move found in the transposition table
+        if(bestMove == moves[i])
+        {
+            continue;
+        }
+
         Board new_board = Board(board);
         new_board.performMove(moves[i]);
-        bestScore = std::max(bestScore, -m_alphaBeta(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1)));
+        int64_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
+        if(score > bestScore)
+        {
+            bestScore = score;
+            bestMove = moves[i];
+        }
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
         {
@@ -115,8 +141,11 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
         } 
     }
 
+    skipFullSearch:
+
     ttEntry_t newEntry;
     newEntry.value = bestScore;
+    newEntry.bestMove = bestMove;
     if(bestScore <= originalAlpha)
     {
         newEntry.flags = TT_FLAG_UPPERBOUND | TT_FLAG_VALID;
@@ -137,7 +166,7 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
     return bestScore;
 }
 
-Move Searcher::getBestMove(Board board, int depth)
+Move Searcher::getBestMove(Board board, int depth, int quietDepth)
 {
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();
@@ -152,7 +181,7 @@ Move Searcher::getBestMove(Board board, int depth)
         Board new_board = Board(board);
         new_board.performMove(moves[i]);
 
-        int64_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, Color(1^board.getTurn()));
+        int64_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(1^board.getTurn()));
         
         if(score > bestScore)
         {
@@ -172,6 +201,7 @@ Move Searcher::getBestMove(Board board, int depth)
     CHESS_ENGINE2_LOG("Lookups: " << stats.lookups)
     CHESS_ENGINE2_LOG("Lookup misses: " << stats.lookupMisses)
     CHESS_ENGINE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
+    CHESS_ENGINE2_LOG("Blocked replacements " << stats.blockedReplacements);
     
     return bestMove;
 }

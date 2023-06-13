@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     Searcher searcher2 = Searcher();
     Player player = Player();
 
-    for(int i = 0; i < 100; i++)
+    for(int i = 0; i < 200; i++)
     {
 
         board.getLegalMoves();
@@ -66,11 +66,11 @@ int main(int argc, char *argv[])
         if(board.getTurn() == WHITE)
         {
             // move = player.promptForMove(board);
-            move = searcher1.getBestMove(board, 4);
+            move = searcher1.getBestMove(board, 4, 4);
         }
         else
         {
-            move = searcher2.getBestMove(board, 1);
+            move = searcher2.getBestMove(board, 1, 0);
         }
         
         board.performMove(move);

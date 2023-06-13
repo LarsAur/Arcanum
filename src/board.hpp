@@ -88,6 +88,11 @@ namespace ChessEngine2
             to = _to;
             moveInfo = _moveInfo;
         }
+
+        bool operator==(const Move& move)
+        {
+            return (from == move.from) && (to == move.to);
+        }
     } Move;
 
     class Board

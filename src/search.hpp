@@ -13,12 +13,12 @@ namespace ChessEngine2
         private:
             // TODO: Hashtables for repeat in search.
             std::unique_ptr<TranspositionTable> m_tt;
-            int64_t m_alphaBeta(Board board, int64_t alpha, int64_t beta, int depth, Color evalFor);
+            int64_t m_alphaBeta(Board board, int64_t alpha, int64_t beta, int depth, int quietDepth, Color evalFor);
             int64_t m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int depth, Color evalFor);
             
         public:
             Searcher();
             ~Searcher();
-            Move getBestMove(Board board, int depth);
+            Move getBestMove(Board board, int depth, int quietDepth);
     };
 }

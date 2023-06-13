@@ -12,7 +12,7 @@ namespace ChessEngine2
     typedef struct ttEntry_t
     {
         hash_t hash;
-        Move bestMove;
+        Move bestMove; // TODO: Can store only the to and from to save space
         int64_t value; // TODO: use less bits for value
         uint8_t depth;
         uint8_t flags;
@@ -24,6 +24,7 @@ namespace ChessEngine2
         uint64_t replacements;
         uint64_t lookups;
         uint64_t lookupMisses;
+        uint64_t blockedReplacements;
     } ttStats_t;
 
     class TranspositionTable

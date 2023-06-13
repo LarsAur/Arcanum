@@ -183,6 +183,15 @@ namespace ChessEngine2
     // With Transposition tables size 19: 102_686ms
     // With Transposition tables size 20: 102_775ms
     // With Transposition tables size 26: 108_189ms
+    // With TT size 18, Test best move in TT first:  45_803ms
+    // With TT size 20, Test best move in TT first:  24_581ms
+    // With TT size 21, Test best move in TT first:  24_689ms
+    // With TT size 22, Test best move in TT first:  24_241ms
+    // With TT size 23, Test best move in TT first:  24_693ms
+    // With TT size 24, Test best move in TT first:  24_861ms
+
+    // With TT size 22, Test best move in TT first, >= depth replace: 24_519ms
+
 
     void runSearchPerformanceTest()
     {
@@ -197,9 +206,9 @@ namespace ChessEngine2
         for(int i = 0; i < 10; i++)
         {
             CHESS_ENGINE2_DEBUG("PERF: " << i << "/" << 10)
-            Move whiteMove = whiteSearcher.getBestMove(board, 6);
+            Move whiteMove = whiteSearcher.getBestMove(board, 6, 4);
             board.performMove(whiteMove);
-            Move blackMove = blackSearcher.getBestMove(board, 6);
+            Move blackMove = blackSearcher.getBestMove(board, 6, 4);
             board.performMove(blackMove);
         }
         auto end = std::chrono::high_resolution_clock::now();
