@@ -1193,7 +1193,7 @@ inline bool Board::isStraightChecked(Color color)
 }
 
 // Evaluates positive value for WHITE
-int64_t Board::evaluate()
+eval_t Board::evaluate()
 {
     // Check for stalemate and checkmate
     // TODO: Create function hasLegalMoves
@@ -1205,34 +1205,34 @@ int64_t Board::evaluate()
             // TODO: define checkmate score
             // subtract number of full moves from the score to have incentive for fastest checkmate
             // If there are more checkmates and this is not done, it might be "confused" and move between
-            return m_turn == WHITE ? (-10000000LL + m_fullMoves) : (10000000LL - m_fullMoves);
+            return m_turn == WHITE ? (-INT16_MAX + m_fullMoves) : (INT16_MAX - m_fullMoves);
         }
 
-        return 0LL;
+        return 0;
     }
 
     // TODO: Use model parameters
-    int64_t pieceScore;
+    eval_t pieceScore;
     pieceScore  = 100 * (CNTSBITS(m_bbPawns[WHITE])    - CNTSBITS(m_bbPawns[BLACK]));
     pieceScore += 300 * (CNTSBITS(m_bbKnights[WHITE]) - CNTSBITS(m_bbKnights[BLACK]));
     pieceScore += 300 * (CNTSBITS(m_bbBishops[WHITE]) - CNTSBITS(m_bbBishops[BLACK]));
     pieceScore += 500 * (CNTSBITS(m_bbRooks[WHITE])   - CNTSBITS(m_bbRooks[BLACK]));
     pieceScore += 900 * (CNTSBITS(m_bbQueens[WHITE])  - CNTSBITS(m_bbQueens[BLACK]));
 
-    int64_t mobility = m_numLegalMoves;
+    eval_t mobility = m_numLegalMoves;
 
     m_turn = Color(m_turn ^ 1);
     m_numLegalMoves = 0;
     getLegalMoves();
-    int64_t oponentMobility = m_numLegalMoves;
+    eval_t oponentMobility = m_numLegalMoves;
     m_turn = Color(m_turn ^ 1);
 
-    int64_t mobilityScore = (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
+    eval_t mobilityScore = (m_turn == WHITE ? (mobility - oponentMobility) : (oponentMobility - mobility));
 
     bitboard_t wPawns = m_bbPawns[WHITE]; 
     bitboard_t bPawns = m_bbPawns[BLACK]; 
 
-    int64_t pawnScore = 0LL;
+    eval_t pawnScore = 0;
     while (wPawns)
     {
         pawnScore += popLS1B(&wPawns) >> 3;

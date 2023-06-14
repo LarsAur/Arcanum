@@ -13,7 +13,7 @@ namespace ChessEngine2
     {
         hash_t hash;
         Move bestMove; // TODO: Can store only the to and from to save space
-        int64_t value; // TODO: use less bits for value
+        eval_t value;
         uint8_t depth;
         uint8_t flags;
     } ttEntry_t;

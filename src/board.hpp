@@ -8,6 +8,7 @@
 namespace ChessEngine2
 {
     typedef uint64_t hash_t;
+    typedef int16_t eval_t;
 
     static const int ZOBRIST_WHITE_PAWN_TABLE_IDX = 0;
     static const int ZOBRIST_BLACK_PAWN_TABLE_IDX = 1;
@@ -138,7 +139,7 @@ namespace ChessEngine2
             bool isDiagonalChecked(Color color);
             bool isStraightChecked(Color color);
 
-            int64_t evaluate();
+            eval_t evaluate();
 
             Color getTurn();
             bitboard_t getOponentAttacks();

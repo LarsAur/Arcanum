@@ -14,7 +14,7 @@ Searcher::~Searcher()
     
 }
 
-int64_t Searcher::m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int depth, Color evalFor)
+eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int depth, Color evalFor)
 {
     if(depth == 0)
     {
@@ -39,11 +39,12 @@ int64_t Searcher::m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int
         return evalFor == WHITE ? board.evaluate() : -board.evaluate();
     }
 
-    int64_t bestScore = -INF;
+    eval_t bestScore = -INF;
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
         new_board.performMove(moves[i]);
-        bestScore = std::max(bestScore, -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1)));
+        eval_t score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1));
+        bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
         if( alpha >= beta)
         {
@@ -54,7 +55,7 @@ int64_t Searcher::m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int
     return bestScore;
 }
 
-int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int depth, int quietDepth, Color evalFor)
+eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, int quietDepth, Color evalFor)
 {
     // Check for repeated positions from previous searches
     std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
@@ -104,7 +105,7 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
     }
 
     // First search the move found to be best previously
-    int64_t bestScore = -INF;
+    eval_t bestScore = -INF;
     Move bestMove = Move(0, 0);
     if((entry.flags & TT_FLAG_VALID) && (entry.hash == board.getHash()))
     {
@@ -129,7 +130,7 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
         // Generate new board and make the move
         Board new_board = Board(board);
         new_board.performMove(moves[i]);
-        int64_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
+        eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
         if(score > bestScore)
         {
             bestScore = score;
@@ -174,15 +175,15 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
 
     Move bestMove;
 
-    int64_t alpha = -INF;
-    int64_t beta = INF;
-    int64_t bestScore = -INF;
+    eval_t alpha = -INF;
+    eval_t beta = INF;
+    eval_t bestScore = -INF;
 
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
         new_board.performMove(moves[i]);
 
-        int64_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(1^board.getTurn()));
+        eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(1^board.getTurn()));
         
         if(score > bestScore)
         {

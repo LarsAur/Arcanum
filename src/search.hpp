@@ -4,7 +4,7 @@
 #include <transpositionTable.hpp>
 #include <memory>
 
-#define INF 100000000LL
+#define INF INT16_MAX
 
 namespace ChessEngine2
 {
@@ -13,8 +13,8 @@ namespace ChessEngine2
         private:
             // TODO: Hashtables for repeat in search.
             std::unique_ptr<TranspositionTable> m_tt;
-            int64_t m_alphaBeta(Board board, int64_t alpha, int64_t beta, int depth, int quietDepth, Color evalFor);
-            int64_t m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int depth, Color evalFor);
+            eval_t m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, int quietDepth, Color evalFor);
+            eval_t m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int depth, Color evalFor);
             
         public:
             Searcher();
