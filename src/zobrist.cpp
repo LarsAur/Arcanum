@@ -72,69 +72,39 @@ hash_t Zobrist::getUpdatedHash(const Board &board, Move move)
 {
     hash_t hash = board.m_hash;
     // XOR out and in the moved piece
-    if(move.moveInfo & MOVE_INFO_PAWN_MOVE)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_PAWN_TABLE_IDX + board.m_turn][move.from];
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_PAWN_TABLE_IDX + board.m_turn][move.to];
-    }
-    else if(move.moveInfo & MOVE_INFO_ROOK_MOVE)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_ROOK_TABLE_IDX + board.m_turn][move.from];
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_ROOK_TABLE_IDX + board.m_turn][move.to];
-    }
-    else if(move.moveInfo & MOVE_INFO_KNIGHT_MOVE)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_KNIGHT_TABLE_IDX + board.m_turn][move.from];
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_KNIGHT_TABLE_IDX + board.m_turn][move.to];
-    }
-    else if(move.moveInfo & MOVE_INFO_BISHOP_MOVE)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_BISHOP_TABLE_IDX + board.m_turn][move.from];
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_BISHOP_TABLE_IDX + board.m_turn][move.to];
-    }
-    else if(move.moveInfo & MOVE_INFO_QUEEN_MOVE)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_QUEEN_TABLE_IDX + board.m_turn][move.from];
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_QUEEN_TABLE_IDX + board.m_turn][move.to];
-    }
-    else if(move.moveInfo & MOVE_INFO_KING_MOVE)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_KING_TABLE_IDX + board.m_turn][move.from];
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_KING_TABLE_IDX + board.m_turn][move.to];
-    }
-    else
-    {
-        CHESS_ENGINE2_ERR("Missing piece type")
-    }
+    uint8_t tableIndex = LS1B(move.moveInfo & (
+        MOVE_INFO_PAWN_MOVE  
+        | MOVE_INFO_ROOK_MOVE  
+        | MOVE_INFO_KNIGHT_MOVE
+        | MOVE_INFO_BISHOP_MOVE
+        | MOVE_INFO_QUEEN_MOVE
+        | MOVE_INFO_KING_MOVE
+    ));
 
+    hash ^= m_tables[tableIndex + board.m_turn][move.from];
+    hash ^= m_tables[tableIndex + board.m_turn][move.to];
 
-    Color oponent = Color(board.m_turn^1);
-    if(move.moveInfo & MOVE_INFO_CAPTURE_PAWN)
+    uint32_t captureBitmask = move.moveInfo & (
+        MOVE_INFO_CAPTURE_PAWN  
+        | MOVE_INFO_CAPTURE_ROOK  
+        | MOVE_INFO_CAPTURE_KNIGHT
+        | MOVE_INFO_CAPTURE_QUEEN
+        | MOVE_INFO_CAPTURE_BISHOP
+    );
+
+    if(captureBitmask != 0)
     {
+        tableIndex = LS1B(captureBitmask) - 16;
+
+        Color oponent = Color(board.m_turn^1);
         if(move.moveInfo & MOVE_INFO_ENPASSANT)
         {
             hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_PAWN_TABLE_IDX + oponent][board.m_enPassantTarget];
         }
         else
         {
-            hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_PAWN_TABLE_IDX + oponent][move.to];
+            hash ^= m_tables[tableIndex + oponent][move.to]; 
         }
-    }
-    else if(move.moveInfo & MOVE_INFO_CAPTURE_ROOK)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_ROOK_TABLE_IDX + oponent][move.to];
-    }
-    else if(move.moveInfo & MOVE_INFO_CAPTURE_KNIGHT)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_KNIGHT_TABLE_IDX + oponent][move.to];
-    }
-    else if(move.moveInfo & MOVE_INFO_CAPTURE_BISHOP)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_BISHOP_TABLE_IDX + oponent][move.to];
-    }
-    else if(move.moveInfo & MOVE_INFO_CAPTURE_QUEEN)
-    {
-        hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_QUEEN_TABLE_IDX + oponent][move.to];
     }
 
     hash ^= m_blackToMove;

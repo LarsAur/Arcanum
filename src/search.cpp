@@ -56,12 +56,12 @@ int64_t Searcher::m_alphaBetaQuiet(Board board, int64_t alpha, int64_t beta, int
 
 int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int depth, int quietDepth, Color evalFor)
 {
-    // Check for repeated possition
+    // Check for repeated positions from previous searches
     std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
-    auto it = boardHistory->find(board.getHash());
-    if(it != boardHistory->end())
+    auto globalSearchIt = boardHistory->find(board.getHash());
+    if(globalSearchIt != boardHistory->end())
     {
-        if(it->second == 2)
+        if(globalSearchIt->second == 2)
         {
             return 0LL;
         }
@@ -118,7 +118,7 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
             goto skipFullSearch;
         } 
     }
-    
+
     for (int i = 0; i < numMoves; i++)  {
         // Skip searching the best move found in the transposition table
         if(bestMove == moves[i])
@@ -126,6 +126,7 @@ int64_t Searcher::m_alphaBeta(Board board, int64_t alpha, int64_t beta, int dept
             continue;
         }
 
+        // Generate new board and make the move
         Board new_board = Board(board);
         new_board.performMove(moves[i]);
         int64_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
@@ -194,6 +195,7 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
         }
     }
 
+    #if TT_RECORD_STATS == 1
     ttStats_t stats = m_tt->getStats();
     CHESS_ENGINE2_LOG("Entries Added: " << stats.entriesAdded)
     CHESS_ENGINE2_LOG("Replacements: " << stats.replacements)
@@ -202,6 +204,7 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
     CHESS_ENGINE2_LOG("Lookup misses: " << stats.lookupMisses)
     CHESS_ENGINE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
     CHESS_ENGINE2_LOG("Blocked replacements " << stats.blockedReplacements);
-    
+    #endif
+
     return bestMove;
 }

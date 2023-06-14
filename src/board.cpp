@@ -986,10 +986,10 @@ void Board::performMove(Move move)
     m_bbPieces[m_turn] = (m_bbPieces[m_turn] | bbTo) & ~bbFrom;
 
     // Move the piece
-    if(move.moveInfo & MOVE_INFO_PAWN_MOVE)
+    switch (move.moveInfo & (MOVE_INFO_PAWN_MOVE | MOVE_INFO_ROOK_MOVE | MOVE_INFO_KNIGHT_MOVE | MOVE_INFO_BISHOP_MOVE | MOVE_INFO_QUEEN_MOVE | MOVE_INFO_KING_MOVE))
     {
-        m_bbPawns[m_turn]   = (m_bbPawns[m_turn] & bbFrom) ? ((m_bbPawns[m_turn] & ~(bbFrom)) | (bbTo & 0x00ffffffffffff00LL)) : m_bbPawns[m_turn]; // Bitmask prevents setting a pawn on the promotion square
-
+    case MOVE_INFO_PAWN_MOVE:
+        m_bbPawns[m_turn]   = ((m_bbPawns[m_turn] & ~(bbFrom)) | (bbTo & 0x00ffffffffffff00LL)); // Bitmask prevents setting a pawn on the promotion square
         if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)
         {
             m_bbQueens[m_turn] |= bbTo;
@@ -1006,26 +1006,22 @@ void Board::performMove(Move move)
         {
             m_bbKnights[m_turn] |= bbTo;
         }
-    }
-    else if(move.moveInfo & MOVE_INFO_QUEEN_MOVE)
-    {
-        m_bbQueens[m_turn]  = (m_bbQueens[m_turn] & bbFrom) ? ((m_bbQueens[m_turn] & ~(bbFrom)) | bbTo) : m_bbQueens[m_turn];
-    }
-    else if(move.moveInfo & MOVE_INFO_KNIGHT_MOVE)
-    {
-        m_bbKnights[m_turn] = (m_bbKnights[m_turn] & bbFrom) ? ((m_bbKnights[m_turn] & ~(bbFrom)) | bbTo) : m_bbKnights[m_turn];
-    }
-    else if(move.moveInfo & MOVE_INFO_BISHOP_MOVE)
-    {
-        m_bbBishops[m_turn] = (m_bbBishops[m_turn] & bbFrom) ? ((m_bbBishops[m_turn] & ~(bbFrom)) | bbTo) : m_bbBishops[m_turn];
-    }
-    else if(move.moveInfo & MOVE_INFO_ROOK_MOVE)
-    {
-        m_bbRooks[m_turn]   = (m_bbRooks[m_turn] & bbFrom) ? ((m_bbRooks[m_turn] & ~(bbFrom)) | bbTo) : m_bbRooks[m_turn];
-    }
-    else if(move.moveInfo & MOVE_INFO_KING_MOVE)
-    {
-        m_bbKing[m_turn]    = (m_bbKing[m_turn] & bbFrom) ? ((m_bbKing[m_turn] & ~(bbFrom)) | bbTo) : m_bbKing[m_turn];
+        break;
+    case MOVE_INFO_ROOK_MOVE:
+        m_bbRooks[m_turn]  = (m_bbRooks[m_turn] & ~(bbFrom)) | bbTo;
+        break;
+    case MOVE_INFO_KNIGHT_MOVE:
+        m_bbKnights[m_turn]  = (m_bbKnights[m_turn] & ~(bbFrom)) | bbTo;
+        break;
+    case MOVE_INFO_BISHOP_MOVE:
+        m_bbBishops[m_turn]  = (m_bbBishops[m_turn] & ~(bbFrom)) | bbTo;
+        break;
+    case MOVE_INFO_QUEEN_MOVE:
+        m_bbQueens[m_turn]  = (m_bbQueens[m_turn] & ~(bbFrom)) | bbTo;
+        break;
+    case MOVE_INFO_KING_MOVE:
+        m_bbKing[m_turn]  = (m_bbKing[m_turn] & ~(bbFrom)) | bbTo;
+        break;
     }
 
     Color oponent = Color(m_turn ^ 1);
