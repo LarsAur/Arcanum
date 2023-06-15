@@ -52,25 +52,37 @@ int main(int argc, char *argv[])
     Searcher searcher2 = Searcher();
     Player player = Player();
 
-    for(int i = 0; i < 200; i++)
+    for(int i = 0; i < 400; i++)
     {
 
         board.getLegalMoves();
         if(board.getNumLegalMoves() == 0)
         {
-            std::cout << "Game Ended" << std::endl;    
+            CHESS_ENGINE2_LOG("Game Ended")
             break;
         }
+
+        std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+        auto it = boardHistory->find(board.getHash());
+        if(it != boardHistory->end())
+        {
+            if(it->second == 2)
+            {
+                CHESS_ENGINE2_LOG("Stalemate")
+                break;
+            }
+        }
+
 
         Move move;
         if(board.getTurn() == WHITE)
         {
             // move = player.promptForMove(board);
-            move = searcher1.getBestMove(board, 4, 4);
+            move = searcher1.getBestMove(board, 6, 4);
         }
         else
         {
-            move = searcher2.getBestMove(board, 1, 0);
+            move = searcher2.getBestMove(board, 4, 4);
         }
         
         board.performMove(move);

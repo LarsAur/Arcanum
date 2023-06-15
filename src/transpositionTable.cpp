@@ -1,14 +1,24 @@
 #include <transpositionTable.hpp>
 #include <utils.hpp>
+#include <cmath>
 
 using namespace ChessEngine2;
 
-TranspositionTable::TranspositionTable(uint8_t indexSize)
+TranspositionTable::TranspositionTable(uint8_t mbSize)
 {
-    m_indexSize = indexSize;
-    m_size = 1LL << m_indexSize;
-    m_table = new ttEntry_t[m_size];
-    m_indexBitmask = m_size - 1;
+    m_clusterCount = mbSize * 1024 * 1024 / sizeof(ttCluster_t);
+    m_entryCount = clusterSize * m_clusterCount;
+    m_table = static_cast<ttCluster_t*>(aligned_large_pages_alloc(m_clusterCount * sizeof(ttCluster_t)));
+
+    // Set all table enties to be invalid
+    for(size_t i = 0; i < m_clusterCount; i++)
+    {
+        for(size_t j = 0; j < m_clusterCount; j++)
+        {
+            m_table[i].entries[j].depth = 0;
+        }
+    }
+
     m_stats = {
         .entriesAdded = 0LL,
         .replacements = 0LL,
@@ -17,78 +27,110 @@ TranspositionTable::TranspositionTable(uint8_t indexSize)
         .blockedReplacements = 0LL,
     };
 
-    // Set all table enties to be invalid
-    for(size_t i = 0; i < m_size; i++)
-    {
-        m_table->flags = 0; 
-    }
-
-    CHESS_ENGINE2_LOG("Created Transposition Table of " << m_size << " elements")
+    CHESS_ENGINE2_LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
 }
 
 TranspositionTable::~TranspositionTable()
 {
-    delete[] m_table;
+    aligned_large_pages_free(m_table);
 }
 
-inline size_t TranspositionTable::m_getTableIndex(hash_t hash)
+inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
 {
-    return hash & m_indexBitmask;
+    return (hash >> 16) % m_clusterCount;
 }
 
-ttEntry_t TranspositionTable::getEntry(hash_t hash)
+ttEntry_t* TranspositionTable::getEntry(hash_t hash, bool* hit)
 {
-    ttEntry_t entry = m_table[m_getTableIndex(hash)];
+    ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
+
     #if TT_RECORD_STATS == 1
-        m_stats.lookups++;
-        if(((entry.flags & TT_FLAG_VALID) == 0) || (((entry.flags & TT_FLAG_VALID) == 1) && (entry.hash != hash)))
-        {
-            m_stats.lookupMisses++;
-        }
+    m_stats.lookups++;
     #endif
 
-    return entry;
-}
-
-inline bool m_replaceCondition(ttEntry_t newEntry, ttEntry_t oldEntry)
-{
-    return newEntry.depth >= oldEntry.depth;
-}
-
-void TranspositionTable::addEntry(ttEntry_t entry)
-{
-    hash_t tableIndex = m_getTableIndex(entry.hash);
-    ttEntry_t _entry = m_table[tableIndex];
-
-    // Add the entry if the existing entry is invalid
-    if(!(_entry.flags & TT_FLAG_VALID))
+    for(int i = 0; i < clusterSize; i++)
     {
-        #if TT_RECORD_STATS == 1
-        m_stats.entriesAdded++;
-        #endif
-        m_table[tableIndex] = entry;
-    }
-    // Replace the entry only if it passes the replace condition
-    else if(m_replaceCondition(entry, _entry))
-    {
-        #if TT_RECORD_STATS == 1
-        if(_entry.hash != entry.hash)
+        ttEntry_t entry = cluster->entries[i];
+        if(entry.depth != 0 && entry.hash == (uint16_t)hash)
         {
-            m_stats.replacements++;
+            *hit = true;
+            return &cluster->entries[i];
         }
-        m_stats.entriesAdded++;
-        #endif
-        m_table[tableIndex] = entry;
     }
+
     #if TT_RECORD_STATS == 1
+        m_stats.lookupMisses++;
+    #endif
+
+    *hit = false;
+    return nullptr;
+}
+
+inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
+{
+    return (newEntry.depth - oldEntry.depth) // Depth
+           + (((newEntry.flags & TT_FLAG_MASK == TT_FLAG_EXACT) && (newEntry.flags & TT_FLAG_MASK != TT_FLAG_EXACT)) ? 2 : 0)
+           + (((newEntry.flags & ~TT_FLAG_MASK) - (oldEntry.flags & ~TT_FLAG_MASK)) >> 2);
+}
+
+void TranspositionTable::addEntry(ttEntry_t entry, hash_t hash)
+{
+    ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
+
+    #if TT_RECORD_STATS == 1
+        m_stats.entriesAdded++;
+    #endif
+
+    // Search the cluster for an empty entry
+    for(int i = 0; i < clusterSize; i++)
+    {
+        ttEntry_t _entry = cluster->entries[i];
+        if(_entry.depth == 0)
+        {
+            cluster->entries[i] = entry;
+            cluster->entries->hash = (uint16_t) hash;
+            return;
+        }
+    }
+
+    // If no empty entry is found, attempt to find a valid replacement
+    ttEntry_t *replace = nullptr;
+    int8_t bestReplaceScore = -1;
+    for(int i = 0; i < clusterSize; i++)
+    {
+        ttEntry_t _entry = cluster->entries[i];
+        int8_t replaceScore = m_replaceScore(entry, _entry);
+        if(replaceScore > bestReplaceScore)
+        {
+            bestReplaceScore = replaceScore;
+            replace = &cluster->entries[i];
+        }
+    }
+
+    // Replace if a suitable replacement is found
+    if(replace)
+    {
+        *replace = entry;
+
+        #if TT_RECORD_STATS
+            m_stats.replacements++;
+        #endif
+    }
+    #if TT_RECORD_STATS
     else
     {
         m_stats.blockedReplacements++;
     }
     #endif
+
 }
 
 ttStats_t TranspositionTable::getStats()
 {
     return m_stats;
+}
+
+size_t TranspositionTable::getEntryCount()
+{
+    return m_entryCount;
 }

@@ -59,3 +59,6 @@
 #else
 #define CHESS_ENGINE2_SUCCESS(_str)
 #endif
+
+void* aligned_large_pages_alloc(size_t allocSize);
+void aligned_large_pages_free(void* mem);

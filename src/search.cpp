@@ -6,7 +6,7 @@ using namespace ChessEngine2;
 
 Searcher::Searcher()
 {
-    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(22));
+    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(20));
 }
 
 Searcher::~Searcher()
@@ -69,25 +69,26 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     }
 
     int64_t originalAlpha = alpha;
-    ttEntry_t entry = m_tt->getEntry(board.getHash());
-    if((entry.flags & TT_FLAG_VALID) && (entry.hash == board.getHash()) && entry.depth >= depth)
+    bool ttHit;
+    ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
+    if(ttHit && (entry->depth >= depth))
     {
-        if(entry.flags & TT_FLAG_EXACT)
+        if((entry->flags & TT_FLAG_MASK) == TT_FLAG_EXACT)
         {
-            return entry.value;
+            return entry->value;
         }
-        else if(entry.flags & TT_FLAG_LOWERBOUND)
+        else if((entry->flags & TT_FLAG_MASK) == TT_FLAG_LOWERBOUND)
         {
-            alpha = std::max(alpha, entry.value);
+            alpha = std::max(alpha, entry->value);
         }
-        else if(entry.flags & TT_FLAG_UPPERBOUND)
+        else if((entry->flags & TT_FLAG_MASK) == TT_FLAG_UPPERBOUND)
         {
-            beta = std::min(alpha, entry.value);
+            beta = std::min(alpha, entry->value);
         }
 
         if(alpha >= beta)
         {
-            return entry.value;
+            return entry->value;
         }
     }
 
@@ -107,10 +108,10 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     // First search the move found to be best previously
     eval_t bestScore = -INF;
     Move bestMove = Move(0, 0);
-    if((entry.flags & TT_FLAG_VALID) && (entry.hash == board.getHash()))
+    if(ttHit)
     {
         Board new_board = Board(board);
-        bestMove = entry.bestMove;
+        bestMove = entry->bestMove;
         new_board.performMove(bestMove);
         bestScore = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
         alpha = std::max(alpha, bestScore);
@@ -150,26 +151,26 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     newEntry.bestMove = bestMove;
     if(bestScore <= originalAlpha)
     {
-        newEntry.flags = TT_FLAG_UPPERBOUND | TT_FLAG_VALID;
+        newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_UPPERBOUND;
     }
     else if(bestScore >= beta)
     {
-        newEntry.flags = TT_FLAG_LOWERBOUND | TT_FLAG_VALID;
+        newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_LOWERBOUND;
     }
     else
     {
-        newEntry.flags = TT_FLAG_EXACT | TT_FLAG_VALID;
+        newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
     }
 
     newEntry.depth = depth;
-    newEntry.hash = board.getHash();
-    m_tt->addEntry(newEntry);
+    m_tt->addEntry(newEntry, board.getHash());
 
     return bestScore;
 }
 
 Move Searcher::getBestMove(Board board, int depth, int quietDepth)
 {
+
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();
 
@@ -200,12 +201,14 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
     ttStats_t stats = m_tt->getStats();
     CHESS_ENGINE2_LOG("Entries Added: " << stats.entriesAdded)
     CHESS_ENGINE2_LOG("Replacements: " << stats.replacements)
-    CHESS_ENGINE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements)
+    CHESS_ENGINE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements) / float(m_tt->getEntryCount()) << "%)")
     CHESS_ENGINE2_LOG("Lookups: " << stats.lookups)
     CHESS_ENGINE2_LOG("Lookup misses: " << stats.lookupMisses)
     CHESS_ENGINE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
     CHESS_ENGINE2_LOG("Blocked replacements " << stats.blockedReplacements);
     #endif
+
+    m_generation += 1; // Generation will update every 4th search
 
     return bestMove;
 }

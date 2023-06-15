@@ -15,7 +15,7 @@ namespace ChessEngine2
             std::unique_ptr<TranspositionTable> m_tt;
             eval_t m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, int quietDepth, Color evalFor);
             eval_t m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int depth, Color evalFor);
-            
+            uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
         public:
             Searcher();
             ~Searcher();
