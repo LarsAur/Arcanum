@@ -67,8 +67,8 @@ MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, Board *boa
     m_ttMove = ttMove;
     m_board = board;
 
-    m_bbOpponentPawnAttacks = m_board->getOponentPawnAttacks();
-    m_bbOpponentAttacks = m_board->getOponentAttacks();
+    m_bbOpponentPawnAttacks = m_board->getopponentPawnAttacks();
+    m_bbOpponentAttacks = m_board->getopponentAttacks();
 
     m_scoreMoves();
     

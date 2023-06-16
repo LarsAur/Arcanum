@@ -130,28 +130,28 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
     uint32_t capturedBitmask = move.moveInfo & MOVE_INFO_CAPTURE_MASK;
     if(capturedBitmask != 0)
     {
-        Color oponent = Color(board.m_turn^1);
+        Color opponent = Color(board.m_turn^1);
 
         if(move.moveInfo & MOVE_INFO_ENPASSANT)
         {
-            uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][oponent]);
-            hash ^= m_tables[W_PAWN][oponent][board.m_enPassantTarget];
-            pawnHash ^= m_tables[W_PAWN][oponent][board.m_enPassantTarget];
-            materialHash ^= m_tables[W_PAWN][oponent][count-1];
+            uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
+            hash ^= m_tables[W_PAWN][opponent][board.m_enPassantTarget];
+            pawnHash ^= m_tables[W_PAWN][opponent][board.m_enPassantTarget];
+            materialHash ^= m_tables[W_PAWN][opponent][count-1];
         }
         else if(move.moveInfo & MOVE_INFO_CAPTURE_PAWN)
         {
-            uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][oponent]);
-            hash ^= m_tables[W_PAWN][oponent][move.to];
-            pawnHash ^= m_tables[W_PAWN][oponent][move.to];
-            materialHash ^= m_tables[W_PAWN][oponent][count-1];
+            uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
+            hash ^= m_tables[W_PAWN][opponent][move.to];
+            pawnHash ^= m_tables[W_PAWN][opponent][move.to];
+            materialHash ^= m_tables[W_PAWN][opponent][count-1];
         }
         else
         {
             uint8_t capturedIndex = LS1B(capturedBitmask) - 16;
-            uint8_t count = CNTSBITS(board.m_bbTypedPieces[capturedIndex][oponent]);
-            hash ^= m_tables[capturedIndex][oponent][move.to];
-            materialHash ^= m_tables[capturedIndex][oponent][count-1];
+            uint8_t count = CNTSBITS(board.m_bbTypedPieces[capturedIndex][opponent]);
+            hash ^= m_tables[capturedIndex][opponent][move.to];
+            materialHash ^= m_tables[capturedIndex][opponent][count-1];
         }
     }
     
