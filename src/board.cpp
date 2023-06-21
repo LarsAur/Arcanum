@@ -1052,8 +1052,7 @@ void Board::performMove(Move move)
         move.moveInfo |= MOVE_INFO_CAPTURE_ROOK;
     }
 
-    m_hash = s_zobrist.getUpdatedHash(*this, move);
-
+    uint8_t oldEnPassantSquare = m_enPassantSquare;
     // Required to reset
     m_enPassantSquare = 64;
     m_enPassantTarget = 64;
@@ -1067,6 +1066,8 @@ void Board::performMove(Move move)
         m_bbEnPassantSquare = 1LL << m_enPassantSquare; 
         m_bbEnPassantTarget = 1LL << m_enPassantTarget; 
     }
+
+    m_hash = s_zobrist.getUpdatedHash(*this, move, oldEnPassantSquare, m_enPassantSquare);
 
     m_turn = oponent;
     m_fullMoves += (m_turn == WHITE); // Note turn is flipped
