@@ -18,6 +18,12 @@ Zobrist::Zobrist()
             m_tables[i][j] = distribution(generator);
         }
     }
+
+    for(int i = 0; i < 48; i++)
+    {
+        m_enPassantTable[i] = distribution(generator);
+    }
+
     m_blackToMove = distribution(generator);
 }
 
@@ -65,10 +71,15 @@ hash_t Zobrist::getHash(const Board &board)
         hash ^= m_blackToMove;
     }
 
+    if(board.m_enPassantSquare != 64)
+    {
+        hash ^= m_enPassantTable[board.m_enPassantSquare];
+    }
+
     return hash;
 }
 
-hash_t Zobrist::getUpdatedHash(const Board &board, Move move)
+hash_t Zobrist::getUpdatedHash(const Board &board, Move move, uint8_t oldEnPassantSquare, uint8_t newEnPassantSquare)
 {
     hash_t hash = board.m_hash;
     // XOR out and in the moved piece
@@ -107,6 +118,8 @@ hash_t Zobrist::getUpdatedHash(const Board &board, Move move)
         }
     }
 
+    hash ^= m_enPassantTable[oldEnPassantSquare] * (oldEnPassantSquare != 64);
+    hash ^= m_enPassantTable[newEnPassantSquare] * (newEnPassantSquare != 64);
     hash ^= m_blackToMove;
 
     return hash;

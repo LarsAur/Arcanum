@@ -155,6 +155,7 @@ namespace ChessEngine2
     {
         private:
             hash_t m_tables[12][64];
+            hash_t m_enPassantTable[48]; // Only 16 is actually used
             hash_t m_blackToMove;
 
             hash_t m_addAllPieces(hash_t hash, bitboard_t bitboard, int tableIdx);
@@ -163,6 +164,6 @@ namespace ChessEngine2
             ~Zobrist();
 
             hash_t getHash(const Board &board);
-            hash_t getUpdatedHash(const Board &board, Move move);
+            hash_t getUpdatedHash(const Board &board, Move move, uint8_t oldEnPassentSquare, uint8_t newEnPassentSquare);
     };
 }
