@@ -32,7 +32,7 @@ namespace ChessEngine2
             {
                 uint64_t _count = 0;
                 findNumMovesAtDepth(depth - 1, &newBoard, &_count, false);
-                // std::cout << ChessEngine2::getArithmeticNotation(it->from) << ChessEngine2::getArithmeticNotation(it->to) << ": " << _count << std::endl;
+                std::cout << ChessEngine2::getArithmeticNotation(legalMoves[i].from) << ChessEngine2::getArithmeticNotation(legalMoves[i].to) << " " << unsigned(legalMoves[i].moveInfo) << ": " << _count << std::endl;
                 *count += _count;
             }
             else
@@ -46,15 +46,17 @@ namespace ChessEngine2
     {
         uint64_t count = 0;
         Board board = Board(fen);
+        std::cout << board.getBoardString();
+
         findNumMovesAtDepth(ply, &board, &count);
         
         if(count != expected)
         {
-            CHESS_ENGINE2_ERR("Failed perft with " << fen << " at " << +ply << " depth. Expected: " << expected << " Got: " << count)
+            CHESS_ENGINE2_ERR("Failed perft with " << fen << " at " << unsigned(ply) << " depth. Expected: " << expected << " Got: " << count)
         }
         else
         {
-            CHESS_ENGINE2_SUCCESS("Success perft with " << fen << " at " << +ply << " depth")
+            CHESS_ENGINE2_SUCCESS("Success perft with " << fen << " at " << unsigned(ply) << " depth")
         }
 
         return count;

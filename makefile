@@ -18,15 +18,19 @@ OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))						 # Create list of
 
 all: setup $(BUILDDIR)/$(PROJECT).exe
 
+.PHONY: run
 run: $(BUILDDIR)/$(PROJECT).exe
 	./$^
 
+.PHONY: test
 test: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --test
 
+.PHONY: perft
 perft: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --perft
 
+.PHONY: perf
 perf: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --perf
 
@@ -36,7 +40,7 @@ clean:
 $(BUILDDIR):
 	-mkdir $(BUILDDIR)
 
-# Create all build subfolders
+# Create all build subsfolders
 setup: $(BUILDDIR)
 	@- $(foreach folder,$(BUILDSUBDIRS),mkdir $(folder)) 
 

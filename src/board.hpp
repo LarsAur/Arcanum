@@ -10,20 +10,7 @@ namespace ChessEngine2
     typedef uint64_t hash_t;
     typedef int16_t eval_t;
 
-    static const int ZOBRIST_WHITE_PAWN_TABLE_IDX = 0;
-    static const int ZOBRIST_BLACK_PAWN_TABLE_IDX = 1;
-    static const int ZOBRIST_WHITE_ROOK_TABLE_IDX = 2;
-    static const int ZOBRIST_BLACK_ROOK_TABLE_IDX = 3;
-    static const int ZOBRIST_WHITE_KNIGHT_TABLE_IDX = 4;
-    static const int ZOBRIST_BLACK_KNIGHT_TABLE_IDX = 5;
-    static const int ZOBRIST_WHITE_BISHOP_TABLE_IDX = 6;
-    static const int ZOBRIST_BLACK_BISHOP_TABLE_IDX = 7;
-    static const int ZOBRIST_WHITE_QUEEN_TABLE_IDX = 8;
-    static const int ZOBRIST_BLACK_QUEEN_TABLE_IDX = 9;
-    static const int ZOBRIST_WHITE_KING_TABLE_IDX = 10;
-    static const int ZOBRIST_BLACK_KING_TABLE_IDX = 11;
-
-    static std::string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    static const std::string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     typedef enum Color
     {
@@ -32,16 +19,12 @@ namespace ChessEngine2
         NUM_COLORS,
     } Color;
 
-    typedef enum PieceType
+    typedef enum Piece : uint8_t
     {
-        PAWN,
-        ROOK,
-        KNIGHT,
-        BISHOP,
-        KING,
-        QUEEN,
-        NUM_PIECES,
-    } PieceType;
+        W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING, 
+        B_PAWN, B_ROOK, B_KNIGHT, B_BISHOP, B_QUEEN, B_KING,
+        NO_PIECE,
+    } Piece;
 
     typedef enum CastleRights
     {
@@ -57,24 +40,26 @@ namespace ChessEngine2
     #define MOVE_INFO_BISHOP_MOVE 8
     #define MOVE_INFO_QUEEN_MOVE 16
     #define MOVE_INFO_KING_MOVE 32
+    #define MOVE_INFO_MOVE_MASK (MOVE_INFO_PAWN_MOVE | MOVE_INFO_ROOK_MOVE | MOVE_INFO_KNIGHT_MOVE | MOVE_INFO_BISHOP_MOVE | MOVE_INFO_QUEEN_MOVE | MOVE_INFO_KING_MOVE)
     #define MOVE_INFO_DOUBLE_MOVE 64
     #define MOVE_INFO_ENPASSANT 128
     #define MOVE_INFO_CASTLE_WHITE_QUEEN 256
     #define MOVE_INFO_CASTLE_WHITE_KING 512
     #define MOVE_INFO_CASTLE_BLACK_QUEEN 1024
     #define MOVE_INFO_CASTLE_BLACK_KING 2048
+    #define MOVE_INFO_CASTLE_MASK (MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_CASTLE_BLACK_KING)
     #define MOVE_INFO_PROMOTE_ROOK 4096
-    #define MOVE_INFO_PROMOTE_BISHOP 8192
-    #define MOVE_INFO_PROMOTE_KNIGHT 16384
+    #define MOVE_INFO_PROMOTE_KNIGHT 8192
+    #define MOVE_INFO_PROMOTE_BISHOP 16384
     #define MOVE_INFO_PROMOTE_QUEEN 32768
+    #define MOVE_INFO_PROMOTE_MASK (MOVE_INFO_PROMOTE_ROOK | MOVE_INFO_PROMOTE_KNIGHT | MOVE_INFO_PROMOTE_BISHOP | MOVE_INFO_PROMOTE_QUEEN)
     // These are not added before the move is made
     #define MOVE_INFO_CAPTURE_PAWN 65536
     #define MOVE_INFO_CAPTURE_ROOK 131072
     #define MOVE_INFO_CAPTURE_KNIGHT 262144
     #define MOVE_INFO_CAPTURE_BISHOP 524288
     #define MOVE_INFO_CAPTURE_QUEEN 1048576
-
-
+    #define MOVE_INFO_CAPTURE_MASK (MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_CAPTURE_ROOK | MOVE_INFO_CAPTURE_KNIGHT | MOVE_INFO_CAPTURE_QUEEN | MOVE_INFO_CAPTURE_BISHOP)
 
     typedef struct Move
     {
@@ -96,6 +81,7 @@ namespace ChessEngine2
         }
     } Move;
 
+
     class Board
     {
         private:
@@ -110,18 +96,16 @@ namespace ChessEngine2
             bitboard_t m_bbEnPassantTarget; // Square moved to when capturing
 
             bitboard_t m_bbAllPieces;
-            bitboard_t m_bbPieces[NUM_COLORS];
-            bitboard_t m_bbPawns[NUM_COLORS];
-            bitboard_t m_bbKing[NUM_COLORS];
-            bitboard_t m_bbKnights[NUM_COLORS];
-            bitboard_t m_bbBishops[NUM_COLORS];
-            bitboard_t m_bbQueens[NUM_COLORS];
-            bitboard_t m_bbRooks[NUM_COLORS];
+            bitboard_t m_bbColoredPieces[NUM_COLORS];
+            bitboard_t m_bbTypedPieces[6][NUM_COLORS]; 
+            Piece m_pieces[64];
 
             uint8_t m_numLegalMoves;
             Move m_legalMoves[218];
 
             hash_t m_hash;
+            hash_t m_materialHash;
+            hash_t m_pawnHash;
             friend class Zobrist;
 
             // Tests if the king will be checked before adding the move
@@ -154,16 +138,16 @@ namespace ChessEngine2
     class Zobrist
     {
         private:
-            hash_t m_tables[12][64];
+            hash_t m_tables[6][2][64];
             hash_t m_enPassantTable[48]; // Only 16 is actually used
             hash_t m_blackToMove;
 
-            hash_t m_addAllPieces(hash_t hash, bitboard_t bitboard, int tableIdx);
+            void m_addAllPieces(hash_t &hash, hash_t &materialHash, bitboard_t bitboard, uint8_t pieceType, Color pieceColor);
         public:
             Zobrist();
             ~Zobrist();
 
-            hash_t getHash(const Board &board);
-            hash_t getUpdatedHash(const Board &board, Move move, uint8_t oldEnPassentSquare, uint8_t newEnPassentSquare);
+            void getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
+            void getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassentSquare, uint8_t newEnPassentSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
     };
 }

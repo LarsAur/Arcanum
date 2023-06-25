@@ -66,23 +66,22 @@ int main(int argc, char *argv[])
         auto it = boardHistory->find(board.getHash());
         if(it != boardHistory->end())
         {
-            if(it->second == 2)
+            if(it->second == 3) // The check id done after the board is added to history
             {
                 CHESS_ENGINE2_LOG("Stalemate")
                 break;
             }
         }
 
-
         Move move;
         if(board.getTurn() == WHITE)
         {
-            // move = player.promptForMove(board);
-            move = searcher1.getBestMove(board, 6, 4);
+            move = player.promptForMove(board);
+            // move = searcher1.getBestMove(board, 6, 4);
         }
         else
         {
-            move = searcher2.getBestMove(board, 4, 4);
+            move = searcher2.getBestMove(board, 6, 4);
         }
         
         board.performMove(move);

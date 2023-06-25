@@ -11,11 +11,14 @@ Zobrist::Zobrist()
     std::default_random_engine generator;
     std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
 
-    for(int i = 0; i < 12; i++)
+    for(int i = 0; i < 6; i++)
     {
-        for(int j = 0; j < 64; j++)
+        for(int j = 0; j < 2; j++)
         {
-            m_tables[i][j] = distribution(generator);
+            for(int k = 0; k < 64; k++)
+            {
+                m_tables[i][j][k] = distribution(generator);
+            }
         }
     }
 
@@ -32,39 +35,42 @@ Zobrist::~Zobrist()
 
 }
 
-inline hash_t Zobrist::m_addAllPieces(hash_t hash, bitboard_t bitboard, int tableIdx)
+inline void Zobrist::m_addAllPieces(hash_t &hash, hash_t &materialHash, bitboard_t bitboard, uint8_t pieceType, Color pieceColor)
 {
+    int i = 0;
     while (bitboard)
     {
         int pieceIdx = popLS1B(&bitboard);
-        hash ^= m_tables[tableIdx][pieceIdx];
+        materialHash ^= m_tables[pieceType][pieceColor][++i];
+        hash ^= m_tables[pieceType][pieceColor][pieceIdx];
     }
-
-    return hash;
 }
 
-hash_t Zobrist::getHash(const Board &board)
+void Zobrist::getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
 {
-    hash_t hash = 0LL;
+    hash = 0LL;
+    pawnHash = 0LL;
+    materialHash = 0LL;
 
     // Pawns
-    hash = m_addAllPieces(hash, board.m_bbPawns[WHITE], ChessEngine2::ZOBRIST_WHITE_PAWN_TABLE_IDX);
-    hash = m_addAllPieces(hash, board.m_bbPawns[BLACK], ChessEngine2::ZOBRIST_BLACK_PAWN_TABLE_IDX);
+    m_addAllPieces(pawnHash, materialHash, board.m_bbTypedPieces[W_PAWN][WHITE], W_PAWN, WHITE);
+    m_addAllPieces(pawnHash, materialHash, board.m_bbTypedPieces[W_PAWN][BLACK], W_PAWN, BLACK);
+    hash ^= pawnHash;
     // Rooks
-    hash = m_addAllPieces(hash, board.m_bbRooks[WHITE], ChessEngine2::ZOBRIST_WHITE_ROOK_TABLE_IDX);
-    hash = m_addAllPieces(hash, board.m_bbRooks[BLACK], ChessEngine2::ZOBRIST_BLACK_ROOK_TABLE_IDX);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_ROOK][WHITE], W_ROOK, WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_ROOK][BLACK], W_ROOK, BLACK);
     // Knights
-    hash = m_addAllPieces(hash, board.m_bbKnights[WHITE], ChessEngine2::ZOBRIST_WHITE_KNIGHT_TABLE_IDX);
-    hash = m_addAllPieces(hash, board.m_bbKnights[BLACK], ChessEngine2::ZOBRIST_BLACK_KNIGHT_TABLE_IDX);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_KNIGHT][WHITE], W_KNIGHT, WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_KNIGHT][BLACK], W_KNIGHT, BLACK);
     // Bishops
-    hash = m_addAllPieces(hash, board.m_bbBishops[WHITE], ChessEngine2::ZOBRIST_WHITE_BISHOP_TABLE_IDX);
-    hash = m_addAllPieces(hash, board.m_bbBishops[BLACK], ChessEngine2::ZOBRIST_BLACK_BISHOP_TABLE_IDX);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_BISHOP][WHITE], W_BISHOP, WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_BISHOP][BLACK], W_BISHOP, BLACK);
     // Queens
-    hash = m_addAllPieces(hash, board.m_bbQueens[WHITE], ChessEngine2::ZOBRIST_WHITE_QUEEN_TABLE_IDX);
-    hash = m_addAllPieces(hash, board.m_bbQueens[BLACK], ChessEngine2::ZOBRIST_BLACK_QUEEN_TABLE_IDX);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_QUEEN][WHITE], W_QUEEN, WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_QUEEN][BLACK], W_QUEEN, BLACK);
     // Kings
-    hash = m_addAllPieces(hash, board.m_bbKing[WHITE], ChessEngine2::ZOBRIST_WHITE_KING_TABLE_IDX);
-    hash = m_addAllPieces(hash, board.m_bbKing[BLACK], ChessEngine2::ZOBRIST_BLACK_KING_TABLE_IDX);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_KING][WHITE], W_KING, WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_KING][BLACK], W_KING, BLACK);
 
     if(board.m_turn == BLACK)
     {
@@ -75,52 +81,81 @@ hash_t Zobrist::getHash(const Board &board)
     {
         hash ^= m_enPassantTable[board.m_enPassantSquare];
     }
-
-    return hash;
 }
 
-hash_t Zobrist::getUpdatedHash(const Board &board, Move move, uint8_t oldEnPassantSquare, uint8_t newEnPassantSquare)
+void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassantSquare, uint8_t newEnPassantSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
 {
-    hash_t hash = board.m_hash;
-    // XOR out and in the moved piece
-    uint8_t tableIndex = LS1B(move.moveInfo & (
-        MOVE_INFO_PAWN_MOVE  
-        | MOVE_INFO_ROOK_MOVE  
-        | MOVE_INFO_KNIGHT_MOVE
-        | MOVE_INFO_BISHOP_MOVE
-        | MOVE_INFO_QUEEN_MOVE
-        | MOVE_INFO_KING_MOVE
-    ));
+    // TODO: Include castle opertunities
 
-    hash ^= m_tables[tableIndex + board.m_turn][move.from];
-    hash ^= m_tables[tableIndex + board.m_turn][move.to];
-
-    uint32_t captureBitmask = move.moveInfo & (
-        MOVE_INFO_CAPTURE_PAWN  
-        | MOVE_INFO_CAPTURE_ROOK  
-        | MOVE_INFO_CAPTURE_KNIGHT
-        | MOVE_INFO_CAPTURE_QUEEN
-        | MOVE_INFO_CAPTURE_BISHOP
-    );
-
-    if(captureBitmask != 0)
+    // XOR in and out the moved piece corresponding to its location
+    if(move.moveInfo & MOVE_INFO_PROMOTE_MASK)
     {
-        tableIndex = LS1B(captureBitmask) - 16;
+        Piece promoteType = Piece(LS1B(move.moveInfo & MOVE_INFO_PROMOTE_MASK) - 11);
+        uint8_t pawnCount = CNTSBITS(board.m_bbTypedPieces[W_PAWN][board.m_turn]);
+        uint8_t promoteCount = CNTSBITS(board.m_bbTypedPieces[promoteType][board.m_turn]);
+        hash ^= m_tables[W_PAWN][board.m_turn][move.from] ^ m_tables[promoteType][board.m_turn][move.to];
+        pawnHash ^= m_tables[W_PAWN][board.m_turn][move.from];
+        materialHash ^= m_tables[promoteType][board.m_turn][promoteCount-1] ^ m_tables[W_PAWN][board.m_turn][pawnCount-1];
+    }
+    else
+    {
+        uint8_t pieceIndex = LS1B(move.moveInfo & MOVE_INFO_MOVE_MASK);
+        hash_t moveHash = m_tables[pieceIndex][board.m_turn][move.from] ^ m_tables[pieceIndex][board.m_turn][move.to];
+        hash ^= moveHash;
+        pawnHash ^= moveHash * (move.moveInfo & MOVE_INFO_PAWN_MOVE); // Multiplication works as MOVE_INFO_PAWN_MOVE == 1
+    }
 
-        Color oponent = Color(board.m_turn^1);
-        if(move.moveInfo & MOVE_INFO_ENPASSANT)
+    // Handle the moved rook when castling
+    if(move.moveInfo & MOVE_INFO_CASTLE_MASK)
+    {
+        if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_QUEEN)
         {
-            hash ^= m_tables[ChessEngine2::ZOBRIST_WHITE_PAWN_TABLE_IDX + oponent][board.m_enPassantTarget];
+            hash ^= m_tables[W_ROOK][WHITE][0] ^  m_tables[W_ROOK][WHITE][3];
+        } 
+        else if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_KING)
+        {
+            hash ^= m_tables[W_ROOK][WHITE][7] ^  m_tables[W_ROOK][WHITE][5];
         }
-        else
+        else if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_QUEEN)
         {
-            hash ^= m_tables[tableIndex + oponent][move.to]; 
+            hash ^= m_tables[W_ROOK][BLACK][56] ^ m_tables[W_ROOK][BLACK][59];
+        }
+        else if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_KING)
+        {
+            hash ^= m_tables[W_ROOK][BLACK][63] ^ m_tables[W_ROOK][BLACK][61];
         }
     }
 
-    hash ^= m_enPassantTable[oldEnPassantSquare] * (oldEnPassantSquare != 64);
-    hash ^= m_enPassantTable[newEnPassantSquare] * (newEnPassantSquare != 64);
-    hash ^= m_blackToMove;
+    // XOR out the captured piece
+    uint32_t capturedBitmask = move.moveInfo & MOVE_INFO_CAPTURE_MASK;
+    if(capturedBitmask != 0)
+    {
+        Color oponent = Color(board.m_turn^1);
 
-    return hash;
+        if(move.moveInfo & MOVE_INFO_ENPASSANT)
+        {
+            uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][oponent]);
+            hash ^= m_tables[W_PAWN][oponent][board.m_enPassantTarget];
+            pawnHash ^= m_tables[W_PAWN][oponent][board.m_enPassantTarget];
+            materialHash ^= m_tables[W_PAWN][oponent][count-1];
+        }
+        else if(move.moveInfo & MOVE_INFO_CAPTURE_PAWN)
+        {
+            uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][oponent]);
+            hash ^= m_tables[W_PAWN][oponent][move.to];
+            pawnHash ^= m_tables[W_PAWN][oponent][move.to];
+            materialHash ^= m_tables[W_PAWN][oponent][count-1];
+        }
+        else
+        {
+            uint8_t capturedIndex = LS1B(capturedBitmask) - 16;
+            uint8_t count = CNTSBITS(board.m_bbTypedPieces[capturedIndex][oponent]);
+            hash ^= m_tables[capturedIndex][oponent][move.to];
+            materialHash ^= m_tables[capturedIndex][oponent][count-1];
+        }
+    }
+    hash_t enPassantHash = (m_enPassantTable[oldEnPassantSquare] * (oldEnPassantSquare != 64)) ^ (m_enPassantTable[newEnPassantSquare] * (newEnPassantSquare != 64));
+    pawnHash ^= enPassantHash;
+    hash ^= enPassantHash;
+    hash ^= m_blackToMove;
 }
