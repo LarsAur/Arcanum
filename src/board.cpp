@@ -277,7 +277,6 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
     // TODO: Remove when having a separate isChecked generator
     if(wasChecked)
     {
-        // TODO: Get piece type as input to enable use of switchcase
         bitboard_t bbAllPieces = m_bbAllPieces;
 
         bitboard_t bbPiecesWhite  = m_bbColoredPieces[WHITE];
@@ -297,6 +296,7 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         m_bbAllPieces = (m_bbAllPieces | bbTo) & ~bbFrom;
         m_bbColoredPieces[m_turn] = (m_bbColoredPieces[m_turn] | bbTo) & ~bbFrom;
 
+        // TODO: Get piece type as input to enable use of switchcase
         // Move the piece
         if (m_bbTypedPieces[W_PAWN][m_turn] & bbFrom)
         {
@@ -318,18 +318,14 @@ inline bool Board::attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboar
         {
             m_bbTypedPieces[W_QUEEN][m_turn]  = (m_bbTypedPieces[W_QUEEN][m_turn] & ~(bbFrom)) | bbTo;
         }
-        else if (m_bbTypedPieces[W_KING][m_turn] & bbFrom) // This is never hit, but removing it makes it about 3-5% slower
-        {
-            m_bbTypedPieces[W_KING][m_turn]    = (m_bbTypedPieces[W_KING][m_turn] & ~(bbFrom)) | bbTo;
-        }
 
         Color oponent = Color(m_turn ^ 1);
         
         // Remove potential captures
-        m_bbAllPieces        &= ~((move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL);
-        m_bbColoredPieces[oponent]  &= ~(bbTo | ((move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL));
-        m_bbTypedPieces[W_PAWN][oponent]   &= ~(bbTo | ((move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL));
-        m_bbTypedPieces[W_KING][oponent]    &= ~bbTo;
+        bitboard_t bbEnPassantTarget        = (move.moveInfo & MOVE_INFO_ENPASSANT) ? m_bbEnPassantTarget : 0LL;
+        m_bbAllPieces                      &= ~bbEnPassantTarget;
+        m_bbColoredPieces[oponent]         &= ~(bbTo | bbEnPassantTarget);
+        m_bbTypedPieces[W_PAWN][oponent]   &= ~(bbTo | bbEnPassantTarget);
         m_bbTypedPieces[W_KNIGHT][oponent] &= ~bbTo;
         m_bbTypedPieces[W_BISHOP][oponent] &= ~bbTo;
         m_bbTypedPieces[W_QUEEN][oponent]  &= ~bbTo;
@@ -1003,48 +999,6 @@ void Board::performMove(Move move)
     {
         m_castleRights &= ~(BLACK_KING_SIDE);
     }
-
-    // m_bbAllPieces = (m_bbAllPieces | bbTo) & ~bbFrom;
-    // m_bbColoredPieces[m_turn] = (m_bbColoredPieces[m_turn] | bbTo) & ~bbFrom;
-
-    // // Move the piece
-    // switch (move.moveInfo & MOVE_INFO_MOVE_MASK)
-    // {
-    // case MOVE_INFO_PAWN_MOVE:
-    //     m_bbTypedPieces[W_PAWN][m_turn]   = ((m_bbTypedPieces[W_PAWN][m_turn] & ~(bbFrom)) | (bbTo & 0x00ffffffffffff00LL)); // Bitmask prevents setting a pawn on the promotion square
-    //     if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)
-    //     {
-    //         m_bbTypedPieces[W_QUEEN][m_turn] |= bbTo;
-    //     } 
-    //     else if(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP)
-    //     {
-    //         m_bbTypedPieces[W_BISHOP][m_turn] |= bbTo;
-    //     } 
-    //     else if(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)
-    //     {
-    //         m_bbTypedPieces[W_ROOK][m_turn] |= bbTo;
-    //     } 
-    //     else if(move.moveInfo & MOVE_INFO_PROMOTE_KNIGHT)
-    //     {
-    //         m_bbTypedPieces[W_KNIGHT][m_turn] |= bbTo;
-    //     }
-    //     break;
-    // case MOVE_INFO_ROOK_MOVE:
-    //     m_bbTypedPieces[W_ROOK][m_turn]  = (m_bbTypedPieces[W_ROOK][m_turn] & ~(bbFrom)) | bbTo;
-    //     break;
-    // case MOVE_INFO_KNIGHT_MOVE:
-    //     m_bbTypedPieces[W_KNIGHT][m_turn]  = (m_bbTypedPieces[W_KNIGHT][m_turn] & ~(bbFrom)) | bbTo;
-    //     break;
-    // case MOVE_INFO_BISHOP_MOVE:
-    //     m_bbTypedPieces[W_BISHOP][m_turn]  = (m_bbTypedPieces[W_BISHOP][m_turn] & ~(bbFrom)) | bbTo;
-    //     break;
-    // case MOVE_INFO_QUEEN_MOVE:
-    //     m_bbTypedPieces[W_QUEEN][m_turn]  = (m_bbTypedPieces[W_QUEEN][m_turn] & ~(bbFrom)) | bbTo;
-    //     break;
-    // case MOVE_INFO_KING_MOVE:
-    //     m_bbTypedPieces[W_KING][m_turn]  = (m_bbTypedPieces[W_KING][m_turn] & ~(bbFrom)) | bbTo;
-    //     break;
-    // }
 
     // Remove potential captures
     Color oponent = Color(m_turn ^ 1);
