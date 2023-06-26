@@ -1082,7 +1082,6 @@ void Board::performMove(Move move)
         m_pieces[move.from] = NO_PIECE;
     }
 
-
     uint8_t oldEnPassantSquare = m_enPassantSquare;
     // Required to reset
     m_enPassantSquare = 64;
