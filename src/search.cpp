@@ -16,11 +16,6 @@ Searcher::~Searcher()
 
 eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int depth, Color evalFor)
 {
-    if(depth == 0)
-    {
-        return evalFor == WHITE ? board.evaluate() : -board.evaluate();
-    }
-
     std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
     auto it = boardHistory->find(board.getHash());
     if(it != boardHistory->end())
@@ -29,6 +24,11 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
         {
             return 0LL;
         }
+    }
+
+    if(depth == 0)
+    {
+        return evalFor == WHITE ? board.evaluate() : -board.evaluate();
     }
 
     Move* moves = board.getLegalCaptureAndCheckMoves();
@@ -97,17 +97,11 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
         return m_alphaBetaQuiet(board, alpha, beta, quietDepth, evalFor);
     }
 
-    Move* moves = board.getLegalMoves();
-    uint8_t numMoves = board.getNumLegalMoves();
-
-    if(numMoves == 0)
-    {
-        return evalFor == WHITE ? board.evaluate() : -board.evaluate();
-    }
-
     // First search the move found to be best previously
     eval_t bestScore = -INF;
     Move bestMove = Move(0, 0);
+    Move* moves = nullptr;
+    uint8_t numMoves = 0;
     if(ttHit)
     {
         Board new_board = Board(board);
@@ -119,6 +113,13 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
         {
             goto skipFullSearch;
         } 
+    }
+
+    moves = board.getLegalMoves();
+    numMoves = board.getNumLegalMoves();
+    if(numMoves == 0)
+    {
+        return evalFor == WHITE ? board.evaluate() : -board.evaluate();
     }
 
     for (int i = 0; i < numMoves; i++)  {
