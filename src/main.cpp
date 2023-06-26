@@ -94,23 +94,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
-// -- Plan
-/**
- * Create function to generate set of legal moves when in check
- * Create a function for generating only the capturing or get out of check moves
-*/
-
-/**
- * Log for test speeds
- * Initial move generator: ~120M nps
- * Use tzcnt and blsr: ~140M nps
- * Improve rook generator: 154M nps
- * Do all pawn forward moves in parallel: 162M nps
- * Change king move checking by generating oponentAttacks: 162M nps
- * Allocate legal move list on the stack: 260M nps
- * Parallel pawn attacks and double moves: 270M nps
- * Use enpassant bitboards 274M nps
- * Use one promotion move to verify all 296M nps
- * Use if-else on attemptAddPseudoLegalMove to move the piece from the correct bitboard 305M nps
-*/

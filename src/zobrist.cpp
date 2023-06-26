@@ -154,6 +154,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
             materialHash ^= m_tables[capturedIndex][oponent][count-1];
         }
     }
+    
     hash_t enPassantHash = (m_enPassantTable[oldEnPassantSquare] * (oldEnPassantSquare != 64)) ^ (m_enPassantTable[newEnPassantSquare] * (newEnPassantSquare != 64));
     pawnHash ^= enPassantHash;
     hash ^= enPassantHash;

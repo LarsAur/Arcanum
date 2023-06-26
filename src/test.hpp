@@ -176,25 +176,6 @@ namespace ChessEngine2
         CHESS_ENGINE2_LOG("Completed all Zobrist tests")
     }
 
-    // 10 searches of 6 + 4 depth
-    // With Transposition tables size 1:   61_859ms
-    // With Transposition tables size 10:  55_831ms
-    // With Transposition tables size 12:  51_262ms
-    // With Transposition tables size 16:  50_117ms
-    // With Transposition tables size 18:  49_694ms
-    // With Transposition tables size 19: 102_686ms
-    // With Transposition tables size 20: 102_775ms
-    // With Transposition tables size 26: 108_189ms
-    // With TT size 18, Test best move in TT first:  45_803ms
-    // With TT size 20, Test best move in TT first:  24_581ms
-    // With TT size 21, Test best move in TT first:  24_689ms
-    // With TT size 22, Test best move in TT first:  24_241ms
-    // With TT size 23, Test best move in TT first:  24_693ms
-    // With TT size 24, Test best move in TT first:  24_861ms
-
-    // With TT size 22, Test best move in TT first, >= depth replace: 24_519ms
-
-
     void runSearchPerformanceTest()
     {
         CHESS_ENGINE2_LOG("Starting search performance test")
