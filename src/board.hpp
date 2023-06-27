@@ -109,7 +109,7 @@ namespace ChessEngine2
             friend class Zobrist;
 
             // Tests if the king will be checked before adding the move
-            bool attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
+            bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
         public:
             Board(const Board& board);
             Board(std::string fen);
@@ -131,7 +131,7 @@ namespace ChessEngine2
             Move* getLegalCaptureAndCheckMoves();
             uint8_t getNumLegalMoves();
             std::string getBoardString();
-
+            void generateCaptureInfo();
             static std::unordered_map<hash_t, uint8_t>* getBoardHistory();
     };
 

@@ -56,6 +56,7 @@ int main(int argc, char *argv[])
     {
 
         board.getLegalMoves();
+        board.generateCaptureInfo();
         if(board.getNumLegalMoves() == 0)
         {
             CHESS_ENGINE2_LOG("Game Ended")
@@ -76,8 +77,8 @@ int main(int argc, char *argv[])
         Move move;
         if(board.getTurn() == WHITE)
         {
-            move = player.promptForMove(board);
-            // move = searcher1.getBestMove(board, 6, 4);
+            // move = player.promptForMove(board);
+            move = searcher1.getBestMove(board, 6, 4);
         }
         else
         {

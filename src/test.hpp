@@ -13,7 +13,7 @@ namespace ChessEngine2
 
         if(numLegalMoves == 0)
         {
-            *count += 0;
+            // *count += 0;
             return;
         }
         
@@ -23,6 +23,7 @@ namespace ChessEngine2
             return;
         }
 
+        board->generateCaptureInfo();
         for(int i = 0; i < numLegalMoves; i++)
         {
             Board newBoard = Board(*board);
@@ -185,7 +186,7 @@ namespace ChessEngine2
         Board board = Board(ChessEngine2::startFEN);
 
         auto start = std::chrono::high_resolution_clock::now();
-        // Search for 16 moves
+        // Search for 10 moves
         for(int i = 0; i < 10; i++)
         {
             CHESS_ENGINE2_DEBUG("PERF: " << i << "/" << 10)

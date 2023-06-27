@@ -1,4 +1,5 @@
 #include <search.hpp>
+#include <moveSelector.hpp>
 #include <algorithm>
 #include <utils.hpp>
 
@@ -33,16 +34,18 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
 
     Move* moves = board.getLegalCaptureAndCheckMoves();
     uint8_t numMoves = board.getNumLegalMoves();
-
     if(numMoves == 0)
     {
         return evalFor == WHITE ? board.evaluate() : -board.evaluate();
     }
+    board.generateCaptureInfo();
+    MoveSelector moveSelector = MoveSelector(moves, numMoves);
 
     eval_t bestScore = -INF;
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
-        new_board.performMove(moves[i]);
+        const Move *move = moveSelector.getNextMove();
+        new_board.performMove(*move);
         eval_t score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1));
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
@@ -111,7 +114,7 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
         {
-            goto skipFullSearch;
+            goto l_complete_search;
         } 
     }
 
@@ -121,22 +124,26 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     {
         return evalFor == WHITE ? board.evaluate() : -board.evaluate();
     }
+    board.generateCaptureInfo();
 
+    { // Separate scope for moveSelector to get around goto l_complete_search
+    MoveSelector moveSelector = MoveSelector(moves, numMoves);
     for (int i = 0; i < numMoves; i++)  {
+        const Move* move = moveSelector.getNextMove();
         // Skip searching the best move found in the transposition table
-        if(bestMove == moves[i])
+        if(bestMove == *move)
         {
             continue;
         }
 
         // Generate new board and make the move
         Board new_board = Board(board);
-        new_board.performMove(moves[i]);
+        new_board.performMove(*move);
         eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
         if(score > bestScore)
         {
             bestScore = score;
-            bestMove = moves[i];
+            bestMove = *move;
         }
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
@@ -144,8 +151,9 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
             break;
         } 
     }
+    }
 
-    skipFullSearch:
+    l_complete_search:
 
     ttEntry_t newEntry;
     newEntry.value = bestScore;
@@ -171,26 +179,27 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
 
 Move Searcher::getBestMove(Board board, int depth, int quietDepth)
 {
-
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();
+    board.generateCaptureInfo();
+    MoveSelector moveSelector = MoveSelector(moves, numMoves);
 
     Move bestMove;
-
     eval_t alpha = -INF;
     eval_t beta = INF;
     eval_t bestScore = -INF;
 
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
-        new_board.performMove(moves[i]);
+        const Move *move = moveSelector.getNextMove();
+        new_board.performMove(*move);
 
         eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(1^board.getTurn()));
         
         if(score > bestScore)
         {
             bestScore = score;
-            bestMove = moves[i];
+            bestMove = *move;
             if(score > alpha)
             {   
                 alpha = score;
