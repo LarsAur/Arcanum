@@ -1,5 +1,6 @@
 #include <player.hpp>
 #include <chessutils.hpp>
+#include <utils.hpp>
 
 using namespace ChessEngine2;
 
@@ -45,22 +46,32 @@ Move Player::promptForMove(Board& board)
     int numLegalMoves = board.getNumLegalMoves();
 
     std::stringstream ss;
-    for(int i = 0; i < numLegalMoves; i++)
+    for(int i = 1; i <= numLegalMoves; i++)
     {
-        ss << i << "\t" << getUCINotation(moves[i]) << std::endl;
+        ss << i << "\t" << getUCINotation(moves[i-1]) << std::endl;
     }
 
     std::cout << ss.str() << std::endl;
 
-    int selected;
-    std::cin >> selected;
-
-    while(selected < 0 || selected >= numLegalMoves)
+    while(true)
     {
-        std::cout << "Try again" << std::endl;
-        std::cin >> selected;
+        std::string input;
+        std::cin >> input;
+
+        for(int i = 0; i < numLegalMoves; i++)
+        {
+            if(strcmp(input.c_str(), getUCINotation(moves[i]).c_str()) == 0)
+            {
+                return moves[i];
+            }
+        }
+
+        int index = atoi(input.c_str());
+        if(index > 0 && index <= numLegalMoves)
+        {
+            return moves[index - 1];
+        }
+
+        CHESS_ENGINE2_LOG("Invalid input, must be index or UCI notation. Try again");
     }
-
-    return moves[selected];
-
 }
