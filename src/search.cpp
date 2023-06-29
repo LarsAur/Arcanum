@@ -27,20 +27,29 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
         }
     }
 
-    if(depth == 0)
+    if(!board.isChecked(board.getTurn()))
     {
-        return evalFor == WHITE ? board.evaluate() : -board.evaluate();
+        eval_t standPat = evalFor == WHITE ? board.evaluate() : -board.evaluate();
+        if(standPat >= beta)
+        {
+            return beta;
+        }
+        if(alpha < standPat)
+        {
+            alpha = standPat;
+        }
     }
 
-    Move* moves = board.getLegalCaptureAndCheckMoves();
+    // Only genereate checking moves up to a certain depth    
+    Move *moves = depth > 0 ? board.getLegalCaptureAndCheckMoves() : board.getLegalCaptureMoves();
     uint8_t numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
         return evalFor == WHITE ? board.evaluate() : -board.evaluate();
     }
+
     board.generateCaptureInfo();
     MoveSelector moveSelector = MoveSelector(moves, numMoves);
-
     eval_t bestScore = -INF;
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
@@ -49,7 +58,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
         eval_t score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1));
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
-        if( alpha >= beta)
+        if(alpha >= beta)
         {
             break;
         } 
@@ -105,18 +114,6 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     Move bestMove = Move(0, 0);
     Move* moves = nullptr;
     uint8_t numMoves = 0;
-    if(ttHit)
-    {
-        Board new_board = Board(board);
-        bestMove = entry->bestMove;
-        new_board.performMove(bestMove);
-        bestScore = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
-        alpha = std::max(alpha, bestScore);
-        if(alpha >= beta)
-        {
-            goto l_complete_search;
-        } 
-    }
 
     moves = board.getLegalMoves();
     numMoves = board.getNumLegalMoves();
@@ -126,15 +123,9 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     }
     board.generateCaptureInfo();
 
-    { // Separate scope for moveSelector to get around goto l_complete_search
-    MoveSelector moveSelector = MoveSelector(moves, numMoves);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove : Move(0,0));
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
-        // Skip searching the best move found in the transposition table
-        if(bestMove == *move)
-        {
-            continue;
-        }
 
         // Generate new board and make the move
         Board new_board = Board(board);
@@ -151,9 +142,6 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
             break;
         } 
     }
-    }
-
-    l_complete_search:
 
     ttEntry_t newEntry;
     newEntry.value = bestScore;

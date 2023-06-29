@@ -6,12 +6,13 @@ namespace ChessEngine2
     {
         private:
             const Move* m_moves;
+            Move m_ttMove;
             uint8_t m_numMoves;
             std::pair<int32_t, uint8_t> m_scoreIdxPairs[218];
             int32_t m_getMoveScore(Move move);
             void m_scoreMoves();
         public:
-            MoveSelector(const Move *moves, const uint8_t numMoves);
+            MoveSelector(const Move *moves, const uint8_t numMoves, const Move ttMove = Move(0,0));
             const Move* getNextMove();
     };
 }

@@ -128,6 +128,7 @@ namespace ChessEngine2
             Color getTurn();
             bitboard_t getOponentAttacks();
             Move* getLegalMoves();
+            Move* getLegalCaptureMoves();
             Move* getLegalCaptureAndCheckMoves();
             uint8_t getNumLegalMoves();
             std::string getBoardString();
@@ -139,7 +140,7 @@ namespace ChessEngine2
     {
         private:
             hash_t m_tables[6][2][64];
-            hash_t m_enPassantTable[48]; // Only 16 is actually used
+            hash_t m_enPassantTable[64]; // Only 16 is actually used
             hash_t m_blackToMove;
 
             void m_addAllPieces(hash_t &hash, hash_t &materialHash, bitboard_t bitboard, uint8_t pieceType, Color pieceColor);

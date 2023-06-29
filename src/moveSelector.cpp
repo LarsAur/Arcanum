@@ -27,7 +27,10 @@ int32_t MoveSelector::m_getMoveScore(Move move)
         score += s_pieceValues[promotePiece] * 20;
     }
 
-
+    if(move == m_ttMove)
+    {
+        score += INT16_MAX;
+    }
 
     return score;
 }
@@ -45,10 +48,11 @@ static bool compare(std::pair<int32_t, uint8_t> o1, std::pair<int32_t, uint8_t> 
     return o1.first < o2.first;
 }
 
-MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves)
+MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, const Move ttMove)
 {
     m_numMoves = numMoves;
     m_moves = moves;
+    m_ttMove = ttMove;
 
     m_scoreMoves();
     
