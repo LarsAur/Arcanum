@@ -197,13 +197,13 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
 
     #if TT_RECORD_STATS == 1
     ttStats_t stats = m_tt->getStats();
-    CHESS_ENGINE2_LOG("Entries Added: " << stats.entriesAdded)
-    CHESS_ENGINE2_LOG("Replacements: " << stats.replacements)
-    CHESS_ENGINE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements) / float(m_tt->getEntryCount()) << "%)")
-    CHESS_ENGINE2_LOG("Lookups: " << stats.lookups)
-    CHESS_ENGINE2_LOG("Lookup misses: " << stats.lookupMisses)
-    CHESS_ENGINE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
-    CHESS_ENGINE2_LOG("Blocked replacements " << stats.blockedReplacements);
+    CE2_LOG("Entries Added: " << stats.entriesAdded)
+    CE2_LOG("Replacements: " << stats.replacements)
+    CE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements) / float(m_tt->getEntryCount()) << "%)")
+    CE2_LOG("Lookups: " << stats.lookups)
+    CE2_LOG("Lookup misses: " << stats.lookupMisses)
+    CE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
+    CE2_LOG("Blocked replacements " << stats.blockedReplacements);
     #endif
 
     m_generation += 1; // Generation will update every 4th search

@@ -72,6 +72,6 @@ Move Player::promptForMove(Board& board)
             return moves[index - 1];
         }
 
-        CHESS_ENGINE2_LOG("Invalid input, must be index or UCI notation. Try again");
+        CE2_LOG("Invalid input, must be index or UCI notation. Try again");
     }
 }

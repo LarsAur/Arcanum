@@ -53,11 +53,11 @@ namespace ChessEngine2
         
         if(count != expected)
         {
-            CHESS_ENGINE2_ERR("Failed perft with " << fen << " at " << unsigned(ply) << " depth. Expected: " << expected << " Got: " << count)
+            CE2_ERROR("Failed perft with " << fen << " at " << unsigned(ply) << " depth. Expected: " << expected << " Got: " << count)
         }
         else
         {
-            CHESS_ENGINE2_SUCCESS("Success perft with " << fen << " at " << unsigned(ply) << " depth")
+            CE2_SUCCESS("Success perft with " << fen << " at " << unsigned(ply) << " depth")
         }
 
         return count;
@@ -65,7 +65,7 @@ namespace ChessEngine2
 
     void runAllPerft()
     {
-        CHESS_ENGINE2_LOG("Running all perft")
+        CE2_LOG("Running all perft")
         uint64_t sum = 0;
         auto start = std::chrono::high_resolution_clock::now();
         sum += runPerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7, 3195901860LL);
@@ -81,7 +81,7 @@ namespace ChessEngine2
         auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
         float deltaTime = micros.count() / 1000000.0f;
 
-        CHESS_ENGINE2_LOG("Running all perft completed in " << micros.count() / 1000 << "ms. " << (sum / deltaTime) << " Nodes / Sec")
+        CE2_LOG("Running all perft completed in " << micros.count() / 1000 << "ms. " << (sum / deltaTime) << " Nodes / Sec")
     }
 
     uint64_t runCaptureMoves(std::string fen, uint64_t expected)
@@ -92,11 +92,11 @@ namespace ChessEngine2
 
         if(count != expected)
         {
-            CHESS_ENGINE2_ERR("Failed capture moves test with " << fen << " Expected: " << expected << " Got: " << count)
+            CE2_ERROR("Failed capture moves test with " << fen << " Expected: " << expected << " Got: " << count)
         }
         else
         {
-            CHESS_ENGINE2_SUCCESS("Success capture moves test with " << fen)
+            CE2_SUCCESS("Success capture moves test with " << fen)
         }
 
         return count;
@@ -104,7 +104,7 @@ namespace ChessEngine2
 
     void runAllCaptureMoves()
     {
-        CHESS_ENGINE2_LOG("Running all capture moves")
+        CE2_LOG("Running all capture moves")
         runCaptureMoves("k7/8/1r1b1n2/8/q2Q2p1/2P5/1q1p1p2/7K w - - 0 1", 7);
         runCaptureMoves("k7/8/1r1b1n2/5K2/q2Q2p1/2P5/1q1p1p2/8 w - - 0 1", 8);
         runCaptureMoves("8/8/3q1p2/2r3p1/4N3/2r3P1/3K1P2/8 w - - 0 1", 3);
@@ -113,12 +113,12 @@ namespace ChessEngine2
         runCaptureMoves("k7/4b3/8/8/3QR1n1/8/4p3/K7 w - - 0 1", 3);
         runCaptureMoves("7k/1q6/8/5n2/4B3/8/2R5/Kb5p w - - 0 1", 3);
         runCaptureMoves("8/8/8/2bpb3/3K4/4b3/8/8 w - - 0 1", 3);
-        CHESS_ENGINE2_LOG("Completed all capture moves")
+        CE2_LOG("Completed all capture moves")
     }
 
     void runAllZobristTests()
     {
-        CHESS_ENGINE2_LOG("Testing Zobrist")
+        CE2_LOG("Testing Zobrist")
 
         // Move Rook
         Board board1 = Board("k5r1/8/8/8/8/8/8/1R5K w - - 0 1");
@@ -126,11 +126,11 @@ namespace ChessEngine2
         Board board2 = Board("k5r1/8/8/8/8/8/8/2R4K b - - 0 1");
         if(board1.getHash() != board2.getHash())
         {
-            CHESS_ENGINE2_ERR("ROOK: Zobrist did not match")
+            CE2_ERROR("ROOK: Zobrist did not match")
         }
         else
         {
-            CHESS_ENGINE2_SUCCESS("ROOK: Zobrist matched")
+            CE2_SUCCESS("ROOK: Zobrist matched")
         }
 
         // Capture Rook
@@ -139,11 +139,11 @@ namespace ChessEngine2
         board2 = Board("k7/8/8/8/8/8/8/2R4K b - - 0 1");
         if(board1.getHash() != board2.getHash())
         {
-            CHESS_ENGINE2_ERR("Capture rook: Zobrist did not match")
+            CE2_ERROR("Capture rook: Zobrist did not match")
         }
         else
         {
-            CHESS_ENGINE2_SUCCESS("Capture rook: Zobrist matched")
+            CE2_SUCCESS("Capture rook: Zobrist matched")
         }
 
         // Move back and forth
@@ -155,11 +155,11 @@ namespace ChessEngine2
         board1.performMove(Move(58, 59, MOVE_INFO_QUEEN_MOVE));
         if(board1.getHash() != board2.getHash())
         {
-            CHESS_ENGINE2_ERR("Repeat: Zobrist did not match")
+            CE2_ERROR("Repeat: Zobrist did not match")
         }
         else
         {
-            CHESS_ENGINE2_SUCCESS("Repeat: Zobrist matched")
+            CE2_SUCCESS("Repeat: Zobrist matched")
         }
 
         // Recreate board
@@ -167,19 +167,19 @@ namespace ChessEngine2
         board2 = Board(board1);
         if(board1.getHash() != board2.getHash())
         {
-            CHESS_ENGINE2_ERR("Recreate: Zobrist did not match")
+            CE2_ERROR("Recreate: Zobrist did not match")
         }
         else
         {
-            CHESS_ENGINE2_SUCCESS("Recreate: Zobrist matched")
+            CE2_SUCCESS("Recreate: Zobrist matched")
         }
 
-        CHESS_ENGINE2_LOG("Completed all Zobrist tests")
+        CE2_LOG("Completed all Zobrist tests")
     }
 
     void runSearchPerformanceTest()
     {
-        CHESS_ENGINE2_LOG("Starting search performance test")
+        CE2_LOG("Starting search performance test")
 
         Searcher whiteSearcher = Searcher();
         Searcher blackSearcher = Searcher();
@@ -189,7 +189,7 @@ namespace ChessEngine2
         // Search for 10 moves
         for(int i = 0; i < 10; i++)
         {
-            CHESS_ENGINE2_DEBUG("PERF: " << i << "/" << 10)
+            CE2_DEBUG("PERF: " << i << "/" << 10)
             Move whiteMove = whiteSearcher.getBestMove(board, 6, 4);
             board.performMove(whiteMove);
             Move blackMove = blackSearcher.getBestMove(board, 6, 4);
@@ -199,6 +199,6 @@ namespace ChessEngine2
         std::chrono::duration<double> diff = end - start;
         auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
 
-        CHESS_ENGINE2_LOG("Completed search performance in " << micros.count() / 1000 << "ms")
+        CE2_LOG("Completed search performance in " << micros.count() / 1000 << "ms")
     }
 }

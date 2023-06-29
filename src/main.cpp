@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
         board.generateCaptureInfo();
         if(board.getNumLegalMoves() == 0)
         {
-            CHESS_ENGINE2_LOG("Game Ended")
+            CE2_LOG("Game Ended")
             break;
         }
 
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
         {
             if(it->second == 3) // The check id done after the board is added to history
             {
-                CHESS_ENGINE2_LOG("Stalemate")
+                CE2_LOG("Stalemate")
                 break;
             }
         }

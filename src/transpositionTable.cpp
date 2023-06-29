@@ -27,7 +27,7 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
         .blockedReplacements = 0LL,
     };
 
-    CHESS_ENGINE2_LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
+    CE2_LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
 }
 
 TranspositionTable::~TranspositionTable()

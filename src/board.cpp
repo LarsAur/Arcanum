@@ -1461,7 +1461,7 @@ std::string Board::getBoardString()
             else if(m_bbTypedPieces[W_KING][BLACK] & mask)
                 ss << "k ";
             else 
-                ss << (((x + y) % 2 == 0) ? CHESS_ENGINE2_COLOR_GREEN : CHESS_ENGINE2_COLOR_WHITE) << ". " << CHESS_ENGINE2_COLOR_WHITE;
+                ss << (((x + y) % 2 == 0) ? CE2_COLOR_GREEN : CE2_COLOR_WHITE) << ". " << CE2_COLOR_WHITE;
         }
         ss << "| " << y+1 << std::endl;
     }

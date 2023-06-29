@@ -51,7 +51,7 @@ namespace ChessEngine2
             return _popcnt64 (bitboard);
         #else
             
-            CHESS_ENGINE2_ERR("CNTSBITS not implemented")
+            CE2_ERROR("CNTSBITS not implemented")
             return 0;
         #endif
     }
