@@ -170,7 +170,10 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves);
+
+    bool ttHit;
+    ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove: Move(0,0));
 
     Move bestMove;
     eval_t alpha = -INF;
