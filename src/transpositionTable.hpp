@@ -11,9 +11,10 @@ namespace ChessEngine2
 
     #define CACHE_LINE_SIZE 64
 
+    typedef hash_t ttEntryHash_t; // Use this to edit the size of the stored hash
     typedef struct ttEntry_t
     {
-        uint16_t hash;
+        ttEntryHash_t hash;
         Move bestMove;
         eval_t value;
         int8_t depth; // Depth == INT8_MIN marks the entry as invalid
@@ -58,5 +59,8 @@ namespace ChessEngine2
             void addEntry(ttEntry_t entry, hash_t hash);
             ttStats_t getStats();
             size_t getEntryCount();
+
+            void dump(std::string filename);
+            void load(std::string filename);
     };
 }

@@ -76,12 +76,14 @@ int main(int argc, char *argv[])
         Move move;
         if(board.getTurn() == WHITE)
         {
-            move = player.promptForMove(board);
+            // move = player.promptForMove(board);
             // move = searcher1.getBestMove(board, 6, 4);
+            move = searcher1.getBestMoveInTime(board, 2000, 4);
         }
         else
         {
-            move = searcher2.getBestMove(board, 6, 4);
+            move = player.promptForMove(board);
+            // move = searcher2.getBestMoveInTime(board, 10000, 4);
         }
         
         board.performMove(move);

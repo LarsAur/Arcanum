@@ -20,5 +20,6 @@ namespace ChessEngine2
             Searcher();
             ~Searcher();
             Move getBestMove(Board board, int depth, int quietDepth);
+            Move getBestMoveInTime(Board board, int ms, int quietDepth);
     };
 }

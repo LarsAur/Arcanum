@@ -1,3 +1,4 @@
+#include <chrono>
 #include <search.hpp>
 #include <moveSelector.hpp>
 #include <algorithm>
@@ -172,8 +173,73 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
     board.generateCaptureInfo();
     Move bestMove;
 
-    for(int d = depth; d <= depth; d++)
+    bool ttHit;
+    ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove: Move(0,0));
+    
+    eval_t alpha = -INF;
+    eval_t beta = INF;
+    eval_t bestScore = -INF;
+
+    for (int i = 0; i < numMoves; i++)  {
+        Board new_board = Board(board);
+        const Move *move = moveSelector.getNextMove();
+        new_board.performMove(*move);
+
+        eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
+        
+        if(score > bestScore)
+        {
+            bestScore = score;
+            bestMove = *move;
+            if(score > alpha)
+            {   
+                alpha = score;
+            }
+        }
+    }
+
+    ttEntry_t newEntry;
+    newEntry.value = bestScore;
+    newEntry.bestMove = bestMove;
+    newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
+    newEntry.depth = depth;
+    m_tt->addEntry(newEntry, board.getHash());
+
+    #if TT_RECORD_STATS == 1
+    ttStats_t stats = m_tt->getStats();
+    CE2_LOG("Entries Added: " << stats.entriesAdded)
+    CE2_LOG("Replacements: " << stats.replacements)
+    CE2_LOG("Updates: " << stats.updates)
+    CE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates) / float(m_tt->getEntryCount()) << "%)")
+    CE2_LOG("Lookups: " << stats.lookups)
+    CE2_LOG("Lookup misses: " << stats.lookupMisses)
+    CE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
+    CE2_LOG("Blocked replacements " << stats.blockedReplacements);
+    #endif
+
+    m_generation += 1; // Generation will update every 4th search
+
+    return bestMove;
+}
+
+Move Searcher::getBestMoveInTime(Board board, int ms, int quietDepth)
+{
+    Move* moves = board.getLegalMoves();
+    uint8_t numMoves = board.getNumLegalMoves();
+    board.generateCaptureInfo();
+    Move bestMove;
+
+    // m_tt->load("test_TT.dump");
+
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
+    int depth = 0;
+    while(micros.count() < 1000 * ms || depth == 0)
     {
+        depth++;
         bool ttHit;
         ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
         MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove: Move(0,0));
@@ -187,7 +253,7 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
             const Move *move = moveSelector.getNextMove();
             new_board.performMove(*move);
 
-            eval_t score = -m_alphaBeta(new_board, -beta, -alpha, d - 1, quietDepth);
+            eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
             
             if(score > bestScore)
             {
@@ -204,9 +270,16 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
         newEntry.value = bestScore;
         newEntry.bestMove = bestMove;
         newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
-        newEntry.depth = d;
+        newEntry.depth = depth;
         m_tt->addEntry(newEntry, board.getHash());
+
+        // Update the time used to process
+        end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> diff = end - start;
+        micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
     }
+
+    CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     #if TT_RECORD_STATS == 1
     ttStats_t stats = m_tt->getStats();

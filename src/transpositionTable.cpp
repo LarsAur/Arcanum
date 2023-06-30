@@ -1,6 +1,9 @@
 #include <transpositionTable.hpp>
 #include <utils.hpp>
 #include <cmath>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 using namespace ChessEngine2;
 
@@ -37,7 +40,7 @@ TranspositionTable::~TranspositionTable()
 
 inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
 {
-    return (hash >> 16) % m_clusterCount;
+    return hash % m_clusterCount;
 }
 
 ttEntry_t* TranspositionTable::getEntry(hash_t hash, bool* hit)
@@ -51,7 +54,7 @@ ttEntry_t* TranspositionTable::getEntry(hash_t hash, bool* hit)
     for(size_t i = 0; i < clusterSize; i++)
     {
         ttEntry_t entry = cluster->entries[i];
-        if(entry.depth != 0 && entry.hash == (uint16_t)hash)
+        if(entry.depth != INT8_MIN && entry.hash == (ttEntryHash_t)hash)
         {
             *hit = true;
             return &cluster->entries[i];
@@ -76,7 +79,7 @@ inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
 void TranspositionTable::addEntry(ttEntry_t entry, hash_t hash)
 {
     ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
-    entry.hash = (uint16_t)hash;
+    entry.hash = (ttEntryHash_t)hash;
 
     #if TT_RECORD_STATS == 1
         m_stats.entriesAdded++;
@@ -148,4 +151,113 @@ ttStats_t TranspositionTable::getStats()
 size_t TranspositionTable::getEntryCount()
 {
     return m_entryCount;
+}
+
+void TranspositionTable::dump(std::string filename)
+{
+    std::ofstream file;
+    file.open(filename);
+
+    if(!file.is_open())
+    {
+        CE2_WARNING("Failed to create file: " << filename)
+        return;
+    }
+    CE2_LOG("Created TT dump: " << filename)
+
+    // Header
+    file << "TT\n";
+    file << m_clusterCount << "\n";
+    file << clusterSize << "\n";
+
+    // Data
+    for(size_t c = 0; c < m_clusterCount; c++)
+    {
+        for(size_t i = 0; i < clusterSize; i++)
+        {
+            file << m_table[c].entries[i].hash << "\n";
+            file << m_table[c].entries[i].depth << "\n";
+            file << m_table[c].entries[i].flags << "\n";
+            file << m_table[c].entries[i].value << "\n";
+            file << m_table[c].entries[i].bestMove.from << "\n";
+            file << m_table[c].entries[i].bestMove.to << "\n";
+            file << m_table[c].entries[i].bestMove.moveInfo << "\n";
+        }
+    }
+
+    file.close();
+}
+
+void TranspositionTable::load(std::string filename)
+{
+    std::ifstream file;
+    file.open(filename);
+    if(!file.is_open())
+    {
+        CE2_ERROR("Failed to load file: " << filename)
+        return;
+    }
+    CE2_LOG("Loading TT dump: " << filename)
+
+    std::string line;
+    // Header
+    if(!std::getline(file, line))
+    {
+        CE2_ERROR("Missing TT dump header")
+        file.close();
+        return;
+    }
+
+    if(strcmp(line.c_str(), "TT"))
+    {
+        CE2_ERROR("TT header is not correct: " << line)
+        file.close();
+        return;
+    }
+
+    if(!std::getline(file, line))
+    {
+        CE2_ERROR("Missing cluster count header")
+        file.close();
+        return;
+    }
+
+    if((size_t)atol(line.c_str()) != m_clusterCount)
+    {
+        CE2_ERROR("Cluster count does not match" << line << " != " << m_clusterCount)
+        file.close();
+        return;
+    }
+
+    if(!std::getline(file, line))
+    {
+        CE2_ERROR("Missing cluster size header")
+        file.close();
+        return;
+    }
+
+    if((size_t)atol(line.c_str()) != clusterSize)
+    {
+        CE2_ERROR("Cluster size does not match" << line << " != " << clusterSize)
+        file.close();
+        return;
+    }
+
+    // Load table
+    for(size_t c = 0; c < m_clusterCount; c++)
+    {
+        for(size_t i = 0; i < clusterSize; i++)
+        {
+            std::getline(file, line); m_table[c].entries[i].hash = atoi(line.c_str());
+            std::getline(file, line); m_table[c].entries[i].depth = atoi(line.c_str());
+            std::getline(file, line); m_table[c].entries[i].flags = atoi(line.c_str());
+            std::getline(file, line); m_table[c].entries[i].value = atoi(line.c_str());
+            std::getline(file, line); m_table[c].entries[i].bestMove.from = atoi(line.c_str());
+            std::getline(file, line); m_table[c].entries[i].bestMove.to = atoi(line.c_str());
+            std::getline(file, line); m_table[c].entries[i].bestMove.moveInfo = atoi(line.c_str());
+        }
+    }
+
+    file.close();
+    CE2_SUCCESS("Completed load of " << filename);
 }
