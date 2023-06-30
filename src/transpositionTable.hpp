@@ -16,7 +16,7 @@ namespace ChessEngine2
         uint16_t hash;
         Move bestMove;
         eval_t value;
-        uint8_t depth; // Depth == 0 marks the entry as invalid
+        int8_t depth; // Depth == INT8_MIN marks the entry as invalid
         uint8_t flags; // Two first bits are FLAG, upper 6 bits are generation
     } ttEntry_t;
 
@@ -24,6 +24,7 @@ namespace ChessEngine2
     {
         uint64_t entriesAdded;
         uint64_t replacements;
+        uint64_t updates;
         uint64_t lookups;
         uint64_t lookupMisses;
         uint64_t blockedReplacements;

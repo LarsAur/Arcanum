@@ -15,7 +15,7 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
     {
         for(size_t j = 0; j < m_clusterCount; j++)
         {
-            m_table[i].entries[j].depth = 0;
+            m_table[i].entries[j].depth = INT8_MIN;
         }
     }
 
@@ -76,26 +76,41 @@ inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
 void TranspositionTable::addEntry(ttEntry_t entry, hash_t hash)
 {
     ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
+    entry.hash = (uint16_t)hash;
 
     #if TT_RECORD_STATS == 1
         m_stats.entriesAdded++;
     #endif
 
+    // Check if the entry is already in the cluster
+    // If so, replace it
+    for(size_t i = 0; i < clusterSize; i++)
+    {
+        ttEntry_t _entry = cluster->entries[i];
+        if(_entry.hash == entry.hash && _entry.depth < entry.depth)
+        {
+            #if TT_RECORD_STATS == 1
+                m_stats.updates++;
+            #endif
+            cluster->entries[i] = entry;
+            return;
+        }
+    }
+
     // Search the cluster for an empty entry
     for(size_t i = 0; i < clusterSize; i++)
     {
         ttEntry_t _entry = cluster->entries[i];
-        if(_entry.depth == 0)
+        if(_entry.depth < 0)
         {
             cluster->entries[i] = entry;
-            cluster->entries->hash = (uint16_t) hash;
             return;
         }
     }
 
     // If no empty entry is found, attempt to find a valid replacement
     ttEntry_t *replace = nullptr;
-    int8_t bestReplaceScore = -1;
+    int8_t bestReplaceScore = 0;
     for(size_t i = 0; i < clusterSize; i++)
     {
         ttEntry_t _entry = cluster->entries[i];

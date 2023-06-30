@@ -54,7 +54,6 @@ int main(int argc, char *argv[])
 
     for(int i = 0; i < 400; i++)
     {
-
         board.getLegalMoves();
         board.generateCaptureInfo();
         if(board.getNumLegalMoves() == 0)

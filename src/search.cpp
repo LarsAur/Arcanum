@@ -15,7 +15,7 @@ Searcher::~Searcher()
     
 }
 
-eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int depth, Color evalFor)
+eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int depth)
 {
     std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
     auto it = boardHistory->find(board.getHash());
@@ -29,7 +29,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
 
     if(!board.isChecked(board.getTurn()))
     {
-        eval_t standPat = evalFor == WHITE ? board.evaluate() : -board.evaluate();
+        eval_t standPat = board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
         if(standPat >= beta)
         {
             return beta;
@@ -45,7 +45,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
     uint8_t numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
-        return evalFor == WHITE ? board.evaluate() : -board.evaluate();
+        return board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
     }
 
     board.generateCaptureInfo();
@@ -55,7 +55,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
         Board new_board = Board(board);
         const Move *move = moveSelector.getNextMove();
         new_board.performMove(*move);
-        eval_t score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1, Color(evalFor ^ 1));
+        eval_t score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1);
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
@@ -67,7 +67,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
     return bestScore;
 }
 
-eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, int quietDepth, Color evalFor)
+eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, int quietDepth)
 {
     // Check for repeated positions from previous searches
     std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
@@ -106,7 +106,7 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
 
     if(depth == 0)
     {
-        return m_alphaBetaQuiet(board, alpha, beta, quietDepth, evalFor);
+        return m_alphaBetaQuiet(board, alpha, beta, quietDepth);
     }
 
     // First search the move found to be best previously
@@ -119,7 +119,7 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
-        return evalFor == WHITE ? board.evaluate() : -board.evaluate();
+        return board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
     }
     board.generateCaptureInfo();
 
@@ -130,7 +130,7 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
         // Generate new board and make the move
         Board new_board = Board(board);
         new_board.performMove(*move);
-        eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(evalFor ^ 1));
+        eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
         if(score > bestScore)
         {
             bestScore = score;
@@ -170,39 +170,50 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();
     board.generateCaptureInfo();
-
-    bool ttHit;
-    ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove: Move(0,0));
-
     Move bestMove;
-    eval_t alpha = -INF;
-    eval_t beta = INF;
-    eval_t bestScore = -INF;
 
-    for (int i = 0; i < numMoves; i++)  {
-        Board new_board = Board(board);
-        const Move *move = moveSelector.getNextMove();
-        new_board.performMove(*move);
-
-        eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth, Color(1^board.getTurn()));
+    for(int d = depth; d <= depth; d++)
+    {
+        bool ttHit;
+        ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove: Move(0,0));
         
-        if(score > bestScore)
-        {
-            bestScore = score;
-            bestMove = *move;
-            if(score > alpha)
-            {   
-                alpha = score;
+        eval_t alpha = -INF;
+        eval_t beta = INF;
+        eval_t bestScore = -INF;
+
+        for (int i = 0; i < numMoves; i++)  {
+            Board new_board = Board(board);
+            const Move *move = moveSelector.getNextMove();
+            new_board.performMove(*move);
+
+            eval_t score = -m_alphaBeta(new_board, -beta, -alpha, d - 1, quietDepth);
+            
+            if(score > bestScore)
+            {
+                bestScore = score;
+                bestMove = *move;
+                if(score > alpha)
+                {   
+                    alpha = score;
+                }
             }
         }
+
+        ttEntry_t newEntry;
+        newEntry.value = bestScore;
+        newEntry.bestMove = bestMove;
+        newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
+        newEntry.depth = d;
+        m_tt->addEntry(newEntry, board.getHash());
     }
 
     #if TT_RECORD_STATS == 1
     ttStats_t stats = m_tt->getStats();
     CE2_LOG("Entries Added: " << stats.entriesAdded)
     CE2_LOG("Replacements: " << stats.replacements)
-    CE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements) / float(m_tt->getEntryCount()) << "%)")
+    CE2_LOG("Updates: " << stats.updates)
+    CE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates) / float(m_tt->getEntryCount()) << "%)")
     CE2_LOG("Lookups: " << stats.lookups)
     CE2_LOG("Lookup misses: " << stats.lookupMisses)
     CE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
