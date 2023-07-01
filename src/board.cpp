@@ -1422,7 +1422,7 @@ eval_t Board::evaluate()
     }
     
     // return pieceScore;
-    return pieceScore + mobilityScore + pawnScore;
+    return pieceScore + mobilityScore + (pawnScore << 3);
 }
 
 Color Board::getTurn()
