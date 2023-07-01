@@ -24,7 +24,7 @@ inline int32_t MoveSelector::m_getMoveScore(Move move)
     bitboard_t bbTo = (1LL << move.to);
     if(m_bbOpponentPawnAttacks & bbTo)
     {
-        score -= 2*s_pieceValues[movePiece];
+        score -= (s_pieceValues[movePiece] << 1);
     }
 
     if(m_bbOpponentAttacks & bbTo)
@@ -35,13 +35,13 @@ inline int32_t MoveSelector::m_getMoveScore(Move move)
     if(move.moveInfo & MOVE_INFO_CAPTURE_MASK)
     {
         Piece capturePiece = Piece(LS1B(move.moveInfo & MOVE_INFO_CAPTURE_MASK) - 16);
-        score += 10 * s_pieceValues[capturePiece] - s_pieceValues[movePiece];
+        score += (s_pieceValues[capturePiece] << 3) - s_pieceValues[movePiece];
     }
 
     if(move.moveInfo & MOVE_INFO_PROMOTE_MASK)
     {
         Piece promotePiece = Piece(LS1B(move.moveInfo & MOVE_INFO_PROMOTE_MASK) - 11); // Not -12 because rook is at index 1
-        score += s_pieceValues[promotePiece] * 20;
+        score += s_pieceValues[promotePiece] << 4;
     }
 
     return score;
