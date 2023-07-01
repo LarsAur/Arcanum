@@ -5,6 +5,8 @@
 #include <search.hpp>
 #include <player.hpp>
 
+#include <uci.hpp>
+
 using namespace ChessEngine2;
 
 int main(int argc, char *argv[])
@@ -13,6 +15,13 @@ int main(int argc, char *argv[])
     ChessEngine2::initGenerateKingMoves();
     ChessEngine2::initGenerateRookMoves();
     ChessEngine2::initGenerateBishopMoves();
+
+
+    if(argc == 1 || (argc > 1 && strncmp("--nouci", argv[1], 8)))
+    {
+        UCI::loop();
+        exit(EXIT_SUCCESS);
+    }
 
     bool exitAfterTesting = false;
     for(int i = 1; i < argc; i++)
@@ -39,13 +48,12 @@ int main(int argc, char *argv[])
 
     if(exitAfterTesting)
     {
-        exit(0);
+        exit(EXIT_SUCCESS);
     }
 
     ChessEngine2::Board board = ChessEngine2::Board(ChessEngine2::startFEN);
     board.addBoardToHistory();
-    std::cout << board.getBoardString();
-
+    CE2_LOG(std::endl << board.getBoardString())
 
     // Use two different searchers so they use separate transposition tables
     Searcher searcher1 = Searcher(); 
@@ -89,9 +97,10 @@ int main(int argc, char *argv[])
         board.performMove(move);
         board.addBoardToHistory();
 
-        std::cout << board.getBoardString();
-        std::cout << board.evaluate() << std::endl;
-        std::cout << "Turn: " << board.getTurn() << std::endl;
+        CE2_LOG(std::endl << board.getBoardString())
+
+        CE2_LOG("Eval of current board: " << board.evaluate());
+        CE2_LOG("Turn: " << (board.getTurn() == WHITE ? "White" : "Black"));
     }
 
     return 0;

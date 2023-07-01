@@ -51,7 +51,7 @@ Move Player::promptForMove(Board& board)
         ss << i << "\t" << getUCINotation(moves[i-1]) << std::endl;
     }
 
-    std::cout << ss.str() << std::endl;
+    CE2_LOG(std::endl << ss.str())
 
     while(true)
     {

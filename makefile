@@ -18,21 +18,25 @@ OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))						 # Create list of
 
 all: setup $(BUILDDIR)/$(PROJECT).exe
 
+.PHONY: uci
+uci: $(BUILDDIR)/$(PROJECT).exe
+	./$^
+
 .PHONY: run
 run: $(BUILDDIR)/$(PROJECT).exe
-	./$^
+	./$^ --nouci
 
 .PHONY: test
 test: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --test
+	./$^ --nouci --test
 
 .PHONY: perft
 perft: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --perft
+	./$^ --nouci --perft
 
 .PHONY: perf
 perf: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --perf
+	./$^ --nouci --perf
 
 clean: 
 	-rmdir $(BUILDDIR) /s /q
