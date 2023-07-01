@@ -4,6 +4,7 @@
 #include <iostream>
 #include <bitset>
 #include <sstream>
+#include <utils.hpp>
 
 #if __x86_64__ || _WIN64
 // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html
@@ -41,7 +42,7 @@ namespace ChessEngine2
             for (int i = 0, j = 7; i < 8; i++, j--) {
                 reversed[j] = x[i];
             }
-            std::cout << reversed << std::endl;
+            CE2_LOG(reversed)
         }
     }
 

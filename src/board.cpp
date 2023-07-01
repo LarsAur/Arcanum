@@ -93,7 +93,7 @@ Board::Board(std::string fen)
             m_pieces[square] = Piece(W_QUEEN + (B_PAWN - W_PAWN) * uint8_t(color));
             break;
         default:
-            std::cout << "Unknown piece: " << chr << std::endl; 
+            CE2_ERROR("Unknown piece: " << chr)
             exit(-1);
         }
     }
@@ -102,7 +102,7 @@ Board::Board(std::string fen)
     char chr = fen[fenPosition++];
     if(chr != ' ')
     {   
-        std::cout << "Missing space after board" << std::endl; 
+        CE2_ERROR("Missing space after board"); 
         exit(-1);
     }
 
@@ -111,7 +111,7 @@ Board::Board(std::string fen)
     if(chr == 'w') m_turn = WHITE;
     else if(chr == 'b') m_turn = BLACK;
     else {
-        std::cout << "Illegal turn: " << chr << std::endl; 
+        CE2_ERROR("Illegal turn: " << chr); 
         exit(-1);
     }
 
@@ -119,7 +119,7 @@ Board::Board(std::string fen)
     chr = fen[fenPosition++];
     if(chr != ' ')
     {   
-        std::cout << "Missing space after turn" << std::endl; 
+        CE2_ERROR("Missing space after turn"); 
         exit(-1);
     }
 
@@ -138,7 +138,7 @@ Board::Board(std::string fen)
             case 'k': m_castleRights |= BLACK_KING_SIDE; break;
             case 'q': m_castleRights |= BLACK_QUEEN_SIDE; break;
             default:
-                std::cout << "Illegal castle right: " << chr << std::endl; 
+                CE2_ERROR("Illegal castle right: " << chr); 
                 exit(-1);
                 break;
             }
@@ -152,7 +152,7 @@ Board::Board(std::string fen)
         chr = fen[fenPosition++];
         if(chr != ' ')
         {
-            std::cout << "Missing space after castle rights" << std::endl; 
+            CE2_ERROR("Missing space after castle rights"); 
             exit(-1);
         }
     }
@@ -170,7 +170,7 @@ Board::Board(std::string fen)
 
         if(file < 0 || file > 7 || rank < 0 || rank > 7)
         {
-            std::cout << "Illegal enpassant square" << std::endl; 
+            CE2_ERROR("Illegal enpassant square"); 
             exit(-1);
         }
 
@@ -193,15 +193,14 @@ Board::Board(std::string fen)
     chr = fen[fenPosition++];
     if(chr != ' ')
     {   
-        std::cout << "Missing space after enpassant square" << std::endl; 
+        CE2_ERROR("Missing space after enpassant square");
         exit(-1);
     }
 
     chr = fen[fenPosition++];
     if(chr < '0' || chr > '9')
     {   
-        std::cout << chr << std::endl; 
-        std::cout << "Number of half moves is not a number" << std::endl; 
+        CE2_ERROR("Number of half moves is not a number: " << chr) 
         exit(-1);
     }
 
@@ -213,14 +212,14 @@ Board::Board(std::string fen)
 
     if(fenPosition == (int) fen.length())
     {
-        std::cout << "Missing number of full moves" << std::endl; 
+        CE2_ERROR("Missing number of full moves") 
         exit(-1);
     }
 
     chr = fen[fenPosition];
     if(chr < '0' || chr > '9')
     {   
-        std::cout << "Number of full moves is not a number" << std::endl; 
+        CE2_ERROR("Number of full moves is not a number") 
         exit(-1);
     }
 

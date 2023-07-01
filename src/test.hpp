@@ -33,7 +33,7 @@ namespace ChessEngine2
             {
                 uint64_t _count = 0;
                 findNumMovesAtDepth(depth - 1, &newBoard, &_count, false);
-                std::cout << ChessEngine2::getArithmeticNotation(legalMoves[i].from) << ChessEngine2::getArithmeticNotation(legalMoves[i].to) << " " << unsigned(legalMoves[i].moveInfo) << ": " << _count << std::endl;
+                CE2_LOG(ChessEngine2::getArithmeticNotation(legalMoves[i].from) << ChessEngine2::getArithmeticNotation(legalMoves[i].to) << " " << unsigned(legalMoves[i].moveInfo) << ": " << _count);
                 *count += _count;
             }
             else
@@ -47,7 +47,7 @@ namespace ChessEngine2
     {
         uint64_t count = 0;
         Board board = Board(fen);
-        std::cout << board.getBoardString();
+        CE2_LOG(std::endl << board.getBoardString())
 
         findNumMovesAtDepth(ply, &board, &count);
         
