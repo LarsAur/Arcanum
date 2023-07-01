@@ -127,6 +127,7 @@ namespace ChessEngine2
 
             Color getTurn();
             bitboard_t getOponentAttacks();
+            bitboard_t getOponentPawnAttacks();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();
             Move* getLegalCaptureAndCheckMoves();

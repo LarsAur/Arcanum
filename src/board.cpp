@@ -1267,12 +1267,12 @@ hash_t Board::getHash()
 // Generates a bitboard of all attacks of oponents
 // The moves does not check if the move will make the oponent become checked, or if the attack is on its own pieces
 // Used for checking if the king is in check after king moves.
-inline bitboard_t Board::getOponentAttacks()
+bitboard_t Board::getOponentAttacks()
 {
     Color oponent = Color(m_turn ^ 1);
 
     // Pawns
-    bitboard_t attacks = oponent == WHITE ? getWhitePawnAttacks(m_bbTypedPieces[W_PAWN][WHITE]) : getBlackPawnAttacks(m_bbTypedPieces[W_PAWN][BLACK]);
+    bitboard_t attacks = getOponentPawnAttacks();
 
     // King
     attacks |= getKingMoves(LS1B(m_bbTypedPieces[W_KING][oponent]));
@@ -1302,6 +1302,12 @@ inline bitboard_t Board::getOponentAttacks()
         attacks |= getRookMoves(allPiecesNoKing, popLS1B(&tmpRooks));
     }
 
+    return attacks;
+}
+
+bitboard_t Board::getOponentPawnAttacks()
+{
+    bitboard_t attacks = m_turn == BLACK ? getWhitePawnAttacks(m_bbTypedPieces[W_PAWN][WHITE]) : getBlackPawnAttacks(m_bbTypedPieces[W_PAWN][BLACK]);
     return attacks;
 }
 

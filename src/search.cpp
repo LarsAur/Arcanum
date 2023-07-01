@@ -50,7 +50,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
     }
 
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, &board);
     eval_t bestScore = -INF;
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
@@ -124,7 +124,7 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     }
     board.generateCaptureInfo();
 
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove : Move(0,0));
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove : Move(0,0));
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
@@ -175,7 +175,7 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
 
     bool ttHit;
     ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove: Move(0,0));
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
     
     eval_t alpha = -INF;
     eval_t beta = INF;
@@ -230,8 +230,6 @@ Move Searcher::getBestMoveInTime(Board board, int ms, int quietDepth)
     board.generateCaptureInfo();
     Move bestMove;
 
-    // m_tt->load("test_TT.dump");
-
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> diff = end - start;
@@ -242,7 +240,7 @@ Move Searcher::getBestMoveInTime(Board board, int ms, int quietDepth)
         depth++;
         bool ttHit;
         ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, ttHit ? entry->bestMove: Move(0,0));
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
         
         eval_t alpha = -INF;
         eval_t beta = INF;

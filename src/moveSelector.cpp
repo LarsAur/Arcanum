@@ -9,11 +9,28 @@ static uint8_t s_pieceValues[6]
     10, 50, 30, 30, 90, 100
 };
 
-int32_t MoveSelector::m_getMoveScore(Move move)
+inline int32_t MoveSelector::m_getMoveScore(Move move)
 {
-    // TODO: Punish moves which move into opponent pawn attacks
+    // Always prioritize PV moves
+    if(move == m_ttMove)
+    {
+        return INT16_MAX;
+    }
+
     Piece movePiece = Piece(LS1B(move.moveInfo & MOVE_INFO_MOVE_MASK));
     int32_t score = 0;
+
+    // Punish moves to positions attacked by opponent pawns
+    bitboard_t bbTo = (1LL << move.to);
+    if(m_bbOpponentPawnAttacks & bbTo)
+    {
+        score -= 2*s_pieceValues[movePiece];
+    }
+
+    if(m_bbOpponentAttacks & bbTo)
+    {
+        score -= s_pieceValues[movePiece];
+    }
 
     if(move.moveInfo & MOVE_INFO_CAPTURE_MASK)
     {
@@ -27,15 +44,10 @@ int32_t MoveSelector::m_getMoveScore(Move move)
         score += s_pieceValues[promotePiece] * 20;
     }
 
-    if(move == m_ttMove)
-    {
-        score += INT16_MAX;
-    }
-
     return score;
 }
 
-void MoveSelector::m_scoreMoves()
+inline void MoveSelector::m_scoreMoves()
 {
     for(uint8_t i = 0; i < m_numMoves; i++)
     {
@@ -48,11 +60,15 @@ static bool compare(std::pair<int32_t, uint8_t> o1, std::pair<int32_t, uint8_t> 
     return o1.first < o2.first;
 }
 
-MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, const Move ttMove)
+MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, Board *board, Move ttMove)
 {
     m_numMoves = numMoves;
     m_moves = moves;
     m_ttMove = ttMove;
+    m_board = board;
+
+    m_bbOpponentPawnAttacks = m_board->getOponentPawnAttacks();
+    m_bbOpponentAttacks = m_board->getOponentAttacks();
 
     m_scoreMoves();
     
