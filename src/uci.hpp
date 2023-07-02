@@ -13,5 +13,6 @@ namespace ChessEngine2
         static void go(Board& board, Searcher& searcher, std::istringstream& is);
         static void setoption(std::istringstream& is);
         static void position(Board& board, std::istringstream& is);
+        static void ischeckmate(Board& board);
     };
 }

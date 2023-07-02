@@ -3,13 +3,6 @@
 #include <iostream>
 #include <string.h>
 
-// Enable / Disable logging features
-#define _CE2_DEBUG_ENABLE
-#define _CE2_LOG_ENABLE
-#define _CE2_WARNING_ENABLE
-#define _CE2_ERROR_ENABLE
-#define _CE2_SUCCESS_ENABLE
-
 #define CE2_COLOR_BLACK "\e[0;30m"
 #define CE2_COLOR_RED "\e[0;31m"
 #define CE2_COLOR_GREEN "\e[0;32m"
@@ -30,34 +23,34 @@
 // Get the file name from the full file path
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
-#ifdef _CE2_DEBUG_ENABLE
-#define CE2_DEBUG(_str) std::clog << CE2_DEBUG_COLOR << "[DEBUG] " << CE2_DEFAULT_COLOR << "\t[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_CE2_DEBUG
+#define CE2_DEBUG(_str) std::clog << CE2_DEBUG_COLOR << "[DEBUG]   " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
-#define CE2_DEBUG(_str)
+#define CE2_DEBUG(_str) ;
 #endif
 
-#ifdef _CE2_LOG_ENABLE
-#define CE2_LOG(_str) std::clog << CE2_LOG_COLOR << "[LOG] " << CE2_DEFAULT_COLOR << "\t[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_CE2_LOG
+#define CE2_LOG(_str) std::clog << CE2_LOG_COLOR << "[LOG]     " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
-#define CE2_LOG(_str)
+#define CE2_LOG(_str) ;
 #endif
 
-#ifdef _CE2_WARNING_ENABLE
+#ifndef DISABLE_CE2_WARNING
 #define CE2_WARNING(_str) std::clog << CE2_WARNING_COLOR << "[WARNING] " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
-#define CE2_WARNING(_str)
+#define CE2_WARNING(_str) ;
 #endif
 
-#ifdef _CE2_ERROR_ENABLE
-#define CE2_ERROR(_str) std::clog << CE2_ERROR_COLOR << "[ERROR] " << CE2_DEFAULT_COLOR << "\t[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_CE2_ERROR
+#define CE2_ERROR(_str) std::clog << CE2_ERROR_COLOR << "[ERROR]   " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
-#define CE2_ERROR(_str)
+#define CE2_ERROR(_str) ;
 #endif
 
-#ifdef _CE2_SUCCESS_ENABLE
-#define CE2_SUCCESS(_str) std::clog << CE2_SUCCESS_COLOR << "[SUCCESS] " << CE2_DEFAULT_COLOR << "\t[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_CE2_SUCCESS
+#define CE2_SUCCESS(_str) std::clog << CE2_SUCCESS_COLOR << "[SUCCESS] " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
-#define CE2_SUCCESS(_str)
+#define CE2_SUCCESS(_str) ;
 #endif
 
 void* aligned_large_pages_alloc(size_t allocSize);

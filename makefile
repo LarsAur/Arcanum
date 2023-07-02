@@ -16,6 +16,8 @@ BUILDSUBDIRS := $(subst /,\,$(addprefix $(BUILDDIR)/, $(filter %/, $(SOURCES))))
 SOURCES := $(filter-out %/, $(SOURCES))											 # Filter out folder
 OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))						 # Create list of all object files
 
+DISABLE_LOG_FLAGS = -DDISABLE_CE2_DEBUG -DDISABLE_CE2_LOG -DDISABLE_CE2_WARNING -DDISABLE_CE2_ERROR -DDISABLE_CE2_SUCCESS
+
 all: setup $(BUILDDIR)/$(PROJECT).exe
 
 .PHONY: uci

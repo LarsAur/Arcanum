@@ -37,13 +37,16 @@ void UCI::loop()
         {
             std::cout << "id name ChessEngine2" << std::endl; 
             std::cout << "id author Lars Murud Aurud" << std::endl; 
-            std::cout << "uciok" << std::endl; 
+            std::cout << "uciok" << std::endl;
         } 
         else if (strcmp(token.c_str(), "setoption") == 0) CE2_WARNING("Missing setoption")
         else if (strcmp(token.c_str(), "go") == 0) go(board, searcher, is);
         else if (strcmp(token.c_str(), "position") == 0) position(board, is);
         else if (strcmp(token.c_str(), "ucinewgame") == 0) CE2_WARNING("ucinewgame")
         else if (strcmp(token.c_str(), "isready") == 0) std::cout << "readyok" << std::endl;
+
+        // Custom
+        else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board);
 
 
     } while(strcmp(token.c_str(), "quit") != 0);
@@ -106,6 +109,7 @@ void UCI::position(Board& board, std::istringstream& is)
 
     CE2_LOG("Loading FEN: " << fen)
     board = Board(fen);
+    board.addBoardToHistory();
 
     // Parse any moves
     while (is >> token)
@@ -119,8 +123,40 @@ void UCI::position(Board& board, std::istringstream& is)
             {
                 CE2_DEBUG("Perform move " << getUCINotation(moves[i]));
                 board.performMove(moves[i]);
+                board.addBoardToHistory();
                 break;
             }
         }
     }
+}
+
+// Returns "checkmate 'winner'" if checkmate
+// Returns "stalemate" if stalemate
+// Returns "nocheckmate" if there is no checkmate
+void UCI::ischeckmate(Board& board)
+{
+
+    std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+    auto it = boardHistory->find(board.getHash());
+    if(it != boardHistory->end())
+    {
+        if(it->second == 3) // The check id done after the board is added to history
+        {
+            std::cout << "stalemate" << std::endl;
+            return;
+        }
+    }
+
+    board.getLegalMoves();
+    if(board.getNumLegalMoves() == 0)
+    {
+        if(board.isChecked(board.getTurn()))
+        {
+            std::cout << "checkmate " << (board.getTurn() == WHITE ? "black" : "white") << std::endl;
+            return;
+        }
+        std::cout << "stalemate" << std::endl;
+        return;
+    }
+    std::cout << "nocheckmate" << std::endl;
 }
