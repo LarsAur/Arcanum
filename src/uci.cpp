@@ -135,8 +135,7 @@ void UCI::position(Board& board, std::istringstream& is)
 // Returns "nocheckmate" if there is no checkmate
 void UCI::ischeckmate(Board& board)
 {
-
-    std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+    auto boardHistory = Board::getBoardHistory();
     auto it = boardHistory->find(board.getHash());
     if(it != boardHistory->end())
     {

@@ -4,9 +4,9 @@
 
 using namespace ChessEngine2;
 
-static std::unordered_map<hash_t, uint8_t> s_boardHistory;
+static std::unordered_map<hash_t, uint8_t, HashFunction> s_boardHistory;
 
-std::unordered_map<hash_t, uint8_t>* Board::getBoardHistory()
+std::unordered_map<hash_t, uint8_t, HashFunction>* Board::getBoardHistory()
 {
     return &s_boardHistory;
 }

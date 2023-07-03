@@ -18,7 +18,7 @@ Searcher::~Searcher()
 
 eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int depth)
 {
-    std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+    auto boardHistory = Board::getBoardHistory();
     auto it = boardHistory->find(board.getHash());
     if(it != boardHistory->end())
     {
@@ -71,7 +71,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
 eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int quietDepth)
 {
     // Check for repeated positions from previous searches
-    std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+    auto boardHistory = Board::getBoardHistory();
     auto globalSearchIt = boardHistory->find(board.getHash());
     if(globalSearchIt != boardHistory->end())
     {

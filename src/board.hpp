@@ -81,6 +81,13 @@ namespace ChessEngine2
         }
     } Move;
 
+    class HashFunction
+    {
+        public:
+        size_t operator()(const hash_t& hash) const {
+            return hash;
+        }
+    };
 
     class Board
     {
@@ -133,7 +140,7 @@ namespace ChessEngine2
             uint8_t getNumLegalMoves();
             std::string getBoardString();
             void generateCaptureInfo();
-            static std::unordered_map<hash_t, uint8_t>* getBoardHistory();
+            static std::unordered_map<hash_t, uint8_t, HashFunction>* getBoardHistory();
     };
 
     class Zobrist

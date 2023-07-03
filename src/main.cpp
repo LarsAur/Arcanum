@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
             break;
         }
 
-        std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
+        auto boardHistory = Board::getBoardHistory();
         auto it = boardHistory->find(board.getHash());
         if(it != boardHistory->end())
         {
