@@ -184,6 +184,7 @@ namespace ChessEngine2
         Searcher whiteSearcher = Searcher();
         Searcher blackSearcher = Searcher();
         Board board = Board(ChessEngine2::startFEN);
+        board.addBoardToHistory();
 
         auto start = std::chrono::high_resolution_clock::now();
         // Search for 10 moves
@@ -192,8 +193,10 @@ namespace ChessEngine2
             CE2_DEBUG("PERF: " << i << "/" << 10)
             Move whiteMove = whiteSearcher.getBestMove(board, 6, 4);
             board.performMove(whiteMove);
+            board.addBoardToHistory();
             Move blackMove = blackSearcher.getBestMove(board, 6, 4);
             board.performMove(blackMove);
+            board.addBoardToHistory();
         }
         auto end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> diff = end - start;
