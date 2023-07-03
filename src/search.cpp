@@ -120,7 +120,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             #if SEARCH_RECORD_STATS
             m_stats.upperTTValuesUsed++;
             #endif
-            beta = std::max(beta, entry->value); 
+            beta = std::min(beta, entry->value); 
         }
 
         if(alpha >= beta)
