@@ -9,6 +9,15 @@ using namespace ChessEngine2;
 Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(20));
+
+    #if SEARCH_RECORD_STATS
+    m_stats = {
+        .evaluatedPositions = 0LL,
+        .exactTTValuesUsed  = 0LL,
+        .lowerTTValuesUsed  = 0LL,
+        .upperTTValuesUsed  = 0LL,
+    };
+    #endif
 }
 
 Searcher::~Searcher()
@@ -30,6 +39,9 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
 
     if(!board.isChecked(board.getTurn()))
     {
+        #if SEARCH_RECORD_STATS
+        m_stats.evaluatedPositions++;
+        #endif
         eval_t standPat = board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
         if(standPat >= beta)
         {
@@ -46,6 +58,9 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
     uint8_t numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
+        #if SEARCH_RECORD_STATS
+        m_stats.evaluatedPositions++;
+        #endif
         return board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
     }
 
@@ -88,15 +103,24 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     {
         if((entry->flags & TT_FLAG_MASK) == TT_FLAG_EXACT)
         {
+            #if SEARCH_RECORD_STATS
+            m_stats.exactTTValuesUsed++;
+            #endif
             return entry->value;
         }
         else if((entry->flags & TT_FLAG_MASK) == TT_FLAG_LOWERBOUND)
         {
+            #if SEARCH_RECORD_STATS
+            m_stats.lowerTTValuesUsed++;
+            #endif
             alpha = std::max(alpha, entry->value);
         }
         else if((entry->flags & TT_FLAG_MASK) == TT_FLAG_UPPERBOUND)
         {
-            beta = std::min(alpha, entry->value);
+            #if SEARCH_RECORD_STATS
+            m_stats.upperTTValuesUsed++;
+            #endif
+            beta = std::max(beta, entry->value); 
         }
 
         if(alpha >= beta)
@@ -120,6 +144,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
+        #if SEARCH_RECORD_STATS
+        m_stats.evaluatedPositions++;
+        #endif
         return board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
     }
     board.generateCaptureInfo();
@@ -218,6 +245,14 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     CE2_LOG("Blocked replacements " << stats.blockedReplacements);
     #endif
 
+    #if SEARCH_RECORD_STATS
+    CE2_LOG("Search evaluations: " << m_stats.evaluatedPositions);
+    CE2_LOG("Exact TT values used: " << m_stats.exactTTValuesUsed);
+    CE2_LOG("Lower TT values used: " << m_stats.lowerTTValuesUsed);
+    CE2_LOG("Upper TT values used: " << m_stats.upperTTValuesUsed);
+    #endif
+
+
     m_generation += 1; // Generation will update every 4th search
 
     return bestMove;
@@ -279,7 +314,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
 
     CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
-    #if TT_RECORD_STATS == 1
+    #if TT_RECORD_STATS
     ttStats_t stats = m_tt->getStats();
     CE2_LOG("Entries Added: " << stats.entriesAdded)
     CE2_LOG("Replacements: " << stats.replacements)
@@ -291,7 +326,19 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     CE2_LOG("Blocked replacements " << stats.blockedReplacements);
     #endif
 
+    #if SEARCH_RECORD_STATS
+    CE2_LOG("Search evaluations: " << m_stats.evaluatedPositions);
+    CE2_LOG("Exact TT values used: " << m_stats.exactTTValuesUsed);
+    CE2_LOG("Lower TT values used: " << m_stats.lowerTTValuesUsed);
+    CE2_LOG("Upper TT values used: " << m_stats.upperTTValuesUsed);
+    #endif
+
     m_generation += 1; // Generation will update every 4th search
 
     return bestMove;
+}
+
+searchStats_t Searcher::getStats()
+{
+    return m_stats;
 }

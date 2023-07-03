@@ -48,7 +48,6 @@ namespace ChessEngine2
             size_t m_clusterCount;
             size_t m_entryCount;
             ttStats_t m_stats;
-
             size_t m_getClusterIndex(hash_t hash);
         public:
 
