@@ -113,7 +113,6 @@ namespace ChessEngine2
         public:
             Board(const Board& board);
             Board(std::string fen);
-            ~Board();
             void performMove(Move move);
             void addBoardToHistory();
             hash_t getHash();

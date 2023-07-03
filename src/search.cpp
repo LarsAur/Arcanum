@@ -16,7 +16,7 @@ Searcher::~Searcher()
     
 }
 
-eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int depth)
+eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int depth)
 {
     std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
     auto it = boardHistory->find(board.getHash());
@@ -68,7 +68,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board board, eval_t alpha, eval_t beta, int de
     return bestScore;
 }
 
-eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, int quietDepth)
+eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int quietDepth)
 {
     // Check for repeated positions from previous searches
     std::unordered_map<hash_t, uint8_t>* boardHistory = Board::getBoardHistory();
@@ -166,7 +166,7 @@ eval_t Searcher::m_alphaBeta(Board board, eval_t alpha, eval_t beta, int depth, 
     return bestScore;
 }
 
-Move Searcher::getBestMove(Board board, int depth, int quietDepth)
+Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
 {
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();
@@ -223,7 +223,7 @@ Move Searcher::getBestMove(Board board, int depth, int quietDepth)
     return bestMove;
 }
 
-Move Searcher::getBestMoveInTime(Board board, int ms, int quietDepth)
+Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
 {
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();

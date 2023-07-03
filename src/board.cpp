@@ -261,11 +261,6 @@ Board::Board(const Board& board)
     m_bbTypedPieces[W_KING][BLACK]      = board.m_bbTypedPieces[W_KING][BLACK];
 }
 
-Board::~Board()
-{
-
-}
-
 inline bool Board::m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked)
 {
     bitboard_t bbFrom = (0b1LL << move.from);
