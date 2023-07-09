@@ -41,8 +41,9 @@ inline void Zobrist::m_addAllPieces(hash_t &hash, hash_t &materialHash, bitboard
     while (bitboard)
     {
         int pieceIdx = popLS1B(&bitboard);
-        materialHash ^= m_tables[pieceType][pieceColor][++i];
+        materialHash ^= m_tables[pieceType][pieceColor][i];
         hash ^= m_tables[pieceType][pieceColor][pieceIdx];
+        i++;
     }
 }
 
@@ -80,13 +81,13 @@ void Zobrist::getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_
     if(board.m_enPassantSquare != 64)
     {
         hash ^= m_enPassantTable[board.m_enPassantSquare];
+        pawnHash ^= m_enPassantTable[board.m_enPassantSquare];
     }
 }
 
 void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassantSquare, uint8_t newEnPassantSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
 {
     // TODO: Include castle opertunities
-
     // XOR in and out the moved piece corresponding to its location
     if(move.moveInfo & MOVE_INFO_PROMOTE_MASK)
     {
@@ -95,7 +96,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
         uint8_t promoteCount = CNTSBITS(board.m_bbTypedPieces[promoteType][board.m_turn]);
         hash ^= m_tables[W_PAWN][board.m_turn][move.from] ^ m_tables[promoteType][board.m_turn][move.to];
         pawnHash ^= m_tables[W_PAWN][board.m_turn][move.from];
-        materialHash ^= m_tables[promoteType][board.m_turn][promoteCount-1] ^ m_tables[W_PAWN][board.m_turn][pawnCount-1];
+        materialHash ^= m_tables[promoteType][board.m_turn][promoteCount] ^ m_tables[W_PAWN][board.m_turn][pawnCount];
     }
     else
     {
@@ -137,21 +138,21 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
             uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
             hash ^= m_tables[W_PAWN][opponent][board.m_enPassantTarget];
             pawnHash ^= m_tables[W_PAWN][opponent][board.m_enPassantTarget];
-            materialHash ^= m_tables[W_PAWN][opponent][count-1];
+            materialHash ^= m_tables[W_PAWN][opponent][count];
         }
         else if(move.moveInfo & MOVE_INFO_CAPTURE_PAWN)
         {
             uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
             hash ^= m_tables[W_PAWN][opponent][move.to];
             pawnHash ^= m_tables[W_PAWN][opponent][move.to];
-            materialHash ^= m_tables[W_PAWN][opponent][count-1];
+            materialHash ^= m_tables[W_PAWN][opponent][count];
         }
         else
         {
             uint8_t capturedIndex = LS1B(capturedBitmask) - 16;
             uint8_t count = CNTSBITS(board.m_bbTypedPieces[capturedIndex][opponent]);
             hash ^= m_tables[capturedIndex][opponent][move.to];
-            materialHash ^= m_tables[capturedIndex][opponent][count-1];
+            materialHash ^= m_tables[capturedIndex][opponent][count];
         }
     }
     

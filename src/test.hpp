@@ -125,26 +125,26 @@ namespace ChessEngine2
         board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE));
         Board board2 = Board("k5r1/8/8/8/8/8/8/2R4K b - - 0 1");
         if(board1.getHash() != board2.getHash())
-        {
             CE2_ERROR("ROOK: Zobrist did not match")
-        }
+        else if(board1.getPawnHash() != board2.getPawnHash())
+            CE2_ERROR("ROOK: Pawn Zobrist did not match")
+        else if(board1.getMaterialHash() != board2.getMaterialHash())
+            CE2_ERROR("ROOK: Material Zobrist did not match")
         else
-        {
             CE2_SUCCESS("ROOK: Zobrist matched")
-        }
 
         // Capture Rook
         board1 = Board("k7/8/8/8/8/8/8/1Rr4K w - - 0 1");
-        board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE));
+        board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE | MOVE_INFO_CAPTURE_ROOK));
         board2 = Board("k7/8/8/8/8/8/8/2R4K b - - 0 1");
         if(board1.getHash() != board2.getHash())
-        {
             CE2_ERROR("Capture rook: Zobrist did not match")
-        }
+        else if(board1.getPawnHash() != board2.getPawnHash())
+            CE2_ERROR("Capture rook: Pawn Zobrist did not match" << board1.getPawnHash() << "  " << board2.getPawnHash())
+        else if(board1.getMaterialHash() != board2.getMaterialHash())
+            CE2_ERROR("Capture rook: Material Zobrist did not match")
         else
-        {
             CE2_SUCCESS("Capture rook: Zobrist matched")
-        }
 
         // Move back and forth
         board1 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
@@ -154,25 +154,25 @@ namespace ChessEngine2
         board1.performMove(Move(2, 3, MOVE_INFO_QUEEN_MOVE));
         board1.performMove(Move(58, 59, MOVE_INFO_QUEEN_MOVE));
         if(board1.getHash() != board2.getHash())
-        {
             CE2_ERROR("Repeat: Zobrist did not match")
-        }
+        else if(board1.getPawnHash() != board2.getPawnHash())
+            CE2_ERROR("Repeat: Pawn Zobrist did not match")
+        else if(board1.getMaterialHash() != board2.getMaterialHash())
+            CE2_ERROR("Repeat: Material Zobrist did not match")
         else
-        {
             CE2_SUCCESS("Repeat: Zobrist matched")
-        }
 
         // Recreate board
         board1 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
         board2 = Board(board1);
         if(board1.getHash() != board2.getHash())
-        {
             CE2_ERROR("Recreate: Zobrist did not match")
-        }
+        else if(board1.getPawnHash() != board2.getPawnHash())
+            CE2_ERROR("Recreate: Pawn Zobrist did not match")
+        else if(board1.getMaterialHash() != board2.getMaterialHash())
+            CE2_ERROR("Recreate: Material Zobrist did not match")
         else
-        {
             CE2_SUCCESS("Recreate: Zobrist matched")
-        }
 
         CE2_LOG("Completed all Zobrist tests")
     }

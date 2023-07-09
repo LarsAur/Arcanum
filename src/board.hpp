@@ -4,12 +4,11 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <memory>
     
 namespace ChessEngine2
 {
     typedef uint64_t hash_t;
-    typedef int16_t eval_t;
-
     static const std::string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     typedef enum Color
@@ -114,6 +113,7 @@ namespace ChessEngine2
             hash_t m_materialHash;
             hash_t m_pawnHash;
             friend class Zobrist;
+            friend class Eval;
 
             // Tests if the king will be checked before adding the move
             bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
@@ -123,14 +123,12 @@ namespace ChessEngine2
             void performMove(Move move);
             void addBoardToHistory();
             hash_t getHash();
-
+            hash_t getPawnHash();
+            hash_t getMaterialHash();
             bool isChecked(Color color);
             bool isSlidingChecked(Color color);
             bool isDiagonalChecked(Color color);
             bool isStraightChecked(Color color);
-
-            eval_t evaluate();
-
             Color getTurn();
             bitboard_t getopponentAttacks();
             bitboard_t getopponentPawnAttacks();
@@ -157,5 +155,31 @@ namespace ChessEngine2
 
             void getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
             void getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassentSquare, uint8_t newEnPassentSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
+    };
+
+
+    typedef int16_t eval_t;
+    typedef struct evalEntry_t
+    {
+        hash_t hash;
+        eval_t value;
+        std::string boardString;
+    } evalEntry_t;
+
+    class Eval
+    {
+        private:
+            std::unique_ptr<evalEntry_t[]> m_pawnEvalTable;
+            std::unique_ptr<evalEntry_t[]> m_materialEvalTable;
+            eval_t m_getPawnEval(Board& board);
+            eval_t m_getMaterialEval(Board& board);
+            uint64_t m_pawnEvalTableSize;
+            uint64_t m_materialEvalTableSize;
+            uint64_t m_pawnEvalTableMask;
+            uint64_t m_materialEvalTableMask;
+
+        public:
+            Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies);
+            eval_t evaluate(Board& board);
     };
 }

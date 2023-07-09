@@ -9,6 +9,7 @@ using namespace ChessEngine2;
 Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(20));
+    m_eval = std::unique_ptr<Eval>(new Eval(10, 10));
 
     #if SEARCH_RECORD_STATS
     m_stats = {
@@ -42,7 +43,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
         #if SEARCH_RECORD_STATS
         m_stats.evaluatedPositions++;
         #endif
-        eval_t standPat = board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
+        eval_t standPat = board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
         if(standPat >= beta)
         {
             return beta;
@@ -61,7 +62,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
         #if SEARCH_RECORD_STATS
         m_stats.evaluatedPositions++;
         #endif
-        return board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
+        return board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
     }
 
     board.generateCaptureInfo();
@@ -147,7 +148,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         #if SEARCH_RECORD_STATS
         m_stats.evaluatedPositions++;
         #endif
-        return board.getTurn() == WHITE ? board.evaluate() : -board.evaluate();
+        return board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
     }
     board.generateCaptureInfo();
 

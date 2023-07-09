@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 
         CE2_LOG(std::endl << board.getBoardString())
 
-        CE2_LOG("Eval of current board: " << board.evaluate());
+        // CE2_LOG("Eval of current board: " << board.evaluate());
         CE2_LOG("Turn: " << (board.getTurn() == WHITE ? "White" : "Black"));
     }
 

@@ -23,10 +23,11 @@ namespace ChessEngine2
         private:
             // TODO: Hashtables for repeat in search.
             std::unique_ptr<TranspositionTable> m_tt;
+            std::unique_ptr<Eval> m_eval;
             eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int quietDepth);
             eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int depth);
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
-            searchStats_t m_stats; 
+            searchStats_t m_stats;
         public:
             Searcher();
             ~Searcher();

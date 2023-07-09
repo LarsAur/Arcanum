@@ -232,6 +232,8 @@ Board::Board(std::string fen)
 Board::Board(const Board& board)
 {
     m_hash = board.m_hash;
+    m_pawnHash = board.m_pawnHash;
+    m_materialHash = board.m_materialHash;
     m_turn = board.m_turn;
     m_halfMoves = board.m_halfMoves;
     m_fullMoves = board.m_fullMoves;
@@ -1233,7 +1235,7 @@ void Board::performMove(Move move)
         m_bbEnPassantTarget = 1LL << m_enPassantTarget; 
     }
 
-    s_zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, m_hash, m_materialHash, m_pawnHash);
+    s_zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, m_hash, m_pawnHash, m_materialHash);
 
     m_turn = opponent;
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
@@ -1256,6 +1258,16 @@ void Board::addBoardToHistory()
 hash_t Board::getHash()
 {
     return m_hash;
+}
+
+hash_t Board::getPawnHash()
+{
+    return m_pawnHash;
+}
+
+hash_t Board::getMaterialHash()
+{
+    return m_materialHash;
 }
 
 // Generates a bitboard of all attacks of opponents
@@ -1363,60 +1375,6 @@ inline bool Board::isStraightChecked(Color color)
     bitboard_t straightAttacks = getRookMoves(m_bbAllPieces, kingIdx);
 
     return (straightAttacks & queenAndRooks) != 0;
-}
-
-// Evaluates positive value for WHITE
-eval_t Board::evaluate()
-{
-    // Check for stalemate and checkmate
-    // TODO: Create function hasLegalMoves
-    getLegalMoves();
-    if(getNumLegalMoves() == 0)
-    {
-        if(isChecked(m_turn))
-        {
-            // subtract number of full moves from the score to have incentive for fastest checkmate
-            // If there are more checkmates and this is not done, it might be "confused" and move between
-            return m_turn == WHITE ? (-INT16_MAX + m_fullMoves) : (INT16_MAX - m_fullMoves);
-        }
-
-        return 0;
-    }
-
-    // TODO: Use model parameters
-    eval_t pieceScore;
-    pieceScore  = 100 * (CNTSBITS(m_bbTypedPieces[W_PAWN][WHITE])    - CNTSBITS(m_bbTypedPieces[W_PAWN][BLACK]));
-    pieceScore += 300 * (CNTSBITS(m_bbTypedPieces[W_KNIGHT][WHITE]) - CNTSBITS(m_bbTypedPieces[W_KNIGHT][BLACK]));
-    pieceScore += 300 * (CNTSBITS(m_bbTypedPieces[W_BISHOP][WHITE]) - CNTSBITS(m_bbTypedPieces[W_BISHOP][BLACK]));
-    pieceScore += 500 * (CNTSBITS(m_bbTypedPieces[W_ROOK][WHITE])   - CNTSBITS(m_bbTypedPieces[W_ROOK][BLACK]));
-    pieceScore += 900 * (CNTSBITS(m_bbTypedPieces[W_QUEEN][WHITE])  - CNTSBITS(m_bbTypedPieces[W_QUEEN][BLACK]));
-
-    eval_t mobility = m_numLegalMoves;
-
-    m_turn = Color(m_turn ^ 1);
-    m_numLegalMoves = 0;
-    getLegalMoves();
-    eval_t opponentMobility = m_numLegalMoves;
-    m_turn = Color(m_turn ^ 1);
-
-    eval_t mobilityScore = (m_turn == WHITE ? (mobility - opponentMobility) : (opponentMobility - mobility));
-
-    bitboard_t wPawns = m_bbTypedPieces[W_PAWN][WHITE]; 
-    bitboard_t bPawns = m_bbTypedPieces[W_PAWN][BLACK]; 
-
-    eval_t pawnScore = 0;
-    while (wPawns)
-    {
-        pawnScore += popLS1B(&wPawns) >> 3;
-    }
-    
-    while (bPawns)
-    {
-        pawnScore -= (7 - (popLS1B(&bPawns) >> 3));
-    }
-    
-    // return pieceScore;
-    return pieceScore + mobilityScore + (pawnScore << 3);
 }
 
 Color Board::getTurn()
