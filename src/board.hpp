@@ -58,7 +58,7 @@ namespace ChessEngine2
     #define MOVE_INFO_CAPTURE_KNIGHT 262144
     #define MOVE_INFO_CAPTURE_BISHOP 524288
     #define MOVE_INFO_CAPTURE_QUEEN 1048576
-    #define MOVE_INFO_CAPTURE_MASK (MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_CAPTURE_ROOK | MOVE_INFO_CAPTURE_KNIGHT | MOVE_INFO_CAPTURE_QUEEN | MOVE_INFO_CAPTURE_BISHOP)
+    #define MOVE_INFO_CAPTURE_MASK (MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_CAPTURE_ROOK | MOVE_INFO_CAPTURE_KNIGHT | MOVE_INFO_CAPTURE_BISHOP | MOVE_INFO_CAPTURE_QUEEN)
 
     typedef struct Move
     {
@@ -136,7 +136,7 @@ namespace ChessEngine2
             Move* getLegalCaptureMoves();
             Move* getLegalCaptureAndCheckMoves();
             uint8_t getNumLegalMoves();
-            std::string getBoardString();
+            std::string getBoardString() const;
             void generateCaptureInfo();
             static std::unordered_map<hash_t, uint8_t, HashFunction>* getBoardHistory();
     };
@@ -163,7 +163,6 @@ namespace ChessEngine2
     {
         hash_t hash;
         eval_t value;
-        std::string boardString;
     } evalEntry_t;
 
     class Eval

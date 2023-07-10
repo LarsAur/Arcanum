@@ -66,7 +66,7 @@ inline eval_t Eval::m_getPawnEval(Board& board)
     evalEntry_t* evalEntry = &m_pawnEvalTable[evalIdx];
     if(evalEntry->hash == board.m_pawnHash)
     {
-        // return evalEntry->value;
+        return evalEntry->value;
     }
 
     // Evaluate the pawns on the board
@@ -86,17 +86,9 @@ inline eval_t Eval::m_getPawnEval(Board& board)
 
     pawnScore = pawnScore << 3;
 
-    if(evalEntry->value != pawnScore && evalEntry->hash == board.m_pawnHash)
-    {
-        CE2_DEBUG("IDX: " << evalIdx)
-        CE2_DEBUG(board.getBoardString())
-        CE2_DEBUG(evalEntry->boardString)
-    }
-
     // Write the pawn evaluation to the table
     evalEntry->hash = board.m_pawnHash;
     evalEntry->value = pawnScore;
-    evalEntry->boardString = board.getBoardString();
 
     return pawnScore;
 }
@@ -108,7 +100,7 @@ inline eval_t Eval::m_getMaterialEval(Board& board)
     evalEntry_t* evalEntry = &m_materialEvalTable[evalIdx];
     if(evalEntry->hash == board.m_materialHash)
     {
-        // return evalEntry->value;
+        return evalEntry->value;
     }
 
     // Evaluate the piece count

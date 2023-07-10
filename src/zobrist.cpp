@@ -54,9 +54,9 @@ void Zobrist::getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_
     materialHash = 0LL;
 
     // Pawns
-    m_addAllPieces(pawnHash, materialHash, board.m_bbTypedPieces[W_PAWN][WHITE], W_PAWN, WHITE);
-    m_addAllPieces(pawnHash, materialHash, board.m_bbTypedPieces[W_PAWN][BLACK], W_PAWN, BLACK);
-    hash ^= pawnHash;
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_PAWN][WHITE], W_PAWN, WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_PAWN][BLACK], W_PAWN, BLACK);
+    pawnHash = hash;
     // Rooks
     m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_ROOK][WHITE], W_ROOK, WHITE);
     m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_ROOK][BLACK], W_ROOK, BLACK);
@@ -93,7 +93,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
     {
         Piece promoteType = Piece(LS1B(move.moveInfo & MOVE_INFO_PROMOTE_MASK) - 11);
         uint8_t pawnCount = CNTSBITS(board.m_bbTypedPieces[W_PAWN][board.m_turn]);
-        uint8_t promoteCount = CNTSBITS(board.m_bbTypedPieces[promoteType][board.m_turn]);
+        uint8_t promoteCount = CNTSBITS(board.m_bbTypedPieces[promoteType][board.m_turn]) - 1;
         hash ^= m_tables[W_PAWN][board.m_turn][move.from] ^ m_tables[promoteType][board.m_turn][move.to];
         pawnHash ^= m_tables[W_PAWN][board.m_turn][move.from];
         materialHash ^= m_tables[promoteType][board.m_turn][promoteCount] ^ m_tables[W_PAWN][board.m_turn][pawnCount];
@@ -135,9 +135,10 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
 
         if(move.moveInfo & MOVE_INFO_ENPASSANT)
         {
+            uint8_t oldEnPassantTarget = oldEnPassantSquare > 32 ? oldEnPassantSquare - 8 : oldEnPassantSquare + 8;
             uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
-            hash ^= m_tables[W_PAWN][opponent][board.m_enPassantTarget];
-            pawnHash ^= m_tables[W_PAWN][opponent][board.m_enPassantTarget];
+            hash ^= m_tables[W_PAWN][opponent][oldEnPassantTarget];
+            pawnHash ^= m_tables[W_PAWN][opponent][oldEnPassantTarget];
             materialHash ^= m_tables[W_PAWN][opponent][count];
         }
         else if(move.moveInfo & MOVE_INFO_CAPTURE_PAWN)
@@ -160,4 +161,24 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
     pawnHash ^= enPassantHash;
     hash ^= enPassantHash;
     hash ^= m_blackToMove;
+
+    #ifdef VERIFY_HASH
+    // Verify hash
+    hash_t h, ph, mh;
+    Board b(board);
+    b.m_turn = Color(b.m_turn^1);
+    getHashs(b, h, ph, mh);
+    if(h != hash || ph != pawnHash || mh != materialHash)
+    {
+        CE2_DEBUG(board.getBoardString())
+        CE2_DEBUG(getArithmeticNotation(move.from) << " " << getArithmeticNotation(move.to) << " " << move.moveInfo)
+        if(hash != h)
+        CE2_ERROR("Hash: " << hash << " != " << h << " (Correct)")
+        if(pawnHash != ph)
+        CE2_DEBUG("Pawn Hash: " << pawnHash << " != " << ph << " (Correct)")
+        if(materialHash != mh)
+        CE2_DEBUG("Material Hash: " << materialHash << " != " << mh << " (Correct)")
+        exit(EXIT_FAILURE);
+    }
+    #endif
 }

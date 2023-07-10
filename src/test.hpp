@@ -174,6 +174,32 @@ namespace ChessEngine2
         else
             CE2_SUCCESS("Recreate: Zobrist matched")
 
+        // Capture pawn
+        board1 = Board("rnbqkbnr/pp3ppp/8/2pP4/P7/8/1P1PPPPP/R1BQKBNR b - - 0 1");
+        board1.performMove(Move(59, 35, MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_QUEEN_MOVE));
+        board2 = Board("rnb1kbnr/pp3ppp/8/2pq4/P7/8/1P1PPPPP/R1BQKBNR w - - 0 1");
+        if(board1.getHash() != board2.getHash())
+            CE2_ERROR("Capture pawn: Zobrist did not match")
+        else if(board1.getPawnHash() != board2.getPawnHash())
+            CE2_ERROR("Capture pawn: Pawn Zobrist did not match")
+        else if(board1.getMaterialHash() != board2.getMaterialHash())
+            CE2_ERROR("Capture pawn: Material Zobrist did not match")
+        else
+            CE2_SUCCESS("Capture pawn: Zobrist matched")
+
+        // Enpassant
+        board1 = Board("rnbqkbnr/1pp1pppp/8/p2pP3/8/8/PPPP1PPP/RNBQKBNR w - d6 0 1");
+        board1.performMove(Move(36, 43, MOVE_INFO_PAWN_MOVE | MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_ENPASSANT));
+        board2 = Board("rnbqkbnr/1pp1pppp/3P4/p7/8/8/PPPP1PPP/RNBQKBNR b - - 0 1");
+        if(board1.getHash() != board2.getHash())
+            CE2_ERROR("Enpassant: Zobrist did not match")
+        else if(board1.getPawnHash() != board2.getPawnHash())
+            CE2_ERROR("Enpassant: Pawn Zobrist did not match")
+        else if(board1.getMaterialHash() != board2.getMaterialHash())
+            CE2_ERROR("Enpassant: Material Zobrist did not match")
+        else
+            CE2_SUCCESS("Enpassant: Zobrist matched")
+
         CE2_LOG("Completed all Zobrist tests")
     }
 
