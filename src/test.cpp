@@ -37,7 +37,6 @@ static void s_findNumMovesAtDepth(int depth, ChessEngine2::Board *board, uint64_
         {
             uint64_t _count = 0;
             s_findNumMovesAtDepth(depth - 1, &newBoard, &_count, false);
-            CE2_DEBUG(legalMoves[i] << ": " << _count);
             *count += _count;
         }
         else
@@ -67,7 +66,6 @@ static uint64_t s_perftPosition(std::string fen, uint8_t ply, uint64_t expected)
 {
     uint64_t count = 0;
     Board board = Board(fen);
-    CE2_DEBUG(std::endl << board.getBoardString())
 
     s_findNumMovesAtDepth(ply, &board, &count);
     
