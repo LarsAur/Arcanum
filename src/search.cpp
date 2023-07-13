@@ -196,6 +196,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
 Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
 {
+    auto start = std::chrono::high_resolution_clock::now();
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();
     board.generateCaptureInfo();
@@ -234,6 +235,12 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     newEntry.depth = depth;
     m_tt->addEntry(newEntry, board.getHash());
 
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
+    CE2_LOG("Best move: " << bestMove << " Score: " << bestScore)
+    CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
+
     #if TT_RECORD_STATS == 1
     ttStats_t stats = m_tt->getStats();
     CE2_LOG("Entries Added: " << stats.entriesAdded)
@@ -265,6 +272,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     uint8_t numMoves = board.getNumLegalMoves();
     board.generateCaptureInfo();
     Move bestMove;
+    eval_t bestMoveScore = 0;
 
     auto start = std::chrono::high_resolution_clock::now();
     auto end = std::chrono::high_resolution_clock::now();
@@ -288,11 +296,12 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             new_board.performMove(*move);
 
             eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
-            
+
             if(score > bestScore)
             {
                 bestScore = score;
                 bestMove = *move;
+                bestMoveScore = bestScore;
                 if(score > alpha)
                 {   
                     alpha = score;
@@ -313,6 +322,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
         micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
     }
 
+    CE2_LOG("Best move: " << bestMove << " Score: " << bestMoveScore)
     CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     #if TT_RECORD_STATS

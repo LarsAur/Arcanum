@@ -4,7 +4,6 @@
 #include <test.hpp>
 #include <search.hpp>
 #include <player.hpp>
-
 #include <uci.hpp>
 
 using namespace ChessEngine2;
@@ -28,20 +27,22 @@ int main(int argc, char *argv[])
     {
         if(!strncmp("--perft", argv[i], 8))
         {
-            runAllPerft();
+            Test::perft();
             exitAfterTesting = true;
         }
 
         if(!strncmp("--test", argv[i], 8))
         {
-            runAllCaptureMoves();
-            runAllZobristTests();
+            Test::captureMoves();
+            Test::zobrist();
+            Test::perft();
             exitAfterTesting = true;
         }
 
         if(!strncmp("--perf", argv[i], 8))
         {
-            runSearchPerformanceTest();
+            Perf::engineTest();
+            Perf::search();
             exitAfterTesting = true;
         }
     }
