@@ -20,23 +20,16 @@ DISABLE_LOG_FLAGS = -DDISABLE_CE2_DEBUG -DDISABLE_CE2_LOG -DDISABLE_CE2_WARNING 
 
 all: setup $(BUILDDIR)/$(PROJECT).exe
 
-.PHONY: uci
+.PHONY: uci run test perf
 uci: $(BUILDDIR)/$(PROJECT).exe
 	./$^
 
-.PHONY: run
 run: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --nouci
 
-.PHONY: test
 test: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --nouci --test
 
-.PHONY: perft
-perft: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --nouci --perft
-
-.PHONY: perf
 perf: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --nouci --perf
 
