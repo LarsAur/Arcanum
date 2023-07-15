@@ -320,6 +320,12 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
         end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> diff = end - start;
         micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
+
+        // If checkmate is found, search can be canceled
+        if(abs(bestScore) > INT16_MAX - board.getFullMoves())
+        {
+            break;
+        }
     }
 
     CE2_LOG("Best move: " << bestMove << " Score: " << bestMoveScore)

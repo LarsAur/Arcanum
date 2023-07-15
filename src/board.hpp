@@ -109,8 +109,6 @@ namespace ChessEngine2
 
     } Move;
 
-
-
     class HashFunction
     {
         public:
@@ -135,14 +133,15 @@ namespace ChessEngine2
             bitboard_t m_bbAllPieces;
             bitboard_t m_bbColoredPieces[NUM_COLORS];
             bitboard_t m_bbTypedPieces[6][NUM_COLORS]; 
-            Piece m_pieces[64];
 
+            Piece m_pieces[64];
             uint8_t m_numLegalMoves;
             Move m_legalMoves[218];
 
             hash_t m_hash;
             hash_t m_materialHash;
             hash_t m_pawnHash;
+
             friend class Zobrist;
             friend class Eval;
 
@@ -156,6 +155,8 @@ namespace ChessEngine2
             hash_t getHash();
             hash_t getPawnHash();
             hash_t getMaterialHash();
+            uint16_t getFullMoves();
+            uint16_t getHalfMoves();
             bool isChecked(Color color);
             bool isSlidingChecked(Color color);
             bool isDiagonalChecked(Color color);

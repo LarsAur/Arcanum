@@ -1269,6 +1269,16 @@ hash_t Board::getMaterialHash()
     return m_materialHash;
 }
 
+uint16_t Board::getFullMoves()
+{
+    return m_fullMoves;
+}
+
+uint16_t Board::getHalfMoves()
+{
+    return m_halfMoves;
+}
+
 // Generates a bitboard of all attacks of opponents
 // The moves does not check if the move will make the opponent become checked, or if the attack is on its own pieces
 // Used for checking if the king is in check after king moves.
