@@ -92,7 +92,8 @@ int main(int argc, char *argv[])
         else
         {
             move = player.promptForMove(board);
-            // move = searcher2.getBestMoveInTime(board, 10000, 4);
+            // move = searcher2.getBestMove(board, 6, 4);
+            // move = searcher2.getBestMoveInTime(board, 1000, 4);
         }
         
         board.performMove(move);

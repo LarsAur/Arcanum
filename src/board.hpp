@@ -199,14 +199,15 @@ namespace ChessEngine2
     class Eval
     {
         private:
-            std::unique_ptr<evalEntry_t[]> m_pawnEvalTable;
-            std::unique_ptr<evalEntry_t[]> m_materialEvalTable;
-            eval_t m_getPawnEval(Board& board);
-            eval_t m_getMaterialEval(Board& board);
             uint64_t m_pawnEvalTableSize;
             uint64_t m_materialEvalTableSize;
             uint64_t m_pawnEvalTableMask;
             uint64_t m_materialEvalTableMask;
+            std::unique_ptr<evalEntry_t[]> m_pawnEvalTable;
+            std::unique_ptr<evalEntry_t[]> m_materialEvalTable;
+            eval_t m_getPawnEval(Board& board);
+            eval_t m_getMaterialEval(Board& board);
+            eval_t m_getMobilityEval(Board& board);
 
         public:
             Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies);

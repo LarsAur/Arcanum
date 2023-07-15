@@ -9,7 +9,7 @@ using namespace ChessEngine2;
 Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(20));
-    m_eval = std::unique_ptr<Eval>(new Eval(10, 10));
+    m_eval = std::unique_ptr<Eval>(new Eval(16, 16));
 
     #if SEARCH_RECORD_STATS
     m_stats = {

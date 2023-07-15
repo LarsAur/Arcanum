@@ -45,20 +45,18 @@ eval_t Eval::evaluate(Board& board)
 
     eval_t eval = m_getPawnEval(board);
     eval += m_getMaterialEval(board);
-
-    eval_t mobility = board.m_numLegalMoves;
-    board.m_turn = Color(board.m_turn ^ 1);
-    board.m_numLegalMoves = 0;
-    board.getLegalMoves();
-    eval_t opponentMobility = board.m_numLegalMoves;
-    board.m_turn = Color(board.m_turn ^ 1);
-    eval_t mobilityScore = (board.m_turn == WHITE ? (mobility - opponentMobility) : (opponentMobility - mobility));
-    eval += mobilityScore;
+    eval += m_getMobilityEval(board);
 
     return eval;
-
 }
 
+constexpr eval_t doublePawnScore = -12;
+constexpr eval_t passedPawnScore = 25;
+constexpr eval_t pawnRankScore = 4;
+constexpr eval_t pawnSupportScore = 12;
+constexpr eval_t pawnBackwardScore = -12;
+
+// https://www.chessprogramming.org/Pawn_Structure
 inline eval_t Eval::m_getPawnEval(Board& board)
 {
     // Check the pawn eval table
@@ -69,22 +67,114 @@ inline eval_t Eval::m_getPawnEval(Board& board)
         return evalEntry->value;
     }
 
-    // Evaluate the pawns on the board
+    // Constants used during evaluations
+    static const bitboard_t bbAFile = 0x0101010101010101;
+    static const bitboard_t bbHFile = 0xF0F0F0F0F0F0F0F0; 
+    static const bitboard_t wForwardLookup[] = { // indexed by rank
+        0x0000000000000000,
+        0xFFFFFFFFFFFF0000,
+        0xFFFFFFFFFF000000,
+        0xFFFFFFFF00000000,
+        0xFFFFFF0000000000,
+        0xFFFF000000000000,
+        0xFF00000000000000,
+        0x0000000000000000,
+    };
+    static const bitboard_t bForwardLookup[] = { // indexed by rank
+        0x0000000000000000,
+        0x00000000000000FF,
+        0x000000000000FFFF,
+        0x0000000000FFFFFF,
+        0x00000000FFFFFFFF,
+        0x000000FFFFFFFFFF,
+        0x0000FFFFFFFFFFFF,
+        0x0000000000000000,
+    };
+
+    // Pre-calculate pawn movements
     bitboard_t wPawns = board.m_bbTypedPieces[W_PAWN][WHITE]; 
-    bitboard_t bPawns = board.m_bbTypedPieces[W_PAWN][BLACK]; 
+    bitboard_t bPawns = board.m_bbTypedPieces[W_PAWN][BLACK];
+    bitboard_t wPawnsAttacks = getWhitePawnAttacks(wPawns);
+    bitboard_t bPawnsAttacks = getBlackPawnAttacks(bPawns);
+    bitboard_t wPawnsMoves = getWhitePawnMoves(wPawns);
+    bitboard_t bPawnsMoves = getBlackPawnMoves(bPawns);
+    bitboard_t wPawnsSides = ((wPawns & ~(bbAFile)) << 1) | ((wPawns & ~(bbHFile)) >> 1);
+    bitboard_t bPawnsSides = ((bPawns & ~(bbAFile)) << 1) | ((bPawns & ~(bbHFile)) >> 1);
+    bitboard_t wPawnAttackSpans = 0L;
+    bitboard_t bPawnAttackSpans = 0L;
 
     eval_t pawnScore = 0;
+
+    // // Pawn has supporting pawns (in the neighbour files)
+    // bitboard_t wPawnSupported = (wPawnsSides | wPawnsAttacks) & wPawns;
+    // bitboard_t bPawnSupported = (bPawnsSides | bPawnsAttacks) & bPawns;
+    // pawnScore += (CNTSBITS(wPawnSupported) - CNTSBITS(bPawnSupported)) * pawnSupportScore;
+
     while (wPawns)
     {
-        pawnScore += popLS1B(&wPawns) >> 3;
+        int index = popLS1B(&wPawns);
+        int rank = index >> 3;
+        int file = index & 0b111;
+        
+        bitboard_t forward = wForwardLookup[rank];
+        bitboard_t backward = bForwardLookup[rank];
+        bitboard_t pawnFile = bbAFile << file;
+        bitboard_t pawnNeighbourFiles = 0L;
+
+        if(file != 0)
+            pawnNeighbourFiles |= (bbAFile << (file - 1));
+        if(file != 7)
+            pawnNeighbourFiles |= (bbAFile << (file + 1));
+        wPawnAttackSpans |= pawnNeighbourFiles & forward;
+
+        // Is passed pawn
+        pawnScore += (((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) == 0) * passedPawnScore;
+
+        // Pawn has supporting pawns (in the neighbour files)
+        pawnScore += ((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * pawnSupportScore;
+
+        // Is a doubled pawn
+        pawnScore += ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * doublePawnScore;
+        
+        // Pawns closer to pormotion gets value
+        pawnScore += rank * pawnRankScore;
     }
     
     while (bPawns)
     {
-        pawnScore -= (7 - (popLS1B(&bPawns) >> 3));
+        int index = popLS1B(&bPawns);
+        int rank = index >> 3;
+        int file = index & 0b111;
+        
+        bitboard_t forward = bForwardLookup[rank];
+        bitboard_t backward = wForwardLookup[rank];
+        bitboard_t pawnFile = bbAFile << file;
+        bitboard_t pawnNeighbourFiles = 0L;
+
+        if(file != 0)
+            pawnNeighbourFiles |= (bbAFile << (file - 1));
+        if(file != 7)
+            pawnNeighbourFiles |= (bbAFile << (file + 1));
+        bPawnAttackSpans |= pawnNeighbourFiles & forward;
+
+        // Is passed pawn
+        pawnScore += (((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) == 0) * passedPawnScore;
+
+        // Pawn has supporting pawns (in the neighbour files)
+        pawnScore -= ((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][BLACK]) != 0) * pawnSupportScore;
+        
+        // Is not a doubled pawn
+        pawnScore -= ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) != 0) * doublePawnScore;
+
+        // Pawns closer to pormotion gets value
+        pawnScore -= (7 - rank) * pawnRankScore;
     }
 
-    pawnScore = pawnScore << 3;
+    // Is backwards pawn: https://www.chessprogramming.org/Backward_Pawns_(Bitboards)
+    // TODO: If used to calculate stragglers, move biatboard from move possiton to pawn possiton >> 8
+    bitboard_t wBackwardsPawns = wPawnsMoves & bPawnsAttacks & ~wPawnAttackSpans;
+    bitboard_t bBackwardsPawns = bPawnsMoves & wPawnsAttacks & ~bPawnAttackSpans;
+    pawnScore += (CNTSBITS(wBackwardsPawns) - CNTSBITS(bBackwardsPawns)) * pawnBackwardScore;
 
     // Write the pawn evaluation to the table
     evalEntry->hash = board.m_pawnHash;
@@ -116,4 +206,90 @@ inline eval_t Eval::m_getMaterialEval(Board& board)
     evalEntry->value = pieceScore;
 
     return pieceScore;
+}
+
+constexpr eval_t pawnMobilityScore = 10;
+constexpr eval_t rookMobilityScore = 10;
+constexpr eval_t knightMobilityScore = 20;
+constexpr eval_t bishopMobilityScore = 20;
+constexpr eval_t queenMobilityScore = 15;
+constexpr eval_t kingMobilityScore = 5;
+inline eval_t Eval::m_getMobilityEval(Board& board)
+{
+    eval_t mobilityScore = 0;
+
+    // White mobility
+    {
+        mobilityScore += CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][WHITE]) & ~board.m_bbAllPieces) * pawnMobilityScore;
+        mobilityScore += CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][WHITE]) & board.m_bbColoredPieces[BLACK]) * pawnMobilityScore;
+
+        bitboard_t wRooks = board.m_bbTypedPieces[W_ROOK][WHITE];
+        while(wRooks)
+        {
+            int rookIdx = popLS1B(&wRooks);
+            mobilityScore += CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & ~board.m_bbColoredPieces[WHITE]) * rookMobilityScore;
+        }
+
+
+        bitboard_t wKnights = board.m_bbTypedPieces[W_KNIGHT][WHITE];
+        while(wKnights)
+        {
+            int knightIdx = popLS1B(&wKnights);
+            mobilityScore += CNTSBITS(getKnightAttacks(knightIdx) & ~board.m_bbColoredPieces[WHITE]) * knightMobilityScore;
+        }
+
+        bitboard_t wBishops = board.m_bbTypedPieces[W_BISHOP][WHITE];
+        while(wBishops)
+        {
+            int bishopIdx = popLS1B(&wBishops);
+            mobilityScore += CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & ~board.m_bbColoredPieces[WHITE]) * bishopMobilityScore;
+        }
+
+        bitboard_t wQueens = board.m_bbTypedPieces[W_QUEEN][WHITE];
+        while(wQueens)
+        {
+            int queenIdx = popLS1B(&wQueens);
+            mobilityScore += CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & ~board.m_bbColoredPieces[WHITE]) * queenMobilityScore;
+        }
+
+        mobilityScore += CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][WHITE])) & ~board.m_bbColoredPieces[WHITE]);
+    }
+
+    // Black mobility
+    {
+        mobilityScore -= CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][BLACK]) & ~board.m_bbAllPieces) * pawnMobilityScore;
+        mobilityScore -= CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][BLACK]) & board.m_bbColoredPieces[WHITE]) * pawnMobilityScore;
+
+        bitboard_t bRooks = board.m_bbTypedPieces[W_ROOK][BLACK];
+        while(bRooks)
+        {
+            int rookIdx = popLS1B(&bRooks);
+            mobilityScore -= CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & ~board.m_bbColoredPieces[BLACK]) * rookMobilityScore;
+        }
+
+        bitboard_t bKnights = board.m_bbTypedPieces[W_KNIGHT][BLACK];
+        while(bKnights)
+        {
+            int knightIdx = popLS1B(&bKnights);
+            mobilityScore -= CNTSBITS(getKnightAttacks(knightIdx) & ~board.m_bbColoredPieces[BLACK]) * knightMobilityScore;
+        }
+
+        bitboard_t bBishops = board.m_bbTypedPieces[W_BISHOP][BLACK];
+        while(bBishops)
+        {
+            int bishopIdx = popLS1B(&bBishops);
+            mobilityScore -= CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & ~board.m_bbColoredPieces[BLACK]) * bishopMobilityScore;
+        }
+
+        bitboard_t bQueens = board.m_bbTypedPieces[W_QUEEN][BLACK];
+        while(bQueens)
+        {
+            int queenIdx = popLS1B(&bQueens);
+            mobilityScore -= CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & ~board.m_bbColoredPieces[BLACK]) * queenMobilityScore;
+        }
+
+        mobilityScore -= CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][BLACK])) & ~board.m_bbColoredPieces[BLACK]) * kingMobilityScore;
+    }
+
+    return mobilityScore;
 }
