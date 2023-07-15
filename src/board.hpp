@@ -2,6 +2,7 @@
 
 #include <chessutils.hpp>
 #include <string>
+#include <iostream>
 #include <unordered_map>
 #include <vector>
 #include <memory>
@@ -67,6 +68,7 @@ namespace ChessEngine2
         uint32_t moveInfo;
 
         Move(){}
+        
         Move(uint8_t _from, uint8_t _to, uint32_t _moveInfo = 0)
         {
             from = _from;
@@ -74,11 +76,40 @@ namespace ChessEngine2
             moveInfo = _moveInfo;
         }
 
-        bool operator==(const Move& move)
+        bool operator==(const Move& move) const
         {
             return (from == move.from) && (to == move.to);
         }
+
+        std::string toString() const
+        {
+            std::stringstream ss;
+            ss << getArithmeticNotation(from);
+            ss << getArithmeticNotation(to);
+            
+            if(moveInfo & MOVE_INFO_PROMOTE_QUEEN)       ss << "q";
+            else if(moveInfo & MOVE_INFO_PROMOTE_ROOK)   ss << "r";
+            else if(moveInfo & MOVE_INFO_PROMOTE_BISHOP) ss << "b";
+            else if(moveInfo & MOVE_INFO_PROMOTE_KNIGHT) ss << "n";
+            return ss.str();
+        }
+
+        friend inline std::ostream& operator<<(std::ostream& os, const Move& move)
+        {
+            os << getArithmeticNotation(move.from);
+            os << getArithmeticNotation(move.to);
+            
+            if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)       os << "q";
+            else if(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)   os << "r";
+            else if(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP) os << "b";
+            else if(move.moveInfo & MOVE_INFO_PROMOTE_KNIGHT) os << "n";
+
+            return os;
+        }
+
     } Move;
+
+
 
     class HashFunction
     {

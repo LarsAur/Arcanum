@@ -2,19 +2,6 @@
 #include <iostream>  
 using namespace ChessEngine2;
 
-static inline std::string getUCINotation(Move move)
-{
-    std::stringstream ss;
-    ss << ChessEngine2::getArithmeticNotation(move.from)  << ChessEngine2::getArithmeticNotation(move.to);
-
-    if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)       ss << "q";
-    else if(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)   ss << "r";
-    else if(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP) ss << "b";
-    else if(move.moveInfo & MOVE_INFO_PROMOTE_KNIGHT) ss << "n";
-
-    return ss.str();
-}
-
 void UCI::loop()
 {
     Board board = Board(startFEN);
@@ -87,7 +74,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         bestMove = searcher.getBestMoveInTime(board, moveTime, 4);
     }
 
-    std::cout << "bestmove " << getUCINotation(bestMove) << std::endl; 
+    std::cout << "bestmove " << bestMove << std::endl; 
 }
 
 void UCI::position(Board& board, std::istringstream& is)
@@ -119,9 +106,9 @@ void UCI::position(Board& board, std::istringstream& is)
         uint8_t numLegalMoves = board.getNumLegalMoves();
         for(int i = 0; i < numLegalMoves; i++)
         {
-            if(strcmp(token.c_str(), getUCINotation(moves[i]).c_str()) == 0)
+            if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
             {
-                CE2_DEBUG("Perform move " << getUCINotation(moves[i]));
+                CE2_DEBUG("Perform move " << moves[i]);
                 board.performMove(moves[i]);
                 board.addBoardToHistory();
                 break;

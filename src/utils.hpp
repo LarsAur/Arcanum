@@ -24,31 +24,31 @@
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
 #ifndef DISABLE_CE2_DEBUG
-#define CE2_DEBUG(_str) std::clog << CE2_DEBUG_COLOR << "[DEBUG]   " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#define CE2_DEBUG(_str) std::cout << CE2_DEBUG_COLOR << "[DEBUG]   " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
 #define CE2_DEBUG(_str) ;
 #endif
 
 #ifndef DISABLE_CE2_LOG
-#define CE2_LOG(_str) std::clog << CE2_LOG_COLOR << "[LOG]     " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#define CE2_LOG(_str) std::cout << CE2_LOG_COLOR << "[LOG]     " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
 #define CE2_LOG(_str) ;
 #endif
 
 #ifndef DISABLE_CE2_WARNING
-#define CE2_WARNING(_str) std::clog << CE2_WARNING_COLOR << "[WARNING] " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#define CE2_WARNING(_str) std::cout << CE2_WARNING_COLOR << "[WARNING] " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
 #define CE2_WARNING(_str) ;
 #endif
 
 #ifndef DISABLE_CE2_ERROR
-#define CE2_ERROR(_str) std::clog << CE2_ERROR_COLOR << "[ERROR]   " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#define CE2_ERROR(_str) std::cerr << CE2_ERROR_COLOR << "[ERROR]   " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
 #define CE2_ERROR(_str) ;
 #endif
 
 #ifndef DISABLE_CE2_SUCCESS
-#define CE2_SUCCESS(_str) std::clog << CE2_SUCCESS_COLOR << "[SUCCESS] " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#define CE2_SUCCESS(_str) std::cout << CE2_SUCCESS_COLOR << "[SUCCESS] " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
 #define CE2_SUCCESS(_str) ;
 #endif

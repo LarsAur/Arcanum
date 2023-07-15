@@ -3,5 +3,4 @@ build/
 .vscode
 *.o
 *.exe
-
 notes.txt
