@@ -104,6 +104,7 @@ void UCI::position(Board& board, std::istringstream& is)
         // TODO: This can be improved to make the move based on only the uci
         Move* moves = board.getLegalMoves();
         uint8_t numLegalMoves = board.getNumLegalMoves();
+        board.generateCaptureInfo();
         for(int i = 0; i < numLegalMoves; i++)
         {
             if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
