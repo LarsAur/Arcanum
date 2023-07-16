@@ -90,12 +90,14 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
     return bestScore;
 }
 
-eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int quietDepth)
+eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int quietDepth)
 {
     if(m_stopSearch)
     {
         return 0;
     }
+
+    pvLine->count = 0;
 
     // Check for repeated positions from previous searches
     auto boardHistory = Board::getBoardHistory();
@@ -163,18 +165,23 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     }
     board.generateCaptureInfo();
 
+    pvLine_t _pvLine;
     MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove : Move(0,0));
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
         // Generate new board and make the move
         Board new_board = Board(board);
+
         new_board.performMove(*move);
-        eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
+        eval_t score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
         if(score > bestScore)
         {
             bestScore = score;
             bestMove = *move;
+            pvLine->moves[0] = *move;
+            memcpy(pvLine->moves + 1, _pvLine.moves, _pvLine.count * sizeof(Move));
+            pvLine->count = _pvLine.count + 1;
         }
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
@@ -219,6 +226,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     uint8_t numMoves = board.getNumLegalMoves();
     board.generateCaptureInfo();
     Move bestMove;
+    pvLine_t pvLine, _pvLine;
 
     bool ttHit;
     ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
@@ -232,13 +240,15 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
         Board new_board = Board(board);
         const Move *move = moveSelector.getNextMove();
         new_board.performMove(*move);
-
-        eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
-        
+        eval_t score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
         if(score > bestScore)
         {
             bestScore = score;
             bestMove = *move;
+            pvLine.moves[0] = bestMove;
+            memcpy(pvLine.moves + 1, _pvLine.moves, _pvLine.count * sizeof(Move));
+            pvLine.count = _pvLine.count + 1;
+
             if(score > alpha)
             {   
                 alpha = score;
@@ -257,6 +267,13 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     std::chrono::duration<double> diff = end - start;
     auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
     CE2_LOG("Best move: " << bestMove << " Score: " << bestScore)
+    // Print PV line
+    std::stringstream ss;
+    for(int i = 0; i < pvLine.count; i++)
+    {
+        ss << pvLine.moves[i] << " ";
+    }
+    CE2_LOG("PV Line: " << ss.str())
     CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     #if TT_RECORD_STATS == 1
@@ -293,6 +310,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     int depth = 0;
     eval_t searchScore = 0;
     Move searchBestMove = Move(0,0);
+    pvline_t pvLine, pvLineTmp, _pvLineTmp;
 
     auto search = [&]()
     {
@@ -317,7 +335,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
                 const Move *move = moveSelector.getNextMove();
                 new_board.performMove(*move);
 
-                eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
+                eval_t score = -m_alphaBeta(new_board, &_pvLineTmp, -beta, -alpha, depth - 1, quietDepth);
 
                 if(m_stopSearch)
                 {
@@ -328,6 +346,9 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
                 {
                     bestScore = score;
                     bestMove = *move;
+                    pvLineTmp.moves[0] = bestMove;
+                    memcpy(pvLineTmp.moves + 1, _pvLineTmp.moves, _pvLineTmp.count * sizeof(Move));
+                    pvLineTmp.count = _pvLineTmp.count + 1;
                     if(score > alpha)
                     {   
                         alpha = score;
@@ -344,8 +365,10 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             }
 
             // If search is not canceled, save the best move found in this iteration
-            searchBestMove = bestMove;
             searchScore = bestScore;
+            searchBestMove = bestMove;
+            memcpy(pvLine.moves, pvLineTmp.moves, pvLineTmp.count * sizeof(Move));
+            pvLine.count = pvLineTmp.count;
 
             ttEntry_t newEntry;
             newEntry.value = bestScore;
@@ -390,6 +413,13 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     }
 
     CE2_LOG("Best move: " << searchBestMove << " Score: " << searchScore)
+    // Print PV line
+    std::stringstream ss;
+    for(int i = 0; i < pvLine.count; i++)
+    {
+        ss << pvLine.moves[i] << " ";
+    }
+    CE2_LOG("PV Line: " << ss.str())
     CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     #if TT_RECORD_STATS
