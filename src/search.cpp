@@ -3,6 +3,7 @@
 #include <moveSelector.hpp>
 #include <algorithm>
 #include <utils.hpp>
+#include <thread>
 
 using namespace ChessEngine2;
 
@@ -28,6 +29,11 @@ Searcher::~Searcher()
 
 eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int depth)
 {
+    if(m_stopSearch)
+    {
+        return 0;
+    }
+
     auto boardHistory = Board::getBoardHistory();
     auto it = boardHistory->find(board.getHash());
     if(it != boardHistory->end())
@@ -86,6 +92,11 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
 
 eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int quietDepth)
 {
+    if(m_stopSearch)
+    {
+        return 0;
+    }
+
     // Check for repeated positions from previous searches
     auto boardHistory = Board::getBoardHistory();
     auto globalSearchIt = boardHistory->find(board.getHash());
@@ -93,7 +104,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     {
         if(globalSearchIt->second == 2)
         {
-            return 0LL;
+            return 0;
         }
     }
 
@@ -172,6 +183,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         } 
     }
 
+    // Stop the thread from writing to the TT when search is stopped
+    if(m_stopSearch)
+    {
+        return 0;
+    }
+
     ttEntry_t newEntry;
     newEntry.value = bestScore;
     newEntry.bestMove = bestMove;
@@ -196,6 +213,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
 Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
 {
+    m_stopSearch = false;
     auto start = std::chrono::high_resolution_clock::now();
     Move* moves = board.getLegalMoves();
     uint8_t numMoves = board.getNumLegalMoves();
@@ -268,67 +286,110 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
 
 Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
 {
-    Move* moves = board.getLegalMoves();
-    uint8_t numMoves = board.getNumLegalMoves();
-    board.generateCaptureInfo();
-    Move bestMove;
-    eval_t bestMoveScore = 0;
+    #if SEARCH_RECORD_STATS
+    m_stats.quietSearchDepth = 0;
+    #endif
 
-    auto start = std::chrono::high_resolution_clock::now();
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
     int depth = 0;
-    while(micros.count() < 1000 * ms || depth == 0)
+    eval_t searchScore = 0;
+    Move searchBestMove = Move(0,0);
+
+    auto search = [&]()
     {
-        depth++;
-        bool ttHit;
-        ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
-        
-        eval_t alpha = -INF;
-        eval_t beta = INF;
-        eval_t bestScore = -INF;
+        Move* moves = board.getLegalMoves();
+        uint8_t numMoves = board.getNumLegalMoves();
+        board.generateCaptureInfo();
 
-        for (int i = 0; i < numMoves; i++)  {
-            Board new_board = Board(board);
-            const Move *move = moveSelector.getNextMove();
-            new_board.performMove(*move);
+        while(true)
+        {
+            depth++;
+            bool ttHit;
+            ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
+            
+            eval_t alpha = -INF;
+            eval_t beta = INF;
+            eval_t bestScore = -INF;
+            Move bestMove = Move(0,0);
 
-            eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
+            for (int i = 0; i < numMoves; i++)  {
+                Board new_board = Board(board);
+                const Move *move = moveSelector.getNextMove();
+                new_board.performMove(*move);
 
-            if(score > bestScore)
-            {
-                bestScore = score;
-                bestMove = *move;
-                bestMoveScore = bestScore;
-                if(score > alpha)
-                {   
-                    alpha = score;
+                eval_t score = -m_alphaBeta(new_board, -beta, -alpha, depth - 1, quietDepth);
+
+                if(m_stopSearch)
+                {
+                    break;
                 }
+
+                if(score > bestScore)
+                {
+                    bestScore = score;
+                    bestMove = *move;
+                    if(score > alpha)
+                    {   
+                        alpha = score;
+                    }
+                }
+            }
+
+            // Stop search from writing to TT
+            // If search is stopped, corrigate depth to the depth from the previous iterations
+            if(m_stopSearch)
+            {
+                depth--;
+                break;
+            }
+
+            // If search is not canceled, save the best move found in this iteration
+            searchBestMove = bestMove;
+            searchScore = bestScore;
+
+            ttEntry_t newEntry;
+            newEntry.value = bestScore;
+            newEntry.bestMove = bestMove;
+            newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
+            newEntry.depth = depth;
+            m_tt->addEntry(newEntry, board.getHash());
+
+            // If checkmate is found, search can be canceled
+            // Checkmate score is given by INT16_MAX - board.getFullMoves()
+            // absolute value of the checkmate score cannot be less than 
+            // INT16_MAX - board.getFullMoves() - depth
+            if(std::abs(bestScore) >= INT16_MAX - board.getFullMoves() - depth)
+            {
+                break;
             }
         }
 
-        ttEntry_t newEntry;
-        newEntry.value = bestScore;
-        newEntry.bestMove = bestMove;
-        newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
-        newEntry.depth = depth;
-        m_tt->addEntry(newEntry, board.getHash());
+        m_stopSearch = true;
+    };
 
-        // Update the time used to process
+    // Start thread and wait for the time to pass
+    auto start = std::chrono::high_resolution_clock::now();
+    auto end = start;
+    std::chrono::duration<double> diff = end - start;
+    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
+    m_stopSearch = false;
+    std::thread searchThread(search);
+    while((micros.count() < 1000 * ms || depth == 0) && !m_stopSearch)
+    {
         end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> diff = end - start;
         micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
-
-        // If checkmate is found, search can be canceled
-        if(abs(bestScore) > INT16_MAX - board.getFullMoves())
-        {
-            break;
-        }
+    }
+    m_stopSearch = true;
+    searchThread.join();
+    
+    if(searchBestMove == Move(0,0))
+    {
+        CE2_ERROR("No moves found by search")
+        exit(EXIT_FAILURE);
     }
 
-    CE2_LOG("Best move: " << bestMove << " Score: " << bestMoveScore)
+    CE2_LOG("Best move: " << searchBestMove << " Score: " << searchScore)
     CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     #if TT_RECORD_STATS
@@ -352,7 +413,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
 
     m_generation += 1; // Generation will update every 4th search
 
-    return bestMove;
+    return searchBestMove;
 }
 
 searchStats_t Searcher::getStats()
