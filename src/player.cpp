@@ -18,6 +18,7 @@ Move Player::promptForMove(Board& board)
 {
     Move* moves = board.getLegalMoves();
     int numLegalMoves = board.getNumLegalMoves();
+    board.generateCaptureInfo();
 
     std::stringstream ss;
     for(int i = 1; i <= numLegalMoves; i++)
