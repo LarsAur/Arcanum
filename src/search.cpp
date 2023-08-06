@@ -356,6 +356,16 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
                 }
             }
 
+            // The move found can be used even if search is canceled, if we search the previously best move first
+            // If a better move is found, is is guaranteed to be better than the best move at the previous depth
+            if(!(bestMove == Move(0, 0)))
+            {
+                searchScore = bestScore;
+                searchBestMove = bestMove;
+                memcpy(pvLine.moves, pvLineTmp.moves, pvLineTmp.count * sizeof(Move));
+                pvLine.count = pvLineTmp.count;
+            }
+
             // Stop search from writing to TT
             // If search is stopped, corrigate depth to the depth from the previous iterations
             if(m_stopSearch)
@@ -365,11 +375,6 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             }
 
             // If search is not canceled, save the best move found in this iteration
-            searchScore = bestScore;
-            searchBestMove = bestMove;
-            memcpy(pvLine.moves, pvLineTmp.moves, pvLineTmp.count * sizeof(Move));
-            pvLine.count = pvLineTmp.count;
-
             ttEntry_t newEntry;
             newEntry.value = bestScore;
             newEntry.bestMove = bestMove;
