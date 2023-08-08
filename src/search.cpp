@@ -34,11 +34,21 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
         return 0;
     }
 
+    // Check for repeated positions in the current search
+    int stackRepeats = 0;
+    for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
+    {
+        if(*it == board.getHash())
+        {
+            stackRepeats++;
+        }
+    }
+
     auto boardHistory = Board::getBoardHistory();
     auto it = boardHistory->find(board.getHash());
     if(it != boardHistory->end())
     {
-        if(it->second == 2)
+        if(it->second + stackRepeats >= 2)
         {
             return 0LL;
         }
@@ -71,6 +81,9 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
         return board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
     }
 
+    // Push the board on the search stack
+    m_search_stack.push_back(board.getHash());
+
     board.generateCaptureInfo();
     MoveSelector moveSelector = MoveSelector(moves, numMoves, &board);
     eval_t bestScore = -INF;
@@ -87,6 +100,9 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
         } 
     }
 
+    // Pop the board off the search stack
+    m_search_stack.pop_back(); 
+
     return bestScore;
 }
 
@@ -99,12 +115,22 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
     pvLine->count = 0;
 
+    // Check for repeated positions in the current search
+    int stackRepeats = 0;
+    for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
+    {
+        if(*it == board.getHash())
+        {
+            stackRepeats++;
+        }
+    }
+    
     // Check for repeated positions from previous searches
     auto boardHistory = Board::getBoardHistory();
     auto globalSearchIt = boardHistory->find(board.getHash());
     if(globalSearchIt != boardHistory->end())
     {
-        if(globalSearchIt->second == 2)
+        if(globalSearchIt->second + stackRepeats >= 2)
         {
             return 0;
         }
@@ -165,6 +191,9 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     }
     board.generateCaptureInfo();
 
+    // Push the board on the search stack
+    m_search_stack.push_back(board.getHash());
+
     pvLine_t _pvLine;
     MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove : Move(0,0));
     for (int i = 0; i < numMoves; i++)  {
@@ -172,7 +201,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
         // Generate new board and make the move
         Board new_board = Board(board);
-
         new_board.performMove(*move);
         eval_t score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
         if(score > bestScore)
@@ -189,6 +217,9 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             break;
         } 
     }
+
+    // Pop the board off the search stack
+    m_search_stack.pop_back(); 
 
     // Stop the thread from writing to the TT when search is stopped
     if(m_stopSearch)
