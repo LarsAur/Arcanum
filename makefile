@@ -23,14 +23,14 @@ all: setup $(BUILDDIR)/$(PROJECT).exe
 uci: $(BUILDDIR)/$(PROJECT).exe
 	./$^
 
-run: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --nouci
+play: $(BUILDDIR)/$(PROJECT).exe
+	./$^ --play
 
 test: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --nouci --test
+	./$^ --capture-test --zobrist-test --perft-test
 
 perf: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --nouci --perf
+	./$^ --search-perf --engine-perf
 
 clean: 
 	-rmdir $(BUILDDIR) /s /q
