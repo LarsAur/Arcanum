@@ -11,7 +11,7 @@ using namespace ChessEngine2;
 void play(Color color, std::string fen, int ms)
 {
 
-    ChessEngine2::Board board = ChessEngine2::Board(ChessEngine2::startFEN);
+    ChessEngine2::Board board = ChessEngine2::Board(fen);
     board.addBoardToHistory();
     
 
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     {
         if(!strncmp("--play", argv[i], 8))
         {
-            play(Color::WHITE, startFEN, 3000);
+            play(Color::BLACK, ChessEngine2::startFEN, 3000);
         }
 
         if(!strncmp("--perft-test", argv[i], 13))

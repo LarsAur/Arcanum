@@ -16,7 +16,7 @@ namespace ChessEngine2
     {
         ttEntryHash_t hash;
         Move bestMove;
-        eval_t value;
+        EvalTrace value;
         int8_t depth; // Depth == INT8_MIN marks the entry as invalid
         uint8_t flags; // Two first bits are FLAG, upper 6 bits are generation
     } ttEntry_t;
@@ -58,8 +58,5 @@ namespace ChessEngine2
             void addEntry(ttEntry_t entry, hash_t hash);
             ttStats_t getStats();
             size_t getEntryCount();
-
-            void dump(std::string filename);
-            void load(std::string filename);
     };
 }

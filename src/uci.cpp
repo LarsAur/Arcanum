@@ -62,6 +62,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         else if(!strcmp(token.c_str(), "perft"))     CE2_WARNING("perft")
         else if(!strcmp(token.c_str(), "infinite"))  CE2_WARNING("infinite")
         else if(!strcmp(token.c_str(), "ponder"))    CE2_WARNING("ponder")
+        else CE2_ERROR("Unknown command")
     }
 
     if(depth > 0)

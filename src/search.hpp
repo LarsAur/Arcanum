@@ -34,8 +34,8 @@ namespace ChessEngine2
             std::unique_ptr<TranspositionTable> m_tt;
             std::unique_ptr<Eval> m_eval;
             std::vector<hash_t> m_search_stack;
-            eval_t m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int quietDepth);
-            eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int depth);
+            EvalTrace m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int quietDepth);
+            EvalTrace m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth);
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
             searchStats_t m_stats;
             bool m_stopSearch;

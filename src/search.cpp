@@ -9,7 +9,7 @@ using namespace ChessEngine2;
 
 Searcher::Searcher()
 {
-    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(20));
+    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(32));
     m_eval = std::unique_ptr<Eval>(new Eval(16, 16));
 
     #if SEARCH_RECORD_STATS
@@ -27,11 +27,14 @@ Searcher::~Searcher()
     
 }
 
-eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int depth)
+EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth)
 {
+
+    EvalTrace trace = EvalTrace();
+
     if(m_stopSearch)
     {
-        return 0;
+        return trace;
     }
 
     // Check for repeated positions in the current search
@@ -50,7 +53,10 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
     {
         if(it->second + stackRepeats >= 2)
         {
-            return 0LL;
+            #ifdef FULL_TRACE
+            trace.stalemate = true;
+            #endif // FULL_TRACE
+            return trace;
         }
     }
 
@@ -59,7 +65,8 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
         #if SEARCH_RECORD_STATS
         m_stats.evaluatedPositions++;
         #endif
-        eval_t standPat = board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
+        
+        EvalTrace standPat = board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
         if(standPat >= beta)
         {
             return beta;
@@ -86,12 +93,12 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
 
     board.generateCaptureInfo();
     MoveSelector moveSelector = MoveSelector(moves, numMoves, &board);
-    eval_t bestScore = -INF;
+    EvalTrace bestScore = EvalTrace(-INF);
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
         const Move *move = moveSelector.getNextMove();
         new_board.performMove(*move);
-        eval_t score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1);
+        EvalTrace score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1);
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
@@ -106,7 +113,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int d
     return bestScore;
 }
 
-eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int quietDepth)
+EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int quietDepth)
 {
     if(m_stopSearch)
     {
@@ -136,7 +143,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         }
     }
 
-    int64_t originalAlpha = alpha;
+    EvalTrace originalAlpha = alpha;
     bool ttHit;
     ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
     if(ttHit && (entry->depth >= depth))
@@ -175,7 +182,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     }
 
     // First search the move found to be best previously
-    eval_t bestScore = -INF;
+    EvalTrace bestScore = EvalTrace(-INF);
     Move bestMove = Move(0, 0);
     Move* moves = nullptr;
     uint8_t numMoves = 0;
@@ -202,7 +209,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         // Generate new board and make the move
         Board new_board = Board(board);
         new_board.performMove(*move);
-        eval_t score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
+        EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
         if(score > bestScore)
         {
             bestScore = score;
@@ -263,15 +270,15 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
     MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
     
-    eval_t alpha = -INF;
-    eval_t beta = INF;
-    eval_t bestScore = -INF;
+    EvalTrace alpha = EvalTrace(-INF);
+    EvalTrace beta = EvalTrace(INF);
+    EvalTrace bestScore =EvalTrace(-INF);
 
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
         const Move *move = moveSelector.getNextMove();
         new_board.performMove(*move);
-        eval_t score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
+        EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
         if(score > bestScore)
         {
             bestScore = score;
@@ -297,7 +304,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> diff = end - start;
     auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
-    CE2_LOG("Best move: " << bestMove << " Score: " << bestScore)
+    CE2_LOG("Best move: " << bestMove << "\n" << bestScore)
     // Print PV line
     std::stringstream ss;
     for(int i = 0; i < pvLine.count; i++)
@@ -339,7 +346,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     #endif
 
     int depth = 0;
-    eval_t searchScore = 0;
+    EvalTrace searchScore = 0;
     Move searchBestMove = Move(0,0);
     pvline_t pvLine, pvLineTmp, _pvLineTmp;
 
@@ -356,9 +363,9 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
             MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
             
-            eval_t alpha = -INF;
-            eval_t beta = INF;
-            eval_t bestScore = -INF;
+            EvalTrace alpha = EvalTrace(-INF);
+            EvalTrace beta = EvalTrace(INF);
+            EvalTrace bestScore = EvalTrace(-INF);
             Move bestMove = Move(0,0);
 
             for (int i = 0; i < numMoves; i++)  {
@@ -366,7 +373,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
                 const Move *move = moveSelector.getNextMove();
                 new_board.performMove(*move);
 
-                eval_t score = -m_alphaBeta(new_board, &_pvLineTmp, -beta, -alpha, depth - 1, quietDepth);
+                EvalTrace score = -m_alphaBeta(new_board, &_pvLineTmp, -beta, -alpha, depth - 1, quietDepth);
 
                 if(m_stopSearch)
                 {
@@ -417,7 +424,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             // Checkmate score is given by INT16_MAX - board.getFullMoves()
             // absolute value of the checkmate score cannot be less than 
             // INT16_MAX - board.getFullMoves() - depth
-            if(std::abs(bestScore) >= INT16_MAX - board.getFullMoves() - depth)
+            if(std::abs(bestScore.total) >= INT16_MAX - board.getFullMoves() - depth)
             {
                 break;
             }
@@ -448,7 +455,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
         exit(EXIT_FAILURE);
     }
 
-    CE2_LOG("Best move: " << searchBestMove << " Score: " << searchScore)
+    CE2_LOG("Best move: " << searchBestMove << "\n" << searchScore)
     // Print PV line
     std::stringstream ss;
     for(int i = 0; i < pvLine.count; i++)

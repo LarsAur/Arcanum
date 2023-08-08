@@ -2,6 +2,12 @@
 
 using namespace ChessEngine2;
 
+bool EvalTrace::operator==(const EvalTrace& other) const { return total == other.total; }
+bool EvalTrace::operator> (const EvalTrace& other) const { return total > other.total;  }
+bool EvalTrace::operator< (const EvalTrace& other) const { return total < other.total;  }
+bool EvalTrace::operator>=(const EvalTrace& other) const { return total >= other.total; }
+bool EvalTrace::operator<=(const EvalTrace& other) const { return total <= other.total; }
+
 Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
 {
     // Create eval lookup tables
@@ -27,8 +33,10 @@ Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
 }
 
 // Evaluates positive value for WHITE
-eval_t Eval::evaluate(Board& board)
+EvalTrace Eval::evaluate(Board& board)
 {
+    EvalTrace trace = EvalTrace();
+
     // Check for stalemate and checkmate
     // TODO: Create function hasLegalMoves
     board.getLegalMoves();
@@ -38,16 +46,31 @@ eval_t Eval::evaluate(Board& board)
         {
             // subtract number of full moves from the score to have incentive for fastest checkmate
             // If there are more checkmates and this is not done, it might be "confused" and move between
-            return board.m_turn == WHITE ? (-INT16_MAX + board.m_fullMoves) : (INT16_MAX - board.m_fullMoves);
+            trace.total = board.m_turn == WHITE ? (-INT16_MAX + board.m_fullMoves) : (INT16_MAX - board.m_fullMoves);
+            #ifdef FULL_TRACE
+            trace.checkmate = true;
+            #endif // FULL_TRACE
+            return trace;
         }
-        return 0;
+        
+        #ifdef FULL_TRACE
+        trace.stalemate = true;
+        #endif // FULL_TRACE
+        trace.total = 0;
+        return trace;
     }
 
-    eval_t eval = m_getPawnEval(board);
-    eval += m_getMaterialEval(board);
-    eval += m_getMobilityEval(board);
-
-    return eval;
+    #ifdef FULL_TRACE    
+    trace.pawns = m_getPawnEval(board);
+    trace.material = m_getMaterialEval(board);
+    trace.mobility = m_getMobilityEval(board);
+    trace.total = trace.pawns + trace.material + trace.mobility;
+    #else
+    trace.total = m_getPawnEval(board)
+    + m_getMaterialEval(board)
+    + m_getMobilityEval(board);
+    #endif // FULL_TRACE
+    return trace;
 }
 
 constexpr eval_t doublePawnScore = -12;
@@ -98,8 +121,8 @@ inline eval_t Eval::m_getPawnEval(Board& board)
     bitboard_t bPawnsAttacks = getBlackPawnAttacks(bPawns);
     bitboard_t wPawnsMoves = getWhitePawnMoves(wPawns);
     bitboard_t bPawnsMoves = getBlackPawnMoves(bPawns);
-    bitboard_t wPawnsSides = ((wPawns & ~(bbAFile)) << 1) | ((wPawns & ~(bbHFile)) >> 1);
-    bitboard_t bPawnsSides = ((bPawns & ~(bbAFile)) << 1) | ((bPawns & ~(bbHFile)) >> 1);
+    // bitboard_t wPawnsSides = ((wPawns & ~(bbAFile)) << 1) | ((wPawns & ~(bbHFile)) >> 1);
+    // bitboard_t bPawnsSides = ((bPawns & ~(bbAFile)) << 1) | ((bPawns & ~(bbHFile)) >> 1);
     bitboard_t wPawnAttackSpans = 0L;
     bitboard_t bPawnAttackSpans = 0L;
 

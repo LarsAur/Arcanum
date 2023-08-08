@@ -191,6 +191,90 @@ namespace ChessEngine2
 
 
     typedef int16_t eval_t;
+    typedef struct EvalTrace
+    {
+        #ifdef FULL_TRACE
+        bool checkmate;
+        bool stalemate;
+        eval_t mobility;
+        eval_t material;
+        eval_t pawns;
+        #endif // FULL_TRACE
+        eval_t total;
+
+        EvalTrace()
+        {
+        #ifdef FULL_TRACE
+            checkmate = false;
+            stalemate = false;
+            mobility = 0;
+            material = 0;
+            pawns = 0;
+        #endif // FULL_TRACE
+            
+            total = 0;
+        };
+
+        EvalTrace(eval_t eval)
+        {
+        #ifdef FULL_TRACE
+            checkmate = false;
+            stalemate = false;
+            mobility = 0;
+            material = 0;
+            pawns = 0;
+        #endif // FULL_TRACE
+            total = eval;
+        }
+
+        bool operator> (const EvalTrace&) const;
+        bool operator>=(const EvalTrace&) const;
+        bool operator==(const EvalTrace&) const;
+        bool operator<=(const EvalTrace&) const;
+        bool operator< (const EvalTrace&) const;
+
+        EvalTrace operator-()
+        {
+            EvalTrace et;
+            #ifdef FULL_TRACE
+            et.checkmate = checkmate;
+            et.stalemate = stalemate;
+            et.mobility = -mobility;
+            et.material = -material;
+            et.pawns    = -pawns;
+            #endif // FULL_TRACE
+            et.total    = -total;
+            return et;
+        }
+
+        std::string toString() const
+        {
+            std::stringstream ss;
+            #ifdef FULL_TRACE
+            ss << "Checkmate:" << (checkmate ? "True" : "False") << std::endl;
+            ss << "Stalemate:" << (stalemate ? "True" : "False") << std::endl;
+            ss << "Mobility: " << mobility << std::endl;
+            ss << "Material: " << material << std::endl;
+            ss << "Pawns   : " << pawns << std::endl;
+            #endif // FULL_TRACE
+            ss << "Total   : " << total << std::endl;
+            return ss.str();
+        }
+
+        friend inline std::ostream& operator<<(std::ostream& os, const EvalTrace& trace)
+        {
+            #ifdef FULL_TRACE
+            os << "Checkmate:" << (trace.checkmate ? "True" : "False") << std::endl;
+            os << "Stalemate:" << (trace.stalemate ? "True" : "False") << std::endl;
+            os << "Mobility: " << trace.mobility << std::endl;
+            os << "Material: " << trace.material << std::endl;
+            os << "Pawns   : " << trace.pawns << std::endl;
+            #endif // FULL_TRACE
+            os << "Total   : " << trace.total << std::endl;
+            return os;
+        }
+    } EvalTrace;
+
     typedef struct evalEntry_t
     {
         hash_t hash;
@@ -212,6 +296,6 @@ namespace ChessEngine2
 
         public:
             Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies);
-            eval_t evaluate(Board& board);
+            EvalTrace evaluate(Board& board);
     };
 }
