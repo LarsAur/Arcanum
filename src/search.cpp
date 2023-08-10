@@ -122,6 +122,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
 
     pvLine->count = 0;
 
+    // TODO: It is not ideal that this position is marked with value 0 in TT if the moves are repeated in search 
     // Check for repeated positions in the current search
     int stackRepeats = 0;
     for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
@@ -258,6 +259,13 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
 
 Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
 {
+    // Safeguard for not searching deeper than SEARCH_MAX_PV_LENGTH
+    if(depth > SEARCH_MAX_PV_LENGTH)
+    {
+        CE2_WARNING("Depth (" << depth << ") is higher than SEARCH_MAX_PV_LENGTH (" << SEARCH_MAX_PV_LENGTH << "). Setting depth to " << SEARCH_MAX_PV_LENGTH)
+        depth = SEARCH_MAX_PV_LENGTH;
+    }
+
     m_stopSearch = false;
     auto start = std::chrono::high_resolution_clock::now();
     Move* moves = board.getLegalMoves();
@@ -359,6 +367,8 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
         while(true)
         {
             depth++;
+
+
             bool ttHit;
             ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
             MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
@@ -428,24 +438,27 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             {
                 break;
             }
-        }
 
+            // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
+            // or else it would overflow the pvline array
+            // This is set to a high number, but this failsafe is added just in case
+            if(depth >= SEARCH_MAX_PV_LENGTH)
+            {
+                break;
+            }
+        }
         m_stopSearch = true;
     };
 
     // Start thread and wait for the time to pass
+    // Note: using sleep is less precise, but is more efficient than using high_resolution clock for waiting
     auto start = std::chrono::high_resolution_clock::now();
-    auto end = start;
-    std::chrono::duration<double> diff = end - start;
-    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
     m_stopSearch = false;
     std::thread searchThread(search);
-    while((micros.count() < 1000 * ms || depth == 0) && !m_stopSearch)
-    {
-        end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> diff = end - start;
-        micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
-    }
+    std::this_thread::sleep_for(std::chrono::microseconds(ms * 1000));
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
     m_stopSearch = true;
     searchThread.join();
     

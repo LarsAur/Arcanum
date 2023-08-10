@@ -7,7 +7,7 @@
 
 #define INF INT16_MAX
 #define SEARCH_RECORD_STATS 1
-#define SEARCH_MAX_PV_LENGTH 32
+#define SEARCH_MAX_PV_LENGTH 64
 
 namespace ChessEngine2
 {
