@@ -16,19 +16,16 @@ class ChessGame():
 
     def play(self, time_ms): 
         print(self.board)
-        
         while(not (self.board.can_claim_draw() or self.board.is_stalemate() or self.board.is_checkmate())):
             results = None
             if self.board.turn == chess.WHITE:
-                results = self.white_engine.analyse(self.board, chess.engine.Limit(time=time_ms/1000.0))
+                results = self.white_engine.play(self.board, chess.engine.Limit(time=time_ms/1000.0))
             else:
-                results = self.black_engine.analyse(self.board, chess.engine.Limit(time=time_ms/1000.0))
+                results = self.black_engine.play(self.board, chess.engine.Limit(time=time_ms/1000.0))
             
-            move:chess.Move = results["pv"][0]
+            move:chess.Move = results.move
             self.board.push(move)
             self.moves.append(move.uci())
-            # print('\n')
-            # print(self.board)
             
         if(self.board.is_checkmate()):
             self.result = (ChessGame.CHECKMATE, not self.board.turn)
