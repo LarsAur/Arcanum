@@ -1,15 +1,36 @@
 #include <uci.hpp>
-#include <iostream>  
+#include <iostream>
+#include <ctime>
+#include <algorithm>
+#include <string>
+#include <fstream>
+
 using namespace ChessEngine2;
+
+const static std::string logFileName = "uci.log";
+#define _UCI_PRINT(_str) {std::ofstream fileStream(logFileName, std::ofstream::out | std::ifstream::app); \
+fileStream << _str << std::endl; \
+fileStream.close();}
+
+#define UCI_ERROR(_str)   _UCI_PRINT("[ERROR]  " << _str)
+#define UCI_WARNING(_str) _UCI_PRINT("[WARNING]" << _str)
+#define UCI_LOG(_str)     _UCI_PRINT("[LOG]    " << _str)
+#define UCI_DEBUG(_str)   _UCI_PRINT("[DEBUG]  " << _str)
+#define UCI_OUT(_str) {std::cout << _str << std::endl; UCI_LOG("To stdout: " << _str)}
 
 // Source: https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
 void UCI::loop()
 {
+    // Create Log file
+    std::ofstream fileStream(logFileName, std::ofstream::trunc);
+    fileStream << "Created log file: " << logFileName << std::endl;
+    fileStream.close();
+
     Board board = Board(startFEN);
     Searcher searcher = Searcher();
     std::string token, cmd;
 
-    CE2_LOG("Entering UCI loop")
+    UCI_LOG("Entering UCI loop")
     do
     {
         if(!getline(std::cin, cmd))
@@ -17,21 +38,23 @@ void UCI::loop()
             cmd = "quit";
         }
 
+        UCI_LOG("From stdin: " << cmd)
+
         token.clear();
         std::istringstream is(cmd);
         is >> std::skipws >> token;
 
         if(strcmp(token.c_str(), "uci") == 0)
         {
-            std::cout << "id name ChessEngine2" << std::endl; 
-            std::cout << "id author Lars Murud Aurud" << std::endl; 
-            std::cout << "uciok" << std::endl;
+            UCI_OUT("id name ChessEngine2") 
+            UCI_OUT("id author Lars Murud Aurud") 
+            UCI_OUT("uciok")
         } 
-        else if (strcmp(token.c_str(), "setoption") == 0) CE2_WARNING("Missing setoption")
+        else if (strcmp(token.c_str(), "setoption") == 0) UCI_WARNING("Missing setoption")
         else if (strcmp(token.c_str(), "go") == 0) go(board, searcher, is);
         else if (strcmp(token.c_str(), "position") == 0) position(board, is);
-        else if (strcmp(token.c_str(), "ucinewgame") == 0) CE2_WARNING("ucinewgame")
-        else if (strcmp(token.c_str(), "isready") == 0) std::cout << "readyok" << std::endl;
+        else if (strcmp(token.c_str(), "ucinewgame") == 0) UCI_WARNING("ucinewgame")
+        else if (strcmp(token.c_str(), "isready") == 0) UCI_OUT("readyok")
 
         // Custom
         else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board);
@@ -39,7 +62,7 @@ void UCI::loop()
 
     } while(strcmp(token.c_str(), "quit") != 0);
 
-    CE2_LOG("Exiting UCI loop")
+    UCI_LOG("Exiting UCI loop")
 }
 
 void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
@@ -51,34 +74,38 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
 
     while(is >> token)
     {
-        if(!strcmp(token.c_str(), "searchmoves"))    CE2_WARNING("searchmoves")
-        else if(!strcmp(token.c_str(), "wtime"))     CE2_WARNING("wtime")
-        else if(!strcmp(token.c_str(), "btime"))     CE2_WARNING("btime")
-        else if(!strcmp(token.c_str(), "winc"))      CE2_WARNING("winc")
-        else if(!strcmp(token.c_str(), "binc"))      CE2_WARNING("binc")
-        else if(!strcmp(token.c_str(), "movestogo")) CE2_WARNING("movestogo")
+        if(!strcmp(token.c_str(), "searchmoves"))    UCI_WARNING("searchmoves")
+        else if(!strcmp(token.c_str(), "wtime"))     UCI_WARNING("wtime")
+        else if(!strcmp(token.c_str(), "btime"))     UCI_WARNING("btime")
+        else if(!strcmp(token.c_str(), "winc"))      UCI_WARNING("winc")
+        else if(!strcmp(token.c_str(), "binc"))      UCI_WARNING("binc")
+        else if(!strcmp(token.c_str(), "movestogo")) UCI_WARNING("movestogo")
         else if(!strcmp(token.c_str(), "depth"))     is >> depth;
-        else if(!strcmp(token.c_str(), "nodes"))     CE2_WARNING("nodes")
+        else if(!strcmp(token.c_str(), "nodes"))     UCI_WARNING("nodes")
         else if(!strcmp(token.c_str(), "movetime"))  is >> moveTime;
-        else if(!strcmp(token.c_str(), "perft"))     CE2_WARNING("perft")
-        else if(!strcmp(token.c_str(), "infinite"))  CE2_WARNING("infinite")
-        else if(!strcmp(token.c_str(), "ponder"))    CE2_WARNING("ponder")
-        else CE2_ERROR("Unknown command")
+        else if(!strcmp(token.c_str(), "perft"))     UCI_WARNING("perft")
+        else if(!strcmp(token.c_str(), "infinite"))  UCI_WARNING("infinite")
+        else if(!strcmp(token.c_str(), "ponder"))    UCI_WARNING("ponder")
+        else UCI_ERROR("Unknown command")
     }
 
     if(depth > 0)
     {
-        CE2_LOG("Searching at depth " << depth);
+        UCI_LOG("Searching at depth " << depth);
         bestMove = searcher.getBestMove(board, depth, 4);
-        std::cout << "info pv " << bestMove << std::endl;
     } else if (moveTime > 0)
     {
-        CE2_LOG("Searching for " << moveTime << "ms");
+        UCI_LOG("Searching for " << moveTime << "ms");
         bestMove = searcher.getBestMoveInTime(board, moveTime, 4);
-        std::cout << "info pv " << bestMove << std::endl;
+        if(bestMove == Move(0,0))
+        {
+            UCI_ERROR("Search did not find any moves")
+            exit(EXIT_FAILURE);
+        }
     }
 
-    std::cout << "bestmove " << bestMove << std::endl; 
+    UCI_OUT("info pv " << bestMove)
+    UCI_OUT("bestmove " << bestMove) 
 }
 
 void UCI::position(Board& board, std::istringstream& is)
@@ -98,7 +125,7 @@ void UCI::position(Board& board, std::istringstream& is)
             fen += token + " ";
     }
 
-    CE2_LOG("Loading FEN: " << fen)
+    UCI_LOG("Loading FEN: " << fen)
     board = Board(fen);
     board.addBoardToHistory();
 
@@ -113,7 +140,6 @@ void UCI::position(Board& board, std::istringstream& is)
         {
             if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
             {
-                CE2_DEBUG("Perform move " << moves[i]);
                 board.performMove(moves[i]);
                 board.addBoardToHistory();
                 break;

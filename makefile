@@ -35,6 +35,9 @@ perf: $(BUILDDIR)/$(PROJECT).exe
 clean: 
 	-rmdir $(BUILDDIR) /s /q
 
+clean-logs:
+	del *.log
+
 $(BUILDDIR):
 	-mkdir $(BUILDDIR)
 

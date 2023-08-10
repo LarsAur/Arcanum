@@ -3,4 +3,5 @@ build/
 .vscode
 *.o
 *.exe
+*.log
 notes.txt
