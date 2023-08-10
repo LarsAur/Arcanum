@@ -36,7 +36,9 @@ class ChessGame():
             self.result = (ChessGame.STALEMATE, None)
         elif(self.board.can_claim_draw()):
             self.result = (ChessGame.DRAW, None)
-
+        
+        self.white_engine.quit()
+        self.black_engine.quit()
         self.white_engine.close()
         self.black_engine.close()
 
