@@ -2,6 +2,7 @@
 #include <iostream>  
 using namespace ChessEngine2;
 
+// Source: https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
 void UCI::loop()
 {
     Board board = Board(startFEN);
@@ -69,10 +70,12 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     {
         CE2_LOG("Searching at depth " << depth);
         bestMove = searcher.getBestMove(board, depth, 4);
+        std::cout << "info pv " << bestMove << std::endl;
     } else if (moveTime > 0)
     {
         CE2_LOG("Searching for " << moveTime << "ms");
         bestMove = searcher.getBestMoveInTime(board, moveTime, 4);
+        std::cout << "info pv " << bestMove << std::endl;
     }
 
     std::cout << "bestmove " << bestMove << std::endl; 
