@@ -34,10 +34,9 @@ def main():
 
     while(True):
         opening = fen_string_file.readline()
-        if(opening == None):
+        if(len(opening) == 0):
             break
         fen = fen_string_file.readline()
-
         game = ChessGame(sys.argv[1], sys.argv[2], fen)
         game.play(200)
         games += 1
