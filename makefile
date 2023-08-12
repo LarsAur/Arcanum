@@ -5,7 +5,7 @@ HEADERDIR = src
 BUILDDIR = build
 
 CC = g++
-override CFLAGS += -Wall -O3 -mbmi -mpopcnt -mtune=native -DFULL_TRACE
+override CFLAGS += -Wall -O3 -mbmi -mpopcnt -mtune=native
 LDFLAGS = -lm -lstdc++ 
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
