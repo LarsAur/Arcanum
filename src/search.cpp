@@ -11,7 +11,7 @@ Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(32));
     m_eval = std::unique_ptr<Eval>(new Eval(16, 16));
-
+    
     #if SEARCH_RECORD_STATS
     m_stats = {
         .evaluatedPositions = 0LL,
@@ -27,7 +27,7 @@ Searcher::~Searcher()
     
 }
 
-EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth)
+EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot)
 {
 
     EvalTrace trace = EvalTrace();
@@ -92,17 +92,21 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     m_search_stack.push_back(board.getHash());
 
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, &board);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &board);
     EvalTrace bestScore = EvalTrace(-INF);
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
         const Move *move = moveSelector.getNextMove();
         new_board.performMove(*move);
-        EvalTrace score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1);
+        EvalTrace score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1, plyFromRoot + 1);
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
         {
+            if(!(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
+            {
+                m_killerMoveManager.add(*move, plyFromRoot);
+            }
             break;
         } 
     }
@@ -113,7 +117,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     return bestScore;
 }
 
-EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int quietDepth)
+EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth)
 {
     if(m_stopSearch)
     {
@@ -179,7 +183,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
 
     if(depth == 0)
     {
-        return m_alphaBetaQuiet(board, alpha, beta, quietDepth);
+        return m_alphaBetaQuiet(board, alpha, beta, quietDepth, plyFromRoot + 1);
     }
 
     // First search the move found to be best previously
@@ -203,14 +207,14 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     m_search_stack.push_back(board.getHash());
 
     pvLine_t _pvLine;
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove : Move(0,0));
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &board, ttHit ? entry->bestMove : Move(0,0));
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
         // Generate new board and make the move
         Board new_board = Board(board);
         new_board.performMove(*move);
-        EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
+        EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, plyFromRoot + 1, quietDepth);
         if(score > bestScore)
         {
             bestScore = score;
@@ -220,8 +224,12 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             pvLine->count = _pvLine.count + 1;
         }
         alpha = std::max(alpha, bestScore);
-        if(alpha >= beta)
+        if(alpha >= beta) // Beta-cutoff
         {
+            if(!(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
+            {
+                m_killerMoveManager.add(*move, plyFromRoot);
+            }
             break;
         } 
     }
@@ -276,7 +284,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
 
     bool ttHit;
     ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, ttHit ? entry->bestMove: Move(0,0));
     
     EvalTrace alpha = EvalTrace(-INF);
     EvalTrace beta = EvalTrace(INF);
@@ -286,7 +294,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
         Board new_board = Board(board);
         const Move *move = moveSelector.getNextMove();
         new_board.performMove(*move);
-        EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, quietDepth);
+        EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, 1, quietDepth);
         if(score > bestScore)
         {
             bestScore = score;
@@ -371,7 +379,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
 
             bool ttHit;
             ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, &board, ttHit ? entry->bestMove: Move(0,0));
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, ttHit ? entry->bestMove: Move(0,0));
             
             EvalTrace alpha = EvalTrace(-INF);
             EvalTrace beta = EvalTrace(INF);
@@ -383,7 +391,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
                 const Move *move = moveSelector.getNextMove();
                 new_board.performMove(*move);
 
-                EvalTrace score = -m_alphaBeta(new_board, &_pvLineTmp, -beta, -alpha, depth - 1, quietDepth);
+                EvalTrace score = -m_alphaBeta(new_board, &_pvLineTmp, -beta, -alpha, depth - 1, 1, quietDepth);
 
                 if(m_stopSearch)
                 {
@@ -505,4 +513,19 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
 searchStats_t Searcher::getStats()
 {
     return m_stats;
+}
+
+void Searcher::m_clearUCIInfo()
+{
+    m_uciInfo.depth = 0;
+    m_uciInfo.seldepth = 0;
+    m_uciInfo.time = 0;
+    m_uciInfo.nodes = 0;
+    m_uciInfo.score = 0;
+    m_uciInfo.pv.count = 0;
+}
+
+uciInfo_t Searcher::getUCIInfo()
+{
+    return m_uciInfo;
 }
