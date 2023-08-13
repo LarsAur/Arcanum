@@ -227,7 +227,25 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         // Generate new board and make the move
         Board new_board = Board(board);
         new_board.performMove(*move);
-        EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, plyFromRoot + 1, quietDepth);
+        
+        EvalTrace score;
+        bool requireFullSearch = true;
+
+        // Check for late move reduction
+        if(depth >= 3 && i >= 3 && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
+        {
+            EvalTrace lmrBeta = -alpha;
+            lmrBeta.total -= 1;
+            score = -m_alphaBeta(new_board, &_pvLine, lmrBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth);
+            // Perform full search if the move is better than expected
+            requireFullSearch = score > alpha;
+        }
+
+        if(requireFullSearch)
+        {
+            score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, plyFromRoot + 1, quietDepth);
+        }
+        
         if(score > bestScore)
         {
             bestScore = score;
