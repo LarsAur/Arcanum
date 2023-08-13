@@ -46,18 +46,24 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
             stackRepeats++;
         }
     }
-
+    
+    // Check for repeated positions from previous searches
+    int globalRepeats = 0;
     auto boardHistory = Board::getBoardHistory();
-    auto it = boardHistory->find(board.getHash());
-    if(it != boardHistory->end())
+    auto globalSearchIt = boardHistory->find(board.getHash());
+    if(globalSearchIt != boardHistory->end())
     {
-        if(it->second + stackRepeats >= 2)
-        {
-            #ifdef FULL_TRACE
-            trace.stalemate = true;
-            #endif // FULL_TRACE
-            return trace;
-        }
+        globalRepeats = globalSearchIt->second;
+    }
+    
+    if(globalRepeats + stackRepeats >= 2)
+    {
+        EvalTrace trace = EvalTrace();
+        #ifdef FULL_TRACE
+        trace.stalemate = true;
+        #endif
+        trace.total = 0;
+        return trace;
     }
 
     if(!board.isChecked(board.getTurn()))
@@ -126,7 +132,6 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
 
     pvLine->count = 0;
 
-    // TODO: It is not ideal that this position is marked with value 0 in TT if the moves are repeated in search 
     // Check for repeated positions in the current search
     int stackRepeats = 0;
     for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
@@ -138,14 +143,22 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     }
     
     // Check for repeated positions from previous searches
+    int globalRepeats = 0;
     auto boardHistory = Board::getBoardHistory();
     auto globalSearchIt = boardHistory->find(board.getHash());
     if(globalSearchIt != boardHistory->end())
     {
-        if(globalSearchIt->second + stackRepeats >= 2)
-        {
-            return 0;
-        }
+        globalRepeats = globalSearchIt->second;
+    }
+    
+    if(globalRepeats + stackRepeats >= 2)
+    {
+        EvalTrace trace = EvalTrace();
+        #ifdef FULL_TRACE
+        trace.stalemate = true;
+        #endif
+        trace.total = 0;
+        return trace;
     }
 
     EvalTrace originalAlpha = alpha;
