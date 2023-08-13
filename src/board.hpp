@@ -281,6 +281,12 @@ namespace ChessEngine2
         eval_t value;
     } evalEntry_t;
 
+    typedef struct phaseEntry_t
+    {
+        hash_t hash;
+        uint8_t value;
+    } phaseEntry_t;
+
     class Eval
     {
         private:
@@ -290,10 +296,12 @@ namespace ChessEngine2
             uint64_t m_materialEvalTableMask;
             std::unique_ptr<evalEntry_t[]> m_pawnEvalTable;
             std::unique_ptr<evalEntry_t[]> m_materialEvalTable;
-            eval_t m_getPawnEval(Board& board);
-            eval_t m_getMaterialEval(Board& board);
-            eval_t m_getMobilityEval(Board& board);
-
+            std::unique_ptr<phaseEntry_t[]> m_phaseTable;
+            uint8_t m_getPhase(Board& board);
+            eval_t m_getPawnEval(Board& board, uint8_t phase);
+            eval_t m_getMaterialEval(Board& board, uint8_t phase);
+            eval_t m_getMobilityEval(Board& board, uint8_t phase);
+            
         public:
             Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies);
             EvalTrace evaluate(Board& board);

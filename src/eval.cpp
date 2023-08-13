@@ -8,6 +8,13 @@ bool EvalTrace::operator< (const EvalTrace& other) const { return total < other.
 bool EvalTrace::operator>=(const EvalTrace& other) const { return total >= other.total; }
 bool EvalTrace::operator<=(const EvalTrace& other) const { return total <= other.total; }
 
+static const uint8_t pawnPhase = 0;
+static const uint8_t knightPhase = 1;
+static const uint8_t bishopPhase = 1;
+static const uint8_t rookPhase = 2;
+static const uint8_t queenPhase = 4;
+static constexpr uint8_t totalPhase = pawnPhase*16 + knightPhase*4 + bishopPhase*4 + rookPhase*4 + queenPhase*2;
+
 Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
 {
     // Create eval lookup tables
@@ -17,7 +24,7 @@ Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
     m_materialEvalTableMask = m_materialEvalTableSize - 1;
     m_pawnEvalTable = std::unique_ptr<evalEntry_t[]>(new evalEntry_t[m_pawnEvalTableSize]);
     m_materialEvalTable = std::unique_ptr<evalEntry_t[]>(new evalEntry_t[m_materialEvalTableSize]);
-
+    m_phaseTable = std::unique_ptr<phaseEntry_t[]>(new phaseEntry_t[m_materialEvalTableSize]);
     // Initialize the tables
     for(uint64_t i = 0; i < m_pawnEvalTableSize; i++)
     {
@@ -29,6 +36,12 @@ Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
     {
         m_materialEvalTable[i].hash = 0LL;
         m_materialEvalTable[i].value = 0;
+    }
+
+    for(uint64_t i = 0; i < m_materialEvalTableSize; i++)
+    {
+        m_phaseTable[i].hash = 0LL;
+        m_phaseTable[i].value = 0;
     }
 }
 
@@ -66,9 +79,10 @@ EvalTrace Eval::evaluate(Board& board)
     trace.mobility = m_getMobilityEval(board);
     trace.total = trace.pawns + trace.material + trace.mobility;
     #else
-    trace.total = m_getPawnEval(board)
-    + m_getMaterialEval(board)
-    + m_getMobilityEval(board);
+    uint8_t phase = m_getPhase(board);
+    trace.total = m_getPawnEval(board, phase)
+    + m_getMaterialEval(board, phase)
+    + m_getMobilityEval(board, phase);
     #endif // FULL_TRACE
     return trace;
 }
@@ -80,7 +94,7 @@ constexpr eval_t pawnSupportScore = 12;
 constexpr eval_t pawnBackwardScore = -12;
 
 // https://www.chessprogramming.org/Pawn_Structure
-inline eval_t Eval::m_getPawnEval(Board& board)
+inline eval_t Eval::m_getPawnEval(Board& board, uint8_t phase)
 {
     // Check the pawn eval table
     uint64_t evalIdx = board.m_pawnHash & m_pawnEvalTableMask;
@@ -206,9 +220,9 @@ inline eval_t Eval::m_getPawnEval(Board& board)
     return pawnScore;
 }
 
-inline eval_t Eval::m_getMaterialEval(Board& board)
+inline eval_t Eval::m_getMaterialEval(Board& board, uint8_t phase)
 {
-    // Check the pawn eval table
+    // Check the material eval table
     uint64_t evalIdx = board.m_materialHash & m_materialEvalTableMask;
     evalEntry_t* evalEntry = &m_materialEvalTable[evalIdx];
     if(evalEntry->hash == board.m_materialHash)
@@ -231,88 +245,139 @@ inline eval_t Eval::m_getMaterialEval(Board& board)
     return pieceScore;
 }
 
-constexpr eval_t pawnMobilityScore = 10;
-constexpr eval_t rookMobilityScore = 10;
-constexpr eval_t knightMobilityScore = 20;
-constexpr eval_t bishopMobilityScore = 20;
-constexpr eval_t queenMobilityScore = 15;
-constexpr eval_t kingMobilityScore = 5;
-inline eval_t Eval::m_getMobilityEval(Board& board)
-{
-    eval_t mobilityScore = 0;
+// Values are from: https://github.com/official-stockfish/Stockfish/blob/sf_15.1/src/evaluate.cpp
+constexpr eval_t mobilityBonusPawn = 1;
+constexpr eval_t mobilityBonusKing = 1; // TODO: Add phase
+constexpr eval_t mobilityBonusKnightBegin[] = {-62, -53, -12, -3, 3, 12, 21, 28, 37};
+constexpr eval_t mobilityBonusKnightEnd[]   = {-79, -57, -31, -17, 7, 13, 16, 21, 26};
+constexpr eval_t mobilityBonusBishopBegin[] = {-47, -20, 14, 29, 39, 53, 53, 60, 62, 69, 78, 83, 91, 96};
+constexpr eval_t mobilityBonusBishopEnd[]   = {-59, -25, -8, 12, 21, 40, 56, 58, 65, 72, 78, 87, 88, 98};
+constexpr eval_t mobilityBonusRookBegin[]   = {-60, -24, 0, 3, 4, 14, 20, 30, 41, 41, 41, 45, 57, 58, 67};
+constexpr eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 122, 133, 139, 153, 160,165, 170, 175};
+constexpr eval_t mobilityBonusQueenBegin[]  = {-29, -16, -8, -8, 18, 25, 23, 37, 41,  54, 65, 68, 69, 70, 70,  70 , 71, 72, 74, 76, 90, 104, 105, 106, 112, 114, 114, 119};
+constexpr eval_t mobilityBonusQueenEnd[]    = {-49,-29, -8, 17, 39,  54, 59, 73, 76, 95, 95 ,101, 124, 128, 132, 133, 136, 140, 147, 149, 153, 169, 171, 171, 178, 185, 187, 221};
 
+inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
+{
+    eval_t mobilityScoreBegin = 0;
+    eval_t mobilityScoreEnd = 0;
     // White mobility
     {
-        mobilityScore += CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][WHITE]) & ~board.m_bbAllPieces) * pawnMobilityScore;
-        mobilityScore += CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][WHITE]) & board.m_bbColoredPieces[BLACK]) * pawnMobilityScore;
-
         bitboard_t wRooks = board.m_bbTypedPieces[W_ROOK][WHITE];
         while(wRooks)
         {
             int rookIdx = popLS1B(&wRooks);
-            mobilityScore += CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & ~board.m_bbColoredPieces[WHITE]) * rookMobilityScore;
+            int cnt = CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & ~board.m_bbColoredPieces[WHITE]);
+            mobilityScoreBegin += mobilityBonusRookBegin[cnt];
+            mobilityScoreEnd += mobilityBonusRookEnd[cnt];
         }
-
 
         bitboard_t wKnights = board.m_bbTypedPieces[W_KNIGHT][WHITE];
         while(wKnights)
         {
             int knightIdx = popLS1B(&wKnights);
-            mobilityScore += CNTSBITS(getKnightAttacks(knightIdx) & ~board.m_bbColoredPieces[WHITE]) * knightMobilityScore;
+            int cnt = CNTSBITS(getKnightAttacks(knightIdx) & ~board.m_bbColoredPieces[WHITE]);
+            mobilityScoreBegin += mobilityBonusKnightBegin[cnt];
+            mobilityScoreEnd += mobilityBonusKnightEnd[cnt];
         }
 
         bitboard_t wBishops = board.m_bbTypedPieces[W_BISHOP][WHITE];
         while(wBishops)
         {
             int bishopIdx = popLS1B(&wBishops);
-            mobilityScore += CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & ~board.m_bbColoredPieces[WHITE]) * bishopMobilityScore;
+            int cnt = CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & ~board.m_bbColoredPieces[WHITE]);
+            mobilityScoreBegin += mobilityBonusBishopBegin[cnt];
+            mobilityScoreEnd += mobilityBonusBishopEnd[cnt];
         }
 
         bitboard_t wQueens = board.m_bbTypedPieces[W_QUEEN][WHITE];
         while(wQueens)
         {
             int queenIdx = popLS1B(&wQueens);
-            mobilityScore += CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & ~board.m_bbColoredPieces[WHITE]) * queenMobilityScore;
+            int cnt = CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & ~board.m_bbColoredPieces[WHITE]);
+            mobilityScoreBegin += mobilityBonusQueenBegin[cnt];
+            mobilityScoreEnd += mobilityBonusQueenEnd[cnt];
         }
-
-        mobilityScore += CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][WHITE])) & ~board.m_bbColoredPieces[WHITE]);
     }
 
     // Black mobility
     {
-        mobilityScore -= CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][BLACK]) & ~board.m_bbAllPieces) * pawnMobilityScore;
-        mobilityScore -= CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][BLACK]) & board.m_bbColoredPieces[WHITE]) * pawnMobilityScore;
-
         bitboard_t bRooks = board.m_bbTypedPieces[W_ROOK][BLACK];
         while(bRooks)
         {
             int rookIdx = popLS1B(&bRooks);
-            mobilityScore -= CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & ~board.m_bbColoredPieces[BLACK]) * rookMobilityScore;
+            int cnt = CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & ~board.m_bbColoredPieces[BLACK]);
+            mobilityScoreBegin -= mobilityBonusRookBegin[cnt];
+            mobilityScoreEnd -= mobilityBonusRookEnd[cnt];
         }
 
         bitboard_t bKnights = board.m_bbTypedPieces[W_KNIGHT][BLACK];
         while(bKnights)
         {
             int knightIdx = popLS1B(&bKnights);
-            mobilityScore -= CNTSBITS(getKnightAttacks(knightIdx) & ~board.m_bbColoredPieces[BLACK]) * knightMobilityScore;
+            int cnt = CNTSBITS(getKnightAttacks(knightIdx) & ~board.m_bbColoredPieces[BLACK]);
+            mobilityScoreBegin -= mobilityBonusKnightBegin[cnt];
+            mobilityScoreEnd -= mobilityBonusKnightEnd[cnt];
         }
 
         bitboard_t bBishops = board.m_bbTypedPieces[W_BISHOP][BLACK];
         while(bBishops)
         {
             int bishopIdx = popLS1B(&bBishops);
-            mobilityScore -= CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & ~board.m_bbColoredPieces[BLACK]) * bishopMobilityScore;
+            int cnt = CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & ~board.m_bbColoredPieces[BLACK]);
+            mobilityScoreBegin -= mobilityBonusBishopBegin[cnt];
+            mobilityScoreEnd -= mobilityBonusBishopEnd[cnt];
         }
 
         bitboard_t bQueens = board.m_bbTypedPieces[W_QUEEN][BLACK];
         while(bQueens)
         {
             int queenIdx = popLS1B(&bQueens);
-            mobilityScore -= CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & ~board.m_bbColoredPieces[BLACK]) * queenMobilityScore;
+            int cnt = CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & ~board.m_bbColoredPieces[BLACK]);
+            mobilityScoreBegin -= mobilityBonusQueenBegin[cnt];
+            mobilityScoreEnd -= mobilityBonusQueenEnd[cnt];
         }
 
-        mobilityScore -= CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][BLACK])) & ~board.m_bbColoredPieces[BLACK]) * kingMobilityScore;
     }
 
+    eval_t mobilityScore = (phase * mobilityScoreBegin + (totalPhase - phase) * mobilityScoreEnd) / totalPhase;
+
+    // Pawn mobility
+    mobilityScore += CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][WHITE]) & ~board.m_bbAllPieces) * mobilityBonusPawn;
+    mobilityScore += CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][WHITE]) & board.m_bbColoredPieces[BLACK]) * mobilityBonusPawn;
+    mobilityScore -= CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][BLACK]) & ~board.m_bbAllPieces) * mobilityBonusPawn;
+    mobilityScore -= CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][BLACK]) & board.m_bbColoredPieces[WHITE]) * mobilityBonusPawn;
+    // King mobility
+    mobilityScore += CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][WHITE])) & ~board.m_bbColoredPieces[WHITE]) * mobilityBonusKing;
+    mobilityScore -= CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][BLACK])) & ~board.m_bbColoredPieces[BLACK]) * mobilityBonusKing;
+
     return mobilityScore;
+}
+
+inline uint8_t Eval::m_getPhase(Board& board)
+{
+    // Check the phase table
+    uint64_t phaseIdx = board.m_materialHash & m_materialEvalTableMask;
+    phaseEntry_t* phaseEntry = &m_phaseTable[phaseIdx];
+    if(phaseEntry->hash == board.m_materialHash)
+    {
+        return phaseEntry->value;
+    }
+
+    uint8_t phase = (
+        pawnPhase * CNTSBITS(board.m_bbTypedPieces[W_PAWN][0] | board.m_bbTypedPieces[W_PAWN][1])
+        + knightPhase * CNTSBITS(board.m_bbTypedPieces[W_KNIGHT][0] | board.m_bbTypedPieces[W_KNIGHT][1])
+        + bishopPhase * CNTSBITS(board.m_bbTypedPieces[W_BISHOP][0] | board.m_bbTypedPieces[W_BISHOP][1])
+        + rookPhase * CNTSBITS(board.m_bbTypedPieces[W_ROOK][0] | board.m_bbTypedPieces[W_ROOK][1])
+        + queenPhase * CNTSBITS(board.m_bbTypedPieces[W_QUEEN][0] | board.m_bbTypedPieces[W_QUEEN][1])
+    );
+
+    // Limit phase between 0 and totalphase
+    // this is done to avoid cases with for example many queens boosting the phase
+    phase = std::min(phase, totalPhase);
+    
+    // Write the phase to the table
+    phaseEntry->hash = board.m_materialHash;
+    phaseEntry->value = phase;
+    return phase;
 }
