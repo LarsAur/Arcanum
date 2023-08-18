@@ -112,8 +112,8 @@ void UCI::position(Board& board, std::istringstream& is)
 {
     Move m;
     std::string token, fen;
-
     is >> token;
+    
     if(strcmp(token.c_str(), "startpos") == 0)
     {
         fen = startFEN;
@@ -126,6 +126,7 @@ void UCI::position(Board& board, std::istringstream& is)
     }
 
     UCI_LOG("Loading FEN: " << fen)
+    board.getBoardHistory()->clear();
     board = Board(fen);
     board.addBoardToHistory();
 
@@ -143,6 +144,12 @@ void UCI::position(Board& board, std::istringstream& is)
                 board.performMove(moves[i]);
                 board.addBoardToHistory();
                 break;
+            }
+
+            // If none of the moves match the input, it is not legal
+            if(i == numLegalMoves - 1)
+            {
+                UCI_ERROR(token << " is not legal in the position")
             }
         }
     }
