@@ -1,11 +1,9 @@
 import chess.pgn
 import chess.engine
 
-MAX_TURNS = 200
-
 class ChessGame():
 
-    RESULT = [CHECKMATE, STALEMATE, DRAW, UNFINISHED] = ["checkmate", "stalemate", "draw", "unfinished"]
+    RESULT = [CHECKMATE, STALEMATE, DRAW50, DRAWREPEAT, DRAW, UNFINISHED] = ["checkmate", "stalemate", "draw 50", "draw repeat", "draw", "unfinished"]
 
     def __init__(self, white_engine_path:str, black_engine_path:str, fen:str="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1") -> None:
         self.board:chess.Board = chess.Board(fen)
@@ -31,6 +29,10 @@ class ChessGame():
             self.result = (ChessGame.CHECKMATE, not self.board.turn)
         elif(self.board.is_stalemate()):
             self.result = (ChessGame.STALEMATE, None)
+        elif(self.board.can_claim_fifty_moves()):
+            self.result = (ChessGame.DRAW50, None)
+        elif(self.board.can_claim_threefold_repetition()):
+            self.result = (ChessGame.DRAWREPEAT, None)
         elif(self.board.can_claim_draw()):
             self.result = (ChessGame.DRAW, None)
         
