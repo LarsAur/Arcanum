@@ -53,7 +53,7 @@ def main():
                 results_file.write(" Black")
         elif result[0] == ChessGame.STALEMATE:
             stalemates += 1
-        elif result[0] == ChessGame.DRAW:
+        elif result[0] == ChessGame.DRAW or result[0] == ChessGame.DRAW50 or result[0] == ChessGame.DRAWREPEAT:
             draws += 1
                 
         moves = game.get_moves()
