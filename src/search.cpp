@@ -125,12 +125,15 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
 
 EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth)
 {
+    // NOTE: It is important that the size of the pv line is set to zero
+    //       before returning due to searchStop, this is because the size
+    //       is used in a memcpy and might corrupt the memory if it is undefined
+    pvLine->count = 0;
+
     if(m_stopSearch)
     {
         return EvalTrace(0);
     }
-
-    pvLine->count = 0;
 
     // Check for repeated positions in the current search
     int stackRepeats = 0;
