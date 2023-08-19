@@ -54,11 +54,11 @@ static bool s_engineTest(uint32_t ms, std::string fen, Move bestMove, std::strin
 
     if(foundMove == bestMove)
     {
-        CE2_SUCCESS("Success engine test with ("<< id << ") " << fen << " found best move " << foundMove)
+        SUCCESS("Success engine test with ("<< id << ") " << fen << " found best move " << foundMove)
         return true;
     }
 
-    CE2_ERROR("Failed engine test with ("<< id << ") " << fen << " found best move " << foundMove << " not " << bestMove)
+    ERROR("Failed engine test with ("<< id << ") " << fen << " found best move " << foundMove << " not " << bestMove)
     return false;
 }
 
@@ -71,11 +71,11 @@ static uint64_t s_perftPosition(std::string fen, uint8_t ply, uint64_t expected)
     
     if(count != expected)
     {
-        CE2_ERROR("Failed perft with " << fen << " at " << unsigned(ply) << " depth. Expected: " << expected << " Got: " << count)
+        ERROR("Failed perft with " << fen << " at " << unsigned(ply) << " depth. Expected: " << expected << " Got: " << count)
     }
     else
     {
-        CE2_SUCCESS("Success perft with " << fen << " at " << unsigned(ply) << " depth")
+        SUCCESS("Success perft with " << fen << " at " << unsigned(ply) << " depth")
     }
 
     return count;
@@ -89,11 +89,11 @@ uint64_t s_perftCaptures(std::string fen, uint64_t expected)
 
     if(count != expected)
     {
-        CE2_ERROR("Failed capture moves test with " << fen << " Expected: " << expected << " Got: " << count)
+        ERROR("Failed capture moves test with " << fen << " Expected: " << expected << " Got: " << count)
     }
     else
     {
-        CE2_SUCCESS("Success capture moves test with " << fen)
+        SUCCESS("Success capture moves test with " << fen)
     }
 
     return count;
@@ -103,7 +103,7 @@ uint64_t s_perftCaptures(std::string fen, uint64_t expected)
 
 void Test::perft()
 {
-    CE2_LOG("Running all perft")
+    LOG("Running all perft")
     uint64_t sum = 0;
     auto start = std::chrono::high_resolution_clock::now();
     sum += s_perftPosition("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 7, 3195901860LL);
@@ -119,12 +119,12 @@ void Test::perft()
     auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
     float deltaTime = micros.count() / 1000000.0f;
 
-    CE2_LOG("Running all perft completed in " << micros.count() / 1000 << "ms. " << (sum / deltaTime) << " Nodes / Sec")
+    LOG("Running all perft completed in " << micros.count() / 1000 << "ms. " << (sum / deltaTime) << " Nodes / Sec")
 }
 
 void Test::captureMoves()
 {
-    CE2_LOG("Running all capture moves")
+    LOG("Running all capture moves")
     s_perftCaptures("k7/8/1r1b1n2/8/q2Q2p1/2P5/1q1p1p2/7K w - - 0 1", 7);
     s_perftCaptures("k7/8/1r1b1n2/5K2/q2Q2p1/2P5/1q1p1p2/8 w - - 0 1", 8);
     s_perftCaptures("8/8/3q1p2/2r3p1/4N3/2r3P1/3K1P2/8 w - - 0 1", 3);
@@ -133,38 +133,38 @@ void Test::captureMoves()
     s_perftCaptures("k7/4b3/8/8/3QR1n1/8/4p3/K7 w - - 0 1", 3);
     s_perftCaptures("7k/1q6/8/5n2/4B3/8/2R5/Kb5p w - - 0 1", 3);
     s_perftCaptures("8/8/8/2bpb3/3K4/4b3/8/8 w - - 0 1", 3);
-    CE2_LOG("Completed all capture moves")
+    LOG("Completed all capture moves")
 }
 
 void Test::zobrist()
 {
-    CE2_LOG("Testing Zobrist")
+    LOG("Testing Zobrist")
 
     // Move Rook
     Board board1 = Board("k5r1/8/8/8/8/8/8/1R5K w - - 0 1");
     board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE));
     Board board2 = Board("k5r1/8/8/8/8/8/8/2R4K b - - 0 1");
     if(board1.getHash() != board2.getHash())
-        CE2_ERROR("ROOK: Zobrist did not match")
+        ERROR("ROOK: Zobrist did not match")
     else if(board1.getPawnHash() != board2.getPawnHash())
-        CE2_ERROR("ROOK: Pawn Zobrist did not match")
+        ERROR("ROOK: Pawn Zobrist did not match")
     else if(board1.getMaterialHash() != board2.getMaterialHash())
-        CE2_ERROR("ROOK: Material Zobrist did not match")
+        ERROR("ROOK: Material Zobrist did not match")
     else
-        CE2_SUCCESS("ROOK: Zobrist matched")
+        SUCCESS("ROOK: Zobrist matched")
 
     // Capture Rook
     board1 = Board("k7/8/8/8/8/8/8/1Rr4K w - - 0 1");
     board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE | MOVE_INFO_CAPTURE_ROOK));
     board2 = Board("k7/8/8/8/8/8/8/2R4K b - - 0 1");
     if(board1.getHash() != board2.getHash())
-        CE2_ERROR("Capture rook: Zobrist did not match")
+        ERROR("Capture rook: Zobrist did not match")
     else if(board1.getPawnHash() != board2.getPawnHash())
-        CE2_ERROR("Capture rook: Pawn Zobrist did not match" << board1.getPawnHash() << "  " << board2.getPawnHash())
+        ERROR("Capture rook: Pawn Zobrist did not match" << board1.getPawnHash() << "  " << board2.getPawnHash())
     else if(board1.getMaterialHash() != board2.getMaterialHash())
-        CE2_ERROR("Capture rook: Material Zobrist did not match")
+        ERROR("Capture rook: Material Zobrist did not match")
     else
-        CE2_SUCCESS("Capture rook: Zobrist matched")
+        SUCCESS("Capture rook: Zobrist matched")
 
     // Move back and forth
     board1 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
@@ -174,60 +174,60 @@ void Test::zobrist()
     board1.performMove(Move(2, 3, MOVE_INFO_QUEEN_MOVE));
     board1.performMove(Move(58, 59, MOVE_INFO_QUEEN_MOVE));
     if(board1.getHash() != board2.getHash())
-        CE2_ERROR("Repeat: Zobrist did not match")
+        ERROR("Repeat: Zobrist did not match")
     else if(board1.getPawnHash() != board2.getPawnHash())
-        CE2_ERROR("Repeat: Pawn Zobrist did not match")
+        ERROR("Repeat: Pawn Zobrist did not match")
     else if(board1.getMaterialHash() != board2.getMaterialHash())
-        CE2_ERROR("Repeat: Material Zobrist did not match")
+        ERROR("Repeat: Material Zobrist did not match")
     else
-        CE2_SUCCESS("Repeat: Zobrist matched")
+        SUCCESS("Repeat: Zobrist matched")
 
     // Recreate board
     board1 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
     board2 = Board(board1);
     if(board1.getHash() != board2.getHash())
-        CE2_ERROR("Recreate: Zobrist did not match")
+        ERROR("Recreate: Zobrist did not match")
     else if(board1.getPawnHash() != board2.getPawnHash())
-        CE2_ERROR("Recreate: Pawn Zobrist did not match")
+        ERROR("Recreate: Pawn Zobrist did not match")
     else if(board1.getMaterialHash() != board2.getMaterialHash())
-        CE2_ERROR("Recreate: Material Zobrist did not match")
+        ERROR("Recreate: Material Zobrist did not match")
     else
-        CE2_SUCCESS("Recreate: Zobrist matched")
+        SUCCESS("Recreate: Zobrist matched")
 
     // Capture pawn
     board1 = Board("rnbqkbnr/pp3ppp/8/2pP4/P7/8/1P1PPPPP/R1BQKBNR b - - 0 1");
     board1.performMove(Move(59, 35, MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_QUEEN_MOVE));
     board2 = Board("rnb1kbnr/pp3ppp/8/2pq4/P7/8/1P1PPPPP/R1BQKBNR w - - 0 1");
     if(board1.getHash() != board2.getHash())
-        CE2_ERROR("Capture pawn: Zobrist did not match")
+        ERROR("Capture pawn: Zobrist did not match")
     else if(board1.getPawnHash() != board2.getPawnHash())
-        CE2_ERROR("Capture pawn: Pawn Zobrist did not match")
+        ERROR("Capture pawn: Pawn Zobrist did not match")
     else if(board1.getMaterialHash() != board2.getMaterialHash())
-        CE2_ERROR("Capture pawn: Material Zobrist did not match")
+        ERROR("Capture pawn: Material Zobrist did not match")
     else
-        CE2_SUCCESS("Capture pawn: Zobrist matched")
+        SUCCESS("Capture pawn: Zobrist matched")
 
     // Enpassant
     board1 = Board("rnbqkbnr/1pp1pppp/8/p2pP3/8/8/PPPP1PPP/RNBQKBNR w - d6 0 1");
     board1.performMove(Move(36, 43, MOVE_INFO_PAWN_MOVE | MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_ENPASSANT));
     board2 = Board("rnbqkbnr/1pp1pppp/3P4/p7/8/8/PPPP1PPP/RNBQKBNR b - - 0 1");
     if(board1.getHash() != board2.getHash())
-        CE2_ERROR("Enpassant: Zobrist did not match")
+        ERROR("Enpassant: Zobrist did not match")
     else if(board1.getPawnHash() != board2.getPawnHash())
-        CE2_ERROR("Enpassant: Pawn Zobrist did not match")
+        ERROR("Enpassant: Pawn Zobrist did not match")
     else if(board1.getMaterialHash() != board2.getMaterialHash())
-        CE2_ERROR("Enpassant: Material Zobrist did not match")
+        ERROR("Enpassant: Material Zobrist did not match")
     else
-        CE2_SUCCESS("Enpassant: Zobrist matched")
+        SUCCESS("Enpassant: Zobrist matched")
 
-    CE2_LOG("Completed all Zobrist tests")
+    LOG("Completed all Zobrist tests")
 }
 
 // -- Perf functions
 
 void Perf::search()
 {
-    CE2_LOG("Starting search performance test")
+    LOG("Starting search performance test")
 
     Searcher whiteSearcher = Searcher();
     Searcher blackSearcher = Searcher();
@@ -238,7 +238,7 @@ void Perf::search()
     // Search for 10 moves
     for(int i = 0; i < 10; i++)
     {
-        CE2_DEBUG("PERF: " << i << "/" << 10)
+        DEBUG("PERF: " << i << "/" << 10)
         Move whiteMove = whiteSearcher.getBestMove(board, 6, 4);
         board.performMove(whiteMove);
         board.addBoardToHistory();
@@ -250,7 +250,7 @@ void Perf::search()
     std::chrono::duration<double> diff = end - start;
     auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
 
-    CE2_LOG("Completed search performance in " << micros.count() / 1000 << "ms")
+    LOG("Completed search performance in " << micros.count() / 1000 << "ms")
 }
 
 // Bratko-Kopec Test
@@ -284,5 +284,5 @@ void Perf::engineTest()
     correct += s_engineTest(5000, "r1bqk2r/pp2bppp/2p5/3pP3/P2Q1P2/2N1B3/1PP3PP/R4RK1 b kq - 0 1", Move(53, 45), "BK.23");
     correct += s_engineTest(5000, "r2qnrnk/p2b2b1/1p1p2pp/2pPpp2/1PP1P3/PRNBB3/3QNPPP/5RK1 w - - 0 1", Move(13, 29), "BK.24");
 
-    CE2_LOG("Score: " << correct << " / " << total);
+    LOG("Score: " << correct << " / " << total);
 }

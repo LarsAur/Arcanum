@@ -21,13 +21,13 @@ void play(Color color, std::string fen, int ms)
 
     while(true)
     {
-        CE2_LOG(std::endl << board.getBoardString())
+        LOG(std::endl << board.getBoardString())
         board.getLegalMoves();
         board.generateCaptureInfo();
 
         if(board.getNumLegalMoves() == 0)
         {
-            CE2_LOG("Game Ended")
+            LOG("Game Ended")
             break;
         }
 
@@ -37,12 +37,12 @@ void play(Color color, std::string fen, int ms)
         {
             if(it->second == 3) // The check id done after the board is added to history
             {
-                CE2_LOG("Stalemate")
+                LOG("Stalemate")
                 break;
             }
         }
 
-        CE2_LOG("Turn: " << (board.getTurn() == WHITE ? "White" : "Black"));
+        LOG("Turn: " << (board.getTurn() == WHITE ? "White" : "Black"));
         Move move;
         if(board.getTurn() == color)
             move = player.promptForMove(board);
@@ -54,8 +54,11 @@ void play(Color color, std::string fen, int ms)
     }
 }
 
+std::string _logFileName;
 int main(int argc, char *argv[])
 {
+    CREATE_LOG_FILE(argv[0]);
+
     ChessEngine2::initGenerateKnightAttacks();
     ChessEngine2::initGenerateKingMoves();
     ChessEngine2::initGenerateRookMoves();
@@ -70,9 +73,8 @@ int main(int argc, char *argv[])
     for(int i = 1; i < argc; i++)
     {
         if(!strncmp("--play", argv[i], 8))
-        {
+            // TODO: Add input about player, computer, fen and search 
             play(Color::BLACK, ChessEngine2::startFEN, 3000);
-        }
 
         if(!strncmp("--perft-test", argv[i], 13))
             Test::perft();

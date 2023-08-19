@@ -2,55 +2,102 @@
 
 #include <iostream>
 #include <string.h>
+#include <fstream>
 
-#define CE2_COLOR_BLACK "\e[0;30m"
-#define CE2_COLOR_RED "\e[0;31m"
-#define CE2_COLOR_GREEN "\e[0;32m"
-#define CE2_COLOR_YELLOW "\e[0;33m"
-#define CE2_COLOR_BLUE "\e[0;34m"
-#define CE2_COLOR_PURPLE "\e[0;35m"
-#define CE2_COLOR_CYAN "\e[0;36m"
-#define CE2_COLOR_WHITE "\e[0;37m"
+#define COLOR_BLACK "\e[0;30m"
+#define COLOR_RED "\e[0;31m"
+#define COLOR_GREEN "\e[0;32m"
+#define COLOR_YELLOW "\e[0;33m"
+#define COLOR_BLUE "\e[0;34m"
+#define COLOR_PURPLE "\e[0;35m"
+#define COLOR_CYAN "\e[0;36m"
+#define COLOR_WHITE "\e[0;37m"
 
-#define CE2_DEBUG_COLOR CE2_COLOR_CYAN
-#define CE2_LOG_COLOR CE2_COLOR_WHITE
-#define CE2_WARNING_COLOR CE2_COLOR_YELLOW
-#define CE2_ERROR_COLOR CE2_COLOR_RED
-#define CE2_SUCCESS_COLOR CE2_COLOR_GREEN
+#define DEBUG_COLOR COLOR_CYAN
+#define LOG_COLOR COLOR_WHITE
+#define WARNING_COLOR COLOR_YELLOW
+#define ERROR_COLOR COLOR_RED
+#define SUCCESS_COLOR COLOR_GREEN
 // Default
-#define CE2_DEFAULT_COLOR CE2_COLOR_WHITE
+#define DEFAULT_COLOR COLOR_WHITE
+
+extern std::string _logFileName;
+#ifdef PRINT_TO_FILE 
+#define CREATE_LOG_FILE(_name) _logFileName = std::string(_name).append(".log"); \
+{ \
+    std::ofstream fileStream(_logFileName, std::ofstream::out | std::ofstream::trunc); \
+    if(fileStream.is_open()) \
+    { \
+        fileStream << "Created log file " << _logFileName << std::endl; \
+        fileStream.close(); \
+    } \
+    else { std::cerr << "Unable to create file " << _logFileName << std::endl; } \
+}
+#else
+    #define CREATE_LOG_FILE(_name) ;
+#endif 
+
+#define _FILE_PRINT(_str) { \
+    std::ofstream fileStream(_logFileName, std::ofstream::out | std::ofstream::app); \
+    if(fileStream.is_open()) \
+    { \
+        fileStream << _str << std::endl; \
+        fileStream.close(); \
+    } \
+    else { std::cerr << "Unable to open file " << _logFileName << std::endl; } \
+}   
 
 // Get the file name from the full file path
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
-#ifndef DISABLE_CE2_DEBUG
-#define CE2_DEBUG(_str) std::cout << CE2_DEBUG_COLOR << "[DEBUG]   " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_DEBUG
+    #ifndef PRINT_TO_FILE
+        #define DEBUG(_str) std::cout << DEBUG_COLOR << "[DEBUG]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+    #else
+        #define DEBUG(_str) _FILE_PRINT("[DEBUG]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+    #endif
 #else
-#define CE2_DEBUG(_str) ;
+    #define DEBUG(_str) ;
 #endif
 
-#ifndef DISABLE_CE2_LOG
-#define CE2_LOG(_str) std::cout << CE2_LOG_COLOR << "[LOG]     " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_LOG
+    #ifndef PRINT_TO_FILE
+        #define LOG(_str) std::cout << LOG_COLOR << "[LOG]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+    #else
+        #define LOG(_str) _FILE_PRINT("[LOG]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+    #endif
 #else
-#define CE2_LOG(_str) ;
+    #define LOG(_str) ;
 #endif
 
-#ifndef DISABLE_CE2_WARNING
-#define CE2_WARNING(_str) std::cout << CE2_WARNING_COLOR << "[WARNING] " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_WARNING
+    #ifndef PRINT_TO_FILE
+        #define WARNING(_str) std::cout << WARNING_COLOR << "[WARNING]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+    #else
+        #define WARNING(_str) _FILE_PRINT("[WARNING]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+    #endif
 #else
-#define CE2_WARNING(_str) ;
+    #define WARNING(_str) ;
 #endif
 
-#ifndef DISABLE_CE2_ERROR
-#define CE2_ERROR(_str) std::cerr << CE2_ERROR_COLOR << "[ERROR]   " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_ERROR
+    #ifndef PRINT_TO_FILE
+        #define ERROR(_str) std::cout << ERROR_COLOR << "[ERROR]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+    #else
+        #define ERROR(_str) _FILE_PRINT("[ERROR]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+    #endif
 #else
-#define CE2_ERROR(_str) ;
+    #define ERROR(_str) ;
 #endif
 
-#ifndef DISABLE_CE2_SUCCESS
-#define CE2_SUCCESS(_str) std::cout << CE2_SUCCESS_COLOR << "[SUCCESS] " << CE2_DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#ifndef DISABLE_SUCCESS
+    #ifndef PRINT_TO_FILE
+        #define SUCCESS(_str) std::cout << SUCCESS_COLOR << "[SUCCESS]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+    #else
+        #define SUCCESS(_str) _FILE_PRINT("[SUCCESS]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+    #endif
 #else
-#define CE2_SUCCESS(_str) ;
+    #define SUCCESS(_str) ;
 #endif
 
 void* aligned_large_pages_alloc(size_t allocSize);

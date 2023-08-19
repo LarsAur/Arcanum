@@ -170,14 +170,14 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
     getHashs(b, h, ph, mh);
     if(h != hash || ph != pawnHash || mh != materialHash)
     {
-        CE2_DEBUG(board.getBoardString())
-        CE2_DEBUG(move << " " << move.moveInfo)
+        DEBUG(board.getBoardString())
+        DEBUG(move << " " << move.moveInfo)
         if(hash != h)
-        CE2_ERROR("Hash: " << hash << " != " << h << " (Correct)")
+        ERROR("Hash: " << hash << " != " << h << " (Correct)")
         if(pawnHash != ph)
-        CE2_ERROR("Pawn Hash: " << pawnHash << " != " << ph << " (Correct)")
+        ERROR("Pawn Hash: " << pawnHash << " != " << ph << " (Correct)")
         if(materialHash != mh)
-        CE2_ERROR("Material Hash: " << materialHash << " != " << mh << " (Correct)")
+        ERROR("Material Hash: " << materialHash << " != " << mh << " (Correct)")
         exit(EXIT_FAILURE);
     }
     #endif

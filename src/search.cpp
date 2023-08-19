@@ -301,7 +301,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     // Safeguard for not searching deeper than SEARCH_MAX_PV_LENGTH
     if(depth > SEARCH_MAX_PV_LENGTH)
     {
-        CE2_WARNING("Depth (" << depth << ") is higher than SEARCH_MAX_PV_LENGTH (" << SEARCH_MAX_PV_LENGTH << "). Setting depth to " << SEARCH_MAX_PV_LENGTH)
+        WARNING("Depth (" << depth << ") is higher than SEARCH_MAX_PV_LENGTH (" << SEARCH_MAX_PV_LENGTH << "). Setting depth to " << SEARCH_MAX_PV_LENGTH)
         depth = SEARCH_MAX_PV_LENGTH;
     }
 
@@ -351,33 +351,33 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> diff = end - start;
     auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
-    CE2_LOG("Best move: " << bestMove << "\n" << bestScore)
+    LOG("Best move: " << bestMove << "\n" << bestScore)
     // Print PV line
     std::stringstream ss;
     for(int i = 0; i < pvLine.count; i++)
     {
         ss << pvLine.moves[i] << " ";
     }
-    CE2_LOG("PV Line: " << ss.str())
-    CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
+    LOG("PV Line: " << ss.str())
+    LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     #if TT_RECORD_STATS == 1
     ttStats_t stats = m_tt->getStats();
-    CE2_LOG("Entries Added: " << stats.entriesAdded)
-    CE2_LOG("Replacements: " << stats.replacements)
-    CE2_LOG("Updates: " << stats.updates)
-    CE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates) / float(m_tt->getEntryCount()) << "%)")
-    CE2_LOG("Lookups: " << stats.lookups)
-    CE2_LOG("Lookup misses: " << stats.lookupMisses)
-    CE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
-    CE2_LOG("Blocked replacements " << stats.blockedReplacements);
+    LOG("Entries Added: " << stats.entriesAdded)
+    LOG("Replacements: " << stats.replacements)
+    LOG("Updates: " << stats.updates)
+    LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates) / float(m_tt->getEntryCount()) << "%)")
+    LOG("Lookups: " << stats.lookups)
+    LOG("Lookup misses: " << stats.lookupMisses)
+    LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
+    LOG("Blocked replacements " << stats.blockedReplacements);
     #endif
 
     #if SEARCH_RECORD_STATS
-    CE2_LOG("Search evaluations: " << m_stats.evaluatedPositions);
-    CE2_LOG("Exact TT values used: " << m_stats.exactTTValuesUsed);
-    CE2_LOG("Lower TT values used: " << m_stats.lowerTTValuesUsed);
-    CE2_LOG("Upper TT values used: " << m_stats.upperTTValuesUsed);
+    LOG("Search evaluations: " << m_stats.evaluatedPositions);
+    LOG("Exact TT values used: " << m_stats.exactTTValuesUsed);
+    LOG("Lower TT values used: " << m_stats.lowerTTValuesUsed);
+    LOG("Upper TT values used: " << m_stats.upperTTValuesUsed);
     #endif
 
 
@@ -406,8 +406,6 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
         while(true)
         {
             depth++;
-
-
             bool ttHit;
             ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
             MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, ttHit ? entry->bestMove: Move(0,0));
@@ -503,37 +501,37 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     
     if(searchBestMove == Move(0,0))
     {
-        CE2_ERROR("No moves found by search")
+        ERROR("No moves found by search")
         exit(EXIT_FAILURE);
     }
 
-    CE2_LOG("Best move: " << searchBestMove << "\n" << searchScore)
+    LOG("Best move: " << searchBestMove << "\n" << searchScore)
     // Print PV line
     std::stringstream ss;
     for(int i = 0; i < pvLine.count; i++)
     {
         ss << pvLine.moves[i] << " ";
     }
-    CE2_LOG("PV Line: " << ss.str())
-    CE2_LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
+    LOG("PV Line: " << ss.str())
+    LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     #if TT_RECORD_STATS
     ttStats_t stats = m_tt->getStats();
-    CE2_LOG("Entries Added: " << stats.entriesAdded)
-    CE2_LOG("Replacements: " << stats.replacements)
-    CE2_LOG("Updates: " << stats.updates)
-    CE2_LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates) / float(m_tt->getEntryCount()) << "%)")
-    CE2_LOG("Lookups: " << stats.lookups)
-    CE2_LOG("Lookup misses: " << stats.lookupMisses)
-    CE2_LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
-    CE2_LOG("Blocked replacements " << stats.blockedReplacements);
+    LOG("Entries Added: " << stats.entriesAdded)
+    LOG("Replacements: " << stats.replacements)
+    LOG("Updates: " << stats.updates)
+    LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates) / float(m_tt->getEntryCount()) << "%)")
+    LOG("Lookups: " << stats.lookups)
+    LOG("Lookup misses: " << stats.lookupMisses)
+    LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
+    LOG("Blocked replacements " << stats.blockedReplacements);
     #endif
 
     #if SEARCH_RECORD_STATS
-    CE2_LOG("Search evaluations: " << m_stats.evaluatedPositions);
-    CE2_LOG("Exact TT values used: " << m_stats.exactTTValuesUsed);
-    CE2_LOG("Lower TT values used: " << m_stats.lowerTTValuesUsed);
-    CE2_LOG("Upper TT values used: " << m_stats.upperTTValuesUsed);
+    LOG("Search evaluations: " << m_stats.evaluatedPositions);
+    LOG("Exact TT values used: " << m_stats.exactTTValuesUsed);
+    LOG("Lower TT values used: " << m_stats.lowerTTValuesUsed);
+    LOG("Upper TT values used: " << m_stats.upperTTValuesUsed);
     #endif
 
     m_generation += 1; // Generation will update every 4th search

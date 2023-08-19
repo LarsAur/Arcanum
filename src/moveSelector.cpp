@@ -115,7 +115,7 @@ void KillerMoveManager::add(Move move, uint8_t plyFromRoot)
 {
     if(plyFromRoot >= 64)
     {
-        CE2_WARNING("Killer moves ply from root is too large: " << plyFromRoot)
+        WARNING("Killer moves ply from root is too large: " << plyFromRoot)
         return;
     }
 
@@ -134,7 +134,7 @@ bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
 {
     if(move == Move(0,0))
     {
-        CE2_WARNING("Cannot check for killer move Move(0,0)")
+        WARNING("Cannot check for killer move Move(0,0)")
         return false;
     }
 

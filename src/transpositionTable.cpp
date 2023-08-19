@@ -30,7 +30,7 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
         .blockedReplacements = 0LL,
     };
 
-    CE2_LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
+    LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
 }
 
 TranspositionTable::~TranspositionTable()

@@ -42,7 +42,7 @@ namespace ChessEngine2
             for (int i = 0, j = 7; i < 8; i++, j--) {
                 reversed[j] = x[i];
             }
-            CE2_LOG(reversed)
+            LOG(reversed)
         }
     }
 
@@ -52,7 +52,7 @@ namespace ChessEngine2
             return _popcnt64 (bitboard);
         #else
             
-            CE2_ERROR("CNTSBITS not implemented")
+            ERROR("CNTSBITS not implemented")
             return 0;
         #endif
     }
