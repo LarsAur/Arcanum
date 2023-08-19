@@ -3,7 +3,7 @@
 
 #define KILLER_MOVES_MAX_PLY 64
 
-namespace ChessEngine2
+namespace Arcanum
 {
     class KillerMoveManager
     {

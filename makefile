@@ -1,5 +1,5 @@
 
-PROJECT ?= chessEngine2
+PROJECT ?= Arcanum
 SOURCEDIR = src
 HEADERDIR = src	
 BUILDDIR = build

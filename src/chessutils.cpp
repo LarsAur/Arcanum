@@ -3,7 +3,7 @@
 #include <bitset>
 #include <board.hpp>
 
-namespace ChessEngine2
+namespace Arcanum
 {
     bitboard_t knightAttacks[64];
     void initGenerateKnightAttacks()

@@ -1,6 +1,6 @@
 #include <board.hpp>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 bool EvalTrace::operator==(const EvalTrace& other) const { return total == other.total; }
 bool EvalTrace::operator> (const EvalTrace& other) const { return total > other.total;  }

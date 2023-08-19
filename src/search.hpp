@@ -10,7 +10,7 @@
 #define SEARCH_RECORD_STATS 1
 #define SEARCH_MAX_PV_LENGTH 64
 
-namespace ChessEngine2
+namespace Arcanum
 {
 
     typedef struct pvLine_t

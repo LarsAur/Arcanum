@@ -7,7 +7,7 @@
 #include <vector>
 #include <memory>
     
-namespace ChessEngine2
+namespace Arcanum
 {
     typedef uint64_t hash_t;
     static const std::string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";

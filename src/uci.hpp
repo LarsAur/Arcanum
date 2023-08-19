@@ -2,7 +2,7 @@
 #include <board.hpp>
 #include <search.hpp>
 
-namespace ChessEngine2
+namespace Arcanum
 {
     class UCI
     {

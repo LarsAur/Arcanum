@@ -5,7 +5,7 @@
 #include <utils.hpp>
 #include <thread>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 Searcher::Searcher()
 {

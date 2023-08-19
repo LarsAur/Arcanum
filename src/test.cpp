@@ -4,14 +4,14 @@
 #include <cstdint>
 #include <chrono>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
-static void s_findNumMovesAtDepth(int depth, ChessEngine2::Board *board, uint64_t *count, bool top = true);
+static void s_findNumMovesAtDepth(int depth, Arcanum::Board *board, uint64_t *count, bool top = true);
 static bool s_engineTest(uint32_t ms, std::string fen, Move bestMove, std::string id = "");
 static uint64_t s_perftCaptures(std::string fen, uint64_t expected);
 static uint64_t s_perftPosition(std::string fen, uint8_t ply, uint64_t expected);
 
-static void s_findNumMovesAtDepth(int depth, ChessEngine2::Board *board, uint64_t *count, bool top)
+static void s_findNumMovesAtDepth(int depth, Arcanum::Board *board, uint64_t *count, bool top)
 {
     Move* legalMoves = board->getLegalMoves();
     uint8_t numLegalMoves = board->getNumLegalMoves();
@@ -231,7 +231,7 @@ void Perf::search()
 
     Searcher whiteSearcher = Searcher();
     Searcher blackSearcher = Searcher();
-    Board board = Board(ChessEngine2::startFEN);
+    Board board = Board(Arcanum::startFEN);
     board.addBoardToHistory();
 
     auto start = std::chrono::high_resolution_clock::now();

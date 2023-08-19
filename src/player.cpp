@@ -2,7 +2,7 @@
 #include <chessutils.hpp>
 #include <utils.hpp>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 Player::Player()
 {

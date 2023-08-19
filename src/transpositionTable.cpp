@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 TranspositionTable::TranspositionTable(uint8_t mbSize)
 {

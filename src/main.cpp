@@ -6,11 +6,11 @@
 #include <player.hpp>
 #include <uci.hpp>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 void play(Color color, std::string fen, int ms)
 {
-    ChessEngine2::Board board = ChessEngine2::Board(fen);
+    Arcanum::Board board = Arcanum::Board(fen);
     board.addBoardToHistory();
 
     // Use two different searchers so they use separate transposition tables
@@ -57,10 +57,10 @@ int main(int argc, char *argv[])
 {
     CREATE_LOG_FILE(argv[0]);
 
-    ChessEngine2::initGenerateKnightAttacks();
-    ChessEngine2::initGenerateKingMoves();
-    ChessEngine2::initGenerateRookMoves();
-    ChessEngine2::initGenerateBishopMoves();
+    Arcanum::initGenerateKnightAttacks();
+    Arcanum::initGenerateKingMoves();
+    Arcanum::initGenerateRookMoves();
+    Arcanum::initGenerateBishopMoves();
 
     if(argc == 1)
     {
@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     {
         if(!strncmp("--play", argv[i], 8))
             // TODO: Add input about player, computer, fen and search 
-            play(Color::BLACK, ChessEngine2::startFEN, 3000);
+            play(Color::BLACK, Arcanum::startFEN, 3000);
 
         if(!strncmp("--perft-test", argv[i], 13))
             Test::perft();

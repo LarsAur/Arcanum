@@ -2,7 +2,7 @@
 
 #include <board.hpp>
 
-namespace ChessEngine2
+namespace Arcanum
 {
     class Player
     {

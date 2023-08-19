@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <utils.hpp>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 #define MILLION 1000000
 #define WINNING_CAPTURE_BIAS 8 * MILLION

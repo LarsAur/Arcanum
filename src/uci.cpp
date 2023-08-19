@@ -5,7 +5,7 @@
 #include <string>
 #include <fstream>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 const static std::string logFileName = "uci.log";
 #define _UCI_PRINT(_str) {std::ofstream fileStream(logFileName, std::ofstream::out | std::ifstream::app); \
@@ -46,7 +46,7 @@ void UCI::loop()
 
         if(strcmp(token.c_str(), "uci") == 0)
         {
-            UCI_OUT("id name ChessEngine2") 
+            UCI_OUT("id name Arcanum") 
             UCI_OUT("id author Lars Murud Aurud") 
             UCI_OUT("uciok")
         } 

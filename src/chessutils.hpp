@@ -18,7 +18,7 @@
 #define IBM1
 #define POPCNT
 
-namespace ChessEngine2
+namespace Arcanum
 {
     typedef uint64_t bitboard_t;
 

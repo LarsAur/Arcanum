@@ -3,7 +3,7 @@
 #include <random>
 #include <utils.hpp>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 Zobrist::Zobrist()
 {

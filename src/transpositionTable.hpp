@@ -1,7 +1,7 @@
 #pragma once
 #include <board.hpp>
 
-namespace ChessEngine2
+namespace Arcanum
 {
     #define TT_RECORD_STATS 1
     #define TT_FLAG_EXACT 1

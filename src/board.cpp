@@ -2,7 +2,7 @@
 #include <utils.hpp>
 #include <sstream>
 
-using namespace ChessEngine2;
+using namespace Arcanum;
 
 static std::unordered_map<hash_t, uint8_t, HashFunction> s_boardHistory;
 
