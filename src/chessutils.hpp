@@ -6,9 +6,13 @@
 #include <sstream>
 #include <utils.hpp>
 
-#if __x86_64__ || _WIN64
-// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html
-#include <intrin.h>
+#if __x86_64__
+    // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html
+    #ifdef __linux__
+    #include <x86intrin.h>
+    #else
+    #include <intrin.h>
+    #endif
 #endif
 
 #define IBM1

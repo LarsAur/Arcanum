@@ -5,8 +5,8 @@ HEADERDIR = src
 BUILDDIR = build
 
 CC = g++
-override CFLAGS += -Wall -O3 -mbmi -mpopcnt -mtune=native
-LDFLAGS = -lm -lstdc++ 
+override CFLAGS += -std=c++17 -O3 -Wall -mbmi -mpopcnt -mtune=native
+LDFLAGS = -lm -lstdc++ -pthread
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 SOURCES := $(call rwildcard, $(SOURCEDIR)/, %.cpp)							     # Recursive search all files in source directory

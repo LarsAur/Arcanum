@@ -29,7 +29,6 @@ Searcher::~Searcher()
 
 EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot)
 {
-
     EvalTrace trace = EvalTrace();
 
     if(m_stopSearch)

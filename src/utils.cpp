@@ -133,7 +133,11 @@ void* aligned_large_pages_alloc(size_t allocSize) {
 
   // round up to multiples of alignment
   size_t size = ((allocSize + alignment - 1) / alignment) * alignment;
+#if defined(__linux__)
+  void *mem = aligned_alloc(alignment, size);
+#else
   void *mem = std_aligned_alloc(alignment, size);
+#endif
 #if defined(MADV_HUGEPAGE)
   madvise(mem, size, MADV_HUGEPAGE);
 #endif
@@ -148,7 +152,6 @@ void* aligned_large_pages_alloc(size_t allocSize) {
 #if defined(_WIN32)
 
 void aligned_large_pages_free(void* mem) {
-
   if (mem && !VirtualFree(mem, 0, MEM_RELEASE))
   {
       DWORD err = GetLastError();
@@ -158,11 +161,12 @@ void aligned_large_pages_free(void* mem) {
       exit(EXIT_FAILURE);
   }
 }
-
-#else
-
+#elif defined(_WIN64)
 void aligned_large_pages_free(void *mem) {
   std_aligned_free(mem);
 }
-
+#else
+void aligned_large_pages_free(void *mem) {
+  free(mem);
+}
 #endif
