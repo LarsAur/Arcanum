@@ -127,7 +127,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
 {
     if(m_stopSearch)
     {
-        return 0;
+        return EvalTrace(0);
     }
 
     pvLine->count = 0;
@@ -271,7 +271,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     // Stop the thread from writing to the TT when search is stopped
     if(m_stopSearch)
     {
-        return 0;
+        return EvalTrace(0);
     }
 
     ttEntry_t newEntry;
@@ -319,7 +319,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     
     EvalTrace alpha = EvalTrace(-INF);
     EvalTrace beta = EvalTrace(INF);
-    EvalTrace bestScore =EvalTrace(-INF);
+    EvalTrace bestScore = EvalTrace(-INF);
 
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
@@ -392,8 +392,10 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     m_stats.quietSearchDepth = 0;
     #endif
 
+    DEBUG("Starting search")
+
     int depth = 0;
-    EvalTrace searchScore = 0;
+    EvalTrace searchScore = EvalTrace(0);
     Move searchBestMove = Move(0,0);
     pvline_t pvLine, pvLineTmp, _pvLineTmp;
 
@@ -479,7 +481,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
             // or else it would overflow the pvline array
             // This is set to a high number, but this failsafe is added just in case
-            if(depth >= SEARCH_MAX_PV_LENGTH)
+            if(depth >= SEARCH_MAX_PV_LENGTH - 1)
             {
                 break;
             }

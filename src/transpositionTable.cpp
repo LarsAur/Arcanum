@@ -9,14 +9,22 @@ using namespace ChessEngine2;
 
 TranspositionTable::TranspositionTable(uint8_t mbSize)
 {
-    m_clusterCount = mbSize * 1024 * 1024 / sizeof(ttCluster_t);
+    m_clusterCount = (mbSize * 1024 * 1024) / sizeof(ttCluster_t);
     m_entryCount = clusterSize * m_clusterCount;
     m_table = static_cast<ttCluster_t*>(aligned_large_pages_alloc(m_clusterCount * sizeof(ttCluster_t)));
 
+    if(m_table == nullptr)
+    {
+        ERROR("Unable to allocate transposition table");
+        exit(EXIT_FAILURE);
+    }
+
     // Set all table enties to be invalid
+    // TODO: This can be done using memset
+    //       Without any optimizations, this is slow
     for(size_t i = 0; i < m_clusterCount; i++)
     {
-        for(size_t j = 0; j < m_clusterCount; j++)
+        for(size_t j = 0; j < clusterSize; j++)
         {
             m_table[i].entries[j].depth = INT8_MIN;
         }

@@ -10,10 +10,8 @@ using namespace ChessEngine2;
 
 void play(Color color, std::string fen, int ms)
 {
-
     ChessEngine2::Board board = ChessEngine2::Board(fen);
     board.addBoardToHistory();
-    
 
     // Use two different searchers so they use separate transposition tables
     Searcher searcher = Searcher();

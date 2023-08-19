@@ -1,6 +1,8 @@
 #pragma once
 #include <board.hpp>
 
+#define KILLER_MOVES_MAX_PLY 64
+
 namespace ChessEngine2
 {
     class KillerMoveManager
@@ -8,7 +10,7 @@ namespace ChessEngine2
         private:
             // Maximum search depth (ply) for 64 for killer moves
             // 2 killer moves per ply 
-            Move m_killerMoves[64][2];
+            Move m_killerMoves[KILLER_MOVES_MAX_PLY][2];
         public:
             KillerMoveManager();
             void add(Move move, uint8_t plyFromRoot);

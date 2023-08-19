@@ -99,7 +99,7 @@ const Move* MoveSelector::getNextMove()
 KillerMoveManager::KillerMoveManager()
 {
     // Initialize the killer move table to not contain any moves
-    for(int i = 0; i < 64; i++)
+    for(int i = 0; i < KILLER_MOVES_MAX_PLY; i++)
     {
         for(int j = 0; j < 2; j++)
         {
@@ -113,7 +113,7 @@ KillerMoveManager::KillerMoveManager()
 // because if can avoid overhead from calling the function 
 void KillerMoveManager::add(Move move, uint8_t plyFromRoot)
 {
-    if(plyFromRoot >= 64)
+    if(plyFromRoot >= KILLER_MOVES_MAX_PLY)
     {
         WARNING("Killer moves ply from root is too large: " << plyFromRoot)
         return;
@@ -135,6 +135,12 @@ bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
     if(move == Move(0,0))
     {
         WARNING("Cannot check for killer move Move(0,0)")
+        return false;
+    }
+
+    if(plyFromRoot >= KILLER_MOVES_MAX_PLY)
+    {
+        WARNING("Cannot check for killer move at " << plyFromRoot << " plyFromRoot")
         return false;
     }
 
