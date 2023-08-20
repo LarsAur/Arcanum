@@ -223,6 +223,48 @@ void Test::zobrist()
     LOG("Completed all Zobrist tests")
 }
 
+void Test::draw()
+{
+    LOG("Starting draw test")
+
+    // Test if search will find its way around 3-fold repetition checkmate
+    Board repeat = Board("k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1");
+    repeat.getBoardHistory()->clear();
+    repeat.addBoardToHistory();
+    repeat.addBoardToHistory();
+    Board board = Board("k7/1p1p1p2/pPpPpPp1/P1P1P1P1/R7/8/8/K7 w - - 0 1");
+    board.addBoardToHistory();
+
+    Searcher wsearcher = Searcher();
+    board.performMove(wsearcher.getBestMoveInTime(board, 200, 4));
+    board.addBoardToHistory();
+    if(board.getHash() == repeat.getHash())
+    {
+        ERROR("Repeated position: k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
+    }
+    board.performMove(Move(56, 57, MOVE_INFO_KING_MOVE));
+    board.addBoardToHistory();
+    board.performMove(wsearcher.getBestMoveInTime(board, 200, 4));
+    board.addBoardToHistory();
+    board.performMove(Move(57, 56, MOVE_INFO_KING_MOVE));
+    board.addBoardToHistory();
+    board.performMove(wsearcher.getBestMoveInTime(board, 200, 4));
+    board.addBoardToHistory();
+    if(board.getHash() == repeat.getHash())
+    {
+        ERROR("Repeated position: k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
+    }
+    board.getLegalMoves();
+    if(board.getNumLegalMoves() == 0 && board.isChecked(Color::BLACK))
+    {
+        SUCCESS("Found checkmate to avoid stalemate from  k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
+    }
+    else
+    {
+        ERROR("Did not find checkmate to avoid stalemate from k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
+    }
+}
+
 // -- Perf functions
 
 void Perf::search()
@@ -232,6 +274,7 @@ void Perf::search()
     Searcher whiteSearcher = Searcher();
     Searcher blackSearcher = Searcher();
     Board board = Board(Arcanum::startFEN);
+    board.getBoardHistory()->clear();
     board.addBoardToHistory();
 
     auto start = std::chrono::high_resolution_clock::now();

@@ -6,6 +6,7 @@ namespace Test
     void perft();
     void captureMoves();
     void zobrist();
+    void draw();
 }
 
 namespace Perf

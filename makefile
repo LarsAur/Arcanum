@@ -27,7 +27,7 @@ play: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --play
 
 test: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --capture-test --zobrist-test --perft-test
+	./$^ --draw-test --capture-test --zobrist-test --perft-test
 
 perf: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --search-perf --engine-perf

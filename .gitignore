@@ -1,8 +1,9 @@
 __pycache__
 build/
+emsdk/
+benchmarking/results/
 .vscode
 *.o
 *.exe
 *.log
-benchmarking/results/
 notes.txt
