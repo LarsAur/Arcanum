@@ -45,8 +45,23 @@ Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
     }
 }
 
+EvalTrace Eval::getDrawValue(Board& board, uint8_t plyFromRoot)
+{
+    EvalTrace trace = EvalTrace(0);
+    #ifdef FULL_TRACE
+    trace.stalemate = true;
+    #endif
+    // TODO: encurage not drawing at an early stage
+    return trace;
+}
+
+bool Eval::isCheckMateScore(EvalTrace eval)
+{
+    return std::abs(eval.total) > (INT16_MAX - UINT8_MAX);
+}
+
 // Evaluates positive value for WHITE
-EvalTrace Eval::evaluate(Board& board)
+EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
 {
     EvalTrace trace = EvalTrace();
 
@@ -57,9 +72,7 @@ EvalTrace Eval::evaluate(Board& board)
     {
         if(board.isChecked(board.m_turn))
         {
-            // subtract number of full moves from the score to have incentive for fastest checkmate
-            // If there are more checkmates and this is not done, it might be "confused" and move between
-            trace.total = board.m_turn == WHITE ? (-INT16_MAX + board.m_fullMoves) : (INT16_MAX - board.m_fullMoves);
+            trace.total = board.m_turn == WHITE ? -INT16_MAX + plyFromRoot : INT16_MAX - plyFromRoot;
             #ifdef FULL_TRACE
             trace.checkmate = true;
             #endif // FULL_TRACE

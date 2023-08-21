@@ -126,8 +126,8 @@ void UCI::position(Board& board, std::istringstream& is)
     }
 
     UCI_LOG("Loading FEN: " << fen)
-    board.getBoardHistory()->clear();
     board = Board(fen);
+    board.getBoardHistory()->clear();
     board.addBoardToHistory();
 
     // Parse any moves
@@ -169,6 +169,13 @@ void UCI::ischeckmate(Board& board)
             std::cout << "stalemate" << std::endl;
             return;
         }
+    }
+
+        // Check for 50 move rule
+    if(board.getHalfMoves() >= 100)
+    {
+        std::cout << "stalemate" << std::endl;
+        return;
     }
 
     board.getLegalMoves();

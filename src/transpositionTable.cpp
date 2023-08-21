@@ -1,4 +1,5 @@
 #include <transpositionTable.hpp>
+#include <board.hpp>
 #include <utils.hpp>
 #include <cmath>
 #include <fstream>
@@ -51,7 +52,7 @@ inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
     return hash % m_clusterCount;
 }
 
-ttEntry_t* TranspositionTable::getEntry(hash_t hash, bool* hit)
+std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
 {
     ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
 
@@ -64,8 +65,12 @@ ttEntry_t* TranspositionTable::getEntry(hash_t hash, bool* hit)
         ttEntry_t entry = cluster->entries[i];
         if(entry.depth != INT8_MIN && entry.hash == (ttEntryHash_t)hash)
         {
-            *hit = true;
-            return &cluster->entries[i];
+            ttEntry_t retEntry = entry;
+            if(Eval::isCheckMateScore(entry.value))
+            {
+                retEntry.value.total = entry.value > 0 ? entry.value.total - plyFromRoot : entry.value.total + plyFromRoot;
+            }
+            return retEntry;
         }
     }
 
@@ -73,8 +78,7 @@ ttEntry_t* TranspositionTable::getEntry(hash_t hash, bool* hit)
         m_stats.lookupMisses++;
     #endif
 
-    *hit = false;
-    return nullptr;
+    return {}; // Return empty optional
 }
 
 inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
@@ -84,10 +88,22 @@ inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
            + (((newEntry.flags & ~TT_FLAG_MASK) - (oldEntry.flags & ~TT_FLAG_MASK)) >> 2);
 }
 
-void TranspositionTable::addEntry(ttEntry_t entry, hash_t hash)
+void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash)
 {
     ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
-    entry.hash = (ttEntryHash_t)hash;
+    ttEntry_t entry = 
+    {
+        .hash = (ttEntryHash_t)hash,
+        .bestMove = bestMove,
+        .value = score, 
+        .depth = (int8_t) depth,
+        .flags = flags
+    };
+
+    if(Eval::isCheckMateScore(entry.value))
+    {
+        entry.value.total = entry.value > 0 ? entry.value.total + plyFromRoot : entry.value.total - plyFromRoot;
+    }
 
     #if TT_RECORD_STATS == 1
         m_stats.entriesAdded++;

@@ -42,7 +42,6 @@ namespace Arcanum
     class Searcher
     {
         private:
-            // TODO: Hashtables for repeat in search.
             std::unique_ptr<TranspositionTable> m_tt;
             std::unique_ptr<Eval> m_eval;
             std::vector<hash_t> m_search_stack;

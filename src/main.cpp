@@ -11,6 +11,7 @@ using namespace Arcanum;
 void play(Color color, std::string fen, int ms)
 {
     Arcanum::Board board = Arcanum::Board(fen);
+    board.getBoardHistory()->clear();
     board.addBoardToHistory();
 
     // Use two different searchers so they use separate transposition tables
@@ -38,6 +39,13 @@ void play(Color color, std::string fen, int ms)
                 LOG("Stalemate")
                 break;
             }
+        }
+
+        // Check for 50 move rule
+        if(board.getHalfMoves() >= 100)
+        {
+            LOG("Draw: Rule50")
+            break;
         }
 
         LOG("Turn: " << (board.getTurn() == WHITE ? "White" : "Black"));
@@ -82,6 +90,9 @@ int main(int argc, char *argv[])
          
         if(!strncmp("--zobrist-test", argv[i], 15))
             Test::zobrist();
+
+        if(!strncmp("--draw-test", argv[i], 15))
+            Test::draw();
 
         if(!strncmp("--search-perf", argv[i], 14))
             Perf::search();

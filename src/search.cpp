@@ -36,6 +36,12 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         return trace;
     }
 
+    // Check for 50 move rule
+    if(board.getHalfMoves() >= 100)
+    {
+        return m_eval->getDrawValue(board, plyFromRoot);
+    }
+
     // Check for repeated positions in the current search
     int stackRepeats = 0;
     for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
@@ -57,12 +63,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     
     if(globalRepeats + stackRepeats >= 2)
     {
-        EvalTrace trace = EvalTrace();
-        #ifdef FULL_TRACE
-        trace.stalemate = true;
-        #endif
-        trace.total = 0;
-        return trace;
+        return m_eval->getDrawValue(board, plyFromRoot);
     }
 
     if(!board.isChecked(board.getTurn()))
@@ -71,7 +72,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         m_stats.evaluatedPositions++;
         #endif
         
-        EvalTrace standPat = board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
+        EvalTrace standPat = board.getTurn() == WHITE ? m_eval->evaluate(board, plyFromRoot) : -m_eval->evaluate(board, plyFromRoot);
         if(standPat >= beta)
         {
             return beta;
@@ -90,7 +91,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         #if SEARCH_RECORD_STATS
         m_stats.evaluatedPositions++;
         #endif
-        return board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
+        return board.getTurn() == WHITE ? m_eval->evaluate(board, plyFromRoot) : -m_eval->evaluate(board, plyFromRoot);
     }
 
     // Push the board on the search stack
@@ -134,6 +135,12 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         return EvalTrace(0);
     }
 
+    // Check for 50 move rule
+    if(board.getHalfMoves() >= 100)
+    {
+        return m_eval->getDrawValue(board, plyFromRoot);
+    }
+
     // Check for repeated positions in the current search
     int stackRepeats = 0;
     for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
@@ -155,18 +162,12 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     
     if(globalRepeats + stackRepeats >= 2)
     {
-        EvalTrace trace = EvalTrace();
-        #ifdef FULL_TRACE
-        trace.stalemate = true;
-        #endif
-        trace.total = 0;
-        return trace;
+        return m_eval->getDrawValue(board, plyFromRoot);
     }
 
     EvalTrace originalAlpha = alpha;
-    bool ttHit;
-    ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-    if(ttHit && (entry->depth >= depth))
+    std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
+    if(entry.has_value() && (entry->depth >= depth))
     {
         if((entry->flags & TT_FLAG_MASK) == TT_FLAG_EXACT)
         {
@@ -214,15 +215,15 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         #if SEARCH_RECORD_STATS
         m_stats.evaluatedPositions++;
         #endif
-        return board.getTurn() == WHITE ? m_eval->evaluate(board) : -m_eval->evaluate(board);
+        return board.getTurn() == WHITE ? m_eval->evaluate(board, plyFromRoot) : -m_eval->evaluate(board, plyFromRoot);
     }
     board.generateCaptureInfo();
-
+    bool isChecked = board.isChecked(board.getTurn());
     // Push the board on the search stack
     m_search_stack.push_back(board.getHash());
 
     pvLine_t _pvLine;
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &board, ttHit ? entry->bestMove : Move(0,0));
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &board, entry.has_value() ? entry->bestMove : Move(0,0));
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
@@ -276,24 +277,20 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         return EvalTrace(0);
     }
 
-    ttEntry_t newEntry;
-    newEntry.value = bestScore;
-    newEntry.bestMove = bestMove;
+    uint8_t flags;
     if(bestScore <= originalAlpha)
     {
-        newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_UPPERBOUND;
+        flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_UPPERBOUND;
     }
     else if(bestScore >= beta)
     {
-        newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_LOWERBOUND;
+        flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_LOWERBOUND;
     }
     else
     {
-        newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
+        flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
     }
-
-    newEntry.depth = depth;
-    m_tt->addEntry(newEntry, board.getHash());
+    m_tt->add(bestScore, bestMove, depth, plyFromRoot, flags, board.getHash());
 
     return bestScore;
 }
@@ -315,9 +312,8 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     Move bestMove;
     pvLine_t pvLine, _pvLine;
 
-    bool ttHit;
-    ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, ttHit ? entry->bestMove: Move(0,0));
+    std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, entry.has_value() ? entry->bestMove : Move(0,0));
     
     EvalTrace alpha = EvalTrace(-INF);
     EvalTrace beta = EvalTrace(INF);
@@ -343,12 +339,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
         }
     }
 
-    ttEntry_t newEntry;
-    newEntry.value = bestScore;
-    newEntry.bestMove = bestMove;
-    newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
-    newEntry.depth = depth;
-    m_tt->addEntry(newEntry, board.getHash());
+    m_tt->add(bestScore, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> diff = end - start;
@@ -394,8 +385,6 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     m_stats.quietSearchDepth = 0;
     #endif
 
-    DEBUG("Starting search")
-
     int depth = 0;
     EvalTrace searchScore = EvalTrace(0);
     Move searchBestMove = Move(0,0);
@@ -410,9 +399,8 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
         while(true)
         {
             depth++;
-            bool ttHit;
-            ttEntry_t* entry = m_tt->getEntry(board.getHash(), &ttHit);
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, ttHit ? entry->bestMove: Move(0,0));
+            std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, entry.has_value() ? entry->bestMove : Move(0,0));
             
             EvalTrace alpha = EvalTrace(-INF);
             EvalTrace beta = EvalTrace(INF);
@@ -423,7 +411,6 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
                 Board new_board = Board(board);
                 const Move *move = moveSelector.getNextMove();
                 new_board.performMove(*move);
-
                 EvalTrace score = -m_alphaBeta(new_board, &_pvLineTmp, -beta, -alpha, depth - 1, 1, quietDepth);
 
                 if(m_stopSearch)
@@ -464,12 +451,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             }
 
             // If search is not canceled, save the best move found in this iteration
-            ttEntry_t newEntry;
-            newEntry.value = bestScore;
-            newEntry.bestMove = bestMove;
-            newEntry.flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
-            newEntry.depth = depth;
-            m_tt->addEntry(newEntry, board.getHash());
+            m_tt->add(bestScore, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
 
             // If checkmate is found, search can be canceled
             // Checkmate score is given by INT16_MAX - board.getFullMoves()

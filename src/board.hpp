@@ -121,8 +121,8 @@ namespace Arcanum
     {
         private:
             Color m_turn;
-            uint16_t m_halfMoves;
             uint16_t m_fullMoves;
+            uint8_t m_rule50;
             uint8_t m_castleRights;
             // set to 64 for invalid enpassant
             uint8_t m_enPassantSquare; // Square moved to when capturing
@@ -304,6 +304,8 @@ namespace Arcanum
             
         public:
             Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies);
-            EvalTrace evaluate(Board& board);
+            EvalTrace evaluate(Board& board, uint8_t plyFromRoot);
+            EvalTrace getDrawValue(Board& board, uint8_t plyFromRoot);
+            static bool isCheckMateScore(EvalTrace eval);
     };
 }

@@ -204,7 +204,7 @@ Board::Board(std::string fen)
     }
 
     // Read half moves
-    m_halfMoves = atoi(fen.c_str() + fenPosition);
+    m_rule50 = atoi(fen.c_str() + fenPosition);
 
     // Skip until space
     while(fen[fenPosition++] != ' ' && fenPosition < (int) fen.length());
@@ -234,7 +234,7 @@ Board::Board(const Board& board)
     m_pawnHash = board.m_pawnHash;
     m_materialHash = board.m_materialHash;
     m_turn = board.m_turn;
-    m_halfMoves = board.m_halfMoves;
+    m_rule50 = board.m_rule50;
     m_fullMoves = board.m_fullMoves;
     m_castleRights = board.m_castleRights;
     m_enPassantSquare = board.m_enPassantSquare;
@@ -1238,7 +1238,10 @@ void Board::performMove(Move move)
 
     m_turn = opponent;
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
-    m_halfMoves++;
+    if((move.moveInfo & MOVE_INFO_CAPTURE_MASK) || (move.moveInfo & MOVE_INFO_PAWN_MOVE))
+        m_rule50 = 0;
+    else
+        m_rule50++;
 }
 
 void Board::addBoardToHistory()
@@ -1276,7 +1279,7 @@ uint16_t Board::getFullMoves()
 
 uint16_t Board::getHalfMoves()
 {
-    return m_halfMoves;
+    return m_rule50;
 }
 
 // Generates a bitboard of all attacks of opponents

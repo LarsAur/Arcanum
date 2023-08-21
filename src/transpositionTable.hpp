@@ -1,5 +1,6 @@
 #pragma once
 #include <board.hpp>
+#include <optional>
 
 namespace Arcanum
 {
@@ -54,8 +55,8 @@ namespace Arcanum
             TranspositionTable(uint8_t mbSize);
             ~TranspositionTable();
 
-            ttEntry_t* getEntry(hash_t hash, bool* hit);
-            void addEntry(ttEntry_t entry, hash_t hash);
+            std::optional<ttEntry_t>get(hash_t hash, uint8_t plyFromRoot);
+            void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash);
             ttStats_t getStats();
             size_t getEntryCount();
     };
