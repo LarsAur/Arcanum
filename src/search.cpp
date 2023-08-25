@@ -160,7 +160,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         globalRepeats = globalSearchIt->second;
     }
     
-    if(globalRepeats + stackRepeats >= 2)
+    if(globalRepeats + stackRepeats >= 1)
     {
         return m_eval->getDrawValue(board, plyFromRoot);
     }
