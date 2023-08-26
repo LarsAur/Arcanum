@@ -1098,6 +1098,208 @@ Move* Board::getLegalCaptureMoves()
     return m_legalMoves;
 }
 
+// Returns true if a legal move is found
+// The point of this function is to have 
+// a faster check than having to generate
+// all the legal moves when checking for 
+// checkmate and stalemate at evaluation 
+bool Board::hasLegalMove()
+{
+    // TODO: Can check if num_legalmoves > 0, but then it is required that 
+    //       m_numLegalMoves is set to an illegl number when creating the board
+    m_numLegalMoves = 0;
+
+    // Create bitboard for where the king would be attacked
+    bitboard_t opponentAttacks = getopponentAttacks();
+
+    // Use a different function for generating moves when in check
+    bool wasChecked = (m_bbTypedPieces[W_KING][m_turn] & opponentAttacks) != 0LL;
+
+    // TODO: We can check if the piece is blocking a check, this way we know we cannot move the piece and will not have to test all the moves
+    uint8_t kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
+
+    // King moves
+    bitboard_t kMoves = getKingMoves(kingIdx);
+    kMoves &= ~(m_bbColoredPieces[m_turn] | opponentAttacks);
+    if(kMoves) return true;
+
+    bitboard_t kingDiagonals = diagonal[kingIdx] | antiDiagonal[kingIdx];
+    bitboard_t kingStraights = (0xffLL << (kingIdx & ~0b111)) | (0x0101010101010101LL << (kingIdx & 0b111));
+
+    // Queen moves
+    bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
+    while (queens)
+    {
+        uint8_t queenIdx = popLS1B(&queens);
+        bitboard_t queenMoves = getQueenMoves(m_bbAllPieces, queenIdx);
+        queenMoves &= ~m_bbColoredPieces[m_turn];
+
+        while(queenMoves)
+        {
+            uint8_t target = popLS1B(&queenMoves);
+            if(m_attemptAddPseudoLegalMove(Move(queenIdx, target, MOVE_INFO_QUEEN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked)) return true;
+        }
+    }
+
+    // Knight moves
+    bitboard_t knights = m_bbTypedPieces[W_KNIGHT][m_turn];
+    while (knights)
+    {
+        uint8_t knightIdx = popLS1B(&knights);
+        bitboard_t knightMoves = getKnightAttacks(knightIdx);
+        knightMoves &= ~m_bbColoredPieces[m_turn];
+
+        while(knightMoves)
+        {
+            uint8_t target = popLS1B(&knightMoves);
+            if(m_attemptAddPseudoLegalMove(Move(knightIdx, target, MOVE_INFO_KNIGHT_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked)) return true;
+        }
+    }
+
+    // Bishop moves
+    bitboard_t bishops = m_bbTypedPieces[W_BISHOP][m_turn];
+    while (bishops)
+    {
+        uint8_t bishopIdx = popLS1B(&bishops);
+        bitboard_t bishopMoves = getBishopMoves(m_bbAllPieces, bishopIdx);
+        bishopMoves &= ~m_bbColoredPieces[m_turn];
+
+        while(bishopMoves)
+        {
+            uint8_t target = popLS1B(&bishopMoves);
+            if(m_attemptAddPseudoLegalMove(Move(bishopIdx, target, MOVE_INFO_BISHOP_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked)) return true;
+        }
+    }
+
+    // Rook moves
+    bitboard_t rooks = m_bbTypedPieces[W_ROOK][m_turn];
+    while (rooks)
+    {
+        uint8_t rookIdx = popLS1B(&rooks);
+        bitboard_t rookMoves = getRookMoves(m_bbAllPieces, rookIdx);
+        rookMoves &= ~m_bbColoredPieces[m_turn];
+
+        while(rookMoves)
+        {
+            uint8_t target = popLS1B(&rookMoves);
+            if(m_attemptAddPseudoLegalMove(Move(rookIdx, target, MOVE_INFO_ROOK_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked)) return true;
+        }
+    }
+
+    // Pawn moves 
+    bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
+    bitboard_t pawnMoves, pawnMovesOrigin;
+    if(m_turn == WHITE)
+    {
+        pawnMoves= getWhitePawnMoves(pawns);
+        pawnMoves &= ~m_bbAllPieces;
+        pawnMovesOrigin = getBlackPawnMoves(pawnMoves);
+    }
+    else
+    {
+        pawnMoves= getBlackPawnMoves(pawns);
+        pawnMoves &= ~m_bbAllPieces;
+        pawnMovesOrigin = getWhitePawnMoves(pawnMoves);
+    }
+
+    bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin; 
+    if(m_turn == WHITE)
+    {
+        pawnAttacksLeft = getWhitePawnAttacksLeft(pawns);
+        pawnAttacksRight = getWhitePawnAttacksRight(pawns);
+        pawnAttacksLeft  &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+        pawnAttacksRight &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+        pawnAttacksLeftOrigin = pawnAttacksLeft >> 7; 
+        pawnAttacksRightOrigin = pawnAttacksRight >> 9;
+    }
+    else
+    {
+        pawnAttacksLeft = getBlackPawnAttacksLeft(pawns);
+        pawnAttacksRight = getBlackPawnAttacksRight(pawns);
+        pawnAttacksLeft  &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+        pawnAttacksRight &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
+        pawnAttacksLeftOrigin = pawnAttacksLeft << 9; 
+        pawnAttacksRightOrigin = pawnAttacksRight << 7;
+    }
+    
+    while (pawnAttacksLeft)
+    {
+        uint8_t target = popLS1B(&pawnAttacksLeft);
+        uint8_t pawnIdx = popLS1B(&pawnAttacksLeftOrigin);
+        // TODO: It is not required to check if the move is promotion, we only require to know if the piece can be moved from and to
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // If one promotion move is legal, all are legal
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added) return true;
+        }
+        else
+        {
+            // TODO: optimize
+            // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
+            Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_ENPASSANT | MOVE_INFO_PAWN_MOVE) : MOVE_INFO_PAWN_MOVE);
+            bool added = m_attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
+            if(added) return true;
+        }
+    }
+
+    while (pawnAttacksRight)
+    {
+        uint8_t target = popLS1B(&pawnAttacksRight);
+        uint8_t pawnIdx = popLS1B(&pawnAttacksRightOrigin);
+        // TODO: It is not required to check if the move is promotion, we only require to know if the piece can be moved from and to
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // If one promotion move is legal, all are legal
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added) return true;
+        }
+        else
+        {
+            // TODO:
+            // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
+            Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_ENPASSANT | MOVE_INFO_PAWN_MOVE) : MOVE_INFO_PAWN_MOVE);
+            bool added = m_attemptAddPseudoLegalMove(move, kingIdx, kingDiagonals, kingStraights, wasChecked || ((move.moveInfo & MOVE_INFO_ENPASSANT) && ((m_enPassantTarget >> 3) == (kingIdx >> 3))));
+            if(added) return true;
+        }
+    }
+
+    // Forward move
+    while(pawnMoves)
+    {
+        uint8_t target = popLS1B(&pawnMoves);
+        uint8_t pawnIdx = popLS1B(&pawnMovesOrigin);
+        // TODO: It is not required to check if the move is promotion, we only require to know if the piece can be moved from and to
+        if((0b1LL << target) & 0xff000000000000ffLL)
+        {
+            // If one promotion move is legal, all are legal
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE | MOVE_INFO_PROMOTE_QUEEN), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added) return true;
+        }
+        else
+        {
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
+            if(added) return true;
+        }
+    }
+
+    // NOTE: Double moves have to be checked, as they could block a check
+    // Double move
+    bitboard_t doubleMoves       = m_turn == WHITE ? (pawns << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & ~(m_bbAllPieces) : (pawns >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & ~(m_bbAllPieces);
+    bitboard_t doubleMovesOrigin = m_turn == WHITE ? doubleMoves >> 16 : doubleMoves << 16;
+    while (doubleMoves)
+    {
+        int target = popLS1B(&doubleMoves);
+        int pawnIdx = popLS1B(&doubleMovesOrigin);
+        bool added =m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MOVE_INFO_DOUBLE_MOVE | MOVE_INFO_PAWN_MOVE), kingIdx, kingDiagonals, kingStraights, wasChecked);
+        if(added) return true;
+    }
+
+    // NOTE: It is not required to check for castling as it is only legal if the king kan already move
+
+    return false;
+} 
+
 uint8_t Board::getNumLegalMoves()
 {
     return m_numLegalMoves;

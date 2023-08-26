@@ -66,9 +66,7 @@ EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
     EvalTrace trace = EvalTrace();
 
     // Check for stalemate and checkmate
-    // TODO: Create function hasLegalMoves
-    board.getLegalMoves();
-    if(board.getNumLegalMoves() == 0)
+    if(!board.hasLegalMove())
     {
         if(board.isChecked(board.m_turn))
         {

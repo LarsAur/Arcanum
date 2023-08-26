@@ -164,6 +164,7 @@ namespace Arcanum
             Color getTurn();
             bitboard_t getopponentAttacks();
             bitboard_t getopponentPawnAttacks();
+            bool hasLegalMove();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();
             Move* getLegalCaptureAndCheckMoves();
