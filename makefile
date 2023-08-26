@@ -37,6 +37,8 @@ clean:
 
 clean-logs:
 	del *.log
+	cd snapshots & del *.log
+	cd build & del *.log
 
 $(BUILDDIR):
 	-mkdir $(BUILDDIR)
