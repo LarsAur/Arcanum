@@ -128,7 +128,7 @@ namespace Arcanum
             uint8_t m_enPassantSquare; // Square moved to when capturing
             uint8_t m_enPassantTarget; // Square of the captured piece
             bitboard_t m_bbEnPassantSquare; // Square moved to when capturing
-            bitboard_t m_bbEnPassantTarget; // Square moved to when capturing
+            bitboard_t m_bbEnPassantTarget; // Square of the captured piece
 
             bitboard_t m_bbAllPieces;
             bitboard_t m_bbColoredPieces[NUM_COLORS];
@@ -146,7 +146,7 @@ namespace Arcanum
             friend class Eval;
 
             // Tests if the king will be checked before adding the move
-            bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights, bool wasChecked);
+            bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
         public:
             Board(const Board& board);
             Board(std::string fen);
@@ -162,9 +162,11 @@ namespace Arcanum
             bool isDiagonalChecked(Color color);
             bool isStraightChecked(Color color);
             Color getTurn();
-            bitboard_t getopponentAttacks();
-            bitboard_t getopponentPawnAttacks();
+            bitboard_t getOpponentAttacks();
+            bitboard_t getOpponentPawnAttacks();
             bool hasLegalMove();
+            bool hasLegalMoveFromCheck();
+            Move* getLegalMovesFromCheck();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();
             Move* getLegalCaptureAndCheckMoves();

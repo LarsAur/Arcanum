@@ -82,8 +82,8 @@ MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFro
     m_killerMoveManager = killerMoveManager;
     m_plyFromRoot = plyFromRoot;
 
-    m_bbOpponentPawnAttacks = m_board->getopponentPawnAttacks();
-    m_bbOpponentAttacks = m_board->getopponentAttacks();
+    m_bbOpponentPawnAttacks = m_board->getOpponentPawnAttacks();
+    m_bbOpponentAttacks = m_board->getOpponentAttacks();
 
     m_scoreMoves();
     

@@ -225,7 +225,7 @@ namespace Arcanum
         return knightAttacksBitBoard;
     }
     
-    static inline bitboard_t getKnightAttacks(bitboard_t knightIdx)
+    static inline bitboard_t getKnightAttacks(uint8_t knightIdx)
     {
         return knightAttacks[knightIdx];
     }

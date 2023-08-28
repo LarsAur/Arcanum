@@ -218,7 +218,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         return board.getTurn() == WHITE ? m_eval->evaluate(board, plyFromRoot) : -m_eval->evaluate(board, plyFromRoot);
     }
     board.generateCaptureInfo();
-    bool isChecked = board.isChecked(board.getTurn());
+    // bool isChecked = board.isChecked(board.getTurn());
     // Push the board on the search stack
     m_search_stack.push_back(board.getHash());
 
