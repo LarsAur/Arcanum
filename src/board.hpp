@@ -202,21 +202,10 @@ namespace Arcanum
         eval_t mobility;
         eval_t material;
         eval_t pawns;
+        eval_t king;
         #endif // FULL_TRACE
         eval_t total;
 
-        EvalTrace()
-        {
-        #ifdef FULL_TRACE
-            checkmate = false;
-            stalemate = false;
-            mobility = 0;
-            material = 0;
-            pawns = 0;
-        #endif // FULL_TRACE
-            
-            total = 0;
-        };
 
         EvalTrace(eval_t eval)
         {
@@ -226,9 +215,11 @@ namespace Arcanum
             mobility = 0;
             material = 0;
             pawns = 0;
+            king = 0;
         #endif // FULL_TRACE
             total = eval;
         }
+        EvalTrace() : EvalTrace(0) {};
 
         bool operator> (const EvalTrace&) const;
         bool operator>=(const EvalTrace&) const;
@@ -245,6 +236,7 @@ namespace Arcanum
             et.mobility = -mobility;
             et.material = -material;
             et.pawns    = -pawns;
+            et.king     = -king;
             #endif // FULL_TRACE
             et.total    = -total;
             return et;
@@ -259,8 +251,9 @@ namespace Arcanum
             ss << "Mobility: " << mobility << std::endl;
             ss << "Material: " << material << std::endl;
             ss << "Pawns   : " << pawns << std::endl;
+            ss << "King    : " << king << std::endl;
             #endif // FULL_TRACE
-            ss << "Total   : " << total << std::endl;
+            ss << "Total   : " << total;
             return ss.str();
         }
 
@@ -272,8 +265,9 @@ namespace Arcanum
             os << "Mobility: " << trace.mobility << std::endl;
             os << "Material: " << trace.material << std::endl;
             os << "Pawns   : " << trace.pawns << std::endl;
+            os << "King    : " << trace.king << std::endl;
             #endif // FULL_TRACE
-            os << "Total   : " << trace.total << std::endl;
+            os << "Total   : " << trace.total;
             return os;
         }
     } EvalTrace;
@@ -304,7 +298,7 @@ namespace Arcanum
             eval_t m_getPawnEval(Board& board, uint8_t phase);
             eval_t m_getMaterialEval(Board& board, uint8_t phase);
             eval_t m_getMobilityEval(Board& board, uint8_t phase);
-            
+            eval_t m_getKingEval(Board& board, uint8_t phase);
         public:
             Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies);
             EvalTrace evaluate(Board& board, uint8_t plyFromRoot);

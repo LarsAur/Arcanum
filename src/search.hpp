@@ -12,7 +12,6 @@
 
 namespace Arcanum
 {
-
     typedef struct pvLine_t
     {
         uint8_t count;

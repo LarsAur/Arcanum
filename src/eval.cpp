@@ -84,16 +84,18 @@ EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
         return trace;
     }
 
-    #ifdef FULL_TRACE    
-    trace.pawns = m_getPawnEval(board);
-    trace.material = m_getMaterialEval(board);
-    trace.mobility = m_getMobilityEval(board);
-    trace.total = trace.pawns + trace.material + trace.mobility;
-    #else
     uint8_t phase = m_getPhase(board);
+    #ifdef FULL_TRACE    
+    trace.pawns = m_getPawnEval(board, phase);
+    trace.material = m_getMaterialEval(board, phase);
+    trace.mobility = m_getMobilityEval(board, phase);
+    trace.king     = m_getKingEval(board, phase);
+    trace.total = trace.pawns + trace.material + trace.mobility + trace.king;
+    #else
     trace.total = m_getPawnEval(board, phase)
     + m_getMaterialEval(board, phase)
-    + m_getMobilityEval(board, phase);
+    + m_getMobilityEval(board, phase)
+    + m_getKingEval(board, phase);
     #endif // FULL_TRACE
     return trace;
 }
@@ -376,11 +378,11 @@ inline uint8_t Eval::m_getPhase(Board& board)
     }
 
     uint8_t phase = (
-        pawnPhase * CNTSBITS(board.m_bbTypedPieces[W_PAWN][0] | board.m_bbTypedPieces[W_PAWN][1])
-        + knightPhase * CNTSBITS(board.m_bbTypedPieces[W_KNIGHT][0] | board.m_bbTypedPieces[W_KNIGHT][1])
-        + bishopPhase * CNTSBITS(board.m_bbTypedPieces[W_BISHOP][0] | board.m_bbTypedPieces[W_BISHOP][1])
-        + rookPhase * CNTSBITS(board.m_bbTypedPieces[W_ROOK][0] | board.m_bbTypedPieces[W_ROOK][1])
-        + queenPhase * CNTSBITS(board.m_bbTypedPieces[W_QUEEN][0] | board.m_bbTypedPieces[W_QUEEN][1])
+        pawnPhase * CNTSBITS(board.m_bbTypedPieces[W_PAWN][Color::WHITE] | board.m_bbTypedPieces[W_PAWN][Color::BLACK])
+        + knightPhase * CNTSBITS(board.m_bbTypedPieces[W_KNIGHT][Color::WHITE] | board.m_bbTypedPieces[W_KNIGHT][Color::BLACK])
+        + bishopPhase * CNTSBITS(board.m_bbTypedPieces[W_BISHOP][Color::WHITE] | board.m_bbTypedPieces[W_BISHOP][Color::BLACK])
+        + rookPhase * CNTSBITS(board.m_bbTypedPieces[W_ROOK][Color::WHITE] | board.m_bbTypedPieces[W_ROOK][Color::BLACK])
+        + queenPhase * CNTSBITS(board.m_bbTypedPieces[W_QUEEN][Color::WHITE] | board.m_bbTypedPieces[W_QUEEN][Color::BLACK])
     );
 
     // Limit phase between 0 and totalphase
@@ -391,4 +393,70 @@ inline uint8_t Eval::m_getPhase(Board& board)
     phaseEntry->hash = board.m_materialHash;
     phaseEntry->value = phase;
     return phase;
+}
+
+static constexpr int s_kingAreaAttackScore[100] = {
+    0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
+  18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
+  68,  75,  82,  85,  89,  97, 105, 113, 122, 131,
+ 140, 150, 169, 180, 191, 202, 213, 225, 237, 248,
+ 260, 272, 283, 295, 307, 319, 330, 342, 354, 366,
+ 377, 389, 401, 412, 424, 436, 448, 459, 471, 483,
+ 494, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500
+};
+
+inline eval_t Eval::m_getKingEval(Board& board, uint8_t phase)
+{
+    // Calculate the king attack zones (all squares the king can move)
+    // The king square does not need to be included as a search would not stop on a check
+    bitboard_t whiteKingZone = getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][Color::WHITE]));
+    bitboard_t blackKingZone = getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][Color::BLACK]));
+
+    uint8_t blackAttackingIndex = 0;
+    uint8_t whiteAttackingIndex = 0;
+    
+    // TODO: For efficiency, this function can be integrated into the mobility function
+    {
+        blackAttackingIndex += 2 * CNTSBITS(getBlackPawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & whiteKingZone);
+        blackAttackingIndex += 2 * CNTSBITS(getBlackPawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & whiteKingZone);
+
+        bitboard_t knights  = board.m_bbTypedPieces[W_KNIGHT][Color::BLACK];
+        bitboard_t rooks    = board.m_bbTypedPieces[W_ROOK][Color::BLACK];
+        bitboard_t bishops  = board.m_bbTypedPieces[W_BISHOP][Color::BLACK];
+        bitboard_t queens   = board.m_bbTypedPieces[W_QUEEN][Color::BLACK];
+
+        while(knights)  blackAttackingIndex += 2 * CNTSBITS(getKnightAttacks(popLS1B(&knights)) & whiteKingZone);
+        while(rooks)    blackAttackingIndex += 3 * CNTSBITS(getRookMoves(board.m_bbAllPieces, popLS1B(&rooks)) & whiteKingZone);
+        while(bishops)  blackAttackingIndex += 2 * CNTSBITS(getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops)) & whiteKingZone);
+        while(queens)   blackAttackingIndex += 5 * CNTSBITS(getQueenMoves(board.m_bbAllPieces, popLS1B(&queens)) & whiteKingZone);
+    }
+
+    {
+        whiteAttackingIndex += 2 * CNTSBITS(getWhitePawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & blackKingZone);
+        whiteAttackingIndex += 2 * CNTSBITS(getWhitePawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & blackKingZone);
+
+        bitboard_t knights  = board.m_bbTypedPieces[W_KNIGHT][Color::WHITE];
+        bitboard_t rooks    = board.m_bbTypedPieces[W_ROOK][Color::WHITE];
+        bitboard_t bishops  = board.m_bbTypedPieces[W_BISHOP][Color::WHITE];
+        bitboard_t queens   = board.m_bbTypedPieces[W_QUEEN][Color::WHITE];
+        
+        while(knights)  whiteAttackingIndex += 2 * CNTSBITS(getKnightAttacks(popLS1B(&knights)) & blackKingZone);
+        while(rooks)    whiteAttackingIndex += 3 * CNTSBITS(getRookMoves(board.m_bbAllPieces, popLS1B(&rooks)) & blackKingZone);
+        while(bishops)  whiteAttackingIndex += 2 * CNTSBITS(getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops)) & blackKingZone);
+        while(queens)   whiteAttackingIndex += 5 * CNTSBITS(getQueenMoves(board.m_bbAllPieces, popLS1B(&queens)) & blackKingZone);
+    }
+
+    // NOTE: This is probably not required, but it might be needed if the kingZone is increased
+    //       Anyways, it does not hurt to be safe and guard against out of bound reads :^)
+    if(blackAttackingIndex >= 100 || whiteAttackingIndex >= 100)
+    {
+        WARNING("Safety index is too large " << whiteKingZone << " " << whiteAttackingIndex)
+        blackAttackingIndex = std::min(blackAttackingIndex, uint8_t(100));
+        whiteAttackingIndex = std::min(whiteAttackingIndex, uint8_t(100));
+    }
+
+    return (s_kingAreaAttackScore[whiteAttackingIndex] - s_kingAreaAttackScore[blackAttackingIndex]);
 }

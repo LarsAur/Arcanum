@@ -218,7 +218,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         return board.getTurn() == WHITE ? m_eval->evaluate(board, plyFromRoot) : -m_eval->evaluate(board, plyFromRoot);
     }
     board.generateCaptureInfo();
-    // bool isChecked = board.isChecked(board.getTurn());
+    bool isChecked = board.isChecked(board.getTurn());
     // Push the board on the search stack
     m_search_stack.push_back(board.getHash());
 
@@ -235,7 +235,11 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         bool requireFullSearch = true;
 
         // Check for late move reduction
-        if(depth >= 3 && i >= 3 && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
+        // Conditions for not doing LMR
+        // * Move is a capture move
+        // * The previous board was a check
+        // * The move is a checking move
+        if(i >= 3 && depth >= 3 && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK) && !isChecked && !new_board.isChecked(board.getTurn()))
         {
             EvalTrace lmrBeta = -alpha;
             lmrBeta.total -= 1;
