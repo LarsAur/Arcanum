@@ -77,8 +77,7 @@ namespace Arcanum
          * @return index (0..63) of least significant one bit
          */
 
-        // TODO: Consider using uint8_t to save space. Might be more efficient to use int due to alignment
-        const static int popLS1B_index64[64] = {
+        constexpr static uint8_t popLS1B_index64[64] = {
             0, 47,  1, 56, 48, 27,  2, 60,
             57, 49, 41, 37, 28, 16,  3, 61,
             54, 58, 35, 52, 50, 42, 21, 44,
@@ -89,7 +88,7 @@ namespace Arcanum
             13, 18,  8, 12,  7,  6,  5, 63
         };
 
-        const static bitboard_t debruijn64 = bitboard_t(0x03f79d71b4cb0a89);
+        constexpr static bitboard_t debruijn64 = bitboard_t(0x03f79d71b4cb0a89);
         // assert (bitboard != 0);
         int popIdx = popLS1B_index64[((*bitboard ^ (*bitboard-1)) * debruijn64) >> 58];
         // Pop the bit
@@ -112,8 +111,7 @@ namespace Arcanum
          * @return index (0..63) of least significant one bit
          */
 
-        // TODO: Consider using uint8_t to save space. Might be more efficient to use int due to byte alignment
-        const static int popLS1B_index64[64] = {
+        constexpr static uint8_t popLS1B_index64[64] = {
             0, 47,  1, 56, 48, 27,  2, 60,
             57, 49, 41, 37, 28, 16,  3, 61,
             54, 58, 35, 52, 50, 42, 21, 44,
@@ -124,7 +122,7 @@ namespace Arcanum
             13, 18,  8, 12,  7,  6,  5, 63
         };
 
-        const static bitboard_t debruijn64 = bitboard_t(0x03f79d71b4cb0a89);
+        constexpr static bitboard_t debruijn64 = bitboard_t(0x03f79d71b4cb0a89);
         // assert (bitboard != 0);
         return popLS1B_index64[((bitboard ^ (bitboard-1)) * debruijn64) >> 58];
     #endif
@@ -151,41 +149,41 @@ namespace Arcanum
 
     static inline bitboard_t getWhitePawnAttacks(bitboard_t bitboard)
     {
-        const static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
-        const static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
+        constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
+        constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
         bitboard_t pawnAttacks = ((bitboard & nHFile) << 9) | ((bitboard & nAFile) << 7);
         return pawnAttacks;
     }
 
     static inline bitboard_t getWhitePawnAttacksLeft(bitboard_t bitboard)
     {
-        const static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
+        constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
         return ((bitboard & nAFile) << 7);
     }
 
     static inline bitboard_t getWhitePawnAttacksRight(bitboard_t bitboard)
     {
-        const static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
+        constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
         return ((bitboard & nHFile) << 9);
     }
 
     static inline bitboard_t getBlackPawnAttacks(bitboard_t bitboard)
     {
-        const static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
-        const static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
+        constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
+        constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
         bitboard_t pawnAttacks = ((bitboard & nHFile) >> 7) | ((bitboard & nAFile) >> 9);
         return pawnAttacks;
     }
 
     static inline bitboard_t getBlackPawnAttacksLeft(bitboard_t bitboard)
     {
-        const static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
+        constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
         return ((bitboard & nAFile) >> 9);
     }
 
     static inline bitboard_t getBlackPawnAttacksRight(bitboard_t bitboard)
     {
-        const static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
+        constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
         return ((bitboard & nHFile) >> 7);
     }
 
@@ -262,7 +260,7 @@ namespace Arcanum
     {
         int file = bishopIdx & 0b111;
 
-        const static bitboard_t bFile = 0x0202020202020202LL;
+        constexpr static bitboard_t bFile = 0x0202020202020202LL;
         bitboard_t diagonalOccupancy     = ((diagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
         bitboard_t antiDiagonalOccupancy = ((antiDiagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
         bitboard_t moves = (
