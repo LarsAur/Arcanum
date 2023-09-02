@@ -1220,24 +1220,8 @@ Move* Board::getLegalCaptureMoves()
         }
     }
 
-    // Pawn moves 
-    bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
-    bitboard_t pawnMoves;
-    if(m_turn == WHITE)
-    {
-        pawnMoves= getWhitePawnMoves(pawns);
-        pawnMoves &= ~m_bbAllPieces;
-        pawnMoves &= getBlackPawnAttacks(m_bbTypedPieces[W_KING][opponent]);
-    }
-    else
-    {
-        pawnMoves= getBlackPawnMoves(pawns);
-        pawnMoves &= ~m_bbAllPieces;
-        pawnMoves &= getWhitePawnAttacks(m_bbTypedPieces[W_KING][opponent]);
-    }
-
     // Pawn captues
-    pawns = m_bbTypedPieces[W_PAWN][m_turn];
+    bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
     bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin; 
     if(m_turn == WHITE)
     {

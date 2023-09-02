@@ -119,7 +119,7 @@ inline eval_t Eval::m_getPawnEval(Board& board, uint8_t phase)
 
     // Constants used during evaluations
     static constexpr bitboard_t bbAFile = 0x0101010101010101;
-    static constexpr bitboard_t bbHFile = 0xF0F0F0F0F0F0F0F0; 
+    // static constexpr bitboard_t bbHFile = 0xF0F0F0F0F0F0F0F0;
     static constexpr bitboard_t wForwardLookup[] = { // indexed by rank
         0x0000000000000000,
         0xFFFFFFFFFFFF0000,
