@@ -395,7 +395,7 @@ inline uint8_t Eval::m_getPhase(Board& board)
     return phase;
 }
 
-static constexpr int s_kingAreaAttackScore[100] = {
+static constexpr eval_t s_kingAreaAttackScore[100] = {
     0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
   18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
   68,  75,  82,  85,  89,  97, 105, 113, 122, 131,
@@ -408,12 +408,47 @@ static constexpr int s_kingAreaAttackScore[100] = {
  500, 500, 500, 500, 500, 500, 500, 500, 500, 500
 };
 
+static constexpr eval_t s_whiteKingPositionBegin[64] = {
+    20,  25,  30,   0,  12,  25,  30,  20, 
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+};
+
+static constexpr eval_t s_blackKingPositionBegin[64] = {
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+    20,  25,  30,   0,  12,  25,  30,  20, 
+};
+
+static constexpr eval_t s_kingPositionEnd[64] = {
+   -50, -25, -25, -25, -25, -25, -25, -50,
+   -25, -25, -12, -12, -12, -12, -25, -25,
+   -25, -12,  12,  12,  12,  12, -12, -25,
+   -25, -12,  12,  12,  12,  12, -12, -25,
+   -25, -12,  12,  12,  12,  12, -12, -25,
+   -25, -12,  12,  12,  12,  12, -12, -25,
+   -25, -12, -12, -12, -12, -12, -25, -25,
+   -50, -25, -25, -25, -25, -25, -25, -50,
+};
+
 inline eval_t Eval::m_getKingEval(Board& board, uint8_t phase)
 {
     // Calculate the king attack zones (all squares the king can move)
     // The king square does not need to be included as a search would not stop on a check
-    bitboard_t whiteKingZone = getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][Color::WHITE]));
-    bitboard_t blackKingZone = getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][Color::BLACK]));
+    const uint8_t wKingIdx = LS1B(board.m_bbTypedPieces[W_KING][Color::WHITE]);
+    const uint8_t bKingIdx = LS1B(board.m_bbTypedPieces[W_KING][Color::BLACK]);
+    bitboard_t whiteKingZone = getKingMoves(wKingIdx);
+    bitboard_t blackKingZone = getKingMoves(bKingIdx);
 
     uint8_t blackAttackingIndex = 0;
     uint8_t whiteAttackingIndex = 0;
@@ -458,5 +493,9 @@ inline eval_t Eval::m_getKingEval(Board& board, uint8_t phase)
         whiteAttackingIndex = std::min(whiteAttackingIndex, uint8_t(100));
     }
 
-    return (s_kingAreaAttackScore[whiteAttackingIndex] - s_kingAreaAttackScore[blackAttackingIndex]);
+    eval_t kingAttackingScore = s_kingAreaAttackScore[whiteAttackingIndex] - s_kingAreaAttackScore[blackAttackingIndex];
+    eval_t kingPositionScore = ((s_whiteKingPositionBegin[wKingIdx] - s_blackKingPositionBegin[bKingIdx]) * phase 
+                             + (s_kingPositionEnd[wKingIdx] - s_kingPositionEnd[bKingIdx]) * (totalPhase - phase)) / totalPhase;
+    
+    return kingAttackingScore + kingPositionScore;
 }
