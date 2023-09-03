@@ -61,10 +61,11 @@ def main():
         results_file.write("\n" + move_list + "\n")
 
         os.system('cls')
-        print(f"White wins: {wins}/{games}")
-        print(f"Black wins: {games-wins-stalemates-draws}/{games}")
-        print(f"Stalemates: {stalemates}/{games}")
-        print(f"Draws     : {draws}/{games}")
+        space = ""
+        print(f"{white_engine_name:<20} (White) wins: {wins}/{games}")
+        print(f"{black_engine_name:<20} (Black) wins: {games-wins-stalemates-draws}/{games}")
+        print(f"{space:<20} Stalemates: {stalemates}/{games}")
+        print(f"{space:<20} Draws     : {draws}/{games}")
             
     fen_string_file.close()
     results_file.close()
