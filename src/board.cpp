@@ -2027,6 +2027,11 @@ Color Board::getTurn()
     return m_turn;
 }
 
+uint8_t Board::getNumPiecesLeft()
+{
+    return CNTSBITS(m_bbAllPieces);
+}
+
 std::string Board::getBoardString() const
 {
     std::stringstream ss;

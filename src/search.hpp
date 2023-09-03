@@ -44,6 +44,7 @@ namespace Arcanum
             std::unique_ptr<TranspositionTable> m_tt;
             std::unique_ptr<Eval> m_eval;
             std::vector<hash_t> m_search_stack;
+            std::vector<hash_t> m_knownEndgameMaterialDraws;
             KillerMoveManager m_killerMoveManager;
             EvalTrace m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth);
             EvalTrace m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot);

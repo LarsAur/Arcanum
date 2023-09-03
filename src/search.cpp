@@ -7,6 +7,8 @@
 
 using namespace Arcanum;
 
+#define DRAW_VALUE EvalTrace(0)
+
 Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(32));
@@ -20,6 +22,19 @@ Searcher::Searcher()
         .upperTTValuesUsed  = 0LL,
     };
     #endif
+
+    // Setup a table of known endgame draws based on material
+    // This is based on: https://www.chess.com/terms/draw-chess
+    Board kings = Board("K1k5/8/8/8/8/8/8/8 w - - 0 1");
+    Board kingsWBishop = Board("K1k1B3/8/8/8/8/8/8/8 w - - 0 1");
+    Board kingsBBishop = Board("K1k1b3/8/8/8/8/8/8/8 w - - 0 1");
+    Board kingsWKnight = Board("K1k1N3/8/8/8/8/8/8/8 w - - 0 1");
+    Board kingsBKnight = Board("K1k1n3/8/8/8/8/8/8/8 w - - 0 1");
+    m_knownEndgameMaterialDraws.push_back(kings.getMaterialHash());
+    m_knownEndgameMaterialDraws.push_back(kingsWBishop.getMaterialHash());
+    m_knownEndgameMaterialDraws.push_back(kingsBBishop.getMaterialHash());
+    m_knownEndgameMaterialDraws.push_back(kingsWKnight.getMaterialHash());
+    m_knownEndgameMaterialDraws.push_back(kingsBKnight.getMaterialHash());
 }
 
 Searcher::~Searcher()
@@ -36,10 +51,21 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         return trace;
     }
 
+    if(board.getNumPiecesLeft() <= 3)
+    {
+        for(auto it = m_knownEndgameMaterialDraws.begin(); it != m_knownEndgameMaterialDraws.end(); it++)
+        {
+            if(*it == board.getMaterialHash())
+            {
+                return DRAW_VALUE;
+            }
+        }
+    }
+
     // Check for 50 move rule
     if(board.getHalfMoves() >= 100)
     {
-        return m_eval->getDrawValue(board, plyFromRoot);
+        return DRAW_VALUE;
     }
 
     // Check for repeated positions in the current search
@@ -61,9 +87,9 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         globalRepeats = globalSearchIt->second;
     }
     
-    if(globalRepeats + stackRepeats >= 2)
+    if(globalRepeats + stackRepeats >= 1)
     {
-        return m_eval->getDrawValue(board, plyFromRoot);
+        return DRAW_VALUE;
     }
 
     if(!board.isChecked(board.getTurn()))
@@ -83,7 +109,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         }
     }
 
-    // Only genereate checking moves up to a certain depth    
+    // Only genereate checking moves up to a certain depth
     Move *moves = depth > 0 ? board.getLegalCaptureAndCheckMoves() : board.getLegalCaptureMoves();
     uint8_t numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
@@ -135,10 +161,21 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         return EvalTrace(0);
     }
 
+    if(board.getNumPiecesLeft() <= 3)
+    {
+        for(auto it = m_knownEndgameMaterialDraws.begin(); it != m_knownEndgameMaterialDraws.end(); it++)
+        {
+            if(*it == board.getMaterialHash())
+            {
+                return DRAW_VALUE;
+            }
+        }
+    }
+
     // Check for 50 move rule
     if(board.getHalfMoves() >= 100)
     {
-        return m_eval->getDrawValue(board, plyFromRoot);
+        return DRAW_VALUE;
     }
 
     // Check for repeated positions in the current search
@@ -162,7 +199,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     
     if(globalRepeats + stackRepeats >= 1)
     {
-        return m_eval->getDrawValue(board, plyFromRoot);
+        return DRAW_VALUE;
     }
 
     EvalTrace originalAlpha = alpha;

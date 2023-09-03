@@ -152,6 +152,7 @@ namespace Arcanum
             Board(std::string fen);
             void performMove(Move move);
             void addBoardToHistory();
+            void generateCaptureInfo();
             hash_t getHash();
             hash_t getPawnHash();
             hash_t getMaterialHash();
@@ -161,18 +162,18 @@ namespace Arcanum
             bool isSlidingChecked(Color color);
             bool isDiagonalChecked(Color color);
             bool isStraightChecked(Color color);
+            bool hasLegalMove();
+            bool hasLegalMoveFromCheck();
             Color getTurn();
             bitboard_t getOpponentAttacks();
             bitboard_t getOpponentPawnAttacks();
-            bool hasLegalMove();
-            bool hasLegalMoveFromCheck();
             Move* getLegalMovesFromCheck();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();
             Move* getLegalCaptureAndCheckMoves();
             uint8_t getNumLegalMoves();
+            uint8_t getNumPiecesLeft();
             std::string getBoardString() const;
-            void generateCaptureInfo();
             static std::unordered_map<hash_t, uint8_t, HashFunction>* getBoardHistory();
     };
 
