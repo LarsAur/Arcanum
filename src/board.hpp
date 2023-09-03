@@ -78,7 +78,7 @@ namespace Arcanum
 
         bool operator==(const Move& move) const
         {
-            return (from == move.from) && (to == move.to);
+            return (from == move.from) && (to == move.to) && ((moveInfo & MOVE_INFO_PROMOTE_MASK) == (move.moveInfo & MOVE_INFO_PROMOTE_MASK));
         }
 
         std::string toString() const
