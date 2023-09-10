@@ -57,6 +57,7 @@ void UCI::loop()
         else if (strcmp(token.c_str(), "isready") == 0) UCI_OUT("readyok")
 
         // Custom
+        else if (strcmp(token.c_str(), "eval") == 0) eval(board);
         else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board);
 
 
@@ -71,6 +72,8 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     Move bestMove = Move(0,0);
     int32_t depth = -1;
     int32_t moveTime = -1;
+    std::stringstream ssInfo;
+    ssInfo << "info ";
 
     while(is >> token)
     {
@@ -89,11 +92,12 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         else UCI_ERROR("Unknown command")
     }
 
-    if(depth > 0)
+    if(depth > 0) 
     {
         UCI_LOG("Searching at depth " << depth);
         bestMove = searcher.getBestMove(board, depth, 4);
-    } else if (moveTime > 0)
+    } 
+    else if (moveTime > 0)
     {
         UCI_LOG("Searching for " << moveTime << "ms");
         bestMove = searcher.getBestMoveInTime(board, moveTime, 4);
@@ -103,9 +107,23 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
             exit(EXIT_FAILURE);
         }
     }
+    else if(depth <= 0)
+    {
+        UCI_LOG("Searching at depth " << depth << " returning static eval and the first move");
+        Move* moves = board.getLegalMoves();
+        uint8_t nMoves = board.getNumLegalMoves();
+        if(nMoves > 0)
+        {
+            bestMove = moves[0];
+        }
+        Eval eval = Eval(1, 1);
+        ssInfo << "score cp ";
+        ssInfo << (board.getTurn() == Color::WHITE) ? eval.evaluate(board, 0) : -eval.evaluate(board, 0);
+    }
 
-    UCI_OUT("info pv " << bestMove)
-    UCI_OUT("bestmove " << bestMove) 
+    ssInfo << "pv " << bestMove;
+    UCI_OUT(ssInfo.str())
+    UCI_OUT("bestmove " << bestMove)
 }
 
 void UCI::position(Board& board, std::istringstream& is)
@@ -153,6 +171,13 @@ void UCI::position(Board& board, std::istringstream& is)
             }
         }
     }
+}
+
+// Returns the statc eval score for white
+void UCI::eval(Board& board)
+{
+    Eval evaluator = Eval(1,1);
+    UCI_OUT(evaluator.evaluate(board, 0).total)
 }
 
 // Returns "checkmate 'winner'" if checkmate

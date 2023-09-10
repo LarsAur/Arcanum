@@ -183,7 +183,7 @@ inline eval_t Eval::m_getPawnEval(Board& board, uint8_t phase)
         // Pawn has supporting pawns (in the neighbour files)
         pawnScore += ((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * pawnSupportScore;
 
-        // Is a doubled pawn
+        // Is not a doubled pawn
         pawnScore += ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * doublePawnScore;
         
         // Pawns closer to pormotion gets value
@@ -208,7 +208,7 @@ inline eval_t Eval::m_getPawnEval(Board& board, uint8_t phase)
         bPawnAttackSpans |= pawnNeighbourFiles & forward;
 
         // Is passed pawn
-        pawnScore += (((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) == 0) * passedPawnScore;
+        pawnScore -= (((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) == 0) * passedPawnScore;
 
         // Pawn has supporting pawns (in the neighbour files)
         pawnScore -= ((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][BLACK]) != 0) * pawnSupportScore;
@@ -276,11 +276,13 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
     eval_t mobilityScoreEnd = 0;
     // White mobility
     {
+        bitboard_t mobilityArea = ~board.m_bbColoredPieces[WHITE] & ~getBlackPawnAttacks(board.m_bbTypedPieces[W_PAWN][BLACK]);
+
         bitboard_t wRooks = board.m_bbTypedPieces[W_ROOK][WHITE];
         while(wRooks)
         {
             int rookIdx = popLS1B(&wRooks);
-            int cnt = CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & ~board.m_bbColoredPieces[WHITE]);
+            int cnt = CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & mobilityArea);
             mobilityScoreBegin += mobilityBonusRookBegin[cnt];
             mobilityScoreEnd += mobilityBonusRookEnd[cnt];
         }
@@ -289,7 +291,7 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
         while(wKnights)
         {
             int knightIdx = popLS1B(&wKnights);
-            int cnt = CNTSBITS(getKnightAttacks(knightIdx) & ~board.m_bbColoredPieces[WHITE]);
+            int cnt = CNTSBITS(getKnightAttacks(knightIdx) & mobilityArea);
             mobilityScoreBegin += mobilityBonusKnightBegin[cnt];
             mobilityScoreEnd += mobilityBonusKnightEnd[cnt];
         }
@@ -298,7 +300,7 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
         while(wBishops)
         {
             int bishopIdx = popLS1B(&wBishops);
-            int cnt = CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & ~board.m_bbColoredPieces[WHITE]);
+            int cnt = CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & mobilityArea);
             mobilityScoreBegin += mobilityBonusBishopBegin[cnt];
             mobilityScoreEnd += mobilityBonusBishopEnd[cnt];
         }
@@ -307,7 +309,7 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
         while(wQueens)
         {
             int queenIdx = popLS1B(&wQueens);
-            int cnt = CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & ~board.m_bbColoredPieces[WHITE]);
+            int cnt = CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & mobilityArea);
             mobilityScoreBegin += mobilityBonusQueenBegin[cnt];
             mobilityScoreEnd += mobilityBonusQueenEnd[cnt];
         }
@@ -315,11 +317,13 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
 
     // Black mobility
     {
+        bitboard_t mobilityArea = ~board.m_bbColoredPieces[BLACK] & ~getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][WHITE]);
+
         bitboard_t bRooks = board.m_bbTypedPieces[W_ROOK][BLACK];
         while(bRooks)
         {
             int rookIdx = popLS1B(&bRooks);
-            int cnt = CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & ~board.m_bbColoredPieces[BLACK]);
+            int cnt = CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & mobilityArea);
             mobilityScoreBegin -= mobilityBonusRookBegin[cnt];
             mobilityScoreEnd -= mobilityBonusRookEnd[cnt];
         }
@@ -328,7 +332,7 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
         while(bKnights)
         {
             int knightIdx = popLS1B(&bKnights);
-            int cnt = CNTSBITS(getKnightAttacks(knightIdx) & ~board.m_bbColoredPieces[BLACK]);
+            int cnt = CNTSBITS(getKnightAttacks(knightIdx) & mobilityArea);
             mobilityScoreBegin -= mobilityBonusKnightBegin[cnt];
             mobilityScoreEnd -= mobilityBonusKnightEnd[cnt];
         }
@@ -337,7 +341,7 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
         while(bBishops)
         {
             int bishopIdx = popLS1B(&bBishops);
-            int cnt = CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & ~board.m_bbColoredPieces[BLACK]);
+            int cnt = CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & mobilityArea);
             mobilityScoreBegin -= mobilityBonusBishopBegin[cnt];
             mobilityScoreEnd -= mobilityBonusBishopEnd[cnt];
         }
@@ -346,7 +350,7 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
         while(bQueens)
         {
             int queenIdx = popLS1B(&bQueens);
-            int cnt = CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & ~board.m_bbColoredPieces[BLACK]);
+            int cnt = CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & mobilityArea);
             mobilityScoreBegin -= mobilityBonusQueenBegin[cnt];
             mobilityScoreEnd -= mobilityBonusQueenEnd[cnt];
         }
@@ -487,7 +491,7 @@ inline eval_t Eval::m_getKingEval(Board& board, uint8_t phase)
     //       Anyways, it does not hurt to be safe and guard against out of bound reads :^)
     if(blackAttackingIndex >= 100 || whiteAttackingIndex >= 100)
     {
-        WARNING("Safety index is too large " << whiteKingZone << " " << whiteAttackingIndex)
+        WARNING("Safety index is too large " << whiteKingZone << " " << blackAttackingIndex)
         blackAttackingIndex = std::min(blackAttackingIndex, uint8_t(100));
         whiteAttackingIndex = std::min(whiteAttackingIndex, uint8_t(100));
     }
