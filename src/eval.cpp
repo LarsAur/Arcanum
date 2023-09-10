@@ -350,7 +350,6 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
             mobilityScoreBegin -= mobilityBonusQueenBegin[cnt];
             mobilityScoreEnd -= mobilityBonusQueenEnd[cnt];
         }
-
     }
 
     eval_t mobilityScore = (phase * mobilityScoreBegin + (totalPhase - phase) * mobilityScoreEnd) / totalPhase;
@@ -358,8 +357,8 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
     // Pawn mobility
     mobilityScore += CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][WHITE]) & ~board.m_bbAllPieces) * mobilityBonusPawn;
     mobilityScore += CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][WHITE]) & board.m_bbColoredPieces[BLACK]) * mobilityBonusPawn;
-    mobilityScore -= CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][BLACK]) & ~board.m_bbAllPieces) * mobilityBonusPawn;
-    mobilityScore -= CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][BLACK]) & board.m_bbColoredPieces[WHITE]) * mobilityBonusPawn;
+    mobilityScore -= CNTSBITS(getBlackPawnMoves(board.m_bbTypedPieces[W_PAWN][BLACK]) & ~board.m_bbAllPieces) * mobilityBonusPawn;
+    mobilityScore -= CNTSBITS(getBlackPawnAttacks(board.m_bbTypedPieces[W_PAWN][BLACK]) & board.m_bbColoredPieces[WHITE]) * mobilityBonusPawn;
     // King mobility
     mobilityScore += CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][WHITE])) & ~board.m_bbColoredPieces[WHITE]) * mobilityBonusKing;
     mobilityScore -= CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][BLACK])) & ~board.m_bbColoredPieces[BLACK]) * mobilityBonusKing;
