@@ -22,7 +22,7 @@ Zobrist::Zobrist()
         }
     }
 
-    for(int i = 0; i < 64; i++)
+    for(int i = 0; i < 65; i++)
     {
         m_enPassantTable[i] = distribution(generator);
     }
