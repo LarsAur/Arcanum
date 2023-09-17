@@ -6,4 +6,7 @@ benchmarking/results/
 *.o
 *.exe
 *.log
+*.pgn
+*.zst
+*.uci_options
 notes.txt
