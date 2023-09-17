@@ -13,7 +13,7 @@ std::unordered_map<hash_t, uint8_t, HashFunction>* Board::getBoardHistory()
 
 static Zobrist s_zobrist;
 
-Board::Board(std::string fen)
+Board::Board(const std::string fen)
 {
     // -- Create empty board
     m_bbAllPieces = 0LL;
@@ -1731,7 +1731,7 @@ bool Board::hasLegalMoveFromCheck()
     return false;
 }
 
-uint8_t Board::getNumLegalMoves()
+uint8_t Board::getNumLegalMoves() const
 {
     return m_numLegalMoves;
 }
@@ -1749,7 +1749,7 @@ void Board::generateCaptureInfo()
     }   
 }
 
-void Board::performMove(Move move)
+void Board::performMove(const Move move)
 {
     bitboard_t bbFrom = 0b1LL << move.from;
     bitboard_t bbTo = 0b1LL << move.to;
@@ -1877,6 +1877,20 @@ void Board::performMove(Move move)
         m_rule50++;
 }
 
+void Board::performNullMove()
+{
+    uint8_t oldEnPassantSquare = m_enPassantSquare;
+    m_enPassantSquare = 64;
+    m_enPassantTarget = 64;
+    m_bbEnPassantSquare = 0LL;
+    m_bbEnPassantTarget = 0LL;
+
+    s_zobrist.getUpdatedHashs(*this, Move(0,0), oldEnPassantSquare, 64, m_hash, m_pawnHash, m_materialHash);
+
+    m_turn = Color(m_turn^1);
+    m_rule50++;
+}
+
 void Board::addBoardToHistory()
 {
     auto it = s_boardHistory.find(m_hash);
@@ -1890,27 +1904,27 @@ void Board::addBoardToHistory()
     }
 }
 
-hash_t Board::getHash()
+hash_t Board::getHash() const
 {
     return m_hash;
 }
 
-hash_t Board::getPawnHash()
+hash_t Board::getPawnHash() const
 {
     return m_pawnHash;
 }
-
-hash_t Board::getMaterialHash()
+ 
+hash_t Board::getMaterialHash() const 
 {
     return m_materialHash;
 }
 
-uint16_t Board::getFullMoves()
+uint16_t Board::getFullMoves() const
 {
     return m_fullMoves;
 }
 
-uint16_t Board::getHalfMoves()
+uint16_t Board::getHalfMoves() const
 {
     return m_rule50;
 }
@@ -2022,14 +2036,19 @@ inline bool Board::isStraightChecked(Color color)
     return (straightAttacks & queenAndRooks) != 0;
 }
 
-Color Board::getTurn()
+Color Board::getTurn() const
 {
     return m_turn;
 }
 
-uint8_t Board::getNumPiecesLeft()
+uint8_t Board::getNumPiecesLeft() const
 {
     return CNTSBITS(m_bbAllPieces);
+}
+
+uint8_t Board::getNumColoredPieces(Color color) const
+{
+    return CNTSBITS(m_bbColoredPieces[color]);
 }
 
 std::string Board::getBoardString() const

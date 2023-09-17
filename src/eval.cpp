@@ -71,15 +71,9 @@ EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
         if(board.isChecked(board.m_turn))
         {
             trace.total = board.m_turn == WHITE ? -INT16_MAX + plyFromRoot : INT16_MAX - plyFromRoot;
-            #ifdef FULL_TRACE
-            trace.checkmate = true;
-            #endif // FULL_TRACE
             return trace;
         }
         
-        #ifdef FULL_TRACE
-        trace.stalemate = true;
-        #endif // FULL_TRACE
         trace.total = 0;
         return trace;
     }

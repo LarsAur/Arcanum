@@ -149,30 +149,32 @@ namespace Arcanum
             bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
         public:
             Board(const Board& board);
-            Board(std::string fen);
-            void performMove(Move move);
+            Board(const std::string fen);
+            void performMove(const Move move);
             void addBoardToHistory();
             void generateCaptureInfo();
-            hash_t getHash();
-            hash_t getPawnHash();
-            hash_t getMaterialHash();
-            uint16_t getFullMoves();
-            uint16_t getHalfMoves();
+            void performNullMove();
+            hash_t getHash() const;
+            hash_t getPawnHash() const;
+            hash_t getMaterialHash() const;
+            uint16_t getFullMoves() const;
+            uint16_t getHalfMoves() const;
             bool isChecked(Color color);
             bool isSlidingChecked(Color color);
             bool isDiagonalChecked(Color color);
             bool isStraightChecked(Color color);
             bool hasLegalMove();
             bool hasLegalMoveFromCheck();
-            Color getTurn();
+            Color getTurn() const;
             bitboard_t getOpponentAttacks();
             bitboard_t getOpponentPawnAttacks();
             Move* getLegalMovesFromCheck();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();
             Move* getLegalCaptureAndCheckMoves();
-            uint8_t getNumLegalMoves();
-            uint8_t getNumPiecesLeft();
+            uint8_t getNumLegalMoves() const;
+            uint8_t getNumPiecesLeft() const;
+            uint8_t getNumColoredPieces(Color color) const;
             std::string getBoardString() const;
             static std::unordered_map<hash_t, uint8_t, HashFunction>* getBoardHistory();
     };
@@ -198,8 +200,6 @@ namespace Arcanum
     typedef struct EvalTrace
     {
         #ifdef FULL_TRACE
-        bool checkmate;
-        bool stalemate;
         eval_t mobility;
         eval_t material;
         eval_t pawns;
@@ -211,8 +211,6 @@ namespace Arcanum
         EvalTrace(eval_t eval)
         {
         #ifdef FULL_TRACE
-            checkmate = false;
-            stalemate = false;
             mobility = 0;
             material = 0;
             pawns = 0;
@@ -232,8 +230,6 @@ namespace Arcanum
         {
             EvalTrace et;
             #ifdef FULL_TRACE
-            et.checkmate = checkmate;
-            et.stalemate = stalemate;
             et.mobility = -mobility;
             et.material = -material;
             et.pawns    = -pawns;
@@ -247,8 +243,6 @@ namespace Arcanum
         {
             std::stringstream ss;
             #ifdef FULL_TRACE
-            ss << "Checkmate:" << (checkmate ? "True" : "False") << std::endl;
-            ss << "Stalemate:" << (stalemate ? "True" : "False") << std::endl;
             ss << "Mobility: " << mobility << std::endl;
             ss << "Material: " << material << std::endl;
             ss << "Pawns   : " << pawns << std::endl;
@@ -261,8 +255,6 @@ namespace Arcanum
         friend inline std::ostream& operator<<(std::ostream& os, const EvalTrace& trace)
         {
             #ifdef FULL_TRACE
-            os << "Checkmate:" << (trace.checkmate ? "True" : "False") << std::endl;
-            os << "Stalemate:" << (trace.stalemate ? "True" : "False") << std::endl;
             os << "Mobility: " << trace.mobility << std::endl;
             os << "Material: " << trace.material << std::endl;
             os << "Pawns   : " << trace.pawns << std::endl;
