@@ -44,53 +44,11 @@ Searcher::~Searcher()
 
 EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot)
 {
-    EvalTrace trace = EvalTrace();
-
     if(m_stopSearch)
-    {
-        return trace;
-    }
+        return EvalTrace(0);
 
-    if(board.getNumPiecesLeft() <= 3)
-    {
-        for(auto it = m_knownEndgameMaterialDraws.begin(); it != m_knownEndgameMaterialDraws.end(); it++)
-        {
-            if(*it == board.getMaterialHash())
-            {
-                return DRAW_VALUE;
-            }
-        }
-    }
-
-    // Check for 50 move rule
-    if(board.getHalfMoves() >= 100)
-    {
+    if(m_isDraw(board))
         return DRAW_VALUE;
-    }
-
-    // Check for repeated positions in the current search
-    int stackRepeats = 0;
-    for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
-    {
-        if(*it == board.getHash())
-        {
-            stackRepeats++;
-        }
-    }
-    
-    // Check for repeated positions from previous searches
-    int globalRepeats = 0;
-    auto boardHistory = Board::getBoardHistory();
-    auto globalSearchIt = boardHistory->find(board.getHash());
-    if(globalSearchIt != boardHistory->end())
-    {
-        globalRepeats = globalSearchIt->second;
-    }
-    
-    if(globalRepeats + stackRepeats >= 1)
-    {
-        return DRAW_VALUE;
-    }
 
     if(!board.isChecked(board.getTurn()))
     {
@@ -157,50 +115,10 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     pvLine->count = 0;
 
     if(m_stopSearch)
-    {
         return EvalTrace(0);
-    }
 
-    if(board.getNumPiecesLeft() <= 3)
-    {
-        for(auto it = m_knownEndgameMaterialDraws.begin(); it != m_knownEndgameMaterialDraws.end(); it++)
-        {
-            if(*it == board.getMaterialHash())
-            {
-                return DRAW_VALUE;
-            }
-        }
-    }
-
-    // Check for 50 move rule
-    if(board.getHalfMoves() >= 100)
-    {
+    if(m_isDraw(board))
         return DRAW_VALUE;
-    }
-
-    // Check for repeated positions in the current search
-    int stackRepeats = 0;
-    for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
-    {
-        if(*it == board.getHash())
-        {
-            stackRepeats++;
-        }
-    }
-    
-    // Check for repeated positions from previous searches
-    int globalRepeats = 0;
-    auto boardHistory = Board::getBoardHistory();
-    auto globalSearchIt = boardHistory->find(board.getHash());
-    if(globalSearchIt != boardHistory->end())
-    {
-        globalRepeats = globalSearchIt->second;
-    }
-    
-    if(globalRepeats + stackRepeats >= 1)
-    {
-        return DRAW_VALUE;
-    }
 
     EvalTrace originalAlpha = alpha;
     std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
@@ -334,6 +252,46 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     m_tt->add(bestScore, bestMove, depth, plyFromRoot, flags, board.getHash());
 
     return bestScore;
+}
+
+inline bool Searcher::m_isDraw(const Board& board) const
+{
+    // Check for repeated positions in the current search
+    for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
+    {
+        if(*it == board.getHash())
+        {
+            return true;
+        }
+    }
+    
+    // Check for repeated positions from previous searches
+    auto boardHistory = Board::getBoardHistory();
+    auto globalSearchIt = boardHistory->find(board.getHash());
+    if(globalSearchIt != boardHistory->end())
+    {
+        return true;
+    }
+
+    if(board.getNumPiecesLeft() <= 3)
+    {
+        for(auto it = m_knownEndgameMaterialDraws.begin(); it != m_knownEndgameMaterialDraws.end(); it++)
+        {
+            if(*it == board.getMaterialHash())
+            {
+                return true;
+            }
+        }
+    }
+
+    // Check for 50 move rule
+    if(board.getHalfMoves() >= 100)
+    {
+        return true;
+    }
+
+    
+    return false;
 }
 
 Move Searcher::getBestMove(Board& board, int depth, int quietDepth)

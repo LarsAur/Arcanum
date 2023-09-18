@@ -46,13 +46,14 @@ namespace Arcanum
             std::vector<hash_t> m_search_stack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
             KillerMoveManager m_killerMoveManager;
-            EvalTrace m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth);
-            EvalTrace m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot);
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
             searchStats_t m_stats;
             uciInfo_t m_uciInfo;            
             bool m_stopSearch;
 
+            EvalTrace m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth);
+            EvalTrace m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot);
+            bool m_isDraw(const Board& board) const;
             void m_clearUCIInfo();
         public:
             Searcher();
