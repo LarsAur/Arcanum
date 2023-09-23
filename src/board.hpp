@@ -200,10 +200,12 @@ namespace Arcanum
     typedef struct EvalTrace
     {
         #ifdef FULL_TRACE
+        uint8_t phase;
         eval_t mobility;
         eval_t material;
         eval_t pawns;
         eval_t king;
+        eval_t center;
         #endif // FULL_TRACE
         eval_t total;
 
@@ -211,10 +213,12 @@ namespace Arcanum
         EvalTrace(eval_t eval)
         {
         #ifdef FULL_TRACE
+            phase = 0;
             mobility = 0;
             material = 0;
             pawns = 0;
             king = 0;
+            center = 0;
         #endif // FULL_TRACE
             total = eval;
         }
@@ -228,25 +232,28 @@ namespace Arcanum
 
         EvalTrace operator-()
         {
-            EvalTrace et;
+            EvalTrace eval;
             #ifdef FULL_TRACE
-            et.mobility = -mobility;
-            et.material = -material;
-            et.pawns    = -pawns;
-            et.king     = -king;
+            eval.phase    = phase;
+            eval.mobility = -mobility;
+            eval.material = -material;
+            eval.pawns    = -pawns;
+            eval.king     = -king;
+            eval.center   = -center;
             #endif // FULL_TRACE
-            et.total    = -total;
-            return et;
+            eval.total    = -total;
+            return eval;
         }
 
         std::string toString() const
         {
             std::stringstream ss;
             #ifdef FULL_TRACE
-            ss << "Mobility: " << mobility << std::endl;
-            ss << "Material: " << material << std::endl;
-            ss << "Pawns   : " << pawns << std::endl;
-            ss << "King    : " << king << std::endl;
+            ss << "Mobility: " << mobility  << std::endl;
+            ss << "Material: " << material  << std::endl;
+            ss << "Pawns   : " << pawns     << std::endl;
+            ss << "King    : " << king      << std::endl;
+            ss << "Center  : " << center    << std::endl;
             #endif // FULL_TRACE
             ss << "Total   : " << total;
             return ss.str();
@@ -257,29 +264,32 @@ namespace Arcanum
             #ifdef FULL_TRACE
             os << "Mobility: " << trace.mobility << std::endl;
             os << "Material: " << trace.material << std::endl;
-            os << "Pawns   : " << trace.pawns << std::endl;
-            os << "King    : " << trace.king << std::endl;
+            os << "Pawns   : " << trace.pawns    << std::endl;
+            os << "King    : " << trace.king     << std::endl;
+            os << "Center  : " << trace.center   << std::endl;
             #endif // FULL_TRACE
             os << "Total   : " << trace.total;
             return os;
         }
     } EvalTrace;
 
-    typedef struct evalEntry_t
-    {
-        hash_t hash;
-        eval_t value;
-    } evalEntry_t;
 
-    typedef struct phaseEntry_t
-    {
-        hash_t hash;
-        uint8_t value;
-    } phaseEntry_t;
 
     class Eval
     {
         private:
+            typedef struct evalEntry_t
+            {
+                hash_t hash;
+                eval_t value;
+            } evalEntry_t;
+
+            typedef struct phaseEntry_t
+            {
+                hash_t hash;
+                uint8_t value;
+            } phaseEntry_t;
+
             uint64_t m_pawnEvalTableSize;
             uint64_t m_materialEvalTableSize;
             uint64_t m_pawnEvalTableMask;
@@ -287,11 +297,12 @@ namespace Arcanum
             std::unique_ptr<evalEntry_t[]> m_pawnEvalTable;
             std::unique_ptr<evalEntry_t[]> m_materialEvalTable;
             std::unique_ptr<phaseEntry_t[]> m_phaseTable;
-            uint8_t m_getPhase(Board& board);
-            eval_t m_getPawnEval(Board& board, uint8_t phase);
-            eval_t m_getMaterialEval(Board& board, uint8_t phase);
-            eval_t m_getMobilityEval(Board& board, uint8_t phase);
-            eval_t m_getKingEval(Board& board, uint8_t phase);
+            uint8_t m_getPhase(const Board& board, EvalTrace& eval);
+            eval_t m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& eval);
+            eval_t m_getMaterialEval(const Board& board, uint8_t phase, EvalTrace& eval);
+            eval_t m_getMobilityEval(const Board& board, uint8_t phase, EvalTrace& eval);
+            eval_t m_getKingEval(const Board& board, uint8_t phase, EvalTrace& eval);
+            eval_t m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval);
         public:
             Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies);
             EvalTrace evaluate(Board& board, uint8_t plyFromRoot);

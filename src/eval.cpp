@@ -48,9 +48,6 @@ Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
 EvalTrace Eval::getDrawValue(Board& board, uint8_t plyFromRoot)
 {
     EvalTrace trace = EvalTrace(0);
-    #ifdef FULL_TRACE
-    trace.stalemate = true;
-    #endif
     // TODO: encurage not drawing at an early stage
     return trace;
 }
@@ -63,51 +60,47 @@ bool Eval::isCheckMateScore(EvalTrace eval)
 // Evaluates positive value for WHITE
 EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
 {
-    EvalTrace trace = EvalTrace();
+    EvalTrace eval = EvalTrace(0);
 
     // Check for stalemate and checkmate
     if(!board.hasLegalMove())
     {
         if(board.isChecked(board.m_turn))
         {
-            trace.total = board.m_turn == WHITE ? -INT16_MAX + plyFromRoot : INT16_MAX - plyFromRoot;
-            return trace;
+            eval.total = board.m_turn == WHITE ? -INT16_MAX + plyFromRoot : INT16_MAX - plyFromRoot;
+            return eval;
         }
         
-        trace.total = 0;
-        return trace;
-    }
+        return eval;
+    };
 
-    uint8_t phase = m_getPhase(board);
-    #ifdef FULL_TRACE    
-    trace.pawns = m_getPawnEval(board, phase);
-    trace.material = m_getMaterialEval(board, phase);
-    trace.mobility = m_getMobilityEval(board, phase);
-    trace.king     = m_getKingEval(board, phase);
-    trace.total = trace.pawns + trace.material + trace.mobility + trace.king;
-    #else
-    trace.total = m_getPawnEval(board, phase)
-    + m_getMaterialEval(board, phase)
-    + m_getMobilityEval(board, phase)
-    + m_getKingEval(board, phase);
-    #endif // FULL_TRACE
-    return trace;
+    uint8_t phase = m_getPhase(board, eval);
+    eval.total += m_getPawnEval(board, phase, eval);
+    eval.total += m_getMaterialEval(board, phase, eval);
+    eval.total += m_getMobilityEval(board, phase, eval);
+    eval.total += m_getKingEval(board, phase, eval);
+    eval.total += m_getCenterEval(board, phase, eval);
+    return eval;
 }
 
 constexpr eval_t doublePawnScore = -12;
 constexpr eval_t passedPawnScore = 25;
-constexpr eval_t pawnRankScore = 4;
-constexpr eval_t pawnSupportScore = 12;
+constexpr eval_t pawnRankScore = 5;
+constexpr eval_t pawnSupportScore = 6;
 constexpr eval_t pawnBackwardScore = -12;
 
 // https://www.chessprogramming.org/Pawn_Structure
-inline eval_t Eval::m_getPawnEval(Board& board, uint8_t phase)
+inline eval_t Eval::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     // Check the pawn eval table
     uint64_t evalIdx = board.m_pawnHash & m_pawnEvalTableMask;
     evalEntry_t* evalEntry = &m_pawnEvalTable[evalIdx];
     if(evalEntry->hash == board.m_pawnHash)
     {
+        #ifdef FULL_TRACE
+        eval.pawns = evalEntry->value;
+        #endif
+
         return evalEntry->value;
     }
 
@@ -175,7 +168,7 @@ inline eval_t Eval::m_getPawnEval(Board& board, uint8_t phase)
         pawnScore += (((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) == 0) * passedPawnScore;
 
         // Pawn has supporting pawns (in the neighbour files)
-        pawnScore += ((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * pawnSupportScore;
+        pawnScore += CNTSBITS((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][WHITE])) * pawnSupportScore;
 
         // Is not a doubled pawn
         pawnScore += ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * doublePawnScore;
@@ -205,7 +198,7 @@ inline eval_t Eval::m_getPawnEval(Board& board, uint8_t phase)
         pawnScore -= (((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) == 0) * passedPawnScore;
 
         // Pawn has supporting pawns (in the neighbour files)
-        pawnScore -= ((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][BLACK]) != 0) * pawnSupportScore;
+        pawnScore -= CNTSBITS((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][BLACK])) * pawnSupportScore;
         
         // Is not a doubled pawn
         pawnScore -= ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) != 0) * doublePawnScore;
@@ -224,16 +217,24 @@ inline eval_t Eval::m_getPawnEval(Board& board, uint8_t phase)
     evalEntry->hash = board.m_pawnHash;
     evalEntry->value = pawnScore;
 
+    #ifdef FULL_TRACE
+    eval.pawns = pawnScore;
+    #endif
+
     return pawnScore;
 }
 
-inline eval_t Eval::m_getMaterialEval(Board& board, uint8_t phase)
+inline eval_t Eval::m_getMaterialEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     // Check the material eval table
     uint64_t evalIdx = board.m_materialHash & m_materialEvalTableMask;
     evalEntry_t* evalEntry = &m_materialEvalTable[evalIdx];
     if(evalEntry->hash == board.m_materialHash)
     {
+        #ifdef FULL_TRACE
+            eval.material = evalEntry->value;
+        #endif
+
         return evalEntry->value;
     }
 
@@ -248,6 +249,10 @@ inline eval_t Eval::m_getMaterialEval(Board& board, uint8_t phase)
     // Write the pawn evaluation to the table
     evalEntry->hash = board.m_materialHash;
     evalEntry->value = pieceScore;
+
+    #ifdef FULL_TRACE
+        eval.material = evalEntry->value;
+    #endif
 
     return pieceScore;
 }
@@ -264,7 +269,7 @@ constexpr eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 1
 constexpr eval_t mobilityBonusQueenBegin[]  = {-29, -16, -8, -8, 18, 25, 23, 37, 41,  54, 65, 68, 69, 70, 70,  70 , 71, 72, 74, 76, 90, 104, 105, 106, 112, 114, 114, 119};
 constexpr eval_t mobilityBonusQueenEnd[]    = {-49,-29, -8, 17, 39,  54, 59, 73, 76, 95, 95 ,101, 124, 128, 132, 133, 136, 140, 147, 149, 153, 169, 171, 171, 178, 185, 187, 221};
 
-inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
+inline eval_t Eval::m_getMobilityEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     eval_t mobilityScoreBegin = 0;
     eval_t mobilityScoreEnd = 0;
@@ -361,16 +366,23 @@ inline eval_t Eval::m_getMobilityEval(Board& board, uint8_t phase)
     mobilityScore += CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][WHITE])) & ~board.m_bbColoredPieces[WHITE]) * mobilityBonusKing;
     mobilityScore -= CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][BLACK])) & ~board.m_bbColoredPieces[BLACK]) * mobilityBonusKing;
 
+    #ifdef FULL_TRACE
+        eval.mobility = mobilityScore;
+    #endif
+
     return mobilityScore;
 }
 
-inline uint8_t Eval::m_getPhase(Board& board)
+inline uint8_t Eval::m_getPhase(const Board& board, EvalTrace& eval)
 {
     // Check the phase table
     uint64_t phaseIdx = board.m_materialHash & m_materialEvalTableMask;
     phaseEntry_t* phaseEntry = &m_phaseTable[phaseIdx];
     if(phaseEntry->hash == board.m_materialHash)
     {
+        #ifdef FULL_TRACE
+        eval.phase = phaseEntry->value;
+        #endif
         return phaseEntry->value;
     }
 
@@ -389,6 +401,9 @@ inline uint8_t Eval::m_getPhase(Board& board)
     // Write the phase to the table
     phaseEntry->hash = board.m_materialHash;
     phaseEntry->value = phase;
+    #ifdef FULL_TRACE
+    eval.phase = phase;
+    #endif
     return phase;
 }
 
@@ -434,11 +449,11 @@ static constexpr eval_t s_kingPositionEnd[64] = {
    -25, -12,  12,  12,  12,  12, -12, -25,
    -25, -12,  12,  12,  12,  12, -12, -25,
    -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -12, -12, -12, -12, -12, -25, -25,
+   -25, -25, -12, -12, -12, -12, -25, -25,
    -50, -25, -25, -25, -25, -25, -25, -50,
 };
 
-inline eval_t Eval::m_getKingEval(Board& board, uint8_t phase)
+inline eval_t Eval::m_getKingEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     // Calculate the king attack zones (all squares the king can move)
     // The king square does not need to be included as a search would not stop on a check
@@ -494,5 +509,105 @@ inline eval_t Eval::m_getKingEval(Board& board, uint8_t phase)
     eval_t kingPositionScore = ((s_whiteKingPositionBegin[wKingIdx] - s_blackKingPositionBegin[bKingIdx]) * phase 
                              + (s_kingPositionEnd[wKingIdx] - s_kingPositionEnd[bKingIdx]) * (totalPhase - phase)) / totalPhase;
     
+    #ifdef FULL_TRACE
+    eval.king = kingAttackingScore + kingPositionScore;
+    #endif
+
     return kingAttackingScore + kingPositionScore;
+}
+
+eval_t Eval::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval)
+{
+    constexpr uint8_t centerEvalThreshold = 6 * knightPhase;
+    constexpr bitboard_t center = 0x0000001818000000LL;         // Four center squares  
+    constexpr bitboard_t centerExtended = 0x00003C24243C0000LL; // Squares around center squares
+
+    // Only evaluate center until some number of non-pawn pieces are captured
+    if(totalPhase - phase >= centerEvalThreshold)
+    {
+        #ifdef FULL_TRACE
+        eval.center = 0;
+        #endif
+        return 0;
+    }
+
+    uint8_t blackCenterIndex = 0;
+    uint8_t whiteCenterIndex = 0;
+
+    // TODO: For efficiency, this function can be integrated into the mobility function
+    {
+        blackCenterIndex += 2 * CNTSBITS(getBlackPawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & center);
+        blackCenterIndex +=     CNTSBITS(getBlackPawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & centerExtended);
+        blackCenterIndex += 2 * CNTSBITS(getBlackPawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & center);
+        blackCenterIndex +=     CNTSBITS(getBlackPawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & centerExtended);
+
+        bitboard_t knights  = board.m_bbTypedPieces[W_KNIGHT][Color::BLACK];
+        bitboard_t rooks    = board.m_bbTypedPieces[W_ROOK][Color::BLACK] | board.m_bbTypedPieces[W_QUEEN][Color::BLACK];
+        bitboard_t bishops  = board.m_bbTypedPieces[W_BISHOP][Color::BLACK] | board.m_bbTypedPieces[W_QUEEN][Color::BLACK];
+
+        while(knights)
+        {
+            bitboard_t knightAttacks = getKnightAttacks(popLS1B(&knights));
+            blackCenterIndex += 2 * CNTSBITS(knightAttacks & center);
+            blackCenterIndex +=     CNTSBITS(knightAttacks & centerExtended);
+        }
+
+        while(rooks)
+        {
+            bitboard_t rookAttacks = getRookMoves(board.m_bbAllPieces, popLS1B(&rooks));
+            blackCenterIndex += 2 * CNTSBITS(rookAttacks & center);
+            blackCenterIndex +=     CNTSBITS(rookAttacks & centerExtended);
+        }
+
+        while(bishops)
+        {
+            bitboard_t bishopAttacks = getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops));
+            blackCenterIndex += 2 * CNTSBITS(bishopAttacks & center);
+            blackCenterIndex +=     CNTSBITS(bishopAttacks & centerExtended);
+        }
+
+        blackCenterIndex += 2 * CNTSBITS(board.m_bbColoredPieces[Color::BLACK] & center);
+        blackCenterIndex +=     CNTSBITS(board.m_bbColoredPieces[Color::BLACK] & centerExtended);
+    }
+
+    {
+        whiteCenterIndex += 2 * CNTSBITS(getWhitePawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & center);
+        whiteCenterIndex +=     CNTSBITS(getWhitePawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & centerExtended);
+        whiteCenterIndex += 2 * CNTSBITS(getWhitePawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & center);
+        whiteCenterIndex +=     CNTSBITS(getWhitePawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & centerExtended);
+
+        bitboard_t knights  = board.m_bbTypedPieces[W_KNIGHT][Color::WHITE];
+        bitboard_t rooks    = board.m_bbTypedPieces[W_ROOK][Color::WHITE] | board.m_bbTypedPieces[W_QUEEN][Color::WHITE];
+        bitboard_t bishops  = board.m_bbTypedPieces[W_BISHOP][Color::WHITE] | board.m_bbTypedPieces[W_QUEEN][Color::WHITE];
+
+        while(knights)
+        {
+            bitboard_t knightAttacks = getKnightAttacks(popLS1B(&knights));
+            whiteCenterIndex += 2 * CNTSBITS(knightAttacks & center);
+            whiteCenterIndex +=     CNTSBITS(knightAttacks & centerExtended);
+        }
+
+        while(rooks)
+        {
+            bitboard_t rookAttacks = getRookMoves(board.m_bbAllPieces, popLS1B(&rooks));
+            whiteCenterIndex += 2 * CNTSBITS(rookAttacks & center);
+            whiteCenterIndex +=     CNTSBITS(rookAttacks & centerExtended);
+        }
+
+        while(bishops)
+        {
+            bitboard_t bishopAttacks = getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops));
+            whiteCenterIndex += 2 * CNTSBITS(bishopAttacks & center);
+            whiteCenterIndex +=     CNTSBITS(bishopAttacks & centerExtended);
+        }
+
+        whiteCenterIndex += 2 * CNTSBITS(board.m_bbColoredPieces[Color::WHITE] & center);
+        whiteCenterIndex +=     CNTSBITS(board.m_bbColoredPieces[Color::WHITE] & centerExtended);
+    }
+
+    eval_t centerEval = 3 * ((whiteCenterIndex - blackCenterIndex) * (centerEvalThreshold + phase - totalPhase));
+    #ifdef FULL_TRACE
+    eval.center = centerEval;
+    #endif
+    return centerEval;
 }
