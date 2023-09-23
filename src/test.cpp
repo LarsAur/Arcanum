@@ -265,6 +265,59 @@ void Test::draw()
     }
 }
 
+std::string getRandomSymmetricFEN()
+{
+    std::string fenPosition = "11111111/11111111/11111111/11111111/11111111/11111111/11111111/11111111";
+
+    // Generate a random set of pieces
+    std::vector<char> piecesToPlace;
+    piecesToPlace.push_back('k');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('r');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('n');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('b');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('q');
+    for(int i = 0; i < rand() % 8; i++) piecesToPlace.push_back('p');
+
+    // Place each piece
+    for(size_t i = 0; i < piecesToPlace.size(); i++)
+    {
+        random_square:
+        int rank = rand() % 8;
+        int file = rand() % 8;
+        int index1 = 70 - file - rank * 9;
+        int index2 = 70 - file - (7 - rank) * 9;
+
+        if(fenPosition[index1] != '1') goto random_square;
+
+        char piece = piecesToPlace.at(i++);
+        fenPosition[index1] = piece;
+        fenPosition[index2] = piece - 0x20;
+    }
+    
+    return fenPosition + " w KQkq - 0 1";
+}
+
+void Test::symmetricEvaluation()
+{
+    bool success = true;
+    srand(0);
+    for(int i = 0; i < 10000; i++)
+    {
+        Eval eval = Eval(1, 1);
+        std::string fen = getRandomSymmetricFEN();
+        Board board(fen);
+        EvalTrace score = eval.evaluate(board, 0);
+        if(score.total != 0 && abs(score.total) != 32767)
+        {
+            success = false;
+            ERROR("Uneven evaluation for symmetric position: \n Evaluation: " << score.total << "\n" << board.getBoardString())
+        }
+    }
+
+    if(success)
+        SUCCESS("Equal evaluation for all 10k symmetric positions")
+}
+
 // -- Perf functions
 
 void Perf::search()

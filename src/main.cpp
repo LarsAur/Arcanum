@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
     for(int i = 1; i < argc; i++)
     {
-        if(!strncmp("--play", argv[i], 8))
+        if(!strncmp("--play", argv[i], 7))
             // TODO: Add input about player, computer, fen and search 
             play(Color::BLACK, Arcanum::startFEN, 3000);
 
@@ -91,8 +91,11 @@ int main(int argc, char *argv[])
         if(!strncmp("--zobrist-test", argv[i], 15))
             Test::zobrist();
 
-        if(!strncmp("--draw-test", argv[i], 15))
+        if(!strncmp("--draw-test", argv[i], 12))
             Test::draw();
+
+        if(!strncmp("--symeval-test", argv[i], 15))
+            Test::symmetricEvaluation();
 
         if(!strncmp("--search-perf", argv[i], 14))
             Perf::search();
