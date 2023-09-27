@@ -40,25 +40,24 @@ namespace Arcanum
     #define MOVE_INFO_BISHOP_MOVE 8
     #define MOVE_INFO_QUEEN_MOVE 16
     #define MOVE_INFO_KING_MOVE 32
-    #define MOVE_INFO_MOVE_MASK (MOVE_INFO_PAWN_MOVE | MOVE_INFO_ROOK_MOVE | MOVE_INFO_KNIGHT_MOVE | MOVE_INFO_BISHOP_MOVE | MOVE_INFO_QUEEN_MOVE | MOVE_INFO_KING_MOVE)
     #define MOVE_INFO_DOUBLE_MOVE 64
     #define MOVE_INFO_ENPASSANT 128
     #define MOVE_INFO_CASTLE_WHITE_QUEEN 256
     #define MOVE_INFO_CASTLE_WHITE_KING 512
     #define MOVE_INFO_CASTLE_BLACK_QUEEN 1024
     #define MOVE_INFO_CASTLE_BLACK_KING 2048
-    #define MOVE_INFO_CASTLE_MASK (MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_CASTLE_BLACK_KING)
     #define MOVE_INFO_PROMOTE_ROOK 4096
     #define MOVE_INFO_PROMOTE_KNIGHT 8192
     #define MOVE_INFO_PROMOTE_BISHOP 16384
     #define MOVE_INFO_PROMOTE_QUEEN 32768
-    #define MOVE_INFO_PROMOTE_MASK (MOVE_INFO_PROMOTE_ROOK | MOVE_INFO_PROMOTE_KNIGHT | MOVE_INFO_PROMOTE_BISHOP | MOVE_INFO_PROMOTE_QUEEN)
-    // These are not added before the move is made
     #define MOVE_INFO_CAPTURE_PAWN 65536
     #define MOVE_INFO_CAPTURE_ROOK 131072
     #define MOVE_INFO_CAPTURE_KNIGHT 262144
     #define MOVE_INFO_CAPTURE_BISHOP 524288
     #define MOVE_INFO_CAPTURE_QUEEN 1048576
+    #define MOVE_INFO_MOVE_MASK (MOVE_INFO_PAWN_MOVE | MOVE_INFO_ROOK_MOVE | MOVE_INFO_KNIGHT_MOVE | MOVE_INFO_BISHOP_MOVE | MOVE_INFO_QUEEN_MOVE | MOVE_INFO_KING_MOVE)
+    #define MOVE_INFO_CASTLE_MASK (MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_CASTLE_BLACK_KING)
+    #define MOVE_INFO_PROMOTE_MASK (MOVE_INFO_PROMOTE_ROOK | MOVE_INFO_PROMOTE_KNIGHT | MOVE_INFO_PROMOTE_BISHOP | MOVE_INFO_PROMOTE_QUEEN)
     #define MOVE_INFO_CAPTURE_MASK (MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_CAPTURE_ROOK | MOVE_INFO_CAPTURE_KNIGHT | MOVE_INFO_CAPTURE_BISHOP | MOVE_INFO_CAPTURE_QUEEN)
 
     typedef struct Move
@@ -289,6 +288,20 @@ namespace Arcanum
                 hash_t hash;
                 uint8_t value;
             } phaseEntry_t;
+
+            // It is allocated the maximum number of the same piece which can occur
+            int8_t m_numPawns[Color::NUM_COLORS];
+            int8_t m_numRooks[Color::NUM_COLORS];
+            int8_t m_numKnights[Color::NUM_COLORS];
+            int8_t m_numBishops[Color::NUM_COLORS];
+            int8_t m_numQueens[Color::NUM_COLORS];
+            bitboard_t m_pawnAttacks[Color::NUM_COLORS];
+            bitboard_t m_rookMoves[Color::NUM_COLORS][10];
+            bitboard_t m_knightMoves[Color::NUM_COLORS][10];
+            bitboard_t m_bishopMoves[Color::NUM_COLORS][10];
+            bitboard_t m_queenMoves[Color::NUM_COLORS][10];
+            bitboard_t m_kingMoves[Color::NUM_COLORS];
+            void m_initEval(const Board& board);
 
             uint64_t m_pawnEvalTableSize;
             uint64_t m_materialEvalTableSize;

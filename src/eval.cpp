@@ -1,4 +1,5 @@
 #include <board.hpp>
+#include <algorithm>
 
 using namespace Arcanum;
 
@@ -8,12 +9,61 @@ bool EvalTrace::operator< (const EvalTrace& other) const { return total < other.
 bool EvalTrace::operator>=(const EvalTrace& other) const { return total >= other.total; }
 bool EvalTrace::operator<=(const EvalTrace& other) const { return total <= other.total; }
 
-static const uint8_t pawnPhase = 0;
-static const uint8_t knightPhase = 1;
-static const uint8_t bishopPhase = 1;
-static const uint8_t rookPhase = 2;
-static const uint8_t queenPhase = 4;
-static constexpr uint8_t totalPhase = pawnPhase*16 + knightPhase*4 + bishopPhase*4 + rookPhase*4 + queenPhase*2;
+static constexpr uint8_t knightPhase = 1;
+static constexpr uint8_t bishopPhase = 1;
+static constexpr uint8_t rookPhase = 2;
+static constexpr uint8_t queenPhase = 4;
+static constexpr uint8_t totalPhase = knightPhase*4 + bishopPhase*4 + rookPhase*4 + queenPhase*2;
+
+static constexpr uint8_t edgeDistance[8] = {0, 1, 2, 3, 3, 2, 1, 0};
+
+// Constants used during evaluations
+static constexpr bitboard_t bbAFile = 0x0101010101010101;
+static constexpr bitboard_t bbBFile = 0x0202020202020202;
+static constexpr bitboard_t bbCFile = 0x0404040404040404;
+static constexpr bitboard_t bbDFile = 0x0808080808080808;
+static constexpr bitboard_t bbEFile = 0x1010101010101010;
+static constexpr bitboard_t bbFFile = 0x2020202020202020;
+static constexpr bitboard_t bbGFile = 0x4040404040404040;
+static constexpr bitboard_t bbHFile = 0x8080808080808080;
+
+static constexpr bitboard_t wForwardLookup[] = { // indexed by rank
+    0xFFFFFFFFFFFFFF00,
+    0xFFFFFFFFFFFF0000,
+    0xFFFFFFFFFF000000,
+    0xFFFFFFFF00000000,
+    0xFFFFFF0000000000,
+    0xFFFF000000000000,
+    0xFF00000000000000,
+    0x0000000000000000,
+};
+
+static constexpr bitboard_t bForwardLookup[] = { // indexed by rank
+    0x0000000000000000,
+    0x00000000000000FF,
+    0x000000000000FFFF,
+    0x0000000000FFFFFF,
+    0x00000000FFFFFFFF,
+    0x000000FFFFFFFFFF,
+    0x0000FFFFFFFFFFFF,
+    0x00FFFFFFFFFFFFFF,
+};
+
+// Values are from: https://github.com/official-stockfish/Stockfish/blob/sf_15.1/src/evaluate.cpp
+static constexpr eval_t mobilityBonusKnightBegin[] = {-62, -53, -12, -3, 3, 12, 21, 28, 37};
+static constexpr eval_t mobilityBonusKnightEnd[]   = {-79, -57, -31, -17, 7, 13, 16, 21, 26};
+static constexpr eval_t mobilityBonusBishopBegin[] = {-47, -20, 14, 29, 39, 53, 53, 60, 62, 69, 78, 83, 91, 96};
+static constexpr eval_t mobilityBonusBishopEnd[]   = {-59, -25, -8, 12, 21, 40, 56, 58, 65, 72, 78, 87, 88, 98};
+static constexpr eval_t mobilityBonusRookBegin[]   = {-60, -24, 0, 3, 4, 14, 20, 30, 41, 41, 41, 45, 57, 58, 67};
+static constexpr eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 122, 133, 139, 153, 160,165, 170, 175};
+static constexpr eval_t mobilityBonusQueenBegin[]  = {-29, -16, -8, -8, 18, 25, 23, 37, 41,  54, 65, 68, 69, 70, 70,  70 , 71, 72, 74, 76, 90, 104, 105, 106, 112, 114, 114, 119};
+static constexpr eval_t mobilityBonusQueenEnd[]    = {-49,-29, -8, 17, 39,  54, 59, 73, 76, 95, 95 ,101, 124, 128, 132, 133, 136, 140, 147, 149, 153, 169, 171, 171, 178, 185, 187, 221};
+
+static constexpr eval_t doublePawnScore = -12;
+static constexpr eval_t passedPawnScore = 25;
+static constexpr eval_t pawnRankScore = 5;
+static constexpr eval_t pawnSupportScore = 6;
+static constexpr eval_t pawnBackwardScore = -12;
 
 Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
 {
@@ -74,6 +124,10 @@ EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
         return eval;
     };
 
+    m_initEval(board);
+
+    // TODO: Special material evaluation
+
     uint8_t phase = m_getPhase(board, eval);
     eval.total += m_getPawnEval(board, phase, eval);
     eval.total += m_getMaterialEval(board, phase, eval);
@@ -83,11 +137,49 @@ EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
     return eval;
 }
 
-constexpr eval_t doublePawnScore = -12;
-constexpr eval_t passedPawnScore = 25;
-constexpr eval_t pawnRankScore = 5;
-constexpr eval_t pawnSupportScore = 6;
-constexpr eval_t pawnBackwardScore = -12;
+void Eval::m_initEval(const Board& board)
+{
+    // Count the number of each piece
+    m_pawnAttacks[Color::WHITE] = getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][Color::WHITE]);
+    m_pawnAttacks[Color::BLACK] = getBlackPawnAttacks(board.m_bbTypedPieces[W_PAWN][Color::BLACK]);
+
+    Color c = Color::WHITE;
+    while(1)
+    {
+        bitboard_t rooks   = board.m_bbTypedPieces[W_ROOK][c];
+        bitboard_t knights = board.m_bbTypedPieces[W_KNIGHT][c];
+        bitboard_t bishops = board.m_bbTypedPieces[W_BISHOP][c];
+        bitboard_t queens  = board.m_bbTypedPieces[W_QUEEN][c];
+        bitboard_t king    = board.m_bbTypedPieces[W_KING][c];
+
+        bitboard_t nColoredPieces = ~board.m_bbColoredPieces[c];
+        
+        m_numPawns[c] = CNTSBITS(board.m_bbTypedPieces[W_PAWN][c]);
+        
+        int i = 0;
+        while(knights) m_knightMoves[c][i++] = getKnightAttacks(popLS1B(&knights)) & nColoredPieces;
+        m_numKnights[c] = i;
+        
+        i = 0;
+        while(rooks) m_rookMoves[c][i++] = getRookMoves(board.m_bbAllPieces, popLS1B(&rooks)) & nColoredPieces;
+        m_numRooks[c] = i;
+        
+        i = 0;
+        while(bishops) m_bishopMoves[c][i++] = getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops)) & nColoredPieces;
+        m_numBishops[c] = i;
+
+        i = 0;
+        while(queens) m_queenMoves[c][i++] = getQueenMoves(board.m_bbAllPieces, popLS1B(&queens)) & nColoredPieces;
+        m_numQueens[c] = i;
+
+        m_kingMoves[c] = getKingMoves(LS1B(king)) & nColoredPieces;
+        
+        if(c == Color::BLACK)
+            break;
+
+        c = Color::BLACK;
+    }
+}
 
 // https://www.chessprogramming.org/Pawn_Structure
 inline eval_t Eval::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& eval)
@@ -104,33 +196,9 @@ inline eval_t Eval::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& 
         return evalEntry->value;
     }
 
-    // Constants used during evaluations
-    static constexpr bitboard_t bbAFile = 0x0101010101010101;
-    // static constexpr bitboard_t bbHFile = 0xF0F0F0F0F0F0F0F0;
-    static constexpr bitboard_t wForwardLookup[] = { // indexed by rank
-        0x0000000000000000,
-        0xFFFFFFFFFFFF0000,
-        0xFFFFFFFFFF000000,
-        0xFFFFFFFF00000000,
-        0xFFFFFF0000000000,
-        0xFFFF000000000000,
-        0xFF00000000000000,
-        0x0000000000000000,
-    };
-    static constexpr bitboard_t bForwardLookup[] = { // indexed by rank
-        0x0000000000000000,
-        0x00000000000000FF,
-        0x000000000000FFFF,
-        0x0000000000FFFFFF,
-        0x00000000FFFFFFFF,
-        0x000000FFFFFFFFFF,
-        0x0000FFFFFFFFFFFF,
-        0x0000000000000000,
-    };
-
     // Pre-calculate pawn movements
-    bitboard_t wPawns = board.m_bbTypedPieces[W_PAWN][WHITE]; 
-    bitboard_t bPawns = board.m_bbTypedPieces[W_PAWN][BLACK];
+    bitboard_t wPawns = board.m_bbTypedPieces[W_PAWN][Color::WHITE]; 
+    bitboard_t bPawns = board.m_bbTypedPieces[W_PAWN][Color::BLACK];
     bitboard_t wPawnsAttacks = getWhitePawnAttacks(wPawns);
     bitboard_t bPawnsAttacks = getBlackPawnAttacks(bPawns);
     bitboard_t wPawnsMoves = getWhitePawnMoves(wPawns);
@@ -240,11 +308,11 @@ inline eval_t Eval::m_getMaterialEval(const Board& board, uint8_t phase, EvalTra
 
     // Evaluate the piece count
     eval_t pieceScore;
-    pieceScore  = 100 * (CNTSBITS(board.m_bbTypedPieces[W_PAWN][WHITE])   - CNTSBITS(board.m_bbTypedPieces[W_PAWN][BLACK]));
-    pieceScore += 300 * (CNTSBITS(board.m_bbTypedPieces[W_KNIGHT][WHITE]) - CNTSBITS(board.m_bbTypedPieces[W_KNIGHT][BLACK]));
-    pieceScore += 300 * (CNTSBITS(board.m_bbTypedPieces[W_BISHOP][WHITE]) - CNTSBITS(board.m_bbTypedPieces[W_BISHOP][BLACK]));
-    pieceScore += 500 * (CNTSBITS(board.m_bbTypedPieces[W_ROOK][WHITE])   - CNTSBITS(board.m_bbTypedPieces[W_ROOK][BLACK]));
-    pieceScore += 900 * (CNTSBITS(board.m_bbTypedPieces[W_QUEEN][WHITE])  - CNTSBITS(board.m_bbTypedPieces[W_QUEEN][BLACK]));
+    pieceScore  = 100 * (m_numPawns[Color::WHITE]   - m_numPawns[Color::BLACK]);
+    pieceScore += 300 * (m_numKnights[Color::WHITE] - m_numKnights[Color::BLACK]);
+    pieceScore += 300 * (m_numBishops[Color::WHITE] - m_numBishops[Color::BLACK]);
+    pieceScore += 500 * (m_numRooks[Color::WHITE]   - m_numRooks[Color::BLACK]);
+    pieceScore += 900 * (m_numQueens[Color::WHITE]  - m_numQueens[Color::BLACK]);
 
     // Write the pawn evaluation to the table
     evalEntry->hash = board.m_materialHash;
@@ -257,58 +325,38 @@ inline eval_t Eval::m_getMaterialEval(const Board& board, uint8_t phase, EvalTra
     return pieceScore;
 }
 
-// Values are from: https://github.com/official-stockfish/Stockfish/blob/sf_15.1/src/evaluate.cpp
-constexpr eval_t mobilityBonusPawn = 1;
-constexpr eval_t mobilityBonusKing = 1; // TODO: Add phase
-constexpr eval_t mobilityBonusKnightBegin[] = {-62, -53, -12, -3, 3, 12, 21, 28, 37};
-constexpr eval_t mobilityBonusKnightEnd[]   = {-79, -57, -31, -17, 7, 13, 16, 21, 26};
-constexpr eval_t mobilityBonusBishopBegin[] = {-47, -20, 14, 29, 39, 53, 53, 60, 62, 69, 78, 83, 91, 96};
-constexpr eval_t mobilityBonusBishopEnd[]   = {-59, -25, -8, 12, 21, 40, 56, 58, 65, 72, 78, 87, 88, 98};
-constexpr eval_t mobilityBonusRookBegin[]   = {-60, -24, 0, 3, 4, 14, 20, 30, 41, 41, 41, 45, 57, 58, 67};
-constexpr eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 122, 133, 139, 153, 160,165, 170, 175};
-constexpr eval_t mobilityBonusQueenBegin[]  = {-29, -16, -8, -8, 18, 25, 23, 37, 41,  54, 65, 68, 69, 70, 70,  70 , 71, 72, 74, 76, 90, 104, 105, 106, 112, 114, 114, 119};
-constexpr eval_t mobilityBonusQueenEnd[]    = {-49,-29, -8, 17, 39,  54, 59, 73, 76, 95, 95 ,101, 124, 128, 132, 133, 136, 140, 147, 149, 153, 169, 171, 171, 178, 185, 187, 221};
-
 inline eval_t Eval::m_getMobilityEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     eval_t mobilityScoreBegin = 0;
     eval_t mobilityScoreEnd = 0;
     // White mobility
     {
-        bitboard_t mobilityArea = ~board.m_bbColoredPieces[WHITE] & ~getBlackPawnAttacks(board.m_bbTypedPieces[W_PAWN][BLACK]);
+        bitboard_t mobilityArea = ~(board.m_bbColoredPieces[Color::WHITE] | m_pawnAttacks[Color::BLACK]);
 
-        bitboard_t wRooks = board.m_bbTypedPieces[W_ROOK][WHITE];
-        while(wRooks)
+        for(int i = 0; i < m_numRooks[Color::WHITE]; i++)
         {
-            int rookIdx = popLS1B(&wRooks);
-            int cnt = CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & mobilityArea);
+            int cnt = CNTSBITS(m_rookMoves[Color::WHITE][i] & mobilityArea);
             mobilityScoreBegin += mobilityBonusRookBegin[cnt];
             mobilityScoreEnd += mobilityBonusRookEnd[cnt];
         }
 
-        bitboard_t wKnights = board.m_bbTypedPieces[W_KNIGHT][WHITE];
-        while(wKnights)
+        for(int i = 0; i < m_numKnights[Color::WHITE]; i++)
         {
-            int knightIdx = popLS1B(&wKnights);
-            int cnt = CNTSBITS(getKnightAttacks(knightIdx) & mobilityArea);
+            int cnt = CNTSBITS(m_knightMoves[Color::WHITE][i] & mobilityArea);
             mobilityScoreBegin += mobilityBonusKnightBegin[cnt];
             mobilityScoreEnd += mobilityBonusKnightEnd[cnt];
         }
 
-        bitboard_t wBishops = board.m_bbTypedPieces[W_BISHOP][WHITE];
-        while(wBishops)
+        for(int i = 0; i < m_numBishops[Color::WHITE]; i++)
         {
-            int bishopIdx = popLS1B(&wBishops);
-            int cnt = CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & mobilityArea);
+            int cnt = CNTSBITS(m_bishopMoves[Color::WHITE][i] & mobilityArea);
             mobilityScoreBegin += mobilityBonusBishopBegin[cnt];
             mobilityScoreEnd += mobilityBonusBishopEnd[cnt];
         }
 
-        bitboard_t wQueens = board.m_bbTypedPieces[W_QUEEN][WHITE];
-        while(wQueens)
+        for(int i = 0; i < m_numQueens[Color::WHITE]; i++)
         {
-            int queenIdx = popLS1B(&wQueens);
-            int cnt = CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & mobilityArea);
+            int cnt = CNTSBITS(m_queenMoves[Color::WHITE][i] & mobilityArea);
             mobilityScoreBegin += mobilityBonusQueenBegin[cnt];
             mobilityScoreEnd += mobilityBonusQueenEnd[cnt];
         }
@@ -316,55 +364,38 @@ inline eval_t Eval::m_getMobilityEval(const Board& board, uint8_t phase, EvalTra
 
     // Black mobility
     {
-        bitboard_t mobilityArea = ~board.m_bbColoredPieces[BLACK] & ~getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][WHITE]);
+        bitboard_t mobilityArea = ~(board.m_bbColoredPieces[Color::BLACK] | m_pawnAttacks[Color::WHITE]);
 
-        bitboard_t bRooks = board.m_bbTypedPieces[W_ROOK][BLACK];
-        while(bRooks)
+        for(int i = 0; i < m_numRooks[Color::BLACK]; i++)
         {
-            int rookIdx = popLS1B(&bRooks);
-            int cnt = CNTSBITS(getRookMoves(board.m_bbAllPieces, rookIdx) & mobilityArea);
+            int cnt = CNTSBITS(m_rookMoves[Color::BLACK][i] & mobilityArea);
             mobilityScoreBegin -= mobilityBonusRookBegin[cnt];
             mobilityScoreEnd -= mobilityBonusRookEnd[cnt];
         }
 
-        bitboard_t bKnights = board.m_bbTypedPieces[W_KNIGHT][BLACK];
-        while(bKnights)
-        {
-            int knightIdx = popLS1B(&bKnights);
-            int cnt = CNTSBITS(getKnightAttacks(knightIdx) & mobilityArea);
+        for(int i = 0; i < m_numKnights[Color::BLACK]; i++)
+        {  
+            int cnt = CNTSBITS(m_knightMoves[Color::BLACK][i] & mobilityArea);
             mobilityScoreBegin -= mobilityBonusKnightBegin[cnt];
             mobilityScoreEnd -= mobilityBonusKnightEnd[cnt];
         }
 
-        bitboard_t bBishops = board.m_bbTypedPieces[W_BISHOP][BLACK];
-        while(bBishops)
+        for(int i = 0; i < m_numBishops[Color::BLACK]; i++)
         {
-            int bishopIdx = popLS1B(&bBishops);
-            int cnt = CNTSBITS(getBishopMoves(board.m_bbAllPieces, bishopIdx) & mobilityArea);
+            int cnt = CNTSBITS(m_bishopMoves[Color::BLACK][i] & mobilityArea);
             mobilityScoreBegin -= mobilityBonusBishopBegin[cnt];
             mobilityScoreEnd -= mobilityBonusBishopEnd[cnt];
         }
 
-        bitboard_t bQueens = board.m_bbTypedPieces[W_QUEEN][BLACK];
-        while(bQueens)
+        for(int i = 0; i < m_numQueens[Color::BLACK]; i++)
         {
-            int queenIdx = popLS1B(&bQueens);
-            int cnt = CNTSBITS((getBishopMoves(board.m_bbAllPieces, queenIdx) | getRookMoves(board.m_bbAllPieces, queenIdx)) & mobilityArea);
+            int cnt = CNTSBITS(m_queenMoves[Color::BLACK][i] & mobilityArea);
             mobilityScoreBegin -= mobilityBonusQueenBegin[cnt];
             mobilityScoreEnd -= mobilityBonusQueenEnd[cnt];
         }
     }
 
     eval_t mobilityScore = (phase * mobilityScoreBegin + (totalPhase - phase) * mobilityScoreEnd) / totalPhase;
-
-    // Pawn mobility
-    mobilityScore += CNTSBITS(getWhitePawnMoves(board.m_bbTypedPieces[W_PAWN][WHITE]) & ~board.m_bbAllPieces) * mobilityBonusPawn;
-    mobilityScore += CNTSBITS(getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][WHITE]) & board.m_bbColoredPieces[BLACK]) * mobilityBonusPawn;
-    mobilityScore -= CNTSBITS(getBlackPawnMoves(board.m_bbTypedPieces[W_PAWN][BLACK]) & ~board.m_bbAllPieces) * mobilityBonusPawn;
-    mobilityScore -= CNTSBITS(getBlackPawnAttacks(board.m_bbTypedPieces[W_PAWN][BLACK]) & board.m_bbColoredPieces[WHITE]) * mobilityBonusPawn;
-    // King mobility
-    mobilityScore += CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][WHITE])) & ~board.m_bbColoredPieces[WHITE]) * mobilityBonusKing;
-    mobilityScore -= CNTSBITS(getKingMoves(LS1B(board.m_bbTypedPieces[W_KING][BLACK])) & ~board.m_bbColoredPieces[BLACK]) * mobilityBonusKing;
 
     #ifdef FULL_TRACE
         eval.mobility = mobilityScore;
@@ -387,11 +418,10 @@ inline uint8_t Eval::m_getPhase(const Board& board, EvalTrace& eval)
     }
 
     uint8_t phase = (
-        pawnPhase * CNTSBITS(board.m_bbTypedPieces[W_PAWN][Color::WHITE] | board.m_bbTypedPieces[W_PAWN][Color::BLACK])
-        + knightPhase * CNTSBITS(board.m_bbTypedPieces[W_KNIGHT][Color::WHITE] | board.m_bbTypedPieces[W_KNIGHT][Color::BLACK])
-        + bishopPhase * CNTSBITS(board.m_bbTypedPieces[W_BISHOP][Color::WHITE] | board.m_bbTypedPieces[W_BISHOP][Color::BLACK])
-        + rookPhase * CNTSBITS(board.m_bbTypedPieces[W_ROOK][Color::WHITE] | board.m_bbTypedPieces[W_ROOK][Color::BLACK])
-        + queenPhase * CNTSBITS(board.m_bbTypedPieces[W_QUEEN][Color::WHITE] | board.m_bbTypedPieces[W_QUEEN][Color::BLACK])
+        + knightPhase * (m_numKnights[Color::WHITE] + m_numKnights[Color::BLACK])
+        + bishopPhase * (m_numBishops[Color::WHITE] + m_numBishops[Color::BLACK])
+        + rookPhase   * (m_numRooks[Color::WHITE]   + m_numRooks[Color::BLACK])
+        + queenPhase  * (m_numQueens[Color::WHITE]  + m_numQueens[Color::BLACK])
     );
 
     // Limit phase between 0 and totalphase
@@ -465,35 +495,24 @@ inline eval_t Eval::m_getKingEval(const Board& board, uint8_t phase, EvalTrace& 
     uint8_t blackAttackingIndex = 0;
     uint8_t whiteAttackingIndex = 0;
     
-    // TODO: For efficiency, this function can be integrated into the mobility function
     {
         blackAttackingIndex += 2 * CNTSBITS(getBlackPawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & whiteKingZone);
         blackAttackingIndex += 2 * CNTSBITS(getBlackPawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & whiteKingZone);
 
-        bitboard_t knights  = board.m_bbTypedPieces[W_KNIGHT][Color::BLACK];
-        bitboard_t rooks    = board.m_bbTypedPieces[W_ROOK][Color::BLACK];
-        bitboard_t bishops  = board.m_bbTypedPieces[W_BISHOP][Color::BLACK];
-        bitboard_t queens   = board.m_bbTypedPieces[W_QUEEN][Color::BLACK];
-
-        while(knights)  blackAttackingIndex += 2 * CNTSBITS(getKnightAttacks(popLS1B(&knights)) & whiteKingZone);
-        while(rooks)    blackAttackingIndex += 3 * CNTSBITS(getRookMoves(board.m_bbAllPieces, popLS1B(&rooks)) & whiteKingZone);
-        while(bishops)  blackAttackingIndex += 2 * CNTSBITS(getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops)) & whiteKingZone);
-        while(queens)   blackAttackingIndex += 5 * CNTSBITS(getQueenMoves(board.m_bbAllPieces, popLS1B(&queens)) & whiteKingZone);
+        for(int i = 0; i < m_numKnights[Color::BLACK]; i++) blackAttackingIndex += 2 * CNTSBITS(m_knightMoves[Color::BLACK][i] & whiteKingZone);
+        for(int i = 0; i < m_numBishops[Color::BLACK]; i++) blackAttackingIndex += 2 * CNTSBITS(m_bishopMoves[Color::BLACK][i] & whiteKingZone);
+        for(int i = 0; i < m_numRooks[Color::BLACK]; i++)   blackAttackingIndex += 3 * CNTSBITS(m_rookMoves[Color::BLACK][i]   & whiteKingZone);
+        for(int i = 0; i < m_numQueens[Color::BLACK]; i++)  blackAttackingIndex += 5 * CNTSBITS(m_queenMoves[Color::BLACK][i]  & whiteKingZone);
     }
 
     {
         whiteAttackingIndex += 2 * CNTSBITS(getWhitePawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & blackKingZone);
         whiteAttackingIndex += 2 * CNTSBITS(getWhitePawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & blackKingZone);
 
-        bitboard_t knights  = board.m_bbTypedPieces[W_KNIGHT][Color::WHITE];
-        bitboard_t rooks    = board.m_bbTypedPieces[W_ROOK][Color::WHITE];
-        bitboard_t bishops  = board.m_bbTypedPieces[W_BISHOP][Color::WHITE];
-        bitboard_t queens   = board.m_bbTypedPieces[W_QUEEN][Color::WHITE];
-        
-        while(knights)  whiteAttackingIndex += 2 * CNTSBITS(getKnightAttacks(popLS1B(&knights)) & blackKingZone);
-        while(rooks)    whiteAttackingIndex += 3 * CNTSBITS(getRookMoves(board.m_bbAllPieces, popLS1B(&rooks)) & blackKingZone);
-        while(bishops)  whiteAttackingIndex += 2 * CNTSBITS(getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops)) & blackKingZone);
-        while(queens)   whiteAttackingIndex += 5 * CNTSBITS(getQueenMoves(board.m_bbAllPieces, popLS1B(&queens)) & blackKingZone);
+        for(int i = 0; i < m_numKnights[Color::WHITE]; i++) whiteAttackingIndex += 2 * CNTSBITS(m_knightMoves[Color::WHITE][i] & blackKingZone);
+        for(int i = 0; i < m_numBishops[Color::WHITE]; i++) whiteAttackingIndex += 2 * CNTSBITS(m_bishopMoves[Color::WHITE][i] & blackKingZone);
+        for(int i = 0; i < m_numRooks[Color::WHITE]; i++)   whiteAttackingIndex += 3 * CNTSBITS(m_rookMoves[Color::WHITE][i]   & blackKingZone);
+        for(int i = 0; i < m_numQueens[Color::WHITE]; i++)  whiteAttackingIndex += 5 * CNTSBITS(m_queenMoves[Color::WHITE][i]  & blackKingZone);
     }
 
     // NOTE: This is probably not required, but it might be needed if the kingZone is increased
@@ -520,7 +539,7 @@ eval_t Eval::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     constexpr uint8_t centerEvalThreshold = 6 * knightPhase;
     constexpr bitboard_t center = 0x0000001818000000LL;         // Four center squares  
-    constexpr bitboard_t centerExtended = 0x00003C24243C0000LL; // Squares around center squares
+    constexpr bitboard_t centerExtended = 0x00003C3C3C3C0000;   // Squares around center squares and the center
 
     // Only evaluate center until some number of non-pawn pieces are captured
     if(totalPhase - phase >= centerEvalThreshold)
@@ -534,75 +553,60 @@ eval_t Eval::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval)
     uint8_t blackCenterIndex = 0;
     uint8_t whiteCenterIndex = 0;
 
-    // TODO: For efficiency, this function can be integrated into the mobility function
     {
-        blackCenterIndex += 2 * CNTSBITS(getBlackPawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & center);
-        blackCenterIndex +=     CNTSBITS(getBlackPawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & centerExtended);
-        blackCenterIndex += 2 * CNTSBITS(getBlackPawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & center);
-        blackCenterIndex +=     CNTSBITS(getBlackPawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & centerExtended);
+        blackCenterIndex += CNTSBITS(getBlackPawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & center);
+        blackCenterIndex += CNTSBITS(getBlackPawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & centerExtended);
+        blackCenterIndex += CNTSBITS(getBlackPawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & center);
+        blackCenterIndex += CNTSBITS(getBlackPawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::BLACK]) & centerExtended);
 
-        bitboard_t knights  = board.m_bbTypedPieces[W_KNIGHT][Color::BLACK];
-        bitboard_t rooks    = board.m_bbTypedPieces[W_ROOK][Color::BLACK] | board.m_bbTypedPieces[W_QUEEN][Color::BLACK];
-        bitboard_t bishops  = board.m_bbTypedPieces[W_BISHOP][Color::BLACK] | board.m_bbTypedPieces[W_QUEEN][Color::BLACK];
-
-        while(knights)
+        for(int i = 0; i < m_numKnights[Color::BLACK]; i++)
         {
-            bitboard_t knightAttacks = getKnightAttacks(popLS1B(&knights));
-            blackCenterIndex += 2 * CNTSBITS(knightAttacks & center);
-            blackCenterIndex +=     CNTSBITS(knightAttacks & centerExtended);
+            blackCenterIndex += CNTSBITS(m_knightMoves[Color::BLACK][i] & center);
+            blackCenterIndex += CNTSBITS(m_knightMoves[Color::BLACK][i] & centerExtended);
         }
 
-        while(rooks)
+        for(int i = 0; i < m_numRooks[Color::BLACK]; i++)
         {
-            bitboard_t rookAttacks = getRookMoves(board.m_bbAllPieces, popLS1B(&rooks));
-            blackCenterIndex += 2 * CNTSBITS(rookAttacks & center);
-            blackCenterIndex +=     CNTSBITS(rookAttacks & centerExtended);
+            blackCenterIndex += CNTSBITS(m_rookMoves[Color::BLACK][i] & center);
+            blackCenterIndex += CNTSBITS(m_rookMoves[Color::BLACK][i] & centerExtended);
         }
 
-        while(bishops)
+        for(int i = 0; i < m_numBishops[Color::BLACK]; i++)
         {
-            bitboard_t bishopAttacks = getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops));
-            blackCenterIndex += 2 * CNTSBITS(bishopAttacks & center);
-            blackCenterIndex +=     CNTSBITS(bishopAttacks & centerExtended);
+            blackCenterIndex += CNTSBITS(m_bishopMoves[Color::BLACK][i] & center);
+            blackCenterIndex += CNTSBITS(m_bishopMoves[Color::BLACK][i] & centerExtended);
         }
 
-        blackCenterIndex += 2 * CNTSBITS(board.m_bbColoredPieces[Color::BLACK] & center);
-        blackCenterIndex +=     CNTSBITS(board.m_bbColoredPieces[Color::BLACK] & centerExtended);
+        blackCenterIndex += CNTSBITS(board.m_bbColoredPieces[Color::BLACK] & center);
+        blackCenterIndex += CNTSBITS(board.m_bbColoredPieces[Color::BLACK] & centerExtended);
     }
 
     {
-        whiteCenterIndex += 2 * CNTSBITS(getWhitePawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & center);
-        whiteCenterIndex +=     CNTSBITS(getWhitePawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & centerExtended);
-        whiteCenterIndex += 2 * CNTSBITS(getWhitePawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & center);
-        whiteCenterIndex +=     CNTSBITS(getWhitePawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & centerExtended);
+        whiteCenterIndex += CNTSBITS(getWhitePawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & center);
+        whiteCenterIndex += CNTSBITS(getWhitePawnAttacksLeft(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & centerExtended);
+        whiteCenterIndex += CNTSBITS(getWhitePawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & center);
+        whiteCenterIndex += CNTSBITS(getWhitePawnAttacksRight(board.m_bbTypedPieces[W_PAWN][Color::WHITE]) & centerExtended);
 
-        bitboard_t knights  = board.m_bbTypedPieces[W_KNIGHT][Color::WHITE];
-        bitboard_t rooks    = board.m_bbTypedPieces[W_ROOK][Color::WHITE] | board.m_bbTypedPieces[W_QUEEN][Color::WHITE];
-        bitboard_t bishops  = board.m_bbTypedPieces[W_BISHOP][Color::WHITE] | board.m_bbTypedPieces[W_QUEEN][Color::WHITE];
-
-        while(knights)
+        for(int i = 0; i < m_numKnights[Color::WHITE]; i++)
         {
-            bitboard_t knightAttacks = getKnightAttacks(popLS1B(&knights));
-            whiteCenterIndex += 2 * CNTSBITS(knightAttacks & center);
-            whiteCenterIndex +=     CNTSBITS(knightAttacks & centerExtended);
+            whiteCenterIndex += CNTSBITS(m_knightMoves[Color::WHITE][i] & center);
+            whiteCenterIndex += CNTSBITS(m_knightMoves[Color::WHITE][i] & centerExtended);
         }
 
-        while(rooks)
+        for(int i = 0; i < m_numRooks[Color::WHITE]; i++)
         {
-            bitboard_t rookAttacks = getRookMoves(board.m_bbAllPieces, popLS1B(&rooks));
-            whiteCenterIndex += 2 * CNTSBITS(rookAttacks & center);
-            whiteCenterIndex +=     CNTSBITS(rookAttacks & centerExtended);
+            whiteCenterIndex += CNTSBITS(m_rookMoves[Color::WHITE][i] & center);
+            whiteCenterIndex += CNTSBITS(m_rookMoves[Color::WHITE][i] & centerExtended);
         }
 
-        while(bishops)
+        for(int i = 0; i < m_numBishops[Color::WHITE]; i++)
         {
-            bitboard_t bishopAttacks = getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops));
-            whiteCenterIndex += 2 * CNTSBITS(bishopAttacks & center);
-            whiteCenterIndex +=     CNTSBITS(bishopAttacks & centerExtended);
+            whiteCenterIndex += CNTSBITS(m_bishopMoves[Color::WHITE][i] & center);
+            whiteCenterIndex += CNTSBITS(m_bishopMoves[Color::WHITE][i] & centerExtended);
         }
 
-        whiteCenterIndex += 2 * CNTSBITS(board.m_bbColoredPieces[Color::WHITE] & center);
-        whiteCenterIndex +=     CNTSBITS(board.m_bbColoredPieces[Color::WHITE] & centerExtended);
+        whiteCenterIndex += CNTSBITS(board.m_bbColoredPieces[Color::WHITE] & center);
+        whiteCenterIndex += CNTSBITS(board.m_bbColoredPieces[Color::WHITE] & centerExtended);
     }
 
     eval_t centerEval = 3 * ((whiteCenterIndex - blackCenterIndex) * (centerEvalThreshold + phase - totalPhase));
