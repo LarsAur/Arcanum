@@ -65,6 +65,11 @@ static constexpr eval_t pawnRankScore = 5;
 static constexpr eval_t pawnSupportScore = 6;
 static constexpr eval_t pawnBackwardScore = -12;
 
+static constexpr eval_t pawnRankBonusBegin[]         = {0, 0, 4, 4, 8, 12, 16, 0};    
+static constexpr eval_t pawnRankBonusEnd[]           = {0, 0, 4, 16, 32, 64, 128, 0};
+static constexpr eval_t isolatedPawnRankBonusBegin[] = {0, 16, 25, 25, 32, 64, 128, 0};
+static constexpr eval_t isolatedPawnRankBonusEnd[]   = {0, 25, 50, 50, 75, 125, 200, 0};
+
 Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
 {
     // Create eval lookup tables
@@ -209,7 +214,8 @@ inline eval_t Eval::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& 
     bitboard_t bPawnAttackSpans = 0L;
 
     eval_t pawnScore = 0;
-
+    eval_t pawnScoreBegin = 0;
+    eval_t pawnScoreEnd = 0;
     // // Pawn has supporting pawns (in the neighbour files)
     // bitboard_t wPawnSupported = (wPawnsSides | wPawnsAttacks) & wPawns;
     // bitboard_t bPawnSupported = (bPawnsSides | bPawnsAttacks) & bPawns;
@@ -233,16 +239,22 @@ inline eval_t Eval::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& 
         wPawnAttackSpans |= pawnNeighbourFiles & forward;
 
         // Is passed pawn
-        pawnScore += (((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) == 0) * passedPawnScore;
+        if(((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) == 0)
+        {
+            pawnScoreBegin += isolatedPawnRankBonusBegin[rank];
+            pawnScoreEnd += isolatedPawnRankBonusEnd[rank];
+        }
+        else
+        {
+            pawnScoreBegin += pawnRankBonusBegin[rank];
+            pawnScoreEnd += pawnRankBonusEnd[rank];
+        }
 
         // Pawn has supporting pawns (in the neighbour files)
         pawnScore += CNTSBITS((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][WHITE])) * pawnSupportScore;
 
         // Is not a doubled pawn
         pawnScore += ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * doublePawnScore;
-        
-        // Pawns closer to pormotion gets value
-        pawnScore += rank * pawnRankScore;
     }
     
     while (bPawns)
@@ -263,17 +275,25 @@ inline eval_t Eval::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& 
         bPawnAttackSpans |= pawnNeighbourFiles & forward;
 
         // Is passed pawn
-        pawnScore -= (((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) == 0) * passedPawnScore;
+        if(((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) == 0)
+        {
+            pawnScoreBegin -= isolatedPawnRankBonusBegin[7 - rank];
+            pawnScoreEnd -= isolatedPawnRankBonusEnd[7 - rank];
+        }
+        else
+        {
+            pawnScoreBegin -= pawnRankBonusBegin[7 - rank];
+            pawnScoreEnd -= pawnRankBonusEnd[7 - rank];
+        }
 
         // Pawn has supporting pawns (in the neighbour files)
         pawnScore -= CNTSBITS((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][BLACK])) * pawnSupportScore;
         
         // Is not a doubled pawn
         pawnScore -= ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) != 0) * doublePawnScore;
-
-        // Pawns closer to pormotion gets value
-        pawnScore -= (7 - rank) * pawnRankScore;
     }
+
+    pawnScore += ((pawnScoreBegin * phase) + (pawnScoreEnd * (totalPhase - phase))) / totalPhase;
 
     // Is backwards pawn: https://www.chessprogramming.org/Backward_Pawns_(Bitboards)
     // TODO: If used to calculate stragglers, move biatboard from move possiton to pawn possiton >> 8
