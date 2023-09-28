@@ -5,7 +5,8 @@ The engine has no official rating, but has been able to beat the 2700 rated comp
 I am also unable to beat Arcanum. Unfortunatly, that does not count for much 😅.
 
 ## Building
-Arcanum requires `c++17` and has only been tested using `g++`. It can be compiled on both Windows (Tested for Windows 11 using MinGW) and Linux (Tested for Ubuntu 20.04).
+Arcanum requires `c++17` and has only been tested using `g++`. It can be compiled on both Windows (Tested for Windows 11 using MinGW) and Linux (Tested for Ubuntu 20.04). Arcanum also takes advantage of some x86 intrinsics: `BMI1` and `POPCNT`. It is possible to build without them, but it might require some tweaking, and will be slower.
+
 ### Development build
 To build a *development build*, run `make -j`. The development build allows Arcanum to print log information to the terminal. This can however interfere with the UCI protocol, thus it is not recomended to use this build when conncting to a UCI gui such as [Lucas Chess][lucas-chess]. 
 ### UCI build
@@ -22,6 +23,7 @@ Arcanum has a number of arguments to run in different modes:
 * `--capture-test` Test that move generation for capture moves works.
 * `--zobrist-test` Testing that zobrist hashing works.
 * `--perft-test` Runs [perft][perft] on a number of predefined positions with known [results][perft-results].
+* `--symeval-test` A sanity test checking that a large number of random symmetrical and equal positions have the same static evaluation.
 * `--search-perf` Runs a 20 ply game searching at depth 6 with [quiescence][qsearch] search starting with 4 plys of checking moves. This is a performance test, checking the speed of the search.
 * `--engine-perf` Runs a search for 5 seconds on a number of difficult [test-positions][test-positions] ([Bratko-Kopec Test][bkt]). This is a performance test, checking the strength of the search.
 
