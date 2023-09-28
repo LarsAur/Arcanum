@@ -289,12 +289,67 @@ std::string getRandomSymmetricFEN()
 
         if(fenPosition[index1] != '1') goto random_square;
 
-        char piece = piecesToPlace.at(i++);
+        char piece = piecesToPlace.at(i);
         fenPosition[index1] = piece;
         fenPosition[index2] = piece - 0x20;
     }
+
+    // TODO: Randomize castle oppertunities
     
     return fenPosition + " w KQkq - 0 1";
+}
+
+// Returns a pair of positions which are rotations of eachother
+// The position is supposed to have the property Eval(p1) = -Eval(p2)
+std::pair<std::string, std::string> getRandomEqualFENPairs()
+{
+    std::string fenPosition1 = "11111111/11111111/11111111/11111111/11111111/11111111/11111111/11111111";
+    std::string fenPosition2 = "11111111/11111111/11111111/11111111/11111111/11111111/11111111/11111111";
+
+    // Generate a 2 random sets of pieces
+    std::vector<char> piecesToPlace;
+    piecesToPlace.push_back('k');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('r');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('n');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('b');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('q');
+    for(int i = 0; i < rand() % 8; i++) piecesToPlace.push_back('p');
+    piecesToPlace.push_back('K');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('R');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('N');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('B');
+    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('Q');
+    for(int i = 0; i < rand() % 8; i++) piecesToPlace.push_back('P');
+
+    // Place each piece
+    for(size_t i = 0; i < piecesToPlace.size(); i++)
+    {
+        random_square:
+        int rank = rand() % 8;
+        int file = rand() % 8;
+        int index1 = 70 - file - rank * 9;
+        int index2 = 70 - file - (7 - rank) * 9;
+        if(fenPosition1[index1] != '1') goto random_square;
+
+        char piece = piecesToPlace.at(i);
+        fenPosition1[index1] = piece;
+
+        // Toggle the color of the piece
+        if(isupper(piece))
+            piece += 0x20;
+        else
+            piece -= 0x20;
+
+        fenPosition2[index2] = piece;
+    }
+
+    // TODO: Randomize castle oppertunities
+
+    std::pair<std::string, std::string> positions = std::pair(
+        fenPosition1 + " w KQkq - 0 1",
+        fenPosition2 + " b KQkq - 0 1"
+    );
+    return positions;
 }
 
 void Test::symmetricEvaluation()
@@ -316,6 +371,29 @@ void Test::symmetricEvaluation()
 
     if(success)
         SUCCESS("Equal evaluation for all 10k symmetric positions")
+
+    success = true;
+    for(int i = 0; i < 10000; i++)
+    {
+        Eval eval1 = Eval(1, 1);
+        Eval eval2 = Eval(1, 1);
+        std::pair fenPair = getRandomEqualFENPairs();
+
+        Board b1 = Board(fenPair.first);
+        Board b2 = Board(fenPair.second);
+
+        EvalTrace score1 = eval1.evaluate(b1, 0);
+        EvalTrace score2 = eval1.evaluate(b2, 0);
+        
+        if(score1.total != -score2.total)
+        {
+            success = false;
+            ERROR("Uneven evaluation for equal positions: \n Evaluation: " << score1.total << " " << score2.total << "\n" << b1.getBoardString() << "\n" << b2.getBoardString())
+        }
+    }
+
+    if(success)
+        SUCCESS("Equal evaluation for all 10k equal positions")
 }
 
 // -- Perf functions
