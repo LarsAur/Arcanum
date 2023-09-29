@@ -17,6 +17,7 @@
 
 #define IBM1
 #define POPCNT
+#define LZCNT
 
 namespace Arcanum
 {
@@ -100,8 +101,8 @@ namespace Arcanum
     static inline int LS1B(bitboard_t bitboard)
     {
     #ifdef IBM1
-        int popIdx = _tzcnt_u64(bitboard);
-        return popIdx;
+        int idx = _tzcnt_u64(bitboard);
+        return idx;
     #else
         /**
          * bitScanForward
@@ -125,6 +126,19 @@ namespace Arcanum
         constexpr static bitboard_t debruijn64 = bitboard_t(0x03f79d71b4cb0a89);
         // assert (bitboard != 0);
         return popLS1B_index64[((bitboard ^ (bitboard-1)) * debruijn64) >> 58];
+    #endif
+    }
+
+    static inline int MS1B(bitboard_t bitboard)
+    {
+    #ifdef LZCNT
+        constexpr int bbBitSize = 8*sizeof(bitboard) - 1;
+        int lzeros = _lzcnt_u64(bitboard);
+        return bbBitSize - lzeros;
+    #else
+        ERROR("Missing implementation of MS1B")
+        exit(-1);
+        return 0;
     #endif
     }
 
@@ -234,7 +248,6 @@ namespace Arcanum
         return kingMoves[kingIdx];
     }
 
-    // Assumes single-rook bitboard
     static inline bitboard_t getRookMoves(bitboard_t allPiecesBitboard, uint8_t rookIdx)
     {
         // Find file and rank of rook
