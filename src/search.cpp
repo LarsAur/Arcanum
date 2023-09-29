@@ -188,13 +188,14 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         
         EvalTrace score;
         bool requireFullSearch = true;
+        bool checkOrChecking = isChecked || new_board.isChecked(board.getTurn());
 
         // Check for late move reduction
         // Conditions for not doing LMR
         // * Move is a capture move
         // * The previous board was a check
         // * The move is a checking move
-        if(i >= 3 && depth >= 3 && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK) && !isChecked && !new_board.isChecked(board.getTurn()))
+        if(i >= 3 && depth >= 3 && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK) && !checkOrChecking)
         {
             EvalTrace lmrBeta = -alpha;
             lmrBeta.total -= 1;
@@ -202,10 +203,19 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
         }
-
+        
         if(requireFullSearch)
         {
-            score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, plyFromRoot + 1, quietDepth);
+            if(checkOrChecking)
+            {
+                // Extend search for checking moves or check avoiding moves
+                // This is to avoid horizon effect occuring by starting with a forced line
+                score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth, plyFromRoot + 1, quietDepth);
+            }
+            else
+            {
+                score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, plyFromRoot + 1, quietDepth);
+            }
         }
         
         if(score > bestScore)
