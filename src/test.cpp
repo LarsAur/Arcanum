@@ -410,13 +410,13 @@ void Perf::search()
 
     auto start = std::chrono::high_resolution_clock::now();
     // Search for 10 moves
-    for(int i = 0; i < 10; i++)
+    for(int i = 0; i < 20; i++)
     {
-        DEBUG("PERF: " << i << "/" << 10)
-        Move whiteMove = whiteSearcher.getBestMove(board, 6, 4);
+        DEBUG("PERF: " << i << "/" << 20)
+        Move whiteMove = whiteSearcher.getBestMove(board, 10, 4);
         board.performMove(whiteMove);
         board.addBoardToHistory();
-        Move blackMove = blackSearcher.getBestMove(board, 6, 4);
+        Move blackMove = blackSearcher.getBestMove(board, 10, 4);
         board.performMove(blackMove);
         board.addBoardToHistory();
     }

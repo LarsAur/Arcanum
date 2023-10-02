@@ -24,7 +24,7 @@ Arcanum has a number of arguments to run in different modes:
 * `--zobrist-test` Testing that zobrist hashing works.
 * `--perft-test` Runs [perft][perft] on a number of predefined positions with known [results][perft-results].
 * `--symeval-test` A sanity test checking that a large number of random symmetrical and equal positions have the same static evaluation.
-* `--search-perf` Runs a 20 ply game searching at depth 6 with [quiescence][qsearch] search starting with 4 plys of checking moves. This is a performance test, checking the speed of the search.
+* `--search-perf` Runs a 40 ply game searching at depth 10 with [quiescence][qsearch] search starting with 4 plys of checking moves. This is a performance test, checking the speed of the search.
 * `--engine-perf` Runs a search for 5 seconds on a number of difficult [test-positions][test-positions] ([Bratko-Kopec Test][bkt]). This is a performance test, checking the strength of the search.
 
 A combination of these are available though the makefile, with `uci`, `play`, `test` and `perf` targets.

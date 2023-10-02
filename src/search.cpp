@@ -315,44 +315,50 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
 
     m_stopSearch = false;
     auto start = std::chrono::high_resolution_clock::now();
-    Move* moves = board.getLegalMoves();
-    uint8_t numMoves = board.getNumLegalMoves();
-    board.generateCaptureInfo();
+
     Move bestMove;
     pvLine_t pvLine, _pvLine;
-
-    std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, entry.has_value() ? entry->bestMove : Move(0,0));
-    
-    EvalTrace alpha = EvalTrace(-INF);
-    EvalTrace beta = EvalTrace(INF);
     EvalTrace bestScore = EvalTrace(-INF);
+    for(int d = 1; d <= depth; d++)
+    {
+        Move* moves = board.getLegalMoves();
+        uint8_t numMoves = board.getNumLegalMoves();
+        board.generateCaptureInfo();
 
-    for (int i = 0; i < numMoves; i++)  {
-        Board new_board = Board(board);
-        const Move *move = moveSelector.getNextMove();
-        new_board.performMove(*move);
-        EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, 1, quietDepth);
-        if(score > bestScore)
-        {
-            bestScore = score;
-            bestMove = *move;
-            pvLine.moves[0] = bestMove;
-            memcpy(pvLine.moves + 1, _pvLine.moves, _pvLine.count * sizeof(Move));
-            pvLine.count = _pvLine.count + 1;
+        std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &board, entry.has_value() ? entry->bestMove : Move(0,0));
+        
+        EvalTrace alpha = EvalTrace(-INF);
+        EvalTrace beta = EvalTrace(INF);
+        bestScore = EvalTrace(-INF);
 
-            if(score > alpha)
-            {   
-                alpha = score;
+        for (int i = 0; i < numMoves; i++)  {
+            Board new_board = Board(board);
+            const Move *move = moveSelector.getNextMove();
+            new_board.performMove(*move);
+            EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, 1, quietDepth);
+            if(score > bestScore)
+            {
+                bestScore = score;
+                bestMove = *move;
+                pvLine.moves[0] = bestMove;
+                memcpy(pvLine.moves + 1, _pvLine.moves, _pvLine.count * sizeof(Move));
+                pvLine.count = _pvLine.count + 1;
+
+                if(score > alpha)
+                {   
+                    alpha = score;
+                }
             }
         }
-    }
 
-    m_tt->add(bestScore, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
+        m_tt->add(bestScore, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
+    }
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> diff = end - start;
     auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
+    
     LOG("Best move: " << bestMove << "\n" << bestScore)
     // Print PV line
     std::stringstream ss;
