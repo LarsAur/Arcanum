@@ -99,6 +99,3 @@ extern std::string _logFileName;
 #else
     #define SUCCESS(_str) ;
 #endif
-
-void* aligned_large_pages_alloc(size_t allocSize);
-void aligned_large_pages_free(void* mem);
