@@ -56,7 +56,8 @@ inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
 
 std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
 {
-    ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
+    ttCluster_t* clusterPtr = static_cast<ttCluster_t*>(__builtin_assume_aligned(m_table + m_getClusterIndex(hash), CACHE_LINE_SIZE));
+    ttCluster_t cluster = *clusterPtr;
 
     #if TT_RECORD_STATS == 1
     m_stats.lookups++;
@@ -64,7 +65,7 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
 
     for(size_t i = 0; i < clusterSize; i++)
     {
-        ttEntry_t entry = cluster->entries[i];
+        ttEntry_t entry = cluster.entries[i];
         if(entry.depth != INT8_MIN && entry.hash == (ttEntryHash_t)hash)
         {
             ttEntry_t retEntry = entry;
@@ -86,7 +87,6 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
 inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
 {
     return (newEntry.depth - oldEntry.depth) // Depth
-           + (((newEntry.flags & TT_FLAG_MASK) == TT_FLAG_EXACT && (newEntry.flags & TT_FLAG_MASK) != TT_FLAG_EXACT) ? 2 : 0)
            + (((newEntry.flags & ~TT_FLAG_MASK) - (oldEntry.flags & ~TT_FLAG_MASK)) >> 2);
 }
 

@@ -1,8 +1,9 @@
 #include <memory.hpp>
-#include <stddef.h>
-#include <inttypes.h>
 #include <utils.hpp>
 #include <stdlib.h>
+#include <transpositionTable.hpp>
+#include <inttypes.h>
+#include <list>
 
 #if defined(_WIN64)
     #include <sysinfoapi.h>
@@ -11,6 +12,16 @@
 #else
     LOG("Else")
 #endif
+
+#define ASSUMED_PAGE_SIZE 1024
+
+struct UnalignedPointerInfo
+{
+    void *unalignedPtr;
+    void *alignedPtr;
+};
+
+std::list<UnalignedPointerInfo> unalignedPointerInfos;
 
 void* Arcanum::pageAlignedMalloc(size_t bytes)
 {
@@ -25,12 +36,21 @@ void* Arcanum::pageAlignedMalloc(size_t bytes)
 
     void* ptr = nullptr;
     if(pageSize == 0)
-    {
-        ptr = malloc(bytes);
-        uint64_t ptrWithInfo = (uint64_t) ptr | 0x1;
-        ptr = (void*) ptrWithInfo; // Add info to the pointer to indicate if it is aligned or not
-        DEBUG(ptr)
-        WARNING("Page size not found, might be unable to allocate page aligned memory")
+    {  
+        // Create an aligned pointer from the potential unaligned malloc
+        // Add it to a list of artificial aligned pointers
+        // This is required to free them properly later
+        UnalignedPointerInfo uapi;
+        uapi.unalignedPtr = malloc(bytes + ASSUMED_PAGE_SIZE);
+        // Align the pointer by rounding up to the closest page
+        uapi.alignedPtr =  reinterpret_cast<void*>((reinterpret_cast<uint64_t>(uapi.unalignedPtr) + ASSUMED_PAGE_SIZE) & ~(ASSUMED_PAGE_SIZE - 1));
+        unalignedPointerInfos.push_back(uapi);
+
+        DEBUG(uapi.unalignedPtr)
+        DEBUG(uapi.alignedPtr)
+
+        ptr = uapi.alignedPtr;
+        WARNING("Page size not found, assuming page size of " << ASSUMED_PAGE_SIZE << " bytes")
     }
     else
     {
@@ -49,12 +69,20 @@ void* Arcanum::pageAlignedMalloc(size_t bytes)
 
 void Arcanum::pageAlignedFree(void* ptr)
 {
-    if((uint64_t) ptr & 0x1)
+    // Search in the list of unaliged pointers and see if the aligned version matches
+    // If a match is found, the unaligned version is freed and removed from the list
+    // If it is not found, the pointer is assumed to be aligned_allocated and freed using _aligned_free
+    for(auto it = unalignedPointerInfos.begin(); it != unalignedPointerInfos.end(); it++)
     {
-        uint64_t ptrWithoutInfo = (uint64_t) ptr & ~0x1;
-        ptr = (void*) ptrWithoutInfo; // Remove the additional info in the two lowest bits
-        free(ptr);
+        if(it->alignedPtr == ptr)
+        {
+            DEBUG(it->unalignedPtr)
+            DEBUG(it->alignedPtr)
+            free(it->unalignedPtr);
+            unalignedPointerInfos.erase(it);
+            return;
+        }
     }
-    else
-        _aligned_free(ptr);
+
+    _aligned_free(ptr);
 }
