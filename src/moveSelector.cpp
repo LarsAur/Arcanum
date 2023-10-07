@@ -15,7 +15,7 @@ static const uint16_t s_pieceValues[6]
     100, 500, 300, 300, 900, 1000
 };
 
-inline int32_t MoveSelector::m_getMoveScore(Move move)
+inline int32_t MoveSelector::m_getMoveScore(const Move& move)
 {
     // Always prioritize PV moves
     if(move == m_ttMove)
@@ -57,6 +57,11 @@ inline int32_t MoveSelector::m_getMoveScore(Move move)
         score += PROMOTE_BIAS + s_pieceValues[promotePiece];
     }
 
+    if(score == 0)
+    {
+        score = m_butterflyHistory->get(move, m_board->getTurn());
+    }
+
     return score;
 }
 
@@ -73,26 +78,26 @@ static bool compare(std::pair<int32_t, uint8_t> o1, std::pair<int32_t, uint8_t> 
     return o1.first < o2.first;
 }
 
-MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, Board *board, Move ttMove)
+MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, ButterflyHistory* butterflyHistory, Board *board, Move ttMove)
 {
     m_numMoves = numMoves;
     m_moves = moves;
     m_ttMove = ttMove;
     m_board = board;
     m_killerMoveManager = killerMoveManager;
+    m_butterflyHistory = butterflyHistory;
     m_plyFromRoot = plyFromRoot;
 
     m_bbOpponentPawnAttacks = m_board->getOpponentPawnAttacks();
     m_bbOpponentAttacks = m_board->getOpponentAttacks();
 
     m_scoreMoves();
-    
-    std::make_heap(m_scoreIdxPairs, m_scoreIdxPairs + m_numMoves, compare);
+
+    std::sort(m_scoreIdxPairs, m_scoreIdxPairs + m_numMoves, compare);
 }
 
 const Move* MoveSelector::getNextMove()
 {
-    std::pop_heap(m_scoreIdxPairs, m_scoreIdxPairs + m_numMoves, compare);
     return m_moves + m_scoreIdxPairs[--m_numMoves].second;
 }
 
@@ -151,3 +156,29 @@ bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
 
     return false;
 }
+
+ButterflyHistory::ButterflyHistory()
+{
+    for(int i = 0; i < 64; i++)
+    {
+        for(int j = 0; j < 64; j++)
+        {
+            m_history[Color::WHITE][i][j] = 0;
+            m_history[Color::BLACK][i][j] = 0;
+        }
+    }
+}
+
+// Moves should only be added to the history if at an appropriate depth
+// Too low depth will instill much noise.
+// Moves should only be added at beta cutoffs
+void ButterflyHistory::add(const Move& move, uint8_t depth, Color turn)
+{
+    m_history[turn][move.from][move.to] += depth * depth;
+}
+
+uint32_t ButterflyHistory::get(const Move& move, Color turn)
+{
+    return m_history[turn][move.from][move.to];
+}
+

@@ -46,6 +46,7 @@ namespace Arcanum
             std::vector<hash_t> m_search_stack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
             KillerMoveManager m_killerMoveManager;
+            ButterflyHistory m_butterflyHistory;
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
             searchStats_t m_stats;
             uciInfo_t m_uciInfo;            
