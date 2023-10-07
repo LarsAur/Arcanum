@@ -148,41 +148,64 @@ void Eval::m_initEval(const Board& board)
     m_pawnAttacks[Color::WHITE] = getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][Color::WHITE]);
     m_pawnAttacks[Color::BLACK] = getBlackPawnAttacks(board.m_bbTypedPieces[W_PAWN][Color::BLACK]);
 
-    Color c = Color::WHITE;
-    while(1)
     {
-        bitboard_t rooks   = board.m_bbTypedPieces[W_ROOK][c];
-        bitboard_t knights = board.m_bbTypedPieces[W_KNIGHT][c];
-        bitboard_t bishops = board.m_bbTypedPieces[W_BISHOP][c];
-        bitboard_t queens  = board.m_bbTypedPieces[W_QUEEN][c];
-        bitboard_t king    = board.m_bbTypedPieces[W_KING][c];
+        bitboard_t rooks   = board.m_bbTypedPieces[W_ROOK][Color::WHITE];
+        bitboard_t knights = board.m_bbTypedPieces[W_KNIGHT][Color::WHITE];
+        bitboard_t bishops = board.m_bbTypedPieces[W_BISHOP][Color::WHITE];
+        bitboard_t queens  = board.m_bbTypedPieces[W_QUEEN][Color::WHITE];
+        bitboard_t king    = board.m_bbTypedPieces[W_KING][Color::WHITE];
 
-        bitboard_t nColoredPieces = ~board.m_bbColoredPieces[c];
+        bitboard_t nColoredPieces = ~board.m_bbColoredPieces[Color::WHITE];
         
-        m_numPawns[c] = CNTSBITS(board.m_bbTypedPieces[W_PAWN][c]);
+        m_numPawns[Color::WHITE] = CNTSBITS(board.m_bbTypedPieces[W_PAWN][Color::WHITE]);
         
         int i = 0;
-        while(knights) m_knightMoves[c][i++] = getKnightAttacks(popLS1B(&knights)) & nColoredPieces;
-        m_numKnights[c] = i;
+        while(knights) m_knightMoves[Color::WHITE][i++] = getKnightAttacks(popLS1B(&knights)) & nColoredPieces;
+        m_numKnights[Color::WHITE] = i;
         
         i = 0;
-        while(rooks) m_rookMoves[c][i++] = getRookMoves(board.m_bbAllPieces, popLS1B(&rooks)) & nColoredPieces;
-        m_numRooks[c] = i;
+        while(rooks) m_rookMoves[Color::WHITE][i++] = getRookMoves(board.m_bbAllPieces, popLS1B(&rooks)) & nColoredPieces;
+        m_numRooks[Color::WHITE] = i;
         
         i = 0;
-        while(bishops) m_bishopMoves[c][i++] = getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops)) & nColoredPieces;
-        m_numBishops[c] = i;
+        while(bishops) m_bishopMoves[Color::WHITE][i++] = getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops)) & nColoredPieces;
+        m_numBishops[Color::WHITE] = i;
 
         i = 0;
-        while(queens) m_queenMoves[c][i++] = getQueenMoves(board.m_bbAllPieces, popLS1B(&queens)) & nColoredPieces;
-        m_numQueens[c] = i;
+        while(queens) m_queenMoves[Color::WHITE][i++] = getQueenMoves(board.m_bbAllPieces, popLS1B(&queens)) & nColoredPieces;
+        m_numQueens[Color::WHITE] = i;
 
-        m_kingMoves[c] = getKingMoves(LS1B(king)) & nColoredPieces;
+        m_kingMoves[Color::WHITE] = getKingMoves(LS1B(king)) & nColoredPieces;
+    }
+
+    {
+        bitboard_t rooks   = board.m_bbTypedPieces[W_ROOK][Color::BLACK];
+        bitboard_t knights = board.m_bbTypedPieces[W_KNIGHT][Color::BLACK];
+        bitboard_t bishops = board.m_bbTypedPieces[W_BISHOP][Color::BLACK];
+        bitboard_t queens  = board.m_bbTypedPieces[W_QUEEN][Color::BLACK];
+        bitboard_t king    = board.m_bbTypedPieces[W_KING][Color::BLACK];
+
+        bitboard_t nColoredPieces = ~board.m_bbColoredPieces[Color::BLACK];
         
-        if(c == Color::BLACK)
-            break;
+        m_numPawns[Color::BLACK] = CNTSBITS(board.m_bbTypedPieces[W_PAWN][Color::BLACK]);
+        
+        int i = 0;
+        while(knights) m_knightMoves[Color::BLACK][i++] = getKnightAttacks(popLS1B(&knights)) & nColoredPieces;
+        m_numKnights[Color::BLACK] = i;
+        
+        i = 0;
+        while(rooks) m_rookMoves[Color::BLACK][i++] = getRookMoves(board.m_bbAllPieces, popLS1B(&rooks)) & nColoredPieces;
+        m_numRooks[Color::BLACK] = i;
+        
+        i = 0;
+        while(bishops) m_bishopMoves[Color::BLACK][i++] = getBishopMoves(board.m_bbAllPieces, popLS1B(&bishops)) & nColoredPieces;
+        m_numBishops[Color::BLACK] = i;
 
-        c = Color::BLACK;
+        i = 0;
+        while(queens) m_queenMoves[Color::BLACK][i++] = getQueenMoves(board.m_bbAllPieces, popLS1B(&queens)) & nColoredPieces;
+        m_numQueens[Color::BLACK] = i;
+
+        m_kingMoves[Color::BLACK] = getKingMoves(LS1B(king)) & nColoredPieces;
     }
 }
 
