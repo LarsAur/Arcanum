@@ -51,7 +51,7 @@ namespace Arcanum
         }
     }
 
-    static inline int CNTSBITS(bitboard_t bitboard)
+    static inline int CNTSBITS(const bitboard_t bitboard)
     {
         #ifdef POPCNT
             return _popcnt64 (bitboard);
@@ -161,7 +161,7 @@ namespace Arcanum
         return v;
     }
 
-    static inline bitboard_t getWhitePawnAttacks(bitboard_t bitboard)
+    static inline bitboard_t getWhitePawnAttacks(const bitboard_t bitboard)
     {
         constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
         constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
@@ -169,19 +169,19 @@ namespace Arcanum
         return pawnAttacks;
     }
 
-    static inline bitboard_t getWhitePawnAttacksLeft(bitboard_t bitboard)
+    static inline bitboard_t getWhitePawnAttacksLeft(const bitboard_t bitboard)
     {
         constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
         return ((bitboard & nAFile) << 7);
     }
 
-    static inline bitboard_t getWhitePawnAttacksRight(bitboard_t bitboard)
+    static inline bitboard_t getWhitePawnAttacksRight(const bitboard_t bitboard)
     {
         constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
         return ((bitboard & nHFile) << 9);
     }
 
-    static inline bitboard_t getBlackPawnAttacks(bitboard_t bitboard)
+    static inline bitboard_t getBlackPawnAttacks(const bitboard_t bitboard)
     {
         constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
         constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
@@ -189,94 +189,92 @@ namespace Arcanum
         return pawnAttacks;
     }
 
-    static inline bitboard_t getBlackPawnAttacksLeft(bitboard_t bitboard)
+    static inline bitboard_t getBlackPawnAttacksLeft(const bitboard_t bitboard)
     {
         constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
         return ((bitboard & nAFile) >> 9);
     }
 
-    static inline bitboard_t getBlackPawnAttacksRight(bitboard_t bitboard)
+    static inline bitboard_t getBlackPawnAttacksRight(const bitboard_t bitboard)
     {
         constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
         return ((bitboard & nHFile) >> 7);
     }
 
-    static inline bitboard_t getWhitePawnMoves(bitboard_t bitboard)
+    static inline bitboard_t getWhitePawnMoves(const bitboard_t bitboard)
     {
         return bitboard << 8;
     }
 
-    static inline bitboard_t getWhitePawnMove(uint8_t pawnIdx)
+    static inline bitboard_t getWhitePawnMove(const uint8_t pawnIdx)
     {
         return (0b1LL << pawnIdx) << 8;
     }
 
-    static inline bitboard_t getBlackPawnMoves(bitboard_t bitboard)
+    static inline bitboard_t getBlackPawnMoves(const bitboard_t bitboard)
     {
         return bitboard >> 8;
     }
 
-    static inline bitboard_t getBlackPawnMove(uint8_t pawnIdx)
+    static inline bitboard_t getBlackPawnMove(const uint8_t pawnIdx)
     {
         return (0b1LL << pawnIdx) >> 8;
     }
 
     static inline bitboard_t getAllKnightsAttacks(bitboard_t bitboard)
     {
-        // Local bitboard to be edited
-        bitboard_t kbb = bitboard;
         // For all knights get the attack bitboard
         bitboard_t knightAttacksBitBoard = 0LL;
-        while (kbb)
+        while (bitboard)
         {   
             // Index of the knight
-            int kidx = popLS1B(&kbb);
+            int kidx = popLS1B(&bitboard);
             // Find and add the attack bitboard for the knight
             knightAttacksBitBoard |= knightAttacks[kidx];
         }
         return knightAttacksBitBoard;
     }
     
-    static inline bitboard_t getKnightAttacks(uint8_t knightIdx)
+    static inline bitboard_t getKnightAttacks(const uint8_t knightIdx)
     {
         return knightAttacks[knightIdx];
     }
 
-    static inline bitboard_t getKingMoves(uint8_t kingIdx)
+    static inline bitboard_t getKingMoves(const uint8_t kingIdx)
     {
         // Find and add the attack bitboard for the knight
         return kingMoves[kingIdx];
     }
 
-    static inline bitboard_t getRookMoves(bitboard_t allPiecesBitboard, uint8_t rookIdx)
+    static inline bitboard_t getRookMoves(const bitboard_t allPiecesBitboard, const uint8_t rookIdx)
     {
         // Find file and rank of rook
-        int file = rookIdx & 0b111;
-        int rank8 = rookIdx & ~0b111; // 8 * rank
+        const uint8_t file = rookIdx & 0b111;
+        const uint8_t rank8 = rookIdx & ~0b111; // 8 * rank
 
         // Shift the file down to the first rank and get the 6 middle squares
-        bitboard_t fileOccupied = (allPiecesBitboard >> (rank8 + 1)) & 0b111111LL;
+        const bitboard_t fileOccupied = (allPiecesBitboard >> (rank8 + 1)) & 0b111111LL;
         // Read the move bitboard and shift it to the correct rank
-        bitboard_t fileMoves = rookFileMoves[(file << 6) | fileOccupied] << rank8; 
+        const bitboard_t fileMoves = rookFileMoves[(file << 6) | fileOccupied] << rank8; 
 
         // Shift the file to the A file and mask it
-        bitboard_t rankOccupied = (allPiecesBitboard >> file) & (0x0101010101010101LL); 
+        const bitboard_t rankOccupied = (allPiecesBitboard >> file) & (0x0101010101010101LL); 
         // Find the occupancy index using https://www.chessprogramming.org/Kindergarten_Bitboards
-        bitboard_t rankOccupiedIdx = (rankOccupied * 0x4081020408000LL) >> 58;
-        bitboard_t rankMoves = rookRankMoves[(rank8 << 3) | rankOccupiedIdx] << file;
+        const bitboard_t rankOccupiedIdx = (rankOccupied * 0x4081020408000LL) >> 58;
+        const bitboard_t rankMoves = rookRankMoves[(rank8 << 3) | rankOccupiedIdx] << file;
 
         return fileMoves | rankMoves;
     }
 
     // https://www.chessprogramming.org/Efficient_Generation_of_Sliding_Piece_Attacks
-    static inline bitboard_t getBishopMoves(bitboard_t allPiecesBitboard, uint8_t bishopIdx)
+    static inline bitboard_t getBishopMoves(const bitboard_t allPiecesBitboard, const uint8_t bishopIdx)
     {
-        int file = bishopIdx & 0b111;
+        const uint8_t file = bishopIdx & 0b111;
 
         constexpr static bitboard_t bFile = 0x0202020202020202LL;
-        bitboard_t diagonalOccupancy     = ((diagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
-        bitboard_t antiDiagonalOccupancy = ((antiDiagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
-        bitboard_t moves = (
+        const bitboard_t diagonalOccupancy     = ((diagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
+        const bitboard_t antiDiagonalOccupancy = ((antiDiagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
+        const bitboard_t moves = (
             (diagonal[bishopIdx] & bishopMoves[file << 6 | diagonalOccupancy]) |
             (antiDiagonal[bishopIdx] & bishopMoves[file << 6 | antiDiagonalOccupancy])
         );
@@ -284,7 +282,7 @@ namespace Arcanum
         return moves;
     }
 
-    static inline bitboard_t getQueenMoves(bitboard_t allPiecesBitboard, uint8_t queenIdx)
+    static inline bitboard_t getQueenMoves(const bitboard_t allPiecesBitboard, const uint8_t queenIdx)
     {
         return getRookMoves(allPiecesBitboard, queenIdx) | getBishopMoves(allPiecesBitboard, queenIdx);
     }
