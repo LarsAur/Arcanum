@@ -93,7 +93,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
         {
-            if(!(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
+            if(!(move->moveInfo & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
             }
@@ -229,7 +229,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta) // Beta-cutoff
         {
-            if(!(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
+            if(!(move->moveInfo & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
                 if(depth < 3)
