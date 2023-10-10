@@ -232,7 +232,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             if(!(move->moveInfo & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
-                if(depth < 3)
+                if(depth > 3)
                 {
                     m_butterflyHistory.add(*move, depth, board.getTurn());   
                 }
