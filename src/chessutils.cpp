@@ -60,19 +60,95 @@ namespace Arcanum
             kingMoves[i] = kmbb;
         }
     }
-
-    // 8 for rook position, 1 << 6 for all bit 
-    // combinations for the 6 center squares, edges are dont-care
-    // Requires to be shifted to the correct file
-    // TODO: Could potentially be an array of uint8_t to be more cache efficient
     
+#ifdef BMI2
+    bitboard_t rookOccupancyMask[64];
+    bitboard_t rookMoves[64][1 << 12]; // 12 occupancy bits for 6 file and 6 for rank
+#else
     // Moves along rank (horizontal)
     bitboard_t rookFileMoves[8 * (1 << 6)];
-    
     // Moves along file (vertical)
     bitboard_t rookRankMoves[8 * (1 << 6)];
+#endif
+
     void initGenerateRookMoves()
     {
+    #ifdef BMI2
+        // Create rook occupancy mask
+        constexpr static bitboard_t fileA = 0x0001010101010100LL; // All all squares except edges of file
+        constexpr static bitboard_t rank1 = 0x000000000000007ELL; // All all squares except edges of rank
+        for(int rank = 0; rank < 8; rank++)
+        {
+            for(int file = 0; file < 8; file++)
+            {
+                uint8_t idx = file + rank * 8;
+                // Or together the file and rank
+                rookOccupancyMask[idx] = ((fileA << file) | (rank1 << (rank * 8))) & ~(1LL << idx);
+            }
+        }
+
+        // Create move bitboard for every combination of occupancy
+        for(int rookIdx = 0; rookIdx < 64; rookIdx++)
+        {
+
+            uint8_t file = rookIdx & 0b111;
+            uint8_t rank = rookIdx >> 3;
+
+            // For each combination of occupancy on the file
+            for(uint64_t fileOcc = 0; fileOcc < (1 << 6); fileOcc++)
+            {
+                bitboard_t fileMove = 0LL;
+                // Loop over all squares except the rook square
+                // Check if there is a blocker
+                // Escape after to include potential capture
+                // j is bitshift to represent the center squares
+                for(int k = file+1; k < 8; k++)
+                {
+                    fileMove |= (1 << k);
+                    if((fileOcc << 1) & (1 << k)) break;
+                }
+                for(int k = file-1; k >= 0; k--)
+                {
+                    fileMove |= (1 << k);
+                    if((fileOcc << 1) & (1 << k)) break;
+                }
+                
+
+                for(uint64_t rankOcc = 0; rankOcc < (1 << 6); rankOcc++)
+                {
+                    bitboard_t rankMove = 0LL;
+                    // Loop over all squares except the rook square
+                    // Check if there is a blocker
+                    // Escape after to include potential capture
+                    // j is bitshift to represent the center squares
+                    for(int k = rank+1; k < 8; k++)
+                    {
+                        rankMove |= (1LL << (k << 3));
+                        if((rankOcc << 1) & (1 << k)) break;
+                    }
+
+                    for(int k = rank-1; k >= 0; k--)
+                    {
+                        rankMove |= (1LL << (k << 3));
+                        if((rankOcc << 1) & (1 << k)) break;
+                    }
+
+                    // Construct occupancy bitboard, which is used to generate the correct index
+                    // This is needed because the order of the occupancy bits are not contiguous rank file bits
+                    // The bits are interleaved when using the _pext_u64 intrinsic.
+                    bitboard_t occupancy = (fileOcc << 1) << (rank * 8); // add file 
+                    for(int m = 0; m < 6; m++)
+                    {
+                        //           Mth bit of rankOcc       To M+1th rank    To file
+                        occupancy |= (((rankOcc >> m) & 1) << ((m+1) << 3)) << file;
+                    }
+                    occupancy &= ~(1LL << rookIdx); // Remove rook from occupancy
+                    bitboard_t occupancyIdx = _pext_u64(occupancy, rookOccupancyMask[rookIdx]);
+                    rookMoves[rookIdx][occupancyIdx] = (fileMove << (rank * 8)) | (rankMove << file) ;
+                }
+            }
+        }
+    #else
         // For each rook positon
         for(int i = 0; i < 8; i++)
         {
@@ -106,6 +182,7 @@ namespace Arcanum
                 rookRankMoves[(i << 6) | j] = rankMove;
             }
         }
+    #endif
     }
 
     // occupancy index is used for one diagonal

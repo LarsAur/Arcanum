@@ -15,7 +15,8 @@
     #endif
 #endif
 
-#define IBM1
+#define BMI1
+#define BMI2
 #define POPCNT
 #define LZCNT
 
@@ -30,9 +31,13 @@ namespace Arcanum
     extern bitboard_t kingMoves[64];
 
     void initGenerateRookMoves();
+#ifdef BMI2
+    extern bitboard_t rookOccupancyMask[64];
+    extern bitboard_t rookMoves[64][1 << 12]; // 12 occupancy bits for 6 file and 6 for rank
+#else
     extern bitboard_t rookFileMoves[8 * (1 << 6)];
     extern bitboard_t rookRankMoves[8 * (1 << 6)];
-
+#endif
     void initGenerateBishopMoves();
     extern bitboard_t bishopMoves[8 * (1 << 6)];
     extern bitboard_t diagonal[64];
@@ -66,7 +71,7 @@ namespace Arcanum
     // returns the index of the lsb 1 bit and sets it to zero 
     static inline int popLS1B(bitboard_t* bitboard)
     {
-    #ifdef IBM1
+    #ifdef BMI1
         int popIdx = _tzcnt_u64(*bitboard);
         *bitboard = _blsr_u64(*bitboard);
     #else
@@ -100,7 +105,7 @@ namespace Arcanum
 
     static inline int LS1B(bitboard_t bitboard)
     {
-    #ifdef IBM1
+    #ifdef BMI1
         int idx = _tzcnt_u64(bitboard);
         return idx;
     #else
@@ -140,25 +145,6 @@ namespace Arcanum
         exit(-1);
         return 0;
     #endif
-    }
-
-    static inline bitboard_t bitReverse(bitboard_t v) 
-    {
-        // Altered version of http://graphics.stanford.edu/~seander/bithacks.html#BitReverseObvious
-        // swap odd and even bits
-        v = ((v >> 1)  & 0x5555555555555555) | ((v & 0x5555555555555555) << 1);
-        // swap consecutive pairs
-        v = ((v >> 2)  & 0x3333333333333333) | ((v & 0x3333333333333333) << 2);
-        // swap nibbles ... 
-        v = ((v >> 4)  & 0x0F0F0F0F0F0F0F0F) | ((v & 0x0F0F0F0F0F0F0F0F) << 4);
-        // swap bytes
-        v = ((v >> 8)  & 0x00FF00FF00FF00FF) | ((v & 0x00FF00FF00FF00FF) << 8);
-        // swap 2-byte long pairs
-        v = ((v >> 16) & 0x0000FFFF0000FFFF) | ((v & 0x0000FFFF0000FFFF) << 16);
-        // swap 4-byte long pairs
-        v = (v >> 32) | (v << 32);
-        
-        return v;
     }
 
     static inline bitboard_t getWhitePawnAttacks(const bitboard_t bitboard)
@@ -248,6 +234,10 @@ namespace Arcanum
 
     static inline bitboard_t getRookMoves(const bitboard_t allPiecesBitboard, const uint8_t rookIdx)
     {
+        #ifdef BMI2
+        bitboard_t occupancyIdx = _pext_u64(allPiecesBitboard, rookOccupancyMask[rookIdx]);
+        return rookMoves[rookIdx][occupancyIdx];
+        #else
         // Find file and rank of rook
         const uint8_t file = rookIdx & 0b111;
         const uint8_t rank8 = rookIdx & ~0b111; // 8 * rank
@@ -264,6 +254,7 @@ namespace Arcanum
         const bitboard_t rankMoves = rookRankMoves[(rank8 << 3) | rankOccupiedIdx] << file;
 
         return fileMoves | rankMoves;
+        #endif
     }
 
     // https://www.chessprogramming.org/Efficient_Generation_of_Sliding_Piece_Attacks
