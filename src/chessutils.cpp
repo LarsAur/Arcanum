@@ -185,6 +185,10 @@ namespace Arcanum
     #endif
     }
 
+    #ifdef BMI2
+    bitboard_t bishopMoves[64][1 << 12];
+    bitboard_t bishopOccupancyMask[64];
+    #else
     // occupancy index is used for one diagonal
     // to get both diagonals, lookup occupancy index of both diagonals 
     // individually and use bitwise or with corresponding diagonal mask
@@ -195,8 +199,121 @@ namespace Arcanum
     
     // Diagonal bottom upper left to lower right
     bitboard_t antiDiagonal[64];
+    #endif
+
     void initGenerateBishopMoves()
     {
+        #ifdef BMI2
+            // Generate occupancy mask
+            for(int i = 0; i < 64; i++)
+            {
+                int rank = i >> 3;
+                int file = i & 0b111;
+
+                for(int j = 1; j < 7; j++)
+                {
+                    if(rank + j < 7 && file + j < 7)
+                    {
+                        bishopOccupancyMask[i] |= 0b1LL << (((rank + j) << 3) | (file + j));
+                    }
+                    if(rank - j >=1 && file - j >=1)
+                    {
+                        bishopOccupancyMask[i] |= 0b1LL << (((rank - j) << 3) | (file - j));
+                    }
+
+                    if(rank + j < 7 && file - j >= 1)
+                    {
+                        bishopOccupancyMask[i] |= 0b1LL << (((rank + j) << 3) | (file - j));
+                    }
+                    if(rank - j >= 1 && file + j < 7)
+                    {
+                        bishopOccupancyMask[i] |= 0b1LL << (((rank - j) << 3) | (file + j));
+                    }
+                }
+            }
+
+            for(int i = 0; i < 64; i++)
+            {
+                int rank = i >> 3;
+                int file = i & 0b111;
+
+                int numBits = CNTSBITS(bishopOccupancyMask[i]);
+
+                // For each combination of the occupation mask
+                for(int occupancyIdx = 0; occupancyIdx < (1LL << numBits); occupancyIdx++)
+                {
+                    bitboard_t mask = bishopOccupancyMask[i];
+                    bitboard_t occupancy = 0LL;
+                    for(int k = 0; k < numBits; k++)
+                    {
+                        int maskIdx = popLS1B(&mask);
+                        // If bit is set in the occupancyIdx, include it in the occupancy
+                        if((occupancyIdx >> k) & 1)
+                        {
+                            occupancy |= 1LL << maskIdx;
+                        }
+                    }
+
+                    // Calculate the bishop moves
+                    bitboard_t bishopMove = 0LL;
+
+                    // Up right
+                    for(int k = 1; k < 8; k++)
+                    {
+                        // Check if outside the board
+                        if(rank + k >= 8 || file + k >= 8) break;
+
+                        int bitboardIdx = 8*(rank + k) + file + k;
+                        bishopMove |= 0b1LL << bitboardIdx;
+                        
+                        // Check if occupied
+                        if(occupancy & (1LL << bitboardIdx)) break;
+                    }
+
+                    // Down left
+                    for(int k = 1; k < 8; k++)
+                    {
+                        // Check if outside the board
+                        if(rank - k < 0 || file - k < 0) break;
+
+                        int bitboardIdx = 8*(rank - k) + file - k;
+                        bishopMove |= 0b1LL << bitboardIdx;
+                        
+                        // Check if occupied
+                        if(occupancy & (1LL << bitboardIdx)) break;
+                    }
+
+                    // Up left
+                    for(int k = 1; k < 8; k++)
+                    {
+                        // Check if outside the board
+                        if(rank + k >= 8 || file - k < 0) break;
+
+                        int bitboardIdx = 8*(rank + k) + file - k;
+                        bishopMove |= 0b1LL << bitboardIdx;
+                        
+                        // Check if occupied
+                        if(occupancy & (1LL << bitboardIdx)) break;
+                    }
+
+                    // Down right
+                    for(int k = 1; k < 8; k++)
+                    {
+                        // Check if outside the board
+                        if(rank - k < 0 || file + k >= 8) break;
+
+                        int bitboardIdx = 8*(rank - k) + file + k;
+                        bishopMove |= 0b1LL << bitboardIdx;
+
+                        // Check if occupied
+                        if(occupancy & (1LL << bitboardIdx)) break;
+                    }
+
+                    bishopMoves[i][occupancyIdx] = bishopMove;
+                }
+            }
+
+        #else
         // Generate diagonals
         for(int i = 0; i < 64; i++)
         {
@@ -292,5 +409,6 @@ namespace Arcanum
                 bishopMoves[(file << 6) | j] |= bishopMove;
             }
         }
+        #endif
     }
 }

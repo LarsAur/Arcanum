@@ -38,11 +38,16 @@ namespace Arcanum
     extern bitboard_t rookFileMoves[8 * (1 << 6)];
     extern bitboard_t rookRankMoves[8 * (1 << 6)];
 #endif
+
     void initGenerateBishopMoves();
+#ifdef BMI2
+    extern bitboard_t bishopOccupancyMask[64];
+    extern bitboard_t bishopMoves[64][1 << 12];
+#else
     extern bitboard_t bishopMoves[8 * (1 << 6)];
     extern bitboard_t diagonal[64];
     extern bitboard_t antiDiagonal[64];
-
+#endif
     static inline void printBitBoard(bitboard_t bitboard)
     {
         for(int i = 7; i >= 0; i--)
@@ -260,6 +265,10 @@ namespace Arcanum
     // https://www.chessprogramming.org/Efficient_Generation_of_Sliding_Piece_Attacks
     static inline bitboard_t getBishopMoves(const bitboard_t allPiecesBitboard, const uint8_t bishopIdx)
     {
+        #ifdef BMI2
+        bitboard_t occupancyIdx = _pext_u64(allPiecesBitboard, bishopOccupancyMask[bishopIdx]);
+        return bishopMoves[bishopIdx][occupancyIdx];
+        #else
         const uint8_t file = bishopIdx & 0b111;
 
         constexpr static bitboard_t bFile = 0x0202020202020202LL;
@@ -271,6 +280,7 @@ namespace Arcanum
         );
 
         return moves;
+        #endif
     }
 
     static inline bitboard_t getQueenMoves(const bitboard_t allPiecesBitboard, const uint8_t queenIdx)
