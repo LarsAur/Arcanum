@@ -82,7 +82,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     m_search_stack.push_back(board.getHash());
 
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_butterflyHistory, &board);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board);
     EvalTrace bestScore = EvalTrace(-INF);
     for (int i = 0; i < numMoves; i++)  {
         Board new_board = Board(board);
@@ -178,7 +178,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     m_search_stack.push_back(board.getHash());
 
     pvLine_t _pvLine;
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_butterflyHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
@@ -234,11 +234,20 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
                 m_killerMoveManager.add(*move, plyFromRoot);
                 if(depth > 3)
                 {
-                    m_butterflyHistory.add(*move, depth, board.getTurn());   
+                    m_relativeHistory.addHistory(*move, depth, board.getTurn());   
                 }
             }
             break;
-        } 
+        }
+
+        // Quiet move did not cause a beta-cutoff, increase the relative butterfly history
+        if(!(move->moveInfo & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
+        {
+            if(depth > 3)
+            {
+                m_relativeHistory.addButterfly(*move, depth, board.getTurn());
+            }
+        }
     }
 
     // Pop the board off the search stack
@@ -330,7 +339,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
         board.generateCaptureInfo();
 
         std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_butterflyHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
         
         EvalTrace alpha = EvalTrace(-INF);
         EvalTrace beta = EvalTrace(INF);
@@ -419,7 +428,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
         {
             depth++;
             std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_butterflyHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
             
             EvalTrace alpha = EvalTrace(-INF);
             EvalTrace beta = EvalTrace(INF);

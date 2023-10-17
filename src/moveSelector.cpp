@@ -59,7 +59,7 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
 
     if(score == 0)
     {
-        score = m_butterflyHistory->get(move, m_board->getTurn());
+        score = m_relativeHistory->get(move, m_board->getTurn());
     }
 
     return score;
@@ -73,7 +73,7 @@ inline void MoveSelector::m_scoreMoves()
     }
 }
 
-MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, ButterflyHistory* butterflyHistory, Board *board, Move ttMove)
+MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, RelativeHistory* relativeHistory, Board *board, Move ttMove)
 {
     m_numMoves = numMoves;
     m_moves = moves;
@@ -86,7 +86,7 @@ MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFro
     m_ttMove = ttMove;
     m_board = board;
     m_killerMoveManager = killerMoveManager;
-    m_butterflyHistory = butterflyHistory;
+    m_relativeHistory = relativeHistory;
     m_plyFromRoot = plyFromRoot;
 
     m_bbOpponentPawnAttacks = m_board->getOpponentPawnAttacks();
@@ -158,14 +158,16 @@ bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
     return false;
 }
 
-ButterflyHistory::ButterflyHistory()
+RelativeHistory::RelativeHistory()
 {
     for(int i = 0; i < 64; i++)
     {
         for(int j = 0; j < 64; j++)
         {
-            m_history[Color::WHITE][i][j] = 0;
-            m_history[Color::BLACK][i][j] = 0;
+            m_hhScores[Color::WHITE][i][j] = 0;
+            m_hhScores[Color::BLACK][i][j] = 0;
+            m_bfScores[Color::WHITE][i][j] = 1;
+            m_bfScores[Color::BLACK][i][j] = 1;
         }
     }
 }
@@ -173,13 +175,21 @@ ButterflyHistory::ButterflyHistory()
 // Moves should only be added to the history if at an appropriate depth
 // Too low depth will instill much noise.
 // Moves should only be added at beta cutoffs
-void ButterflyHistory::add(const Move& move, uint8_t depth, Color turn)
+// Add history score when a quiet move causes a beta-cutoff 
+void RelativeHistory::addHistory(const Move& move, uint8_t depth, Color turn)
 {
-    m_history[turn][move.from][move.to] += depth * depth;
+    m_hhScores[turn][move.from][move.to] += depth * depth;
 }
 
-uint32_t ButterflyHistory::get(const Move& move, Color turn)
+// Add butterfly score when a quiet move does not cause a beta-cutoff 
+void RelativeHistory::addButterfly(const Move& move, uint8_t depth, Color turn)
 {
-    return m_history[turn][move.from][move.to];
+    m_bfScores[turn][move.from][move.to] += depth * depth;
+}
+
+uint32_t RelativeHistory::get(const Move& move, Color turn)
+{
+    // Bitshift the history score, to avoid rounding down
+    return (m_hhScores[turn][move.from][move.to] << 16) / m_bfScores[turn][move.from][move.to];
 }
 
