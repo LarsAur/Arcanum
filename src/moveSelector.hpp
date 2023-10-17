@@ -30,6 +30,11 @@ namespace Arcanum
     class MoveSelector
     {
         private:
+            struct ScoreIndex
+            {
+                int32_t score;
+                int32_t index;
+            };
             const Move* m_moves;
             int m_plyFromRoot;
             Board* m_board;
@@ -39,7 +44,7 @@ namespace Arcanum
             Move m_ttMove;
             bitboard_t m_bbOpponentPawnAttacks;
             bitboard_t m_bbOpponentAttacks;
-            std::pair<int32_t, uint8_t> m_scoreIdxPairs[218];
+            ScoreIndex m_scoreIdxPairs[218];
             int32_t m_getMoveScore(const Move& move);
             void m_scoreMoves();
         public:

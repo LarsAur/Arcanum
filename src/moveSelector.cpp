@@ -69,19 +69,20 @@ inline void MoveSelector::m_scoreMoves()
 {
     for(uint8_t i = 0; i < m_numMoves; i++)
     {
-        m_scoreIdxPairs[i] = std::pair<int32_t, uint8_t>(m_getMoveScore(m_moves[i]), i);
+        m_scoreIdxPairs[i] = {.score = m_getMoveScore(m_moves[i]), .index = i};
     }
-}
-
-static bool compare(std::pair<int32_t, uint8_t> o1, std::pair<int32_t, uint8_t> o2)
-{
-    return o1.first < o2.first;
 }
 
 MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, ButterflyHistory* butterflyHistory, Board *board, Move ttMove)
 {
     m_numMoves = numMoves;
     m_moves = moves;
+    if(m_numMoves == 1)
+    {
+        m_scoreIdxPairs[0].index = 0;
+        return;
+    }
+
     m_ttMove = ttMove;
     m_board = board;
     m_killerMoveManager = killerMoveManager;
@@ -93,12 +94,12 @@ MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFro
 
     m_scoreMoves();
 
-    std::sort(m_scoreIdxPairs, m_scoreIdxPairs + m_numMoves, compare);
+    std::sort(m_scoreIdxPairs, m_scoreIdxPairs + m_numMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
 }
 
 const Move* MoveSelector::getNextMove()
 {
-    return m_moves + m_scoreIdxPairs[--m_numMoves].second;
+    return m_moves + m_scoreIdxPairs[--m_numMoves].index;
 }
 
 KillerMoveManager::KillerMoveManager()
