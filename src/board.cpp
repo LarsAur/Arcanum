@@ -826,115 +826,38 @@ Move* Board::getLegalMoves()
     }
 
     // Castle
-    static const bitboard_t whiteQueenCastleMask = 0x1fLL;
-    static const bitboard_t whiteKingCastleMask  = 0xf0LL;
-    static const bitboard_t blackQueenCastleMask = 0x1f00000000000000LL;
-    static const bitboard_t blackKingCastleMask  = 0xf000000000000000LL;
+    static constexpr bitboard_t whiteQueenCastlePieceMask   = 0x0ELL;
+    static constexpr bitboard_t whiteQueenCastleAttackMask  = 0x0CLL;
+    static constexpr bitboard_t whiteKingCastleMask         = 0x60LL;
+    static constexpr bitboard_t blackQueenCastlePieceMask   = 0x0E00000000000000LL;
+    static constexpr bitboard_t blackQueenCastleAttackMask  = 0x0C00000000000000LL;
+    static constexpr bitboard_t blackKingCastleMask         = 0x6000000000000000LL;
 
-    // All possible knight positions where knights can block 
-    static const bitboard_t whiteQueensideKnightMask = 0x3e7700LL;
-    static const bitboard_t whiteKingsideKnightMask  = 0xf8dc00LL;
-    static const bitboard_t blackQueensideKnightMask = 0x773e0000000000LL;
-    static const bitboard_t blackKingsideKnightMask  = 0xdcf80000000000LL;
-
-    static const bitboard_t whiteQueensidePawnMask = 0x3e00LL;
-    static const bitboard_t whiteKingsidePawnMask  = 0xf800LL;
-    static const bitboard_t blackQueensidePawnMask = 0x3e000000000000LL;
-    static const bitboard_t blackKingsidePawnMask  = 0xf8000000000000LL;
-
-    // Only test for castle if there are castle rights and correct turn
-    // TODO: Can check if the king is in check first as both tests checks for it
+    // The following code assumes that the king is not in check
+    // It works by checking that the squares which the rook and the king moves over are free, 
+    // and that the squares which the king moves over and steps into are not attacked by the opponent
+    // Note that for queen-side castle the squares which are required to be free, and the squares which are  
+    // required to not be attacked are different.
+    // The fact that the rook and king are in the correct position is handled by the castle-rights flags
     if(m_turn == WHITE)
     {
         if(m_castleRights & WHITE_QUEEN_SIDE)
-        {
-            // Check that the correct spots are free
-            // Not checking if it is a rook and king as the castleRight will ensure this
-            if((m_bbAllPieces & whiteQueenCastleMask) == 0x11LL)
-            {
-                if(!( (m_bbTypedPieces[W_KNIGHT][BLACK] & whiteQueensideKnightMask) | ((m_bbTypedPieces[W_PAWN][BLACK] | m_bbTypedPieces[W_KING][BLACK]) & whiteQueensidePawnMask)))
-                {
-                    // If not blocked by checking pawns or knighs the king, check for sliding checks
-                    bitboard_t bishopMask = getBishopMoves(m_bbAllPieces, 2) | getBishopMoves(m_bbAllPieces, 3) | getBishopMoves(m_bbAllPieces, 4);
-                    if(! ((m_bbTypedPieces[W_BISHOP][BLACK] | m_bbTypedPieces[W_QUEEN][BLACK]) & bishopMask) )
-                    {
-                        bitboard_t rookMask = getRookMoves(m_bbAllPieces, 2) | getRookMoves(m_bbAllPieces, 3) | getRookMoves(m_bbAllPieces, 4);
-                        if(! ((m_bbTypedPieces[W_ROOK][BLACK] | m_bbTypedPieces[W_QUEEN][BLACK]) & rookMask) )
-                        {
-                            m_legalMoves[m_numLegalMoves++] = Move(4, 2, MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_KING_MOVE);
-                        }
-                    }
-                }
-            }
-        }
+            if(!(m_bbAllPieces & whiteQueenCastlePieceMask) && !(opponentAttacks & whiteQueenCastleAttackMask))
+                m_legalMoves[m_numLegalMoves++] = Move(4, 2, MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_KING_MOVE);
 
         if(m_castleRights & WHITE_KING_SIDE)
-        {
-            // Check that the correct spots are free
-            // Not checking if it is a rook and king as the castleRight will ensure this
-            if((m_bbAllPieces & whiteKingCastleMask) == 0x90LL)
-            {
-                if(!( (m_bbTypedPieces[W_KNIGHT][BLACK] & whiteKingsideKnightMask) | ((m_bbTypedPieces[W_PAWN][BLACK] | m_bbTypedPieces[W_KING][BLACK]) & whiteKingsidePawnMask)))
-                {
-                    // If not blocked by checking pawns or knighs the king, check for sliding checks
-                    bitboard_t bishopMask = getBishopMoves(m_bbAllPieces, 4) | getBishopMoves(m_bbAllPieces, 5) | getBishopMoves(m_bbAllPieces, 6);
-                    if(! ((m_bbTypedPieces[W_BISHOP][BLACK] | m_bbTypedPieces[W_QUEEN][BLACK]) & bishopMask) )
-                    {
-                        bitboard_t rookMask = getRookMoves(m_bbAllPieces, 4) | getRookMoves(m_bbAllPieces, 5) | getRookMoves(m_bbAllPieces, 6);
-                        if(! ((m_bbTypedPieces[W_ROOK][BLACK] | m_bbTypedPieces[W_QUEEN][BLACK]) & rookMask) )
-                        {
-                            m_legalMoves[m_numLegalMoves++] = Move(4, 6, MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_KING_MOVE);
-                        }
-                    }
-                }
-            }
-        }
+            if(!((m_bbAllPieces | opponentAttacks) & whiteKingCastleMask))
+                m_legalMoves[m_numLegalMoves++] = Move(4, 6, MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_KING_MOVE);
     }
-    else // m_turn == black
+    else
     {
         if(m_castleRights & BLACK_QUEEN_SIDE)
-        {
-            // Check that the correct spots are free
-            // Not checking if it is a rook and king as the castleRight will ensure this
-            if((m_bbAllPieces & blackQueenCastleMask) == 0x1100000000000000LL)
-            {
-                if(!( (m_bbTypedPieces[W_KNIGHT][WHITE] & blackQueensideKnightMask) | ((m_bbTypedPieces[W_PAWN][WHITE] | m_bbTypedPieces[W_KING][WHITE]) & blackQueensidePawnMask)))
-                {
-                    // If not blocked by checking pawns or knighs the king, check for sliding checks
-                    bitboard_t bishopMask = getBishopMoves(m_bbAllPieces, 58) | getBishopMoves(m_bbAllPieces, 59) | getBishopMoves(m_bbAllPieces, 60);
-                    if(! ((m_bbTypedPieces[W_BISHOP][WHITE] | m_bbTypedPieces[W_QUEEN][WHITE]) & bishopMask) )
-                    {
-                        bitboard_t rookMask = getRookMoves(m_bbAllPieces, 58) | getRookMoves(m_bbAllPieces, 59) | getRookMoves(m_bbAllPieces, 60);
-                        if(! ((m_bbTypedPieces[W_ROOK][WHITE] | m_bbTypedPieces[W_QUEEN][WHITE]) & rookMask) )
-                        {
-                            m_legalMoves[m_numLegalMoves++] = Move(60, 58, MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_KING_MOVE);
-                        }
-                    }
-                }
-            }
-        }
+            if(!(m_bbAllPieces & blackQueenCastlePieceMask) && !(opponentAttacks & blackQueenCastleAttackMask))
+                m_legalMoves[m_numLegalMoves++] = Move(60, 58, MOVE_INFO_CASTLE_BLACK_QUEEN | MOVE_INFO_KING_MOVE);
 
         if(m_castleRights & BLACK_KING_SIDE)
-        {
-            // Check that the correct spots are free
-            // Not checking if it is a rook and king as the castleRight will ensure this
-            if((m_bbAllPieces & blackKingCastleMask) == 0x9000000000000000LL)
-            {
-                if(!( (m_bbTypedPieces[W_KNIGHT][WHITE] & blackKingsideKnightMask) | ((m_bbTypedPieces[W_PAWN][WHITE] | m_bbTypedPieces[W_KING][WHITE]) & blackKingsidePawnMask)))
-                {
-                    // If not blocked by checking pawns or knighs the king, check for sliding checks
-                    bitboard_t bishopMask = getBishopMoves(m_bbAllPieces, 60) | getBishopMoves(m_bbAllPieces, 61) | getBishopMoves(m_bbAllPieces, 62);
-                    if(! ((m_bbTypedPieces[W_BISHOP][WHITE] | m_bbTypedPieces[W_QUEEN][WHITE]) & bishopMask) )
-                    {
-                        bitboard_t rookMask = getRookMoves(m_bbAllPieces, 60) | getRookMoves(m_bbAllPieces, 61) | getRookMoves(m_bbAllPieces, 62);
-                        if(! ((m_bbTypedPieces[W_ROOK][WHITE] | m_bbTypedPieces[W_QUEEN][WHITE]) & rookMask) )
-                        {
-                            m_legalMoves[m_numLegalMoves++] = Move(60, 62, MOVE_INFO_CASTLE_BLACK_KING | MOVE_INFO_KING_MOVE);
-                        }
-                    }
-                }
-            }
-        }
+            if(!((m_bbAllPieces | opponentAttacks) & blackKingCastleMask))
+                m_legalMoves[m_numLegalMoves++] = Move(60, 62, MOVE_INFO_CASTLE_BLACK_KING | MOVE_INFO_KING_MOVE);
     }
     
     return m_legalMoves;
@@ -1963,7 +1886,6 @@ bitboard_t Board::getOpponentAttacks()
     bitboard_t tmpRooks = m_bbTypedPieces[W_ROOK][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
     while (tmpRooks)
     {
-        // Remove the king from the occupied mask such that when it moves, the previous king position will not block
         attacks |= getRookMoves(allPiecesNoKing, popLS1B(&tmpRooks));
     }
 
