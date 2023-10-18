@@ -36,9 +36,11 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
     m_stats = {
         .entriesAdded = 0LL,
         .replacements = 0LL,
+        .updates      = 0LL,
         .lookups      = 0LL,
         .lookupMisses = 0LL,
         .blockedReplacements = 0LL,
+        .maxEntries   = m_entryCount,
     };
 
     LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
@@ -174,7 +176,31 @@ ttStats_t TranspositionTable::getStats()
     return m_stats;
 }
 
-size_t TranspositionTable::getEntryCount()
+void TranspositionTable::logStats()
 {
-    return m_entryCount;
-}
+    uint64_t entriesInTable = m_stats.entriesAdded - m_stats.replacements - m_stats.blockedReplacements - m_stats.updates;
+    uint64_t lookupHits = m_stats.lookups - m_stats.lookupMisses;
+
+    std::stringstream ss;
+    ss << "\n----------------------------------";
+    ss << "\nTransposition Table Stats:"; 
+    ss << "\n----------------------------------";
+    ss << "\nEntries Added:        " << m_stats.entriesAdded;
+    ss << "\nEntries In Table:     " << entriesInTable;
+    ss << "\nReplaced Entries:     " << m_stats.replacements;
+    ss << "\nBlocked Replacements: " << m_stats.blockedReplacements;
+    ss << "\nUpdated Entries:      " << m_stats.updates;
+    ss << "\nLookups:              " << m_stats.lookups;
+    ss << "\nLookup Hits:          " << lookupHits;
+    ss << "\nLookup Misses:        " << m_stats.lookupMisses;
+    ss << "\nTotal Capacity:       " << m_stats.maxEntries;
+    ss << "\n";
+    ss << "\nPercentages:";
+    ss << "\n----------------------------------";
+    ss << "\nCapacity Used:        " << (float) (100 * entriesInTable) / m_stats.maxEntries << "%";
+    ss << "\nHitrate:              " << (float) (100 * lookupHits) / m_stats.lookups << "%";
+    ss << "\nMissrate:             " << (float) (100 * m_stats.lookupMisses) / m_stats.lookups << "%";
+    ss << "\n----------------------------------";
+
+    LOG(ss.str())
+} 

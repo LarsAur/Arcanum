@@ -382,17 +382,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     LOG("PV Line: " << ss.str())
     LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
-    #if TT_RECORD_STATS == 1
-    ttStats_t stats = m_tt->getStats();
-    LOG("Entries Added: " << stats.entriesAdded)
-    LOG("Replacements: " << stats.replacements)
-    LOG("Updates: " << stats.updates)
-    LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates) / float(m_tt->getEntryCount()) << "%)")
-    LOG("Lookups: " << stats.lookups)
-    LOG("Lookup misses: " << stats.lookupMisses)
-    LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
-    LOG("Blocked replacements " << stats.blockedReplacements);
-    #endif
+    m_tt->logStats();
 
     #if SEARCH_RECORD_STATS
     LOG("Search evaluations: " << m_stats.evaluatedPositions);
@@ -529,17 +519,7 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     LOG("PV Line: " << ss.str())
     LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
-    #if TT_RECORD_STATS
-    ttStats_t stats = m_tt->getStats();
-    LOG("Entries Added: " << stats.entriesAdded)
-    LOG("Replacements: " << stats.replacements)
-    LOG("Updates: " << stats.updates)
-    LOG("Entries in table: " << stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates << " (" << 100 * (stats.entriesAdded - stats.replacements - stats.blockedReplacements - stats.updates) / float(m_tt->getEntryCount()) << "%)")
-    LOG("Lookups: " << stats.lookups)
-    LOG("Lookup misses: " << stats.lookupMisses)
-    LOG("Lookup hits: " << stats.lookups - stats.lookupMisses)
-    LOG("Blocked replacements " << stats.blockedReplacements);
-    #endif
+    m_tt->logStats();
 
     #if SEARCH_RECORD_STATS
     LOG("Search evaluations: " << m_stats.evaluatedPositions);

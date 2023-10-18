@@ -30,6 +30,7 @@ namespace Arcanum
         uint64_t lookups;
         uint64_t lookupMisses;
         uint64_t blockedReplacements;
+        uint64_t maxEntries;
     } ttStats_t;
 
     // Make each cluster fit into CACHE_LINE_SIZE bytes 
@@ -58,6 +59,6 @@ namespace Arcanum
             std::optional<ttEntry_t>get(hash_t hash, uint8_t plyFromRoot);
             void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash);
             ttStats_t getStats();
-            size_t getEntryCount();
+            void logStats();
     };
 }
