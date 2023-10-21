@@ -132,7 +132,7 @@ void Test::captureMoves()
     s_perftCaptures("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1", 0);
     s_perftCaptures("k7/4b3/8/8/3QR1n1/8/4p3/K7 w - - 0 1", 3);
     s_perftCaptures("7k/1q6/8/5n2/4B3/8/2R5/Kb5p w - - 0 1", 3);
-    s_perftCaptures("8/8/8/2bpb3/3K4/4b3/8/8 w - - 0 1", 3);
+    s_perftCaptures("k7/8/8/2bpb3/3K4/4b3/8/8 w - - 0 1", 3);
     LOG("Completed all capture moves")
 }
 
