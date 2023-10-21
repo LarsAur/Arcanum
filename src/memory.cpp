@@ -13,7 +13,7 @@
     LOG("Else")
 #endif
 
-#define ASSUMED_PAGE_SIZE 1024
+#define ASSUMED_PAGE_SIZE 4096
 
 struct UnalignedPointerInfo
 {
@@ -33,7 +33,7 @@ void* Arcanum::pageAlignedMalloc(size_t bytes)
     #elif defined(__linux__)
         pageSize = sysconf(_SC_PAGE_SIZE);
     #endif
-
+    
     void* ptr = nullptr;
     if(pageSize == 0)
     {  
@@ -46,9 +46,6 @@ void* Arcanum::pageAlignedMalloc(size_t bytes)
         uapi.alignedPtr =  reinterpret_cast<void*>((reinterpret_cast<uint64_t>(uapi.unalignedPtr) + ASSUMED_PAGE_SIZE) & ~(ASSUMED_PAGE_SIZE - 1));
         unalignedPointerInfos.push_back(uapi);
 
-        DEBUG(uapi.unalignedPtr)
-        DEBUG(uapi.alignedPtr)
-
         ptr = uapi.alignedPtr;
         WARNING("Page size not found, assuming page size of " << ASSUMED_PAGE_SIZE << " bytes")
     }
@@ -56,7 +53,11 @@ void* Arcanum::pageAlignedMalloc(size_t bytes)
     {
         // Rounding up to the pagesize
         size_t allocSize = ((bytes + pageSize - 1) / pageSize) * pageSize;
+        #if defined(_WIN64)
         ptr = _aligned_malloc(allocSize, pageSize);
+        #elif defined(__linux__)
+        ptr = aligned_alloc(pageSize, allocSize);
+        #endif
     }
 
     if(ptr == nullptr)
@@ -76,13 +77,15 @@ void Arcanum::pageAlignedFree(void* ptr)
     {
         if(it->alignedPtr == ptr)
         {
-            DEBUG(it->unalignedPtr)
-            DEBUG(it->alignedPtr)
             free(it->unalignedPtr);
             unalignedPointerInfos.erase(it);
             return;
         }
     }
 
+    #if defined(_WIN64)
     _aligned_free(ptr);
+    #elif defined(__linux__)
+    free(ptr);
+    #endif
 }
