@@ -199,9 +199,9 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         // * The move is a checking move
         if(i >= 3 && depth >= 3 && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK) && !checkOrChecking)
         {
-            EvalTrace lmrBeta = -alpha;
-            lmrBeta.total -= 1;
-            score = -m_alphaBeta(newBoard, &_pvLine, lmrBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth);
+            EvalTrace nullWindowBeta = -alpha;
+            nullWindowBeta.total -= 1;
+            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth);
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
             #if SEARCH_RECORD_STATS
@@ -212,16 +212,10 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         
         if(requireFullSearch)
         {
-            if(checkOrChecking)
-            {
-                // Extend search for checking moves or check avoiding moves
-                // This is to avoid horizon effect occuring by starting with a forced line
-                score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth, plyFromRoot + 1, quietDepth);
-            }
-            else
-            {
-                score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 1, plyFromRoot + 1, quietDepth);
-            }
+            // Extend search for checking moves or check avoiding moves
+            // This is to avoid horizon effect occuring by starting with a forced line
+            uint8_t extension = checkOrChecking ? 1 : 0;
+            score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, quietDepth);
         }
         
         if(score > bestScore)
