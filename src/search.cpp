@@ -85,10 +85,10 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board);
     EvalTrace bestScore = EvalTrace(-INF);
     for (int i = 0; i < numMoves; i++)  {
-        Board new_board = Board(board);
+        Board newBoard = Board(board);
         const Move *move = moveSelector.getNextMove();
-        new_board.performMove(*move);
-        EvalTrace score = -m_alphaBetaQuiet(new_board, -beta, -alpha, depth - 1, plyFromRoot + 1);
+        newBoard.performMove(*move);
+        EvalTrace score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, depth - 1, plyFromRoot + 1);
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
@@ -183,12 +183,12 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         const Move* move = moveSelector.getNextMove();
 
         // Generate new board and make the move
-        Board new_board = Board(board);
-        new_board.performMove(*move);
+        Board newBoard = Board(board);
+        newBoard.performMove(*move);
         
         EvalTrace score;
         bool requireFullSearch = true;
-        bool checkOrChecking = isChecked || new_board.isChecked(board.getTurn());
+        bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
 
         // Check for late move reduction
         // Conditions for not doing LMR
@@ -199,7 +199,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         {
             EvalTrace lmrBeta = -alpha;
             lmrBeta.total -= 1;
-            score = -m_alphaBeta(new_board, &_pvLine, lmrBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth);
+            score = -m_alphaBeta(newBoard, &_pvLine, lmrBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth);
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
         }
@@ -210,11 +210,11 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             {
                 // Extend search for checking moves or check avoiding moves
                 // This is to avoid horizon effect occuring by starting with a forced line
-                score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth, plyFromRoot + 1, quietDepth);
+                score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth, plyFromRoot + 1, quietDepth);
             }
             else
             {
-                score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, plyFromRoot + 1, quietDepth);
+                score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 1, plyFromRoot + 1, quietDepth);
             }
         }
         
@@ -346,10 +346,10 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
         bestScore = EvalTrace(-INF);
 
         for (int i = 0; i < numMoves; i++)  {
-            Board new_board = Board(board);
+            Board newBoard = Board(board);
             const Move *move = moveSelector.getNextMove();
-            new_board.performMove(*move);
-            EvalTrace score = -m_alphaBeta(new_board, &_pvLine, -beta, -alpha, depth - 1, 1, quietDepth);
+            newBoard.performMove(*move);
+            EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 1, 1, quietDepth);
             if(score > bestScore)
             {
                 bestScore = score;
@@ -426,10 +426,10 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             Move bestMove = Move(0,0);
 
             for (int i = 0; i < numMoves; i++)  {
-                Board new_board = Board(board);
+                Board newBoard = Board(board);
                 const Move *move = moveSelector.getNextMove();
-                new_board.performMove(*move);
-                EvalTrace score = -m_alphaBeta(new_board, &_pvLineTmp, -beta, -alpha, depth - 1, 1, quietDepth);
+                newBoard.performMove(*move);
+                EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, quietDepth);
 
                 if(m_stopSearch)
                 {
