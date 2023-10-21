@@ -18,14 +18,6 @@ namespace Arcanum
         Move moves[SEARCH_MAX_PV_LENGTH];
     } pvline_t;
 
-    typedef struct searchStats_t
-    {
-        uint64_t evaluatedPositions; // Number of calls to board.evaulate()
-        uint64_t exactTTValuesUsed; // Number of boards where all branches are pruned by getting the exact value from TT
-        uint64_t lowerTTValuesUsed;
-        uint64_t upperTTValuesUsed;
-        uint8_t quietSearchDepth;
-    } searchStats_t;
 
     // https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
     typedef struct uciInfo_t
@@ -38,9 +30,21 @@ namespace Arcanum
         pvLine_t pv;
     } uciInfo_t;
 
+    typedef struct SearchStats
+    {
+        uint64_t evaluatedPositions; // Number of calls to board.evaulate()
+        uint64_t exactTTValuesUsed; // Number of boards where all branches are pruned by getting the exact value from TT
+        uint64_t lowerTTValuesUsed;
+        uint64_t upperTTValuesUsed;
+        uint8_t quietSearchDepth;
+        uint64_t researchesRequired;
+        uint64_t nullWindowSearches;
+    } SearchStats;
+    
     class Searcher
     {
         private:
+
             std::unique_ptr<TranspositionTable> m_tt;
             std::unique_ptr<Eval> m_eval;
             std::vector<hash_t> m_search_stack;
@@ -48,7 +52,7 @@ namespace Arcanum
             KillerMoveManager m_killerMoveManager;
             RelativeHistory m_relativeHistory;
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
-            searchStats_t m_stats;
+            SearchStats m_stats;
             uciInfo_t m_uciInfo;            
             bool m_stopSearch;
 
@@ -61,7 +65,8 @@ namespace Arcanum
             ~Searcher();
             Move getBestMove(Board& board, int depth, int quietDepth);
             Move getBestMoveInTime(Board& board, int ms, int quietDepth);
-            searchStats_t getStats();
+            SearchStats getStats();
+            void logStats();
             uciInfo_t getUCIInfo();
     };
 }

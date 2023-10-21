@@ -20,6 +20,8 @@ Searcher::Searcher()
         .exactTTValuesUsed  = 0LL,
         .lowerTTValuesUsed  = 0LL,
         .upperTTValuesUsed  = 0LL,
+        .researchesRequired = 0LL,
+        .nullWindowSearches = 0LL,
     };
     #endif
 
@@ -201,7 +203,10 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             lmrBeta.total -= 1;
             score = -m_alphaBeta(newBoard, &_pvLine, lmrBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth);
             // Perform full search if the move is better than expected
-            requireFullSearch = score > alpha;
+            #if SEARCH_RECORD_STATS
+            m_stats.researchesRequired += requireFullSearch;
+            m_stats.nullWindowSearches += 1;
+            #endif
         }
         
         if(requireFullSearch)
@@ -383,14 +388,7 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
     LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     m_tt->logStats();
-
-    #if SEARCH_RECORD_STATS
-    LOG("Search evaluations: " << m_stats.evaluatedPositions);
-    LOG("Exact TT values used: " << m_stats.exactTTValuesUsed);
-    LOG("Lower TT values used: " << m_stats.lowerTTValuesUsed);
-    LOG("Upper TT values used: " << m_stats.upperTTValuesUsed);
-    #endif
-
+    logStats();
 
     m_generation += 1; // Generation will update every 4th search
 
@@ -520,22 +518,39 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
     LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
 
     m_tt->logStats();
-
-    #if SEARCH_RECORD_STATS
-    LOG("Search evaluations: " << m_stats.evaluatedPositions);
-    LOG("Exact TT values used: " << m_stats.exactTTValuesUsed);
-    LOG("Lower TT values used: " << m_stats.lowerTTValuesUsed);
-    LOG("Upper TT values used: " << m_stats.upperTTValuesUsed);
-    #endif
+    logStats();
 
     m_generation += 1; // Generation will update every 4th search
 
     return searchBestMove;
 }
 
-searchStats_t Searcher::getStats()
+SearchStats Searcher::getStats()
 {
     return m_stats;
+}
+
+void Searcher::logStats()
+{
+    #if SEARCH_RECORD_STATS == 1
+    std::stringstream ss;
+    ss << "\n----------------------------------";
+    ss << "\nSearcher Stats:"; 
+    ss << "\n----------------------------------";
+    ss << "\nEvaluated Positions:       " << m_stats.evaluatedPositions;
+    ss << "\nExact TT Values used:      " << m_stats.exactTTValuesUsed;
+    ss << "\nLower TT Values used:      " << m_stats.lowerTTValuesUsed;
+    ss << "\nUpper TT Values used:      " << m_stats.upperTTValuesUsed;
+    ss << "\nNull-window Searches:      " << m_stats.nullWindowSearches;
+    ss << "\nNull-window Re-searches:   " << m_stats.researchesRequired;
+    ss << "\n";
+    ss << "\nPercentages:";
+    ss << "\n----------------------------------";
+    ss << "\nRe-Searches:          " << (float) (100 * m_stats.researchesRequired) / m_stats.nullWindowSearches << "%";
+    ss << "\n----------------------------------";
+
+    LOG(ss.str())
+    #endif
 }
 
 void Searcher::m_clearUCIInfo()
