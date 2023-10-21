@@ -203,6 +203,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             lmrBeta.total -= 1;
             score = -m_alphaBeta(newBoard, &_pvLine, lmrBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth);
             // Perform full search if the move is better than expected
+            requireFullSearch = score > alpha;
             #if SEARCH_RECORD_STATS
             m_stats.researchesRequired += requireFullSearch;
             m_stats.nullWindowSearches += 1;
