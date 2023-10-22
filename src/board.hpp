@@ -142,7 +142,7 @@ namespace Arcanum
             hash_t m_pawnHash;
 
             friend class Zobrist;
-            friend class Eval;
+            friend class Evaluator;
 
             // Tests if the king will be checked before adding the move
             bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
@@ -272,22 +272,30 @@ namespace Arcanum
         }
     } EvalTrace;
 
-
-
-    class Eval
+    class Evaluator
     {
         private:
-            typedef struct evalEntry_t
+            static constexpr size_t pawnTableSize     = 1 << 13; // Required to be a power of 2
+            static constexpr size_t materialTableSize = 1 << 13; // Required to be a power of 2
+            static constexpr size_t shelterTableSize  = 1 << 13; // Required to be a power of 2
+            static constexpr size_t phaseTableSize    = 1 << 13; // Required to be a power of 2
+
+            static constexpr size_t pawnTableMask     = Evaluator::pawnTableSize     - 1;
+            static constexpr size_t materialTableMask = Evaluator::materialTableSize - 1;
+            static constexpr size_t shelterTableMask  = Evaluator::shelterTableSize  - 1;
+            static constexpr size_t phaseTableMask    = Evaluator::phaseTableSize    - 1;
+
+            typedef struct EvalEntry
             {
                 hash_t hash;
                 eval_t value;
-            } evalEntry_t;
+            } EvalEntry;
 
-            typedef struct phaseEntry_t
+            typedef struct PhaseEntry
             {
                 hash_t hash;
                 uint8_t value;
-            } phaseEntry_t;
+            } PhaseEntry;
 
             // It is allocated the maximum number of the same piece which can occur
             int8_t m_numPawns[Color::NUM_COLORS];
@@ -301,23 +309,23 @@ namespace Arcanum
             bitboard_t m_bishopMoves[Color::NUM_COLORS][10];
             bitboard_t m_queenMoves[Color::NUM_COLORS][10];
             bitboard_t m_kingMoves[Color::NUM_COLORS];
-            void m_initEval(const Board& board);
 
-            uint64_t m_pawnEvalTableSize;
-            uint64_t m_materialEvalTableSize;
-            uint64_t m_pawnEvalTableMask;
-            uint64_t m_materialEvalTableMask;
-            std::unique_ptr<evalEntry_t[]> m_pawnEvalTable;
-            std::unique_ptr<evalEntry_t[]> m_materialEvalTable;
-            std::unique_ptr<phaseEntry_t[]> m_phaseTable;
+            EvalEntry m_pawnEvalTable[Evaluator::pawnTableSize];
+            EvalEntry m_materialEvalTable[Evaluator::materialTableSize];
+            EvalEntry m_shelterEvalTable[Evaluator::shelterTableSize];
+            PhaseEntry m_phaseTable[Evaluator::phaseTableSize];
+
+            void m_initEval(const Board& board);
             uint8_t m_getPhase(const Board& board, EvalTrace& eval);
             eval_t m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& eval);
             eval_t m_getMaterialEval(const Board& board, uint8_t phase, EvalTrace& eval);
             eval_t m_getMobilityEval(const Board& board, uint8_t phase, EvalTrace& eval);
             eval_t m_getKingEval(const Board& board, uint8_t phase, EvalTrace& eval);
             eval_t m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval);
+            template <typename Arcanum::Color turn>
+            eval_t m_getShelterEval(const Board& board, uint8_t square);
         public:
-            Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies);
+            Evaluator();
             EvalTrace evaluate(Board& board, uint8_t plyFromRoot);
             EvalTrace getDrawValue(Board& board, uint8_t plyFromRoot);
             static bool isCheckMateScore(EvalTrace eval);

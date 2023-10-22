@@ -46,9 +46,9 @@ namespace Arcanum
         private:
 
             std::unique_ptr<TranspositionTable> m_tt;
-            std::unique_ptr<Eval> m_eval;
             std::vector<hash_t> m_search_stack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
+            Evaluator m_evaluator;
             KillerMoveManager m_killerMoveManager;
             RelativeHistory m_relativeHistory;
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation

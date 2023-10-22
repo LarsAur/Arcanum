@@ -12,7 +12,6 @@ using namespace Arcanum;
 Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(32));
-    m_eval = std::unique_ptr<Eval>(new Eval(16, 16));
     
     #if SEARCH_RECORD_STATS
     m_stats = {
@@ -58,7 +57,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         m_stats.evaluatedPositions++;
         #endif
         
-        EvalTrace standPat = board.getTurn() == WHITE ? m_eval->evaluate(board, plyFromRoot) : -m_eval->evaluate(board, plyFromRoot);
+        EvalTrace standPat = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
         if(standPat >= beta)
         {
             return beta;
@@ -77,7 +76,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         #if SEARCH_RECORD_STATS
         m_stats.evaluatedPositions++;
         #endif
-        return board.getTurn() == WHITE ? m_eval->evaluate(board, plyFromRoot) : -m_eval->evaluate(board, plyFromRoot);
+        return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
     }
 
     // Push the board on the search stack
@@ -172,7 +171,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         #if SEARCH_RECORD_STATS
         m_stats.evaluatedPositions++;
         #endif
-        return board.getTurn() == WHITE ? m_eval->evaluate(board, plyFromRoot) : -m_eval->evaluate(board, plyFromRoot);
+        return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
     }
     board.generateCaptureInfo();
     bool isChecked = board.isChecked(board.getTurn());

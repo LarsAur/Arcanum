@@ -358,7 +358,7 @@ void Test::symmetricEvaluation()
     srand(0);
     for(int i = 0; i < 10000; i++)
     {
-        Eval eval = Eval(1, 1);
+        Evaluator eval = Evaluator();
         std::string fen = getRandomSymmetricFEN();
         Board board(fen);
         EvalTrace score = eval.evaluate(board, 0);
@@ -375,15 +375,15 @@ void Test::symmetricEvaluation()
     success = true;
     for(int i = 0; i < 10000; i++)
     {
-        Eval eval1 = Eval(1, 1);
-        Eval eval2 = Eval(1, 1);
+        Evaluator eval1 = Evaluator();
+        Evaluator eval2 = Evaluator();
         std::pair fenPair = getRandomEqualFENPairs();
 
         Board b1 = Board(fenPair.first);
         Board b2 = Board(fenPair.second);
 
         EvalTrace score1 = eval1.evaluate(b1, 0);
-        EvalTrace score2 = eval1.evaluate(b2, 0);
+        EvalTrace score2 = eval2.evaluate(b2, 0);
         
         if(score1.total != -score2.total)
         {
@@ -397,7 +397,6 @@ void Test::symmetricEvaluation()
 }
 
 // -- Perf functions
-
 void Perf::search()
 {
     LOG("Starting search performance test")
@@ -409,7 +408,6 @@ void Perf::search()
     board.addBoardToHistory();
 
     auto start = std::chrono::high_resolution_clock::now();
-    // Search for 10 moves
     for(int i = 0; i < 20; i++)
     {
         DEBUG("PERF: " << i << "/" << 20)

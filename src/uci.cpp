@@ -116,7 +116,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         {
             bestMove = moves[0];
         }
-        Eval eval = Eval(1, 1);
+        Evaluator eval = Evaluator();
         ssInfo << "score cp ";
         ssInfo << (board.getTurn() == Color::WHITE) ? eval.evaluate(board, 0) : -eval.evaluate(board, 0);
     }
@@ -176,7 +176,7 @@ void UCI::position(Board& board, std::istringstream& is)
 // Returns the statc eval score for white
 void UCI::eval(Board& board)
 {
-    Eval evaluator = Eval(1,1);
+    Evaluator evaluator = Evaluator();
     UCI_OUT(evaluator.evaluate(board, 0).total)
 }
 

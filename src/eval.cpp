@@ -14,7 +14,9 @@ static constexpr uint8_t bishopPhase = 1;
 static constexpr uint8_t rookPhase = 2;
 static constexpr uint8_t queenPhase = 4;
 static constexpr uint8_t totalPhase = knightPhase*4 + bishopPhase*4 + rookPhase*4 + queenPhase*2;
+#define PHASE_LERP(_begin, _end, _phase) (((_phase * _begin) + ((totalPhase - _phase) * _end)) / totalPhase)
 
+// Distance to edge based on rank/file
 static constexpr uint8_t edgeDistance[8] = {0, 1, 2, 3, 3, 2, 1, 0};
 
 // Constants used during evaluations
@@ -70,50 +72,29 @@ static constexpr eval_t pawnRankBonusEnd[]           = {0, 0, 4, 16, 32, 64, 128
 static constexpr eval_t isolatedPawnRankBonusBegin[] = {0, 16, 25, 25, 32, 64, 128, 0};
 static constexpr eval_t isolatedPawnRankBonusEnd[]   = {0, 25, 50, 50, 75, 125, 200, 0};
 
-Eval::Eval(uint8_t pawnEvalIndicies, uint8_t materialEvalIndicies)
+Evaluator::Evaluator()
 {
-    // Create eval lookup tables
-    m_pawnEvalTableSize = 1LL << (pawnEvalIndicies - 1);
-    m_materialEvalTableSize = 1LL << (materialEvalIndicies - 1);
-    m_pawnEvalTableMask = m_pawnEvalTableSize - 1;
-    m_materialEvalTableMask = m_materialEvalTableSize - 1;
-    m_pawnEvalTable = std::unique_ptr<evalEntry_t[]>(new evalEntry_t[m_pawnEvalTableSize]);
-    m_materialEvalTable = std::unique_ptr<evalEntry_t[]>(new evalEntry_t[m_materialEvalTableSize]);
-    m_phaseTable = std::unique_ptr<phaseEntry_t[]>(new phaseEntry_t[m_materialEvalTableSize]);
-    // Initialize the tables
-    for(uint64_t i = 0; i < m_pawnEvalTableSize; i++)
-    {
-        m_pawnEvalTable[i].hash = 0LL;
-        m_pawnEvalTable[i].value = 0;
-    }
-
-    for(uint64_t i = 0; i < m_materialEvalTableSize; i++)
-    {
-        m_materialEvalTable[i].hash = 0LL;
-        m_materialEvalTable[i].value = 0;
-    }
-
-    for(uint64_t i = 0; i < m_materialEvalTableSize; i++)
-    {
-        m_phaseTable[i].hash = 0LL;
-        m_phaseTable[i].value = 0;
-    }
+    // Use default value 0xff...ff for initial value, as it is more common that 0 is the value of for example the pawnHash
+    memset(m_pawnEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::pawnTableSize);
+    memset(m_materialEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::materialTableSize);
+    memset(m_shelterEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::shelterTableSize);
+    memset(m_phaseTable, 0xFF, sizeof(PhaseEntry) * Evaluator::phaseTableSize);
 }
 
-EvalTrace Eval::getDrawValue(Board& board, uint8_t plyFromRoot)
+EvalTrace Evaluator::getDrawValue(Board& board, uint8_t plyFromRoot)
 {
     EvalTrace trace = EvalTrace(0);
     // TODO: encurage not drawing at an early stage
     return trace;
 }
 
-bool Eval::isCheckMateScore(EvalTrace eval)
+bool Evaluator::isCheckMateScore(EvalTrace eval)
 {
     return std::abs(eval.total) > (INT16_MAX - UINT8_MAX);
 }
 
 // Evaluates positive value for WHITE
-EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
+EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
 {
     EvalTrace eval = EvalTrace(0);
 
@@ -142,7 +123,7 @@ EvalTrace Eval::evaluate(Board& board, uint8_t plyFromRoot)
     return eval;
 }
 
-void Eval::m_initEval(const Board& board)
+void Evaluator::m_initEval(const Board& board)
 {
     // Count the number of each piece
     m_pawnAttacks[Color::WHITE] = getWhitePawnAttacks(board.m_bbTypedPieces[W_PAWN][Color::WHITE]);
@@ -210,11 +191,11 @@ void Eval::m_initEval(const Board& board)
 }
 
 // https://www.chessprogramming.org/Pawn_Structure
-inline eval_t Eval::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& eval)
+inline eval_t Evaluator::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     // Check the pawn eval table
-    uint64_t evalIdx = board.m_pawnHash & m_pawnEvalTableMask;
-    evalEntry_t* evalEntry = &m_pawnEvalTable[evalIdx];
+    size_t evalIdx = board.m_pawnHash & Evaluator::pawnTableMask;
+    EvalEntry* evalEntry = &m_pawnEvalTable[evalIdx];
     if(evalEntry->hash == board.m_pawnHash)
     {
         #ifdef FULL_TRACE
@@ -335,11 +316,11 @@ inline eval_t Eval::m_getPawnEval(const Board& board, uint8_t phase, EvalTrace& 
     return pawnScore;
 }
 
-inline eval_t Eval::m_getMaterialEval(const Board& board, uint8_t phase, EvalTrace& eval)
+inline eval_t Evaluator::m_getMaterialEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     // Check the material eval table
-    uint64_t evalIdx = board.m_materialHash & m_materialEvalTableMask;
-    evalEntry_t* evalEntry = &m_materialEvalTable[evalIdx];
+    size_t evalIdx = board.m_materialHash & Evaluator::materialTableMask;
+    EvalEntry* evalEntry = &m_materialEvalTable[evalIdx];
     if(evalEntry->hash == board.m_materialHash)
     {
         #ifdef FULL_TRACE
@@ -368,7 +349,7 @@ inline eval_t Eval::m_getMaterialEval(const Board& board, uint8_t phase, EvalTra
     return pieceScore;
 }
 
-inline eval_t Eval::m_getMobilityEval(const Board& board, uint8_t phase, EvalTrace& eval)
+inline eval_t Evaluator::m_getMobilityEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     eval_t mobilityScoreBegin = 0;
     eval_t mobilityScoreEnd = 0;
@@ -447,11 +428,11 @@ inline eval_t Eval::m_getMobilityEval(const Board& board, uint8_t phase, EvalTra
     return mobilityScore;
 }
 
-inline uint8_t Eval::m_getPhase(const Board& board, EvalTrace& eval)
+inline uint8_t Evaluator::m_getPhase(const Board& board, EvalTrace& eval)
 {
     // Check the phase table
-    uint64_t phaseIdx = board.m_materialHash & m_materialEvalTableMask;
-    phaseEntry_t* phaseEntry = &m_phaseTable[phaseIdx];
+    size_t phaseIdx = board.m_materialHash & Evaluator::phaseTableMask;
+    PhaseEntry* phaseEntry = &m_phaseTable[phaseIdx];
     if(phaseEntry->hash == board.m_materialHash)
     {
         #ifdef FULL_TRACE
@@ -526,8 +507,84 @@ static constexpr eval_t s_kingPositionEnd[64] = {
    -50, -25, -25, -25, -25, -25, -25, -50,
 };
 
-inline eval_t Eval::m_getKingEval(const Board& board, uint8_t phase, EvalTrace& eval)
+static constexpr eval_t pawnShelterScores[4][8] = 
 {
+    {  -3,  40,  45,  25,  20,  10,  15, 0 },
+    { -25,  30,  15, -27, -15, -10,  -5, 0 },
+    { -10,  35,  10,  10,  10,   5, -25, 0 },
+    { -20,  -5, -10, -20, -25, -30, -35, 0 },
+};
+
+template <typename Arcanum::Color turn>
+inline eval_t Evaluator::m_getShelterEval(const Board& board, uint8_t square)
+{
+    hash_t shelterHash = board.getPawnHash() ^ (square << 1) ^ turn;
+    size_t idx = shelterHash & Evaluator::shelterTableMask;
+    EvalEntry* shelterEntry = &m_shelterEvalTable[idx];
+    if(shelterEntry->hash == shelterHash)
+    {
+        return shelterEntry->value;
+    }
+
+    constexpr Color opponent = Color(turn^1);
+
+    uint8_t rank = square >> 3;
+    eval_t shelterScore = 0;
+
+    bitboard_t opponentPawnAttacks = m_pawnAttacks[opponent];
+    bitboard_t opponentPawns = board.m_bbTypedPieces[W_PAWN][opponent];
+    bitboard_t forward  = turn == WHITE ? wForwardLookup[rank] : bForwardLookup[rank];
+    bitboard_t forwardPawns = board.m_bbTypedPieces[W_PAWN][turn] & forward & ~opponentPawnAttacks;
+    
+    uint8_t centerFile = std::clamp(square & 0b111, 1, 6);
+    for(int file = centerFile - 1; file <= centerFile + 1; file++)
+    {
+        bitboard_t bbFile = bbAFile << file;
+        bitboard_t filePawns = forwardPawns & bbFile;
+        bitboard_t opponentFilePawns = opponentPawns & bbFile;
+        uint8_t ed = edgeDistance[file];
+
+        // Get the rank of the pawn closest to the king
+        uint8_t pawnRank;
+        uint8_t opponentPawnRank;
+        if constexpr(turn == Color::WHITE)
+        {
+            pawnRank = filePawns ? LS1B(filePawns) >> 3 : 0;
+            opponentPawnRank = opponentFilePawns ? LS1B(opponentFilePawns) >> 3: 0;
+            shelterScore += pawnShelterScores[ed][pawnRank];
+        }
+        else
+        {
+            pawnRank = filePawns ? MS1B(filePawns) >> 3 : 7;
+            opponentPawnRank = opponentFilePawns ? MS1B(opponentFilePawns) >> 3 : 0;
+            shelterScore += pawnShelterScores[ed][7 - pawnRank];
+        }
+    }
+
+    shelterEntry->hash = shelterHash;
+    shelterEntry->value = shelterScore;
+
+    return shelterScore;
+}
+
+inline eval_t Evaluator::m_getKingEval(const Board& board, uint8_t phase, EvalTrace& eval)
+{
+    // Calculate the pawn shelter bonus
+    // By multiplying by 17/16, the bonus is somewhat larger for the actual king position
+    eval_t wKingShelter = (m_getShelterEval<Color::WHITE>(board, LS1B(board.m_bbTypedPieces[W_KING][Color::WHITE])) * 17) >> 4;
+    if(board.m_castleRights & WHITE_KING_SIDE)
+        wKingShelter = std::max(wKingShelter, m_getShelterEval<Color::WHITE>(board, 6));
+    if(board.m_castleRights & WHITE_QUEEN_SIDE)
+        wKingShelter = std::max(wKingShelter, m_getShelterEval<Color::WHITE>(board, 2));
+
+    eval_t bKingShelter = (m_getShelterEval<Color::BLACK>(board, LS1B(board.m_bbTypedPieces[W_KING][Color::BLACK])) * 17) >> 4;
+    if(board.m_castleRights & BLACK_KING_SIDE)
+        bKingShelter = std::max(bKingShelter, m_getShelterEval<Color::BLACK>(board, 62));
+    if(board.m_castleRights & BLACK_QUEEN_SIDE)
+        bKingShelter = std::max(bKingShelter, m_getShelterEval<Color::BLACK>(board, 58));
+
+    eval_t kingShelterScore = (wKingShelter - bKingShelter);
+
     // Calculate the king attack zones (all squares the king can move)
     // The king square does not need to be included as a search would not stop on a check
     const uint8_t wKingIdx = LS1B(board.m_bbTypedPieces[W_KING][Color::WHITE]);
@@ -568,9 +625,11 @@ inline eval_t Eval::m_getKingEval(const Board& board, uint8_t phase, EvalTrace& 
     }
 
     eval_t kingAttackingScore = s_kingAreaAttackScore[whiteAttackingIndex] - s_kingAreaAttackScore[blackAttackingIndex];
-    eval_t kingPositionScore = ((s_whiteKingPositionBegin[wKingIdx] - s_blackKingPositionBegin[bKingIdx]) * phase 
-                             + (s_kingPositionEnd[wKingIdx] - s_kingPositionEnd[bKingIdx]) * (totalPhase - phase)) / totalPhase;
-    
+    eval_t kingPositionScore = PHASE_LERP(
+        (s_whiteKingPositionBegin[wKingIdx] - s_blackKingPositionBegin[bKingIdx] + kingShelterScore), 
+        (s_kingPositionEnd[wKingIdx] - s_kingPositionEnd[bKingIdx]),
+        phase);
+
     #ifdef FULL_TRACE
     eval.king = kingAttackingScore + kingPositionScore;
     #endif
@@ -578,7 +637,7 @@ inline eval_t Eval::m_getKingEval(const Board& board, uint8_t phase, EvalTrace& 
     return kingAttackingScore + kingPositionScore;
 }
 
-eval_t Eval::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval)
+eval_t Evaluator::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     constexpr uint8_t centerEvalThreshold = 6 * knightPhase;
     constexpr bitboard_t center = 0x0000001818000000LL;         // Four center squares  
