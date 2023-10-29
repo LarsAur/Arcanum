@@ -1,5 +1,5 @@
 # Arcanum
-Arcanum is a free [UCI][uci-protocol] chess engine under the MIT license.
+Arcanum is a free [UCI][uci-protocol] chess engine under the GPL-3.0 license.
 The engine has no official rating, but has been able to beat the 2700 rated computer on [Chess.com][chess.com] when using 3 seconds per move.
 
 I am also unable to beat Arcanum. Unfortunatly, that does not count for much 😅.
