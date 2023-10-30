@@ -15,11 +15,6 @@
     #endif
 #endif
 
-#define BMI1
-#define BMI2
-#define POPCNT
-#define LZCNT
-
 namespace Arcanum
 {
     typedef uint64_t bitboard_t;
@@ -31,7 +26,7 @@ namespace Arcanum
     extern bitboard_t kingMoves[64];
 
     void initGenerateRookMoves();
-#ifdef BMI2
+#ifdef USE_BMI2
     extern bitboard_t rookOccupancyMask[64];
     extern bitboard_t rookMoves[64][1 << 12]; // 12 occupancy bits for 6 file and 6 for rank
 #else
@@ -40,7 +35,7 @@ namespace Arcanum
 #endif
 
     void initGenerateBishopMoves();
-#ifdef BMI2
+#ifdef USE_BMI2
     extern bitboard_t bishopOccupancyMask[64];
     extern bitboard_t bishopMoves[64][1 << 12];
 #else
@@ -63,7 +58,7 @@ namespace Arcanum
 
     static inline int CNTSBITS(const bitboard_t bitboard)
     {
-        #ifdef POPCNT
+        #ifdef USE_POPCNT
             return _popcnt64 (bitboard);
         #else
             
@@ -76,7 +71,7 @@ namespace Arcanum
     // returns the index of the lsb 1 bit and sets it to zero 
     static inline int popLS1B(bitboard_t* bitboard)
     {
-    #ifdef BMI1
+    #ifdef USE_BMI1
         int popIdx = _tzcnt_u64(*bitboard);
         *bitboard = _blsr_u64(*bitboard);
     #else
@@ -110,7 +105,7 @@ namespace Arcanum
 
     static inline int LS1B(bitboard_t bitboard)
     {
-    #ifdef BMI1
+    #ifdef USE_BMI1
         int idx = _tzcnt_u64(bitboard);
         return idx;
     #else
@@ -141,7 +136,7 @@ namespace Arcanum
 
     static inline int MS1B(bitboard_t bitboard)
     {
-    #ifdef LZCNT
+    #ifdef USE_LZCNT
         constexpr int bbBitSize = 8*sizeof(bitboard) - 1;
         int lzeros = _lzcnt_u64(bitboard);
         return bbBitSize - lzeros;
@@ -239,7 +234,7 @@ namespace Arcanum
 
     static inline bitboard_t getRookMoves(const bitboard_t allPiecesBitboard, const uint8_t rookIdx)
     {
-        #ifdef BMI2
+        #ifdef USE_BMI2
         bitboard_t occupancyIdx = _pext_u64(allPiecesBitboard, rookOccupancyMask[rookIdx]);
         return rookMoves[rookIdx][occupancyIdx];
         #else
@@ -265,7 +260,7 @@ namespace Arcanum
     // https://www.chessprogramming.org/Efficient_Generation_of_Sliding_Piece_Attacks
     static inline bitboard_t getBishopMoves(const bitboard_t allPiecesBitboard, const uint8_t bishopIdx)
     {
-        #ifdef BMI2
+        #ifdef USE_BMI2
         bitboard_t occupancyIdx = _pext_u64(allPiecesBitboard, bishopOccupancyMask[bishopIdx]);
         return bishopMoves[bishopIdx][occupancyIdx];
         #else

@@ -10,9 +10,13 @@ DEFINES += -DUSE_SSE41 -msse4.1
 DEFINES += -DUSE_SSE3 -msse3
 DEFINES += -DUSE_SSE2 -msse2
 DEFINES += -DUSE_SSE -msse
+DEFINES += -DUSE_BMI -mbmi
+DEFINES += -DUSE_BMI2 -mbmi2
+DEFINES += -DUSE_POPCNT -mpopcnt
+DEFINES += -DUSE_LZCNT -mlzcnt
 
 CC = g++
-override CFLAGS += -std=c++17 -O3 -Wall -mbmi -mbmi2 -mpopcnt -mlzcnt -mtune=native $(DEFINES)
+override CFLAGS += -std=c++17 -O3 -Wall -mtune=native $(DEFINES)
 LDFLAGS = -lm -lstdc++
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
