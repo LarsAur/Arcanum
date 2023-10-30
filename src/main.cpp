@@ -5,6 +5,9 @@
 #include <search.hpp>
 #include <player.hpp>
 #include <uci.hpp>
+#include <nnueHelper.hpp>
+#include <windows.h>
+
 
 using namespace Arcanum;
 
@@ -69,6 +72,16 @@ int main(int argc, char *argv[])
     Arcanum::initGenerateKingMoves();
     Arcanum::initGenerateRookMoves();
     Arcanum::initGenerateBishopMoves();
+
+    char executablePath[1024];
+    GetModuleFileNameA(NULL, executablePath, 1024);
+    std::string fullExecPath = std::string(executablePath);
+    size_t execNameStart = fullExecPath.find_last_of('\\');
+    std::string path = std::string(executablePath).substr(0, execNameStart);
+    execNameStart = path.find_last_of('\\');
+    path = std::string(path).substr(0, execNameStart);
+    path.append("\\nn-04cf2b4ed1da.nnue");
+    NN::loadNNUE(path);
 
     if(argc == 1)
     {

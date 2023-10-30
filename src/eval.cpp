@@ -1,6 +1,6 @@
 #include <board.hpp>
 #include <algorithm>
-
+#include <nnueHelper.hpp>
 using namespace Arcanum;
 
 bool EvalTrace::operator==(const EvalTrace& other) const { return total == other.total; }
@@ -109,6 +109,9 @@ EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
         
         return eval;
     };
+
+    eval.total = board.m_turn == WHITE ? NN::nnueEvaluateBoard(board) : -NN::nnueEvaluateBoard(board);
+    return eval;
 
     m_initEval(board);
 

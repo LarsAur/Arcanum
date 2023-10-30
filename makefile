@@ -4,8 +4,15 @@ SOURCEDIR = src
 HEADERDIR = src	
 BUILDDIR = build
 
+DEFINES += -DIS_64BIT 
+DEFINES += -DUSE_AVX2 -mavx2
+DEFINES += -DUSE_SSE41 -msse4.1
+DEFINES += -DUSE_SSE3 -msse3
+DEFINES += -DUSE_SSE2 -msse2
+DEFINES += -DUSE_SSE -msse
+
 CC = g++
-override CFLAGS += -std=c++17 -O3 -Wall -mbmi -mbmi2 -mpopcnt -mlzcnt -mtune=native
+override CFLAGS += -std=c++17 -O3 -Wall -mbmi -mbmi2 -mpopcnt -mlzcnt -mtune=native $(DEFINES)
 LDFLAGS = -lm -lstdc++
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
