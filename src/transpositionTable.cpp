@@ -48,7 +48,7 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
 
 TranspositionTable::~TranspositionTable()
 {
-    Memory::pageAlignedFree(m_table);
+    Memory::alignedFree(m_table);
 }
 
 inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
