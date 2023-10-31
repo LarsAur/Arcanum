@@ -23,7 +23,7 @@ struct UnalignedPointerInfo
 
 std::list<UnalignedPointerInfo> unalignedPointerInfos;
 
-void* Arcanum::pageAlignedMalloc(size_t bytes)
+void* Memory::pageAlignedMalloc(size_t bytes)
 {
     int32_t pageSize = 0;
     #if defined(_WIN64)
@@ -68,7 +68,7 @@ void* Arcanum::pageAlignedMalloc(size_t bytes)
     return ptr;
 };
 
-void Arcanum::pageAlignedFree(void* ptr)
+void Memory::pageAlignedFree(void* ptr)
 {
     // Search in the list of unaliged pointers and see if the aligned version matches
     // If a match is found, the unaligned version is freed and removed from the list
