@@ -31,7 +31,7 @@ void* Memory::alignedMalloc(const size_t bytes, const size_t alignment)
     #if defined(_WIN64)
     ptr = _aligned_malloc(allocSize, alignment);
     #elif defined(__linux__)
-    ptr = aligned_alloc(pageSize, allocSize);
+    ptr = aligned_alloc(alignment, allocSize);
     #else
 
     // Create an aligned pointer from the potential unaligned malloc
