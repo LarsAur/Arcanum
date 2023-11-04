@@ -1,7 +1,9 @@
 #include <board.hpp>
 #include <algorithm>
-#include <nnueHelper.hpp>
+#include <nnue/nnue.hpp>
 using namespace Arcanum;
+
+extern NN::NNUE *nnue;
 
 bool EvalTrace::operator==(const EvalTrace& other) const { return total == other.total; }
 bool EvalTrace::operator> (const EvalTrace& other) const { return total > other.total;  }
@@ -74,6 +76,8 @@ static constexpr eval_t isolatedPawnRankBonusEnd[]   = {0, 25, 50, 50, 75, 125, 
 
 Evaluator::Evaluator()
 {
+    
+
     // Use default value 0xff...ff for initial value, as it is more common that 0 is the value of for example the pawnHash
     memset(m_pawnEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::pawnTableSize);
     memset(m_materialEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::materialTableSize);
@@ -110,7 +114,7 @@ EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
         return eval;
     };
 
-    eval.total = board.m_turn == WHITE ? NN::nnueEvaluateBoard(board) : -NN::nnueEvaluateBoard(board);
+    eval.total = board.m_turn == WHITE ? nnue->evaluateBoard(board) : -nnue->evaluateBoard(board);
     return eval;
 
     m_initEval(board);

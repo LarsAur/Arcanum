@@ -5,9 +5,7 @@
 #include <search.hpp>
 #include <player.hpp>
 #include <uci.hpp>
-#include <nnueHelper.hpp>
-#include <windows.h>
-
+#include <nnue/nnue.hpp>
 
 using namespace Arcanum;
 
@@ -63,6 +61,8 @@ void play(Color color, std::string fen, int ms)
     }
 }
 
+NN::NNUE *nnue;
+
 std::string _logFileName;
 int main(int argc, char *argv[])
 {
@@ -73,19 +73,13 @@ int main(int argc, char *argv[])
     Arcanum::initGenerateRookMoves();
     Arcanum::initGenerateBishopMoves();
 
-    char executablePath[1024];
-    GetModuleFileNameA(NULL, executablePath, 1024);
-    std::string fullExecPath = std::string(executablePath);
-    size_t execNameStart = fullExecPath.find_last_of('\\');
-    std::string path = std::string(executablePath).substr(0, execNameStart);
-    execNameStart = path.find_last_of('\\');
-    path = std::string(path).substr(0, execNameStart);
-    path.append("\\nn-04cf2b4ed1da.nnue");
-    NN::loadNNUE(path);
+    nnue = new NN::NNUE();
+    nnue->loadRelative("nn-04cf2b4ed1da.nnue");
 
     if(argc == 1)
     {
         UCI::loop();
+        delete nnue;
         exit(EXIT_SUCCESS);
     }
 
@@ -116,6 +110,8 @@ int main(int argc, char *argv[])
         if(!strncmp("--engine-perf", argv[i], 14))
             Perf::engineTest();
     }
+
+    delete nnue;
 
     return 0;
 }
