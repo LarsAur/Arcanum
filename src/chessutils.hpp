@@ -71,7 +71,7 @@ namespace Arcanum
     // returns the index of the lsb 1 bit and sets it to zero 
     static inline int popLS1B(bitboard_t* bitboard)
     {
-    #ifdef USE_BMI1
+    #ifdef USE_BMI
         int popIdx = _tzcnt_u64(*bitboard);
         *bitboard = _blsr_u64(*bitboard);
     #else
@@ -105,7 +105,7 @@ namespace Arcanum
 
     static inline int LS1B(bitboard_t bitboard)
     {
-    #ifdef USE_BMI1
+    #ifdef USE_BMI
         int idx = _tzcnt_u64(bitboard);
         return idx;
     #else
