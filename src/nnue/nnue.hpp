@@ -6,6 +6,7 @@
 
 namespace NN
 {   
+    typedef int16_t AccData;
     typedef int16_t FTWeight;
     typedef int16_t FTBias;
     typedef int8_t Weight;
@@ -24,7 +25,7 @@ namespace NN
 
     struct Accumulator
     {
-        alignas(64) int16_t acc[2][ftOuts];
+        alignas(64) AccData acc[2][ftOuts];
     };
 
     class NNUE
@@ -53,7 +54,7 @@ namespace NN
             LinearLayer<2*ftOuts, 32> m_hiddenLayer1;
             LinearLayer<32, 32> m_hiddenLayer2;
             LinearLayer<32, 1> m_outputLayer;
-            
+            bool m_loaded;
             void m_affineTransform(
                 Clipped *input,
                 void *output,
@@ -65,12 +66,11 @@ namespace NN
                 Mask *outMask,
                 const bool pack8Mask
             );
-
             int32_t m_affinePropagate(Clipped* input, Bias* biases, Weight* weights);
             void m_permuteBiases(Bias* biases);
-            uint32_t m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, Arcanum::Color color, Arcanum::Board& board);
-            void m_initializeAccumulator(Accumulator& accumulator, Arcanum::Board& board);
-            void m_initializeAccumulatorPerspective(Accumulator& accumulator, Arcanum::Color color, Arcanum::Board& board);
+            uint32_t m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, const Arcanum::Color perspective, const Arcanum::Board& board);
+            uint32_t m_calculateChangedIndices(uint32_t& activated, std::array<uint32_t, 2>& deactivated, const Arcanum::Color perspective, const Arcanum::Move& move, const Arcanum::Board board);
+            void m_initializeAccumulatorPerspective(Accumulator& accumulator, const Arcanum::Color perspective, const Arcanum::Board& board);
             void m_loadHeader(std::ifstream& stream);            
             void m_loadWeights(std::ifstream& stream);
         public:
@@ -81,18 +81,17 @@ namespace NN
             bool loadFullPath(std::string fullPath);
             // Loads a .nnue file in a position relative to the executable
             bool loadRelative(std::string filename);
-
-            int evaluateBoard(Arcanum::Board& board);
-
+            void initializeAccumulator(Accumulator& accumulator, const Arcanum::Board& board);
             void incrementAccumulator(
-                Accumulator& prevAccumulator,
+                const Accumulator& prevAccumulator,
                 Accumulator& newAccumulator,
-                Arcanum::Color perspective,
-                Arcanum::Board& board,
-                Arcanum::Move& move
+                const Arcanum::Color perspective,
+                const Arcanum::Board& board,
+                const Arcanum::Move& move
             );
-
+            int evaluateBoard(Arcanum::Board& board);
             int evaluate(Accumulator& accumulator, Arcanum::Color turn);
+            bool isLoaded();
     };
 
 }

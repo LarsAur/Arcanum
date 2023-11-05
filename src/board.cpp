@@ -1898,7 +1898,7 @@ bitboard_t Board::getOpponentPawnAttacks()
     return attacks;
 }
 
-bitboard_t Board::getTypedPieces(Piece type, Color color)
+bitboard_t Board::getTypedPieces(Piece type, Color color) const
 {
     return m_bbTypedPieces[type][color];
 }

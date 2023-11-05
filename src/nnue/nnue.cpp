@@ -57,6 +57,15 @@ static inline T ifstreamGet(std::ifstream& fileStream)
     return value;
 }
 
+template<class T> static inline void Log(const __m256i & value)
+{
+    const size_t n = sizeof(__m256i) / sizeof(T);
+    T buffer[n];
+    _mm256_storeu_si256((__m256i*)buffer, value);
+    for (int i = 0; i < n; i++)
+        std::cout << buffer[i] << " ";
+}
+
 // Weight index
 static inline uint32_t windex(uint32_t row, uint32_t column, uint32_t dims)
 {
@@ -78,12 +87,12 @@ static inline uint8_t orientSquare(Arcanum::Color color, uint8_t square)
 }
 
 // feature index
-static inline uint32_t findex(Arcanum::Color color, uint8_t square, Arcanum::Piece piece, uint8_t kingSquare)
+static inline uint32_t findex(Arcanum::Color perspective, uint8_t square, Arcanum::Piece piece, uint8_t kingSquare)
 {
-    return orientSquare(color, square) + pieceToIndex[color][piece] + PS_END * kingSquare;
+    return orientSquare(perspective, square) + pieceToIndex[perspective][piece] + PS_END * kingSquare;
 }
 
-NNUE::NNUE(){}
+NNUE::NNUE(){ m_loaded = false; }
 
 NNUE::~NNUE()
 {
@@ -105,7 +114,7 @@ bool NNUE::loadFullPath(std::string fullPath)
 
     m_loadHeader(stream);
     m_loadWeights(stream);
-
+    m_loaded = true;
     stream.close();    
 
     return true;
@@ -167,19 +176,105 @@ int NNUE::evaluate(Accumulator& accumulator, Arcanum::Color turn)
     return score / fv_scale;
 }
 
-template<class T> static inline void Log(const __m256i & value)
-{
-    const size_t n = sizeof(__m256i) / sizeof(T);
-    T buffer[n];
-    _mm256_storeu_si256((__m256i*)buffer, value);
-    for (int i = 0; i < n; i++)
-        std::cout << buffer[i] << " ";
+void NNUE::incrementAccumulator(
+    const Accumulator& prevAccumulator, // Accumulator from the boardstate before the move
+    Accumulator& newAccumulator,        // Uninitialized accumulator
+    const Arcanum::Color perspective,   // Color for which the move was made
+    const Arcanum::Board& board,        // Board after the move
+    const Arcanum::Move& move           // Move being made
+) {
+    constexpr int registerWidth = 256 / (8*sizeof(AccData)); // Number of AccData (int16_t) in AVX2 register (256 bit)
+    static_assert(ftOuts % registerWidth == 0);
+    constexpr int numChunks = ftOuts / registerWidth;
+    __m256i regs[numChunks]; // Temp accumulators in AVX register
+
+    // If the move is a king move, the whole accumulator 
+    // for the moving color has to be updated.
+    // if the move does not capture anything, the other perspective does not need to be updated.
+    if(move.moveInfo & MOVE_INFO_KING_MOVE && !(move.moveInfo & MOVE_INFO_CAPTURE_MASK))
+    {
+        m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
+
+        // Copy the accumulator of the other perspective
+        for(int i = 0; i < numChunks; i++)
+        {
+            __m256i value = _mm256_load_si256((__m256i*)&prevAccumulator.acc[1^perspective][i * registerWidth]);
+            _mm256_store_si256((__m256i*)&newAccumulator.acc[perspective][i * registerWidth], value);
+        }
+
+        return;
+    }
+    
+    if(move.moveInfo & MOVE_INFO_KING_MOVE)
+    {
+        m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
+        
+        // Copy the accumulator of the other perspective
+        for(int i = 0; i < numChunks; i++)
+        {
+            regs[i] = _mm256_load_si256((__m256i*)&prevAccumulator.acc[1^perspective][i * registerWidth]);
+        }
+
+        std::array<uint32_t, 2> deactivated;
+        uint32_t activated; // Unused. When the king moves, no features are activated for the other perspective
+        m_calculateChangedIndices(activated, deactivated, Arcanum::Color(1^perspective), move, board);
+
+        // Deactivated features
+        // Only the captured feature is removed, as the moved king does not deactivate a feature for the other perspective
+        uint32_t feature = deactivated[1];
+        for(int i = 0; i < numChunks; i++)
+        {
+            regs[i] = _mm256_sub_epi16(regs[i], _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[feature * 256 + i * registerWidth])));
+        }
+
+        for(int i = 0; i < numChunks; i++)
+        {
+            _mm256_store_si256((__m256i*)&newAccumulator.acc[1^perspective][i * registerWidth], regs[i]);
+        }
+    }
+
+    // For each perspective
+    for(int p = 0; p < 2; p++)
+    {
+        // Copy the accumulator of the other perspective
+        for(int i = 0; i < numChunks; i++)
+        {
+            regs[i] = _mm256_load_si256((__m256i*)&prevAccumulator.acc[p][i * registerWidth]);
+        }
+
+        std::array<uint32_t, 2> deactivated;
+        uint32_t activated;
+        uint32_t numDeactivated = m_calculateChangedIndices(activated, deactivated, Arcanum::Color(p), move, board);
+        
+        // Activated features
+        for(int i = 0; i < numChunks; i++)
+        {
+            regs[i] = _mm256_add_epi16(regs[i], _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[activated * 256 + i * registerWidth])));
+        }
+
+        // Deactivated features
+        for(uint32_t d = 0; d < numDeactivated; d++)
+        {
+            uint32_t feature = deactivated[d];
+            for(int i = 0; i < numChunks; i++)
+            {
+                regs[i] = _mm256_sub_epi16(regs[i], _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[feature * 256 + i * registerWidth])));
+            }
+        }
+
+        for(uint32_t i = 0; i < numChunks; i++)
+        {
+            _mm256_store_si256((__m256i*)&newAccumulator.acc[p][i * registerWidth], regs[i]);
+        }
+    }
 }
+
+bool NNUE::isLoaded() { return m_loaded; }
 
 int32_t NNUE::m_affinePropagate(Clipped* input, Bias* biases, Weight* weights)
 {
     __m256i *iv = (__m256i *)input;
-    __m256i *row = (__m256i *)weights;
+    __m256i *row = (__m256i *)ALIGN64(weights);
     __m256i prod = _mm256_maddubs_epi16(iv[0], row[0]);
     prod = _mm256_madd_epi16(prod, _mm256_set1_epi16(1));
     __m128i sum = _mm_add_epi32(
@@ -228,11 +323,11 @@ void NNUE::m_affineTransform(
         if (!nextIdx(&idx, &offset, &v, inMask, inDim))
             break;
 
-        first = ((__m256i *)weights)[idx];
+        first = ((__m256i *)ALIGN64(weights))[idx];
         uint16_t factor = input[idx];
 
         if (nextIdx(&idx, &offset, &v, inMask, inDim)) {
-            second = ((__m256i *)weights)[idx];
+            second = ((__m256i *)ALIGN64(weights))[idx];
             factor |= input[idx] << 8;
         } else {
             second = kZero;
@@ -263,47 +358,77 @@ void NNUE::m_affineTransform(
 int NNUE::evaluateBoard(Arcanum::Board& board)
 {
     NN::Accumulator accumulator;
-    m_initializeAccumulator(accumulator, board);
+    initializeAccumulator(accumulator, board);
     return evaluate(accumulator, board.getTurn());
+}
+
+// Calculates the activated and deactivated indices of a selected perspective
+// There can be at most 1 activated index, and 2 deactivated indices in case of captures
+// The returned value is the number of deactivated indices
+uint32_t NNUE::m_calculateChangedIndices(uint32_t& activated, std::array<uint32_t, 2>& deactivated, const Arcanum::Color perspective, const Arcanum::Move& move, const Arcanum::Board board)
+{
+    uint8_t kingSquare = orientSquare(perspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, perspective)));
+    // It is assumed that the move is already made, and that the color of the moved piece is the opposite of the board turn
+    Arcanum::Piece movedPiece = Arcanum::Piece(lsb64(move.moveInfo & MOVE_INFO_MOVE_MASK) + Arcanum::B_PAWN * (1^board.getTurn()));
+    DEBUG(unsigned(movedPiece))
+    if(move.moveInfo & MOVE_INFO_PROMOTE_MASK)
+    {
+        Arcanum::Piece promotedPiece = Arcanum::Piece(lsb64(move.moveInfo & MOVE_INFO_PROMOTE_MASK) - 11 + Arcanum::B_PAWN * (1^board.getTurn()));
+        activated = findex(perspective, move.to, promotedPiece, kingSquare);
+    }
+    else
+    {
+        activated = findex(perspective, move.to, movedPiece, kingSquare);
+    }
+
+    deactivated[0] = findex(perspective, move.from, movedPiece, kingSquare);
+
+    if(!(move.moveInfo & MOVE_INFO_CAPTURE_MASK))
+        return 1; // If there is no capture, there is only 1 deactivated index
+
+    // It is assumed that the move is already made, and that the color of the captured piece is the board turn
+    Arcanum::Piece capturedPiece = Arcanum::Piece(lsb64(move.moveInfo & MOVE_INFO_CAPTURE_MASK) - 16 + Arcanum::B_PAWN * board.getTurn());
+    deactivated[1] = findex(perspective, move.to, capturedPiece, kingSquare);
+    return 2;
 }
 
 // Note on a normal chess board 30 is the maximum number of pieces without the king
 // In the case where there are more pieces, eg. in a custom setup, this will not work. 
-uint32_t NNUE::m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, Arcanum::Color color, Arcanum::Board& board)
+uint32_t NNUE::m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, const Arcanum::Color perspective, const Arcanum::Board& board)
 {
     int idxCounter = 0;
 
-    uint8_t kingSquare = orientSquare(color, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, color)));
+    uint8_t kingSquare = orientSquare(perspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, perspective)));
 
     // Pawns
     Arcanum::bitboard_t whitePawns = board.getTypedPieces(Arcanum::Piece::W_PAWN, Arcanum::Color::WHITE);
-    while (whitePawns) { indicies[idxCounter++] = findex(color, popLsb64(&whitePawns), Arcanum::W_PAWN, kingSquare); }
+    while (whitePawns) { indicies[idxCounter++] = findex(perspective, popLsb64(&whitePawns), Arcanum::W_PAWN, kingSquare); }
     Arcanum::bitboard_t blackPawns = board.getTypedPieces(Arcanum::Piece::W_PAWN, Arcanum::Color::BLACK);
-    while (blackPawns) { indicies[idxCounter++] = findex(color, popLsb64(&blackPawns), Arcanum::B_PAWN, kingSquare); }
+    while (blackPawns) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackPawns), Arcanum::B_PAWN, kingSquare); }
     
     // Rooks
     Arcanum::bitboard_t whiteRooks = board.getTypedPieces(Arcanum::Piece::W_ROOK, Arcanum::Color::WHITE);
-    while (whiteRooks) { indicies[idxCounter++] = findex(color, popLsb64(&whiteRooks), Arcanum::W_ROOK, kingSquare); }
+    while (whiteRooks) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteRooks), Arcanum::W_ROOK, kingSquare); }
     Arcanum::bitboard_t blackRooks = board.getTypedPieces(Arcanum::Piece::W_ROOK, Arcanum::Color::BLACK);
-    while (blackRooks) { indicies[idxCounter++] = findex(color, popLsb64(&blackRooks), Arcanum::B_ROOK, kingSquare); }
+    while (blackRooks) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackRooks), Arcanum::B_ROOK, kingSquare); }
 
     // Knights
     Arcanum::bitboard_t whiteKnights = board.getTypedPieces(Arcanum::Piece::W_KNIGHT, Arcanum::Color::WHITE);
-    while (whiteKnights) { indicies[idxCounter++] = findex(color, popLsb64(&whiteKnights), Arcanum::W_KNIGHT, kingSquare); }
+    while (whiteKnights) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteKnights), Arcanum::W_KNIGHT, kingSquare); }
     Arcanum::bitboard_t blackKnights = board.getTypedPieces(Arcanum::Piece::W_KNIGHT, Arcanum::Color::BLACK);
-    while (blackKnights) { indicies[idxCounter++] = findex(color, popLsb64(&blackKnights), Arcanum::B_KNIGHT, kingSquare); }
+    while (blackKnights) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackKnights), Arcanum::B_KNIGHT, kingSquare); }
 
     // Bishops
     Arcanum::bitboard_t whiteBishops = board.getTypedPieces(Arcanum::Piece::W_BISHOP, Arcanum::Color::WHITE);
-    while (whiteBishops) { indicies[idxCounter++] = findex(color, popLsb64(&whiteBishops), Arcanum::W_BISHOP, kingSquare); }
+    while (whiteBishops) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteBishops), Arcanum::W_BISHOP, kingSquare); }
     Arcanum::bitboard_t blackBishops = board.getTypedPieces(Arcanum::Piece::W_BISHOP, Arcanum::Color::BLACK);
-    while (blackBishops) { indicies[idxCounter++] = findex(color, popLsb64(&blackBishops), Arcanum::B_BISHOP, kingSquare); }
+    while (blackBishops) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackBishops), Arcanum::B_BISHOP, kingSquare); }
 
     // Queens
     Arcanum::bitboard_t whiteQueens = board.getTypedPieces(Arcanum::Piece::W_QUEEN, Arcanum::Color::WHITE);
-    while (whiteQueens) { indicies[idxCounter++] = findex(color, popLsb64(&whiteQueens), Arcanum::W_QUEEN, kingSquare); }
+    while (whiteQueens) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteQueens), Arcanum::W_QUEEN, kingSquare); }
     Arcanum::bitboard_t blackQueens = board.getTypedPieces(Arcanum::Piece::W_QUEEN, Arcanum::Color::BLACK);
-    while (blackQueens) { indicies[idxCounter++] = findex(color, popLsb64(&blackQueens), Arcanum::B_QUEEN, kingSquare); }
+    while (blackQueens) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackQueens), Arcanum::B_QUEEN, kingSquare); }
 
     if(idxCounter > 30)
         ERROR("Too many pieces on the board")
@@ -311,13 +436,13 @@ uint32_t NNUE::m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, Arca
     return idxCounter;
 }
 
-void NNUE::m_initializeAccumulator(Accumulator& accumulator, Arcanum::Board& board)
+void NNUE::initializeAccumulator(Accumulator& accumulator, const Arcanum::Board& board)
 {
     m_initializeAccumulatorPerspective(accumulator, Arcanum::Color::WHITE, board);
     m_initializeAccumulatorPerspective(accumulator, Arcanum::Color::BLACK, board);
 }
 
-void NNUE::m_initializeAccumulatorPerspective(Accumulator& accumulator, Arcanum::Color color, Arcanum::Board& board)
+void NNUE::m_initializeAccumulatorPerspective(Accumulator& accumulator, const Arcanum::Color color, const Arcanum::Board& board)
 {
     constexpr uint32_t registerWidth = 256 / 16; // Number of int16_t in AVX2 register
     constexpr uint32_t numRegs = 256 / registerWidth;
@@ -345,7 +470,7 @@ void NNUE::m_initializeAccumulatorPerspective(Accumulator& accumulator, Arcanum:
     // Write the registers to the the accumulator
     for(uint32_t i = 0; i < numRegs; i++)
     {
-        _mm256_store_si256((__m256i*) ALIGN64(&accumulator.acc[color][i * registerWidth]), regs[i]);
+        _mm256_store_si256((__m256i*)&accumulator.acc[color][i * registerWidth], regs[i]);
     }
 }
  

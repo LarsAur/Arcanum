@@ -167,7 +167,7 @@ namespace Arcanum
             Color getTurn() const;
             bitboard_t getOpponentAttacks();
             bitboard_t getOpponentPawnAttacks();
-            bitboard_t getTypedPieces(Piece type, Color color);
+            bitboard_t getTypedPieces(Piece type, Color color) const;
             Move* getLegalMovesFromCheck();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();
