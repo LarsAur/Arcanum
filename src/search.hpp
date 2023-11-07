@@ -1,6 +1,7 @@
 #pragma once
 
 #include <board.hpp>
+#include <eval.hpp>
 #include <transpositionTable.hpp>
 #include <moveSelector.hpp>
 #include <memory>
@@ -17,7 +18,6 @@ namespace Arcanum
         uint8_t count;
         Move moves[SEARCH_MAX_PV_LENGTH];
     } pvline_t;
-
 
     // https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
     typedef struct uciInfo_t

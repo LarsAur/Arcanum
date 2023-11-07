@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <board.hpp>
+#include <string>
 #include <array>
 
 namespace NN
@@ -89,9 +89,8 @@ namespace NN
                 const Arcanum::Board& board,
                 const Arcanum::Move& move
             );
-            int evaluateBoard(Arcanum::Board& board);
-            int evaluate(Accumulator& accumulator, Arcanum::Color turn);
+            int evaluateBoard(const Arcanum::Board& board);
+            int evaluate(const Accumulator& accumulator, Arcanum::Color turn);
             bool isLoaded();
     };
-
 }

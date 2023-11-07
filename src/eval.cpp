@@ -1,9 +1,7 @@
-#include <board.hpp>
+#include <eval.hpp>
 #include <algorithm>
-#include <nnue/nnue.hpp>
-using namespace Arcanum;
 
-extern NN::NNUE *nnue;
+using namespace Arcanum;
 
 bool EvalTrace::operator==(const EvalTrace& other) const { return total == other.total; }
 bool EvalTrace::operator> (const EvalTrace& other) const { return total > other.total;  }
@@ -76,13 +74,79 @@ static constexpr eval_t isolatedPawnRankBonusEnd[]   = {0, 25, 50, 50, 75, 125, 
 
 Evaluator::Evaluator()
 {
-    
+    m_enabledNNUE = false;
+    m_accumulatorStackPointer = 0;
 
     // Use default value 0xff...ff for initial value, as it is more common that 0 is the value of for example the pawnHash
     memset(m_pawnEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::pawnTableSize);
     memset(m_materialEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::materialTableSize);
     memset(m_shelterEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::shelterTableSize);
     memset(m_phaseTable, 0xFF, sizeof(PhaseEntry) * Evaluator::phaseTableSize);
+}
+
+Evaluator::~Evaluator()
+{
+    for(auto accPtr : m_accumulatorStack)
+    {
+        delete accPtr;
+    }
+}
+
+void Evaluator::setEnableNNUE(bool enabled)
+{
+    m_enabledNNUE = enabled;
+
+    if(!m_nnue.isLoaded())
+    {
+        m_nnue.loadRelative("nn-04cf2b4ed1da.nnue");
+    }
+}
+
+void Evaluator::initializeAccumulatorStack(const Board& board)
+{
+    if(!m_enabledNNUE) return;
+
+    if(m_accumulatorStack.empty())
+        m_accumulatorStack.push_back(new NN::Accumulator); // TODO: Not sure if new accounts for alignas(64) for Accumulator
+
+    m_accumulatorStackPointer = 0;
+    m_nnue.initializeAccumulator(*m_accumulatorStack[0], board);
+}
+
+void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
+{
+    if(!m_enabledNNUE) return;
+    
+    if(m_accumulatorStack.size() == m_accumulatorStackPointer + 1)
+    {
+        m_accumulatorStack.push_back(new NN::Accumulator);
+    }
+
+    m_nnue.incrementAccumulator(
+        *m_accumulatorStack[m_accumulatorStackPointer],
+        *m_accumulatorStack[m_accumulatorStackPointer+1],
+        Color(1^board.getTurn()),
+        board,
+        move
+    );
+    
+    m_accumulatorStackPointer++;
+
+    #ifdef VERIFY_NNUE_INCR
+    eval_t e1 = m_nnue.evaluate(*m_accumulatorStack[m_accumulatorStackPointer], board.m_turn);
+    eval_t e2 = m_nnue.evaluateBoard(board);
+    if(e1 != e2)
+    {
+        LOG(unsigned(move.from) << " " << unsigned(move.to) << " Type: " << (move.moveInfo & MOVE_INFO_MOVE_MASK) << " Capture: " << (move.moveInfo & MOVE_INFO_CAPTURE_MASK) << " Castle: " << (move.moveInfo & MOVE_INFO_CASTLE_MASK) << " Enpassant " << (move.moveInfo & MOVE_INFO_ENPASSANT))
+
+        exit(-1);
+    }
+    #endif
+}
+
+void Evaluator::popMoveFromAccumulator()
+{
+    m_accumulatorStackPointer--;
 }
 
 EvalTrace Evaluator::getDrawValue(Board& board, uint8_t plyFromRoot)
@@ -114,8 +178,12 @@ EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
         return eval;
     };
 
-    eval.total = board.m_turn == WHITE ? nnue->evaluateBoard(board) : -nnue->evaluateBoard(board);
-    return eval;
+    if(m_enabledNNUE)
+    {
+        eval_t score = m_nnue.evaluate(*m_accumulatorStack[m_accumulatorStackPointer], board.m_turn);
+        eval.total = board.m_turn == WHITE ? score : -score;
+        return eval;
+    }
 
     m_initEval(board);
 

@@ -1,4 +1,6 @@
 #pragma once
+
+#include <eval.hpp>
 #include <board.hpp>
 #include <optional>
 

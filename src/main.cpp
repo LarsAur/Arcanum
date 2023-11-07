@@ -5,7 +5,6 @@
 #include <search.hpp>
 #include <player.hpp>
 #include <uci.hpp>
-#include <nnue/nnue.hpp>
 
 using namespace Arcanum;
 
@@ -61,8 +60,6 @@ void play(Color color, std::string fen, int ms)
     }
 }
 
-NN::NNUE *nnue;
-
 std::string _logFileName;
 int main(int argc, char *argv[])
 {
@@ -73,13 +70,9 @@ int main(int argc, char *argv[])
     Arcanum::initGenerateRookMoves();
     Arcanum::initGenerateBishopMoves();
 
-    nnue = new NN::NNUE();
-    nnue->loadRelative("nn-04cf2b4ed1da.nnue");
-
     if(argc == 1)
     {
         UCI::loop();
-        delete nnue;
         exit(EXIT_SUCCESS);
     }
 
@@ -110,8 +103,6 @@ int main(int argc, char *argv[])
         if(!strncmp("--engine-perf", argv[i], 14))
             Perf::engineTest();
     }
-
-    delete nnue;
 
     return 0;
 }
