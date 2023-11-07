@@ -30,6 +30,10 @@ Arcanum has a number of arguments to run in different modes:
 A combination of these are available though the makefile, with `uci`, `play`, `test` and `perf` targets.
 Using no arguments makes the engine default to run in *UCI mode*.
 
+## NNUE
+Arcanum has the option to use [NNUE][nnue] (Efficiently Updatable Neural Network) to evaluate positions.
+To probe the NNUE, Arcanum uses an adaptation of [nnue-probe][nnue-probe] by dshawul. The NNUE probing code is re-written from scratch and uses AVX2.
+
 [uci-protocol]: https://backscattering.de/chess/uci/
 [lucas-chess]: https://lucaschess.pythonanywhere.com/
 [python-chess]: https://python-chess.readthedocs.io/en/latest/
@@ -39,3 +43,5 @@ Using no arguments makes the engine default to run in *UCI mode*.
 [test-positions]: https://www.chessprogramming.org/Test-Positions
 [bkt]: https://www.chessprogramming.org/Bratko-Kopec_Test
 [chess.com]: https://www.chess.com
+[nnue]: https://www.chessprogramming.org/NNUE
+[nnue-probe]: https://github.com/dshawul/nnue-probe
