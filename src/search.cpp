@@ -36,6 +36,8 @@ Searcher::Searcher()
     m_knownEndgameMaterialDraws.push_back(kingsBBishop.getMaterialHash());
     m_knownEndgameMaterialDraws.push_back(kingsWKnight.getMaterialHash());
     m_knownEndgameMaterialDraws.push_back(kingsBKnight.getMaterialHash());
+
+    m_evaluator.setEnableNNUE(true);
 }
 
 Searcher::~Searcher()
@@ -89,7 +91,9 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         Board newBoard = Board(board);
         const Move *move = moveSelector.getNextMove();
         newBoard.performMove(*move);
+        m_evaluator.pushMoveToAccumulator(newBoard, *move);
         EvalTrace score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, depth - 1, plyFromRoot + 1);
+        m_evaluator.popMoveFromAccumulator();
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
@@ -186,10 +190,10 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         // Generate new board and make the move
         Board newBoard = Board(board);
         newBoard.performMove(*move);
-        
         EvalTrace score;
         bool requireFullSearch = true;
         bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
+        m_evaluator.pushMoveToAccumulator(newBoard, *move);
 
         // Check for late move reduction
         // Conditions for not doing LMR
@@ -217,6 +221,8 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, quietDepth);
         }
         
+        m_evaluator.popMoveFromAccumulator();
+
         if(score > bestScore)
         {
             bestScore = score;
@@ -344,11 +350,15 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
         EvalTrace beta = EvalTrace(INF);
         bestScore = EvalTrace(-INF);
 
+        m_evaluator.initializeAccumulatorStack(board);
+
         for (int i = 0; i < numMoves; i++)  {
             Board newBoard = Board(board);
             const Move *move = moveSelector.getNextMove();
             newBoard.performMove(*move);
+            m_evaluator.pushMoveToAccumulator(newBoard, *move);
             EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 1, 1, quietDepth);
+            m_evaluator.popMoveFromAccumulator();
             if(score > bestScore)
             {
                 bestScore = score;
@@ -416,12 +426,15 @@ Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
             EvalTrace beta = EvalTrace(INF);
             EvalTrace bestScore = EvalTrace(-INF);
             Move bestMove = Move(0,0);
+            m_evaluator.initializeAccumulatorStack(board);
 
             for (int i = 0; i < numMoves; i++)  {
                 Board newBoard = Board(board);
                 const Move *move = moveSelector.getNextMove();
                 newBoard.performMove(*move);
+                m_evaluator.pushMoveToAccumulator(newBoard, *move);
                 EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, quietDepth);
+                m_evaluator.popMoveFromAccumulator();
 
                 if(m_stopSearch)
                 {

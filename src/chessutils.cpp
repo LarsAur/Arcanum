@@ -61,7 +61,7 @@ namespace Arcanum
         }
     }
     
-#ifdef BMI2
+#ifdef USE_BMI2
     bitboard_t rookOccupancyMask[64];
     bitboard_t rookMoves[64][1 << 12]; // 12 occupancy bits for 6 file and 6 for rank
 #else
@@ -73,7 +73,7 @@ namespace Arcanum
 
     void initGenerateRookMoves()
     {
-    #ifdef BMI2
+    #ifdef USE_BMI2
         // Create rook occupancy mask
         constexpr static bitboard_t fileA = 0x0001010101010100LL; // All all squares except edges of file
         constexpr static bitboard_t rank1 = 0x000000000000007ELL; // All all squares except edges of rank
@@ -185,7 +185,7 @@ namespace Arcanum
     #endif
     }
 
-    #ifdef BMI2
+    #ifdef USE_BMI2
     bitboard_t bishopMoves[64][1 << 12];
     bitboard_t bishopOccupancyMask[64];
     #else
@@ -203,7 +203,7 @@ namespace Arcanum
 
     void initGenerateBishopMoves()
     {
-        #ifdef BMI2
+        #ifdef USE_BMI2
             // Generate occupancy mask
             for(int i = 0; i < 64; i++)
             {

@@ -14,7 +14,7 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
 {
     m_clusterCount = (mbSize * 1024 * 1024) / sizeof(ttCluster_t);
     m_entryCount = clusterSize * m_clusterCount;
-    m_table = static_cast<ttCluster_t*>(pageAlignedMalloc(m_clusterCount * sizeof(ttCluster_t)));
+    m_table = static_cast<ttCluster_t*>(Memory::pageAlignedMalloc(m_clusterCount * sizeof(ttCluster_t)));
 
     if(m_table == nullptr)
     {
@@ -48,7 +48,7 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
 
 TranspositionTable::~TranspositionTable()
 {
-    pageAlignedFree(m_table);
+    Memory::alignedFree(m_table);
 }
 
 inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)

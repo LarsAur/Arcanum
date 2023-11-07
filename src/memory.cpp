@@ -1,8 +1,6 @@
 #include <memory.hpp>
 #include <utils.hpp>
 #include <stdlib.h>
-#include <transpositionTable.hpp>
-#include <inttypes.h>
 #include <list>
 
 #if defined(_WIN64)
@@ -15,15 +13,48 @@
 
 #define ASSUMED_PAGE_SIZE 4096
 
-struct UnalignedPointerInfo
+#if !defined(_WIN64) && !defined(__linux__)
+    struct UnalignedPointerInfo
+    {
+        void *unalignedPtr;
+        void *alignedPtr;
+    };
+
+    std::list<UnalignedPointerInfo> unalignedPointerInfos;
+#endif
+
+void* Memory::alignedMalloc(const size_t bytes, const size_t alignment)
 {
-    void *unalignedPtr;
-    void *alignedPtr;
-};
+    void* ptr = nullptr;
+    // Rounding up to the alignment
+    size_t allocSize = ((bytes + alignment - 1) / alignment) * alignment;
+    #if defined(_WIN64)
+    ptr = _aligned_malloc(allocSize, alignment);
+    #elif defined(__linux__)
+    ptr = aligned_alloc(alignment, allocSize);
+    #else
 
-std::list<UnalignedPointerInfo> unalignedPointerInfos;
+    // Create an aligned pointer from the potential unaligned malloc
+    // Add it to a list of artificial aligned pointers
+    // This is required to free them properly later
+    UnalignedPointerInfo uapi;
+    uapi.unalignedPtr = malloc(bytes + ASSUMED_PAGE_SIZE);
+    // Align the pointer by rounding up to the closest page
+    uapi.alignedPtr =  reinterpret_cast<void*>((reinterpret_cast<uint64_t>(uapi.unalignedPtr) + ASSUMED_PAGE_SIZE) & ~(ASSUMED_PAGE_SIZE - 1));
+    unalignedPointerInfos.push_back(uapi);
 
-void* Arcanum::pageAlignedMalloc(size_t bytes)
+    ptr = uapi.alignedPtr;
+    #endif
+
+    if(ptr == nullptr)
+    {
+        WARNING("Unable to allocate page aligned memory")
+    }
+
+    return ptr;
+}
+
+void* Memory::pageAlignedMalloc(const size_t bytes)
 {
     int32_t pageSize = 0;
     #if defined(_WIN64)
@@ -33,43 +64,23 @@ void* Arcanum::pageAlignedMalloc(size_t bytes)
     #elif defined(__linux__)
         pageSize = sysconf(_SC_PAGE_SIZE);
     #endif
-    
-    void* ptr = nullptr;
-    if(pageSize == 0)
-    {  
-        // Create an aligned pointer from the potential unaligned malloc
-        // Add it to a list of artificial aligned pointers
-        // This is required to free them properly later
-        UnalignedPointerInfo uapi;
-        uapi.unalignedPtr = malloc(bytes + ASSUMED_PAGE_SIZE);
-        // Align the pointer by rounding up to the closest page
-        uapi.alignedPtr =  reinterpret_cast<void*>((reinterpret_cast<uint64_t>(uapi.unalignedPtr) + ASSUMED_PAGE_SIZE) & ~(ASSUMED_PAGE_SIZE - 1));
-        unalignedPointerInfos.push_back(uapi);
 
-        ptr = uapi.alignedPtr;
+    if(pageSize == 0)
+    {
+        pageSize = ASSUMED_PAGE_SIZE;
         WARNING("Page size not found, assuming page size of " << ASSUMED_PAGE_SIZE << " bytes")
     }
-    else
-    {
-        // Rounding up to the pagesize
-        size_t allocSize = ((bytes + pageSize - 1) / pageSize) * pageSize;
-        #if defined(_WIN64)
-        ptr = _aligned_malloc(allocSize, pageSize);
-        #elif defined(__linux__)
-        ptr = aligned_alloc(pageSize, allocSize);
-        #endif
-    }
 
-    if(ptr == nullptr)
-    {
-        WARNING("Unable to allocate page aligned memory")
-    }
-
-    return ptr;
+    return alignedMalloc(bytes, pageSize);
 };
 
-void Arcanum::pageAlignedFree(void* ptr)
+void Memory::alignedFree(void* ptr)
 {
+    #if defined(_WIN64)
+    _aligned_free(ptr);
+    #elif defined(__linux__)
+    free(ptr);
+    #else
     // Search in the list of unaliged pointers and see if the aligned version matches
     // If a match is found, the unaligned version is freed and removed from the list
     // If it is not found, the pointer is assumed to be aligned_allocated and freed using _aligned_free
@@ -82,10 +93,5 @@ void Arcanum::pageAlignedFree(void* ptr)
             return;
         }
     }
-
-    #if defined(_WIN64)
-    _aligned_free(ptr);
-    #elif defined(__linux__)
-    free(ptr);
     #endif
 }

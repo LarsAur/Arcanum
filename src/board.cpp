@@ -1898,6 +1898,11 @@ bitboard_t Board::getOpponentPawnAttacks()
     return attacks;
 }
 
+bitboard_t Board::getTypedPieces(Piece type, Color color) const
+{
+    return m_bbTypedPieces[type][color];
+}
+
 bool Board::isChecked(Color color)
 {   
     uint8_t kingIdx = LS1B(m_bbTypedPieces[W_KING][color]);

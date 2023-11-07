@@ -2,8 +2,9 @@
 
 #include <stddef.h>
 
-namespace Arcanum
+namespace Memory
 {
-    void* pageAlignedMalloc(size_t bytes);
-    void pageAlignedFree(void* ptr);
+    void* alignedMalloc(const size_t bytes, const size_t alignment);
+    void* pageAlignedMalloc(const size_t bytes);
+    void alignedFree(void* ptr);
 }
