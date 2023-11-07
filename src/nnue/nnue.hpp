@@ -4,6 +4,11 @@
 #include <string>
 #include <array>
 
+/** 
+ * The code related to NNUE is an adaptation of the NNUE-probe library created by dshawul on Github.
+ * https://github.com/dshawul/nnue-probe
+**/
+
 namespace NN
 {   
     typedef int16_t AccData;

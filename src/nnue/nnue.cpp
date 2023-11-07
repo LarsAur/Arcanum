@@ -3,6 +3,11 @@
 #include <fstream>
 #include <memory.hpp>
 
+/** 
+ * The code related to NNUE is an adaptation of the NNUE-probe library created by dshawul on Github.
+ * https://github.com/dshawul/nnue-probe
+**/
+
 #if defined(_WIN64)
 #include <Libloaderapi.h>
 #elif defined(__linux__)
