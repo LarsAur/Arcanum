@@ -59,6 +59,7 @@ void UCI::loop()
         // Custom
         else if (strcmp(token.c_str(), "eval") == 0) eval(board);
         else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board);
+        else if (strcmp(token.c_str(), "d") == 0) drawBoard(board);
 
 
     } while(strcmp(token.c_str(), "quit") != 0);
@@ -215,4 +216,11 @@ void UCI::ischeckmate(Board& board)
         return;
     }
     std::cout << "nocheckmate" << std::endl;
+}
+
+void UCI::drawBoard(Board& board)
+{
+    std::cout << board.getBoardString() << std::endl;
+    std::cout << "FEN: " << board.getFEN() << std::endl; 
+    std::cout << "Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black") << std::endl;  
 }

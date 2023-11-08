@@ -176,6 +176,7 @@ namespace Arcanum
             uint8_t getNumPiecesLeft() const;
             uint8_t getNumColoredPieces(Color color) const;
             std::string getBoardString() const;
+            std::string getFEN() const;
             static std::unordered_map<hash_t, uint8_t, HashFunction>* getBoardHistory();
     };
 

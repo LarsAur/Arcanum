@@ -15,5 +15,6 @@ namespace Arcanum
         static void position(Board& board, std::istringstream& is);
         static void ischeckmate(Board& board);
         static void eval(Board& board);
+        static void drawBoard(Board& board);
     };
 }

@@ -204,7 +204,7 @@ Board::Board(const std::string fen)
     }
 
     // Read half moves
-    m_rule50 = atoi(fen.c_str() + fenPosition);
+    m_rule50 = atoi(fen.c_str() + fenPosition - 1);
 
     // Skip until space
     while(fen[fenPosition++] != ' ' && fenPosition < (int) fen.length());
@@ -2021,6 +2021,67 @@ std::string Board::getBoardString() const
     }
     ss << "  +-----------------+" << std::endl;
     ss << "    a b c d e f g h " << std::endl;
+
+    return ss.str();
+}
+
+std::string Board::getFEN() const
+{
+    std::stringstream ss;
+    int emptyCnt = 0;
+    for(int rank = 7; rank >= 0; rank--)
+    {
+        for(int file = 0; file < 8; file++)
+        {
+            char c = '\0';
+            switch (m_pieces[file + rank * 8])
+            {
+            case NO_PIECE: emptyCnt++; break;
+            case W_PAWN:    c = 'P'; break;
+            case W_ROOK:    c = 'R'; break;
+            case W_KNIGHT:  c = 'N'; break;
+            case W_BISHOP:  c = 'B'; break;
+            case W_QUEEN:   c = 'Q'; break;
+            case W_KING:    c = 'K'; break;
+            case B_PAWN:    c = 'p'; break;
+            case B_ROOK:    c = 'r'; break;
+            case B_KNIGHT:  c = 'n'; break;
+            case B_BISHOP:  c = 'b'; break;
+            case B_QUEEN:   c = 'q'; break;
+            case B_KING:    c = 'k'; break;
+            }
+
+            if(c != '\0')
+            {
+                if(emptyCnt > 0) ss << emptyCnt;
+                ss << c;
+                emptyCnt = 0;
+            }
+        }
+
+        if(emptyCnt > 0) ss << emptyCnt;
+        emptyCnt = 0;
+        if(rank != 0) ss << "/";
+    }
+
+    // Turn
+    ss << ((m_turn == Color::WHITE) ? " w " : " b ");
+    
+    // Castle
+    if(m_castleRights & WHITE_KING_SIDE)  ss << "K";  
+    if(m_castleRights & WHITE_QUEEN_SIDE) ss << "Q"; 
+    if(m_castleRights & BLACK_KING_SIDE)  ss << "k";  
+    if(m_castleRights & BLACK_QUEEN_SIDE) ss << "q"; 
+    if(m_castleRights == 0) ss << "-";
+
+    // Enpassant
+    if(m_enPassantSquare != 64) ss << " " << getArithmeticNotation(m_enPassantSquare) << " ";
+    else ss << " - ";
+
+    // Half moves
+    ss << unsigned(m_rule50) << " ";
+    // Full moves
+    ss << m_fullMoves;
 
     return ss.str();
 }
