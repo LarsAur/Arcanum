@@ -143,8 +143,6 @@ bool NNUE::loadRelative(std::string filename)
     // Move one folder up
     std::string path = std::string(execFullPath);
     size_t idx = path.find_last_of('\\');
-    path = std::string(path).substr(0, idx);
-    idx = path.find_last_of('\\');
     path = std::string(path).substr(0, idx + 1); // Keep the last '\'
     path.append(filename);
     
