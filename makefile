@@ -3,6 +3,7 @@ PROJECT ?= Arcanum
 SOURCEDIR = src
 HEADERDIR = src	
 BUILDDIR = build
+NNUE = nn-04cf2b4ed1da.nnue
 
 DEFINES += -DIS_64BIT 
 DEFINES += -DUSE_AVX2 -mavx2
@@ -19,12 +20,10 @@ rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 SOURCES := $(call rwildcard, $(SOURCEDIR)/, %.cpp)							     # Recursive search all files in source directory
 HEADERS := $(filter %.hpp, $(SOURCES))										     # Find all headers
 SOURCES := $(filter-out %.hpp, $(SOURCES))									     # Filter out header files
-BUILDSUBDIRS := $(subst /,\,$(addprefix $(BUILDDIR)/, $(filter %/, $(SOURCES)))) # Find all source folder names
 SOURCES := $(filter-out %/, $(SOURCES))											 # Filter out folder
-OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))
-				 # Create list of all object files
+OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o)) 						 # Create list of all object files
 
-all: setup $(BUILDDIR)/$(PROJECT).exe
+all: $(BUILDDIR)/$(PROJECT).exe
 
 .PHONY: uci run test perf
 uci: $(BUILDDIR)/$(PROJECT).exe
@@ -48,14 +47,19 @@ clean-logs:
 	cd build & del *.log
 
 $(BUILDDIR):
-	-mkdir $(BUILDDIR)
+	mkdir $(BUILDDIR)
+	cd $(BUILDDIR) && mkdir src
+	cd $(BUILDDIR)/src && mkdir nnue
 
-# Create all build subsfolders
-setup: $(BUILDDIR)
-	@- $(foreach folder,$(BUILDSUBDIRS),mkdir $(folder)) 
+$(BUILDDIR)/$(NNUE):
+ifeq ($(OS),Windows_NT)
+	-copy /b $(NNUE) /b $(BUILDDIR)/$(NNUE)
+else
+	-cp $(NNUE) $(BUILDDIR)
+endif
 
-$(BUILDDIR)/%.o: %.cpp $(HEADERS)
+$(BUILDDIR)/%.o: %.cpp $(HEADERS) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) -I$(HEADERDIR) -I$(dir $<) -c $< -o $@
 
-$(BUILDDIR)/$(PROJECT).exe: $(OBJECTS)
+$(BUILDDIR)/$(PROJECT).exe: $(OBJECTS) | $(BUILDDIR)/$(NNUE)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) -o $@
