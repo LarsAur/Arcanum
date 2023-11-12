@@ -107,7 +107,7 @@ void Evaluator::initializeAccumulatorStack(const Board& board)
     if(!m_enabledNNUE) return;
 
     if(m_accumulatorStack.empty())
-        m_accumulatorStack.push_back(new NN::Accumulator); // TODO: Not sure if new accounts for alignas(64) for Accumulator
+        m_accumulatorStack.push_back(new NN::Accumulator); // 'new' should account for alignas(64) for Accumulator
 
     m_accumulatorStackPointer = 0;
     m_nnue.initializeAccumulator(*m_accumulatorStack[0], board);

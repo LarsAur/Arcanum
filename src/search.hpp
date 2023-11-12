@@ -20,15 +20,6 @@ namespace Arcanum
     } pvline_t;
 
     // https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
-    typedef struct uciInfo_t
-    {
-        uint8_t depth;
-        uint8_t seldepth;
-        uint32_t time;
-        uint64_t nodes;
-        eval_t score;
-        pvLine_t pv;
-    } uciInfo_t;
 
     typedef struct SearchStats
     {
@@ -40,7 +31,20 @@ namespace Arcanum
         uint64_t researchesRequired;
         uint64_t nullWindowSearches;
     } SearchStats;
-    
+
+    struct SearchParameters
+    {
+        int64_t msTime;
+        uint64_t nodes;
+        uint32_t depth;
+        uint32_t mate; // TODO: This requires a search with only exact pruning
+        bool infinite;
+        uint32_t numSearchMoves;
+        Move searchMoves[218];
+
+        SearchParameters() : msTime(0), nodes(0), depth(0), mate(0), infinite(false), numSearchMoves(0) {};
+    };
+
     class Searcher
     {
         private:
@@ -53,20 +57,23 @@ namespace Arcanum
             RelativeHistory m_relativeHistory;
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
             SearchStats m_stats;
-            uciInfo_t m_uciInfo;            
-            bool m_stopSearch;
+
+            uint64_t m_numNodesSearched; // Number of nodes searched in a search call. Used to terminate search based on number of nodes.
+            volatile bool m_stopSearch;
 
             EvalTrace m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth);
             EvalTrace m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot);
             bool m_isDraw(const Board& board) const;
-            void m_clearUCIInfo();
         public:
             Searcher();
             ~Searcher();
-            Move getBestMove(Board& board, int depth, int quietDepth);
-            Move getBestMoveInTime(Board& board, int ms, int quietDepth);
+            Move getBestMove(Board& board, int depth);
+            Move getBestMoveInTime(Board& board, uint32_t ms);
+
+            Move search(Board board, SearchParameters parameters);
+            void stop();
+
             SearchStats getStats();
             void logStats();
-            uciInfo_t getUCIInfo();
     };
 }

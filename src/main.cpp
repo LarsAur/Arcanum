@@ -53,7 +53,7 @@ void play(Color color, std::string fen, int ms)
         if(board.getTurn() == color)
             move = player.promptForMove(board);
         else
-            move = searcher.getBestMoveInTime(board, ms, 4);
+            move = searcher.getBestMoveInTime(board, ms);
         
         board.performMove(move);
         board.addBoardToHistory();

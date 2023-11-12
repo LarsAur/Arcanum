@@ -50,7 +50,7 @@ static bool s_engineTest(uint32_t ms, std::string fen, Move bestMove, std::strin
 {
     Searcher searcher;
     Board board(fen);
-    Move foundMove = searcher.getBestMoveInTime(board, ms, 4);
+    Move foundMove = searcher.getBestMoveInTime(board, ms);
 
     if(foundMove == bestMove)
     {
@@ -236,7 +236,7 @@ void Test::draw()
     board.addBoardToHistory();
 
     Searcher wsearcher = Searcher();
-    board.performMove(wsearcher.getBestMoveInTime(board, 200, 4));
+    board.performMove(wsearcher.getBestMoveInTime(board, 200));
     board.addBoardToHistory();
     if(board.getHash() == repeat.getHash())
     {
@@ -244,11 +244,11 @@ void Test::draw()
     }
     board.performMove(Move(56, 57, MOVE_INFO_KING_MOVE));
     board.addBoardToHistory();
-    board.performMove(wsearcher.getBestMoveInTime(board, 200, 4));
+    board.performMove(wsearcher.getBestMoveInTime(board, 200));
     board.addBoardToHistory();
     board.performMove(Move(57, 56, MOVE_INFO_KING_MOVE));
     board.addBoardToHistory();
-    board.performMove(wsearcher.getBestMoveInTime(board, 200, 4));
+    board.performMove(wsearcher.getBestMoveInTime(board, 200));
     board.addBoardToHistory();
     if(board.getHash() == repeat.getHash())
     {
@@ -411,10 +411,10 @@ void Perf::search()
     for(int i = 0; i < 20; i++)
     {
         DEBUG("PERF: " << i << "/" << 20)
-        Move whiteMove = whiteSearcher.getBestMove(board, 10, 4);
+        Move whiteMove = whiteSearcher.getBestMove(board, 10);
         board.performMove(whiteMove);
         board.addBoardToHistory();
-        Move blackMove = blackSearcher.getBestMove(board, 10, 4);
+        Move blackMove = blackSearcher.getBestMove(board, 10);
         board.performMove(blackMove);
         board.addBoardToHistory();
     }

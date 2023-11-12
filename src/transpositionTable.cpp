@@ -204,3 +204,9 @@ void TranspositionTable::logStats()
 
     LOG(ss.str())
 } 
+
+uint32_t TranspositionTable::permills()
+{
+    uint64_t entriesInTable = m_stats.entriesAdded - m_stats.replacements - m_stats.blockedReplacements - m_stats.updates;
+    return m_stats.maxEntries > 0 ? (1000 * entriesInTable / m_stats.maxEntries) : 1000;
+}

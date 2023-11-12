@@ -62,5 +62,6 @@ namespace Arcanum
             void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash);
             ttStats_t getStats();
             void logStats();
+            uint32_t permills(); // Returns how full the table is in permills 
     };
 }

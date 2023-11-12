@@ -1,6 +1,7 @@
-#include <chrono>
 #include <search.hpp>
 #include <moveSelector.hpp>
+#include <uci.hpp>
+#include <chrono>
 #include <algorithm>
 #include <utils.hpp>
 #include <thread>
@@ -55,10 +56,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
 
     if(!board.isChecked(board.getTurn()))
     {
-        #if SEARCH_RECORD_STATS
-        m_stats.evaluatedPositions++;
-        #endif
-        
+        m_numNodesSearched++;
         EvalTrace standPat = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
         if(standPat >= beta)
         {
@@ -75,9 +73,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     uint8_t numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
-        #if SEARCH_RECORD_STATS
-        m_stats.evaluatedPositions++;
-        #endif
+        m_numNodesSearched++;
         return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
     }
 
@@ -172,9 +168,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
-        #if SEARCH_RECORD_STATS
-        m_stats.evaluatedPositions++;
-        #endif
+        m_numNodesSearched++;
         return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
     }
     board.generateCaptureInfo();
@@ -322,51 +316,93 @@ inline bool Searcher::m_isDraw(const Board& board) const
     return false;
 }
 
-Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
+Move Searcher::getBestMove(Board& board, int depth)
 {
-    // Safeguard for not searching deeper than SEARCH_MAX_PV_LENGTH
-    if(depth > SEARCH_MAX_PV_LENGTH)
-    {
-        WARNING("Depth (" << depth << ") is higher than SEARCH_MAX_PV_LENGTH (" << SEARCH_MAX_PV_LENGTH << "). Setting depth to " << SEARCH_MAX_PV_LENGTH)
-        depth = SEARCH_MAX_PV_LENGTH;
-    }
+    SearchParameters parameters = SearchParameters();
+    parameters.depth = depth;
+    return search(Board(board), parameters);
+}
 
+Move Searcher::getBestMoveInTime(Board& board, uint32_t ms)
+{
+    SearchParameters parameters = SearchParameters();
+    parameters.msTime = ms;
+    return search(Board(board), parameters);
+}
+
+Move Searcher::search(Board board, SearchParameters parameters)
+{
     m_stopSearch = false;
+    m_numNodesSearched = 0;
+    EvalTrace searchScore = EvalTrace(0);
+    Move searchBestMove = Move(0,0);
+    pvline_t pvLine, pvLineTmp, _pvLineTmp;
     auto start = std::chrono::high_resolution_clock::now();
 
-    Move bestMove;
-    pvLine_t pvLine, _pvLine;
-    EvalTrace bestScore = EvalTrace(-INF);
-    for(int d = 1; d <= depth; d++)
-    {
-        Move* moves = board.getLegalMoves();
-        uint8_t numMoves = board.getNumLegalMoves();
-        board.generateCaptureInfo();
+    // Start a thread which will stop the search if the limit is reached
+    std::thread trd = std::thread([&] {
+        while (!m_stopSearch)
+        {
+            if(parameters.msTime > 0)
+            {
+                auto t = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> diff = t - start;
+                auto millisecs = std::chrono::duration_cast<std::chrono::milliseconds>(diff);
+                
+                if(millisecs.count() >= parameters.msTime)
+                    stop();
+            }
 
+            // The number of nodes is checked in the thread, which makes it less precise.
+            // Usually this results is searching about 30k more nodes.
+            // This is however not a problem as the node limit is ambiguous to begin with: https://www.chessprogramming.org/Nodes_per_Second
+            if(parameters.nodes > 0 && parameters.nodes <= m_numNodesSearched)
+                stop();
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    });
+    
+    // Check if only a select set of moves should be searched
+    Move* moves = parameters.searchMoves;
+    uint8_t numMoves = parameters.numSearchMoves;
+    if(parameters.numSearchMoves == 0)
+    {
+        moves = board.getLegalMoves();
+        numMoves = board.getNumLegalMoves();
+        board.generateCaptureInfo();
+    }
+
+    uint32_t depth = 1;
+    while(parameters.depth == 0 || parameters.depth >= depth)
+    {
         std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
         MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
         
         EvalTrace alpha = EvalTrace(-INF);
         EvalTrace beta = EvalTrace(INF);
-        bestScore = EvalTrace(-INF);
-
+        EvalTrace bestScore = EvalTrace(-INF);
+        Move bestMove = Move(0,0);
         m_evaluator.initializeAccumulatorStack(board);
 
         for (int i = 0; i < numMoves; i++)  {
-            Board newBoard = Board(board);
             const Move *move = moveSelector.getNextMove();
+            Board newBoard = Board(board);
             newBoard.performMove(*move);
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
-            EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 1, 1, quietDepth);
+            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, 4);
             m_evaluator.popMoveFromAccumulator();
+
+            if(m_stopSearch)
+                break;
+
             if(score > bestScore)
             {
                 bestScore = score;
                 bestMove = *move;
-                pvLine.moves[0] = bestMove;
-                memcpy(pvLine.moves + 1, _pvLine.moves, _pvLine.count * sizeof(Move));
-                pvLine.count = _pvLine.count + 1;
-
+                pvLineTmp.moves[0] = bestMove;
+                memcpy(pvLineTmp.moves + 1, _pvLineTmp.moves, _pvLineTmp.count * sizeof(Move));
+                pvLineTmp.count = _pvLineTmp.count + 1;
                 if(score > alpha)
                 {   
                     alpha = score;
@@ -374,162 +410,91 @@ Move Searcher::getBestMove(Board& board, int depth, int quietDepth)
             }
         }
 
-        m_tt->add(bestScore, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
-    }
-
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
-    
-    LOG("Best move: " << bestMove << "\n" << bestScore)
-    // Print PV line
-    std::stringstream ss;
-    for(int i = 0; i < pvLine.count; i++)
-    {
-        ss << pvLine.moves[i] << " ";
-    }
-    LOG("PV Line: " << ss.str())
-    LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
-
-    m_tt->logStats();
-    logStats();
-
-    m_generation += 1; // Generation will update every 4th search
-
-    return bestMove;
-}
-
-Move Searcher::getBestMoveInTime(Board& board, int ms, int quietDepth)
-{
-    #if SEARCH_RECORD_STATS
-    m_stats.quietSearchDepth = 0;
-    #endif
-
-    int depth = 0;
-    EvalTrace searchScore = EvalTrace(0);
-    Move searchBestMove = Move(0,0);
-    pvline_t pvLine, pvLineTmp, _pvLineTmp;
-
-    auto search = [&]()
-    {
-        Move* moves = board.getLegalMoves();
-        uint8_t numMoves = board.getNumLegalMoves();
-        board.generateCaptureInfo();
-
-        while(true)
+        // The move found can be used even if search is canceled, if we search the previously best move first
+        // If a better move is found, is is guaranteed to be better than the best move at the previous depth
+        if(!(bestMove == Move(0, 0)))
         {
-            depth++;
-            std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
-            
-            EvalTrace alpha = EvalTrace(-INF);
-            EvalTrace beta = EvalTrace(INF);
-            EvalTrace bestScore = EvalTrace(-INF);
-            Move bestMove = Move(0,0);
-            m_evaluator.initializeAccumulatorStack(board);
-
-            for (int i = 0; i < numMoves; i++)  {
-                Board newBoard = Board(board);
-                const Move *move = moveSelector.getNextMove();
-                newBoard.performMove(*move);
-                m_evaluator.pushMoveToAccumulator(newBoard, *move);
-                EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, quietDepth);
-                m_evaluator.popMoveFromAccumulator();
-
-                if(m_stopSearch)
-                {
-                    break;
-                }
-
-                if(score > bestScore)
-                {
-                    bestScore = score;
-                    bestMove = *move;
-                    pvLineTmp.moves[0] = bestMove;
-                    memcpy(pvLineTmp.moves + 1, _pvLineTmp.moves, _pvLineTmp.count * sizeof(Move));
-                    pvLineTmp.count = _pvLineTmp.count + 1;
-                    if(score > alpha)
-                    {   
-                        alpha = score;
-                    }
-                }
-            }
-
-            // The move found can be used even if search is canceled, if we search the previously best move first
-            // If a better move is found, is is guaranteed to be better than the best move at the previous depth
-            if(!(bestMove == Move(0, 0)))
-            {
-                searchScore = bestScore;
-                searchBestMove = bestMove;
-                memcpy(pvLine.moves, pvLineTmp.moves, pvLineTmp.count * sizeof(Move));
-                pvLine.count = pvLineTmp.count;
-            }
-
-            // Stop search from writing to TT
-            // If search is stopped, corrigate depth to the depth from the previous iterations
-            if(m_stopSearch)
-            {
-                depth--;
-                break;
-            }
-
-            // If search is not canceled, save the best move found in this iteration
-            m_tt->add(bestScore, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
-
-            // If checkmate is found, search can be canceled
-            // Checkmate score is given by INT16_MAX - board.getFullMoves()
-            // absolute value of the checkmate score cannot be less than 
-            // INT16_MAX - board.getFullMoves() - depth
-            if(std::abs(bestScore.total) >= INT16_MAX - board.getFullMoves() - depth)
-            {
-                break;
-            }
-
-            // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
-            // or else it would overflow the pvline array
-            // This is set to a high number, but this failsafe is added just in case
-            if(depth >= SEARCH_MAX_PV_LENGTH - 1)
-            {
-                break;
-            }
+            searchScore = bestScore;
+            searchBestMove = bestMove;
+            memcpy(pvLine.moves, pvLineTmp.moves, pvLineTmp.count * sizeof(Move));
+            pvLine.count = pvLineTmp.count;
         }
-        m_stopSearch = true;
-    };
 
-    // Start thread and wait for the time to pass
-    // Note: using sleep is less precise, but is more efficient than using high_resolution clock for waiting
-    auto start = std::chrono::high_resolution_clock::now();
-    m_stopSearch = false;
-    std::thread searchThread(search);
-    std::this_thread::sleep_for(std::chrono::microseconds(ms * 1000));
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
-    m_stopSearch = true;
-    searchThread.join();
-    
-    if(searchBestMove == Move(0,0))
-    {
-        ERROR("No moves found by search")
-        exit(EXIT_FAILURE);
+        // Stop search from writing to TT
+        // If search is stopped, corrigate depth to the depth from the previous iterations
+        if(m_stopSearch)
+        {
+            depth--;
+            break;
+        }
+
+        // If search is not canceled, save the best move found in this iteration
+        m_tt->add(bestScore, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
+
+        // Send UCI info
+        UCI::SearchInfo info = UCI::SearchInfo();
+        info.depth = depth;
+        info.msTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
+        info.nodes = m_numNodesSearched;
+        info.score = bestScore.total;
+        info.hashfull = m_tt->permills();
+        info.bestMove = bestMove;
+        if(Evaluator::isCheckMateScore(bestScore))
+        {
+            info.mate = true;
+            uint16_t distance = (INT16_MAX - std::abs(bestScore.total)) / 2; // Divide by 2 to get moves and not plys.
+            info.mateDistance = bestScore.total > 0 ? distance : -distance;
+        }
+        for(uint32_t i = 0; i < pvLine.count; i++)
+            info.pvLine.push_back(pvLine.moves[i]);
+        UCI::sendUciInfo(info);
+
+        // If checkmate is found, search can be stopped
+        if(m_evaluator.isCheckMateScore(bestScore))
+            break;
+
+        depth++;
+
+        // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
+        // or else it would overflow the pvline array
+        // This is set to a high number, but this failsafe is added just in case
+        if(depth >= SEARCH_MAX_PV_LENGTH - 1)
+            break;
     }
 
-    LOG("Best move: " << searchBestMove << "\n" << searchScore)
-    // Print PV line
-    std::stringstream ss;
-    for(int i = 0; i < pvLine.count; i++)
-    {
-        ss << pvLine.moves[i] << " ";
-    }
-    LOG("PV Line: " << ss.str())
-    LOG("Calculated to depth: " << depth << " in " << micros.count() / 1000 << "ms")
+    // If the search is not already stopped, stop the stopping thread before joining
+    stop();
+    if(trd.joinable())
+        trd.join();
 
+    // Send UCI info
+    UCI::SearchInfo info = UCI::SearchInfo();
+    info.depth = depth;
+    info.msTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
+    info.nodes = m_numNodesSearched;
+    info.hashfull = m_tt->permills();
+    info.bestMove = searchBestMove;
+    for(uint32_t i = 0; i < pvLine.count; i++)
+        info.pvLine.push_back(pvLine.moves[i]);
+    UCI::sendUciInfo(info);
+    UCI::sendUciBestMove(searchBestMove);
+
+    #if SEARCH_RECORD_STATS
+    m_stats.evaluatedPositions += m_numNodesSearched;
+    #endif
     m_tt->logStats();
     logStats();
 
+    //TODO: Generation should use board full moves
     m_generation += 1; // Generation will update every 4th search
+
 
     return searchBestMove;
+}
+
+void Searcher::stop()
+{
+    m_stopSearch = true;
 }
 
 SearchStats Searcher::getStats()
@@ -558,19 +523,4 @@ void Searcher::logStats()
 
     LOG(ss.str())
     #endif
-}
-
-void Searcher::m_clearUCIInfo()
-{
-    m_uciInfo.depth = 0;
-    m_uciInfo.seldepth = 0;
-    m_uciInfo.time = 0;
-    m_uciInfo.nodes = 0;
-    m_uciInfo.score = 0;
-    m_uciInfo.pv.count = 0;
-}
-
-uciInfo_t Searcher::getUCIInfo()
-{
-    return m_uciInfo;
 }
