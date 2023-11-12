@@ -28,6 +28,7 @@ namespace UCI
     void go(Arcanum::Board& board, Arcanum::Searcher& searcher, std::istringstream& is);
     void setoption(std::istringstream& is);
     void position(Arcanum::Board& board, std::istringstream& is);
+    int64_t allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber);
     void ischeckmate(Arcanum::Board& board);
     void eval(Arcanum::Board& board);
     void drawBoard(Arcanum::Board& board);
@@ -90,6 +91,9 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     std::string token;
     std::stringstream ssInfo;
     SearchParameters parameters = SearchParameters();
+    uint32_t time[2] = {0, 0};
+    uint32_t inc[2] = {0, 0};
+    uint32_t movesToGo = 0;
     ssInfo << "info ";
 
     while(is >> token)
@@ -105,21 +109,27 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
                     if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
                         parameters.searchMoves[parameters.numSearchMoves++] = moves[i];
         }
-        else if(!strcmp(token.c_str(), "wtime"))     UCI_WARNING("wtime")
-        else if(!strcmp(token.c_str(), "btime"))     UCI_WARNING("btime")
-        else if(!strcmp(token.c_str(), "winc"))      UCI_WARNING("winc")
-        else if(!strcmp(token.c_str(), "binc"))      UCI_WARNING("binc")
-        else if(!strcmp(token.c_str(), "movestogo")) UCI_WARNING("movestogo")
+        else if(!strcmp(token.c_str(), "wtime"))     is >> time[Arcanum::Color::WHITE];
+        else if(!strcmp(token.c_str(), "btime"))     is >> time[Arcanum::Color::BLACK];
+        else if(!strcmp(token.c_str(), "winc"))      is >> inc[Arcanum::Color::WHITE];
+        else if(!strcmp(token.c_str(), "binc"))      is >> inc[Arcanum::Color::BLACK];
+        else if(!strcmp(token.c_str(), "movestogo")) is >> movesToGo;
         else if(!strcmp(token.c_str(), "depth"))     is >> parameters.depth;
         else if(!strcmp(token.c_str(), "nodes"))     is >> parameters.nodes;
         else if(!strcmp(token.c_str(), "movetime"))  is >> parameters.msTime;
         else if(!strcmp(token.c_str(), "perft"))     UCI_WARNING("perft")
         else if(!strcmp(token.c_str(), "infinite"))  parameters.infinite = true;
         else if(!strcmp(token.c_str(), "ponder"))    UCI_WARNING("ponder")
+        else if(!strcmp(token.c_str(), "mate"))      UCI_WARNING("mate")
         else UCI_ERROR("Unknown command")
     }
 
-    // TODO: Time manager
+    Arcanum::Color turn = board.getTurn();
+    int64_t allocatedTime = allocateTime(time[turn], inc[turn], movesToGo, board.getFullMoves());
+    if(parameters.msTime > 0 && allocatedTime > 0)
+        parameters.msTime = std::min(parameters.msTime, allocatedTime);
+    else if(allocatedTime > 0)
+        parameters.msTime = allocatedTime;
 
     if(!isSearching)
     {
@@ -179,6 +189,21 @@ void UCI::position(Board& board, std::istringstream& is)
             }
         }
     }
+}
+
+int64_t UCI::allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber)
+{
+    // I pulled these numbers and formulas out of a hat :^)
+    if(time == 0)
+        return 0;
+
+    if(toGo > 0)
+        return std::max(1U, time / (toGo + 5));
+
+    if(inc > 0)
+        return std::max(1U, time / std::max(80U - moveNumber, 5U));
+
+    return std::max(1U, time / std::max(80U - moveNumber, 20U));
 }
 
 void UCI::sendUciInfo(const SearchInfo& info)
