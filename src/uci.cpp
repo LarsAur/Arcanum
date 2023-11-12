@@ -103,7 +103,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
             while (is >> token)
                 for(int i = 0; i < numLegalMoves; i++)
                     if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
-                        parameters.searchMoves[numLegalMoves++];
+                        parameters.searchMoves[parameters.numSearchMoves++] = moves[i];
         }
         else if(!strcmp(token.c_str(), "wtime"))     UCI_WARNING("wtime")
         else if(!strcmp(token.c_str(), "btime"))     UCI_WARNING("btime")
