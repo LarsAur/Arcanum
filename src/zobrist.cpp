@@ -112,7 +112,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
         if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_QUEEN)
         {
             hash ^= m_tables[W_ROOK][WHITE][0] ^  m_tables[W_ROOK][WHITE][3];
-        } 
+        }
         else if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_KING)
         {
             hash ^= m_tables[W_ROOK][WHITE][7] ^  m_tables[W_ROOK][WHITE][5];
@@ -156,7 +156,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassan
             materialHash ^= m_tables[capturedIndex][opponent][count];
         }
     }
-    
+
     hash_t enPassantHash = (m_enPassantTable[oldEnPassantSquare] * (oldEnPassantSquare != 64)) ^ (m_enPassantTable[newEnPassantSquare] * (newEnPassantSquare != 64));
     pawnHash ^= enPassantHash;
     hash ^= enPassantHash;

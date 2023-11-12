@@ -21,7 +21,7 @@ namespace Arcanum
 
     typedef enum Piece : uint8_t
     {
-        W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING, 
+        W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING,
         B_PAWN, B_ROOK, B_KNIGHT, B_BISHOP, B_QUEEN, B_KING,
         NO_PIECE,
     } Piece;
@@ -67,7 +67,7 @@ namespace Arcanum
         uint32_t moveInfo;
 
         Move(){}
-        
+
         Move(uint8_t _from, uint8_t _to, uint32_t _moveInfo = 0)
         {
             from = _from;
@@ -85,7 +85,7 @@ namespace Arcanum
             std::stringstream ss;
             ss << getArithmeticNotation(from);
             ss << getArithmeticNotation(to);
-            
+
             if(moveInfo & MOVE_INFO_PROMOTE_QUEEN)       ss << "q";
             else if(moveInfo & MOVE_INFO_PROMOTE_ROOK)   ss << "r";
             else if(moveInfo & MOVE_INFO_PROMOTE_BISHOP) ss << "b";
@@ -97,7 +97,7 @@ namespace Arcanum
         {
             os << getArithmeticNotation(move.from);
             os << getArithmeticNotation(move.to);
-            
+
             if(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)       os << "q";
             else if(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)   os << "r";
             else if(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP) os << "b";
@@ -131,7 +131,7 @@ namespace Arcanum
 
             bitboard_t m_bbAllPieces;
             bitboard_t m_bbColoredPieces[NUM_COLORS];
-            bitboard_t m_bbTypedPieces[6][NUM_COLORS]; 
+            bitboard_t m_bbTypedPieces[6][NUM_COLORS];
 
             Piece m_pieces[64];
             uint8_t m_numLegalMoves;

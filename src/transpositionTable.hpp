@@ -35,7 +35,7 @@ namespace Arcanum
         uint64_t maxEntries;
     } ttStats_t;
 
-    // Make each cluster fit into CACHE_LINE_SIZE bytes 
+    // Make each cluster fit into CACHE_LINE_SIZE bytes
     static constexpr uint32_t clusterSize = CACHE_LINE_SIZE / sizeof(ttEntry_t);
     static constexpr uint32_t clusterPaddingBytes = CACHE_LINE_SIZE - clusterSize * sizeof(ttEntry_t);
 
@@ -62,6 +62,6 @@ namespace Arcanum
             void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash);
             ttStats_t getStats();
             void logStats();
-            uint32_t permills(); // Returns how full the table is in permills 
+            uint32_t permills(); // Returns how full the table is in permills
     };
 }

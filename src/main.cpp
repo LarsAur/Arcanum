@@ -54,7 +54,7 @@ void play(Color color, std::string fen, int ms)
             move = player.promptForMove(board);
         else
             move = searcher.getBestMoveInTime(board, ms);
-        
+
         board.performMove(move);
         board.addBoardToHistory();
     }
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
     for(int i = 1; i < argc; i++)
     {
         if(!strncmp("--play", argv[i], 7))
-            // TODO: Add input about player, computer, fen and search 
+            // TODO: Add input about player, computer, fen and search
             play(Color::BLACK, Arcanum::startFEN, 3000);
 
         if(!strncmp("--perft-test", argv[i], 13))
@@ -87,7 +87,7 @@ int main(int argc, char *argv[])
 
         if(!strncmp("--capture-test", argv[i], 15))
             Test::captureMoves();
-         
+
         if(!strncmp("--zobrist-test", argv[i], 15))
             Test::zobrist();
 

@@ -32,7 +32,7 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
     {
         Piece capturePiece = Piece(LS1B(move.moveInfo & MOVE_INFO_CAPTURE_MASK) - 16);
         int32_t materialDelta = s_pieceValues[capturePiece] - s_pieceValues[movePiece];
-        
+
         // Check if recapture is available
         if(m_bbOpponentAttacks & bbTo)
         {
@@ -115,8 +115,8 @@ KillerMoveManager::KillerMoveManager()
 }
 
 // Have to check if the move is not a capture move before adding it to the killer move list
-// This can be checked in the add function, but it is faster to do it before the function call, 
-// because if can avoid overhead from calling the function 
+// This can be checked in the add function, but it is faster to do it before the function call,
+// because if can avoid overhead from calling the function
 void KillerMoveManager::add(Move move, uint8_t plyFromRoot)
 {
     if(plyFromRoot >= KILLER_MOVES_MAX_PLY)
@@ -175,13 +175,13 @@ RelativeHistory::RelativeHistory()
 // Moves should only be added to the history if at an appropriate depth
 // Too low depth will instill much noise.
 // Moves should only be added at beta cutoffs
-// Add history score when a quiet move causes a beta-cutoff 
+// Add history score when a quiet move causes a beta-cutoff
 void RelativeHistory::addHistory(const Move& move, uint8_t depth, Color turn)
 {
     m_hhScores[turn][move.from][move.to] += depth * depth;
 }
 
-// Add butterfly score when a quiet move does not cause a beta-cutoff 
+// Add butterfly score when a quiet move does not cause a beta-cutoff
 void RelativeHistory::addButterfly(const Move& move, uint8_t depth, Color turn)
 {
     m_bfScores[turn][move.from][move.to] += depth * depth;

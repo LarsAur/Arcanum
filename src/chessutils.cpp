@@ -7,7 +7,7 @@ namespace Arcanum
 {
     bitboard_t knightAttacks[64];
     void initGenerateKnightAttacks()
-    {   
+    {
         // Source: https://www.chessprogramming.org/Knight_Pattern
         for(bitboard_t i = 0; i < 64; i++)
         {
@@ -38,7 +38,7 @@ namespace Arcanum
 
     bitboard_t kingMoves[64];
     void initGenerateKingMoves()
-    {   
+    {
         for(bitboard_t i = 0; i < 64; i++)
         {
             // Get what file the king is on
@@ -60,7 +60,7 @@ namespace Arcanum
             kingMoves[i] = kmbb;
         }
     }
-    
+
 #ifdef USE_BMI2
     bitboard_t rookOccupancyMask[64];
     bitboard_t rookMoves[64][1 << 12]; // 12 occupancy bits for 6 file and 6 for rank
@@ -112,7 +112,7 @@ namespace Arcanum
                     fileMove |= (1 << k);
                     if((fileOcc << 1) & (1 << k)) break;
                 }
-                
+
 
                 for(uint64_t rankOcc = 0; rankOcc < (1 << 6); rankOcc++)
                 {
@@ -136,7 +136,7 @@ namespace Arcanum
                     // Construct occupancy bitboard, which is used to generate the correct index
                     // This is needed because the order of the occupancy bits are not contiguous rank file bits
                     // The bits are interleaved when using the _pext_u64 intrinsic.
-                    bitboard_t occupancy = (fileOcc << 1) << (rank * 8); // add file 
+                    bitboard_t occupancy = (fileOcc << 1) << (rank * 8); // add file
                     for(int m = 0; m < 6; m++)
                     {
                         //           Mth bit of rankOcc       To M+1th rank    To file
@@ -190,13 +190,13 @@ namespace Arcanum
     bitboard_t bishopOccupancyMask[64];
     #else
     // occupancy index is used for one diagonal
-    // to get both diagonals, lookup occupancy index of both diagonals 
+    // to get both diagonals, lookup occupancy index of both diagonals
     // individually and use bitwise or with corresponding diagonal mask
     bitboard_t bishopMoves[8 * (1 << 6)] = {0LL};
-    
+
     // Diagonal bottom left to upper right
     bitboard_t diagonal[64];
-    
+
     // Diagonal bottom upper left to lower right
     bitboard_t antiDiagonal[64];
     #endif
@@ -265,7 +265,7 @@ namespace Arcanum
 
                         int bitboardIdx = 8*(rank + k) + file + k;
                         bishopMove |= 0b1LL << bitboardIdx;
-                        
+
                         // Check if occupied
                         if(occupancy & (1LL << bitboardIdx)) break;
                     }
@@ -278,7 +278,7 @@ namespace Arcanum
 
                         int bitboardIdx = 8*(rank - k) + file - k;
                         bishopMove |= 0b1LL << bitboardIdx;
-                        
+
                         // Check if occupied
                         if(occupancy & (1LL << bitboardIdx)) break;
                     }
@@ -291,7 +291,7 @@ namespace Arcanum
 
                         int bitboardIdx = 8*(rank + k) + file - k;
                         bishopMove |= 0b1LL << bitboardIdx;
-                        
+
                         // Check if occupied
                         if(occupancy & (1LL << bitboardIdx)) break;
                     }
@@ -362,7 +362,7 @@ namespace Arcanum
 
                     int bitboardIdx = (((rank + k) << 3) | (file + k));
                     bishopMove |= 0b1LL << bitboardIdx;
-                    
+
                     // Check if occupied
                     if((j << 1) & (1 << (file + k))) break;
                 }
@@ -375,7 +375,7 @@ namespace Arcanum
 
                     int bitboardIdx = (((rank - k) << 3) | (file - k));
                     bishopMove |= 0b1LL << bitboardIdx;
-                    
+
                     // Check if occupied
                     if((j << 1) & (1 << (file - k))) break;
                 }
@@ -388,7 +388,7 @@ namespace Arcanum
 
                     int bitboardIdx = (((rank + k) << 3) | (file - k));
                     bishopMove |= 0b1LL << bitboardIdx;
-                    
+
                     // Check if occupied
                     if((j << 1) & (1 << (file - k))) break;
                 }
@@ -405,7 +405,7 @@ namespace Arcanum
                     // Check if occupied
                     if((j << 1) & (1 << (file + k))) break;
                 }
-                
+
                 bishopMoves[(file << 6) | j] |= bishopMove;
             }
         }

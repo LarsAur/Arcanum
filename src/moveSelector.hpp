@@ -9,7 +9,7 @@ namespace Arcanum
     {
         private:
             // Maximum search depth (ply) for 64 for killer moves
-            // 2 killer moves per ply 
+            // 2 killer moves per ply
             Move m_killerMoves[KILLER_MOVES_MAX_PLY][2];
         public:
             KillerMoveManager();
@@ -21,7 +21,7 @@ namespace Arcanum
     {
         private:
             uint32_t m_hhScores[2][64][64]; // History: Count the number of times the move did cause a Beta-cut
-            uint32_t m_bfScores[2][64][64]; // Butterfly: Count the number of times the move did not cause a Beta-cut 
+            uint32_t m_bfScores[2][64][64]; // Butterfly: Count the number of times the move did not cause a Beta-cut
         public:
             RelativeHistory();
             void addHistory(const Move& move, uint8_t depth, Color turn);

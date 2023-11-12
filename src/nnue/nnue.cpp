@@ -3,7 +3,7 @@
 #include <fstream>
 #include <memory.hpp>
 
-/** 
+/**
  * The code related to NNUE is an adaptation of the NNUE-probe library created by dshawul on Github.
  * https://github.com/dshawul/nnue-probe
 **/
@@ -11,7 +11,7 @@
 #if defined(_WIN64)
 #include <Libloaderapi.h>
 #elif defined(__linux__)
-    
+
 #else
     LOG("Else")
 #endif
@@ -113,7 +113,7 @@ bool NNUE::loadFullPath(std::string fullPath)
     LOG("Loading: " << fullPath)
 
     std::ifstream stream = std::ifstream(fullPath, std::ios::binary | std::ios::in);
-    
+
     if(!stream.is_open())
     {
         ERROR("Unable to open file")
@@ -123,7 +123,7 @@ bool NNUE::loadFullPath(std::string fullPath)
     m_loadHeader(stream);
     m_loadWeights(stream);
     m_loaded = true;
-    stream.close();    
+    stream.close();
 
     return true;
 }
@@ -145,13 +145,13 @@ bool NNUE::loadRelative(std::string filename)
     size_t idx = path.find_last_of('\\');
     path = std::string(path).substr(0, idx + 1); // Keep the last '\'
     path.append(filename);
-    
+
     return loadFullPath(path);
 }
 
 int NNUE::evaluate(const Accumulator& accumulator, Arcanum::Color turn)
 {
-    constexpr uint32_t numChunks = 16 * ftOuts / 256; 
+    constexpr uint32_t numChunks = 16 * ftOuts / 256;
     alignas(8) Mask mask[numChunks];
     alignas(8) Mask hiddenMask[8 / sizeof(Mask)] = {0};
     NetData netData;
@@ -173,7 +173,7 @@ int NNUE::evaluate(const Accumulator& accumulator, Arcanum::Color turn)
             mask[index] = _mm256_movemask_epi8(_mm256_cmpgt_epi8(packed,_mm256_setzero_si256()));
         }
     }
-    
+
     m_affineTransform(netData.input, netData.hiddenOut1, 2*ftOuts, l1outs, m_hiddenLayer1.biases, m_hiddenLayer1.weights, mask, hiddenMask, true);
 
     m_affineTransform(netData.hiddenOut1, netData.hiddenOut2, l1outs, l2outs, m_hiddenLayer2.biases, m_hiddenLayer2.weights, hiddenMask, nullptr, false);
@@ -207,7 +207,7 @@ void NNUE::incrementAccumulator(
         else if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_QUEEN)   { activated = findex(nPerspective, 59, rookPiece, kingSquare); deactivated = findex(nPerspective, 56, rookPiece, kingSquare); }
         else if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_KING)    { activated = findex(nPerspective,  5, rookPiece, kingSquare); deactivated = findex(nPerspective,  7, rookPiece, kingSquare); }
         else /*move.moveInfo & MOVE_INFO_CASTLE_BLACK_KING*/    { activated = findex(nPerspective, 61, rookPiece, kingSquare); deactivated = findex(nPerspective, 63, rookPiece, kingSquare); }
-        
+
         for(int i = 0; i < numChunks; i++)
         {
             // Copy previous accumulator
@@ -222,7 +222,7 @@ void NNUE::incrementAccumulator(
         return;
     }
 
-    // If the move is a king move, the whole accumulator 
+    // If the move is a king move, the whole accumulator
     // for the moving color has to be updated.
     // if the move does not capture anything, the other perspective does not need to be updated.
     if(move.moveInfo & MOVE_INFO_KING_MOVE && !(move.moveInfo & MOVE_INFO_CAPTURE_MASK))
@@ -238,11 +238,11 @@ void NNUE::incrementAccumulator(
         return;
 
     }
-    
+
     if(move.moveInfo & MOVE_INFO_KING_MOVE)
     {
         m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
-        
+
         // Copy the accumulator of the other perspective
         for(int i = 0; i < numChunks; i++)
         {
@@ -275,7 +275,7 @@ void NNUE::incrementAccumulator(
         std::array<uint32_t, 2> deactivated;
         uint32_t activated;
         uint32_t numDeactivated = m_calculateChangedIndices(activated, deactivated, Arcanum::Color(p), move, board);
-        
+
         // Copy the accumulator of the other perspective
         for(int i = 0; i < numChunks; i++)
         {
@@ -350,7 +350,7 @@ void NNUE::m_affineTransform(
     __m256i out2 = _mm256_load_si256(&((__m256i*) biases)[2]);
     __m256i out3 = _mm256_load_si256(&((__m256i*) biases)[3]);
     __m256i first, second;
-    uint32_t idx; 
+    uint32_t idx;
     Mask2 v;
 
     memcpy(&v, inMask, sizeof(Mask2));
@@ -424,7 +424,7 @@ uint32_t NNUE::m_calculateChangedIndices(uint32_t& activated, std::array<uint32_
     // It is assumed that the move is already made, and that the color of the captured piece is the board turn
     Arcanum::Piece capturedPiece = Arcanum::Piece(lsb64(move.moveInfo & MOVE_INFO_CAPTURE_MASK) - 16 + Arcanum::B_PAWN * board.getTurn());
     if(move.moveInfo & MOVE_INFO_ENPASSANT)
-    {   
+    {
         // getTurn returns the color of the captured piece in this case
         uint8_t targetSquare = board.getTurn() == Arcanum::Color::BLACK ? (move.to - 8) : (move.to + 8);
         deactivated[1] = findex(perspective, targetSquare, capturedPiece, kingSquare);
@@ -436,7 +436,7 @@ uint32_t NNUE::m_calculateChangedIndices(uint32_t& activated, std::array<uint32_
 }
 
 // Note on a normal chess board 30 is the maximum number of pieces without the king
-// In the case where there are more pieces, eg. in a custom setup, this will not work. 
+// In the case where there are more pieces, eg. in a custom setup, this will not work.
 uint32_t NNUE::m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, const Arcanum::Color perspective, const Arcanum::Board& board)
 {
     int idxCounter = 0;
@@ -448,7 +448,7 @@ uint32_t NNUE::m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, cons
     while (whitePawns) { indicies[idxCounter++] = findex(perspective, popLsb64(&whitePawns), Arcanum::W_PAWN, kingSquare); }
     Arcanum::bitboard_t blackPawns = board.getTypedPieces(Arcanum::Piece::W_PAWN, Arcanum::Color::BLACK);
     while (blackPawns) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackPawns), Arcanum::B_PAWN, kingSquare); }
-    
+
     // Rooks
     Arcanum::bitboard_t whiteRooks = board.getTypedPieces(Arcanum::Piece::W_ROOK, Arcanum::Color::WHITE);
     while (whiteRooks) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteRooks), Arcanum::W_ROOK, kingSquare); }
@@ -516,7 +516,7 @@ void NNUE::m_initializeAccumulatorPerspective(Accumulator& accumulator, const Ar
         _mm256_store_si256((__m256i*)&accumulator.acc[perspective][i * registerWidth], regs[i]);
     }
 }
- 
+
 void NNUE::m_loadHeader(std::ifstream& stream)
 {
     LOG("NNUE Version:        " << ifstreamGet<uint32_t>(stream));
@@ -556,7 +556,7 @@ void NNUE::m_loadWeights(std::ifstream& stream)
     for(uint32_t r = 0; r < l2outs; r++)
         for(uint32_t c = 0; c < l1outs; c++)
             m_hiddenLayer2.weights[windex(r, c, l1outs)] = ifstreamGet<Weight>(stream);
-    
+
     for(uint32_t i = 0; i < lastouts; i++)
         m_outputLayer.biases[i] = ifstreamGet<Bias>(stream);
     for(uint32_t c = 0; c < l2outs; c++)

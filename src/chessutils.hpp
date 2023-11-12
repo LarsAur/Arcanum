@@ -61,14 +61,14 @@ namespace Arcanum
         #ifdef USE_POPCNT
             return _popcnt64 (bitboard);
         #else
-            
+
             ERROR("CNTSBITS not implemented")
             return 0;
         #endif
     }
 
     // Source: https://www.chessprogramming.org/BitScan
-    // returns the index of the lsb 1 bit and sets it to zero 
+    // returns the index of the lsb 1 bit and sets it to zero
     static inline int popLS1B(bitboard_t* bitboard)
     {
     #ifdef USE_BMI
@@ -212,7 +212,7 @@ namespace Arcanum
         // For all knights get the attack bitboard
         bitboard_t knightAttacksBitBoard = 0LL;
         while (bitboard)
-        {   
+        {
             // Index of the knight
             int kidx = popLS1B(&bitboard);
             // Find and add the attack bitboard for the knight
@@ -220,7 +220,7 @@ namespace Arcanum
         }
         return knightAttacksBitBoard;
     }
-    
+
     static inline bitboard_t getKnightAttacks(const uint8_t knightIdx)
     {
         return knightAttacks[knightIdx];
@@ -245,10 +245,10 @@ namespace Arcanum
         // Shift the file down to the first rank and get the 6 middle squares
         const bitboard_t fileOccupied = (allPiecesBitboard >> (rank8 + 1)) & 0b111111LL;
         // Read the move bitboard and shift it to the correct rank
-        const bitboard_t fileMoves = rookFileMoves[(file << 6) | fileOccupied] << rank8; 
+        const bitboard_t fileMoves = rookFileMoves[(file << 6) | fileOccupied] << rank8;
 
         // Shift the file to the A file and mask it
-        const bitboard_t rankOccupied = (allPiecesBitboard >> file) & (0x0101010101010101LL); 
+        const bitboard_t rankOccupied = (allPiecesBitboard >> file) & (0x0101010101010101LL);
         // Find the occupancy index using https://www.chessprogramming.org/Kindergarten_Bitboards
         const bitboard_t rankOccupiedIdx = (rankOccupied * 0x4081020408000LL) >> 58;
         const bitboard_t rankMoves = rookRankMoves[(rank8 << 3) | rankOccupiedIdx] << file;
@@ -286,7 +286,7 @@ namespace Arcanum
     static inline std::string getArithmeticNotation(uint8_t square)
     {
         std::stringstream ss;
-        
+
         int rank = square >> 3;
         int file = square & 0b111;
 

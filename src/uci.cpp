@@ -64,10 +64,10 @@ void UCI::loop()
 
         if(strcmp(token.c_str(), "uci") == 0)
         {
-            UCI_OUT("id name Arcanum") 
-            UCI_OUT("id author Lars Murud Aurud") 
+            UCI_OUT("id name Arcanum")
+            UCI_OUT("id author Lars Murud Aurud")
             UCI_OUT("uciok")
-        } 
+        }
         else if (strcmp(token.c_str(), "setoption"  ) == 0) UCI_WARNING("Missing setoption")
         else if (strcmp(token.c_str(), "go"         ) == 0) go(board, searcher, is);
         else if (strcmp(token.c_str(), "position"   ) == 0) position(board, is);
@@ -94,7 +94,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
 
     while(is >> token)
     {
-        if(!strcmp(token.c_str(), "searchmoves"))    
+        if(!strcmp(token.c_str(), "searchmoves"))
         {
             // TODO: This can be improved to make the move based on only the uci
             Move* moves = board.getLegalMoves();
@@ -122,8 +122,8 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     // TODO: Time manager
 
     if(!isSearching)
-    {   
-        // Set isSearching before creating the thread. 
+    {
+        // Set isSearching before creating the thread.
         // This is to make sure it is set before returning from go.
         isSearching = true;
         searchThread = std::thread([&] {
@@ -139,7 +139,7 @@ void UCI::position(Board& board, std::istringstream& is)
     Move m;
     std::string token, fen;
     is >> token;
-    
+
     if(strcmp(token.c_str(), "startpos") == 0)
     {
         fen = startFEN;
@@ -194,7 +194,7 @@ void UCI::sendUciInfo(const SearchInfo& info)
         ss << " nodes " << info.nodes;
     if(info.mate)
         ss << " score mate " << info.mateDistance;
-    else 
+    else
         ss << " score cp " << info.score;
     if(info.hashfull > 0)
         ss << " hashfull " << info.hashfull;
@@ -206,7 +206,7 @@ void UCI::sendUciInfo(const SearchInfo& info)
         for(Move move : info.pvLine)
             ss << " " << move;
     }
- 
+
     UCI_OUT(ss.str())
 }
 
@@ -262,6 +262,6 @@ void UCI::ischeckmate(Board& board)
 void UCI::drawBoard(Board& board)
 {
     std::cout << board.getBoardString() << std::endl;
-    std::cout << "FEN: " << board.getFEN() << std::endl; 
-    std::cout << "Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black") << std::endl;  
+    std::cout << "FEN: " << board.getFEN() << std::endl;
+    std::cout << "Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black") << std::endl;
 }

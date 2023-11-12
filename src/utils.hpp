@@ -22,7 +22,7 @@
 #define DEFAULT_COLOR COLOR_WHITE
 
 extern std::string _logFileName;
-#ifdef PRINT_TO_FILE 
+#ifdef PRINT_TO_FILE
 #define CREATE_LOG_FILE(_name) _logFileName = std::string(_name).append(".log"); \
 { \
     std::ofstream fileStream(_logFileName, std::ofstream::out | std::ofstream::trunc); \
@@ -35,7 +35,7 @@ extern std::string _logFileName;
 }
 #else
     #define CREATE_LOG_FILE(_name) ;
-#endif 
+#endif
 
 #define _FILE_PRINT(_str) { \
     std::ofstream fileStream(_logFileName, std::ofstream::out | std::ofstream::app); \
@@ -45,7 +45,7 @@ extern std::string _logFileName;
         fileStream.close(); \
     } \
     else { std::cerr << "Unable to open file " << _logFileName << std::endl; } \
-}   
+}
 
 // Get the file name from the full file path
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)

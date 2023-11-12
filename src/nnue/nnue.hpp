@@ -4,13 +4,13 @@
 #include <string>
 #include <array>
 
-/** 
+/**
  * The code related to NNUE is an adaptation of the NNUE-probe library created by dshawul on Github.
  * https://github.com/dshawul/nnue-probe
 **/
 
 namespace NN
-{   
+{
     typedef int16_t AccData;
     typedef int16_t FTWeight;
     typedef int16_t FTBias;
@@ -76,13 +76,13 @@ namespace NN
             uint32_t m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, const Arcanum::Color perspective, const Arcanum::Board& board);
             uint32_t m_calculateChangedIndices(uint32_t& activated, std::array<uint32_t, 2>& deactivated, const Arcanum::Color perspective, const Arcanum::Move& move, const Arcanum::Board board);
             void m_initializeAccumulatorPerspective(Accumulator& accumulator, const Arcanum::Color perspective, const Arcanum::Board& board);
-            void m_loadHeader(std::ifstream& stream);            
+            void m_loadHeader(std::ifstream& stream);
             void m_loadWeights(std::ifstream& stream);
         public:
             NNUE();
             ~NNUE();
 
-            // Loads a .nnue file given a full path 
+            // Loads a .nnue file given a full path
             bool loadFullPath(std::string fullPath);
             // Loads a .nnue file in a position relative to the executable
             bool loadRelative(std::string filename);

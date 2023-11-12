@@ -95,11 +95,11 @@ inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
 void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash)
 {
     ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
-    ttEntry_t entry = 
+    ttEntry_t entry =
     {
         .hash = (ttEntryHash_t)hash,
         .bestMove = bestMove,
-        .value = score, 
+        .value = score,
         .depth = (int8_t) depth,
         .flags = flags
     };
@@ -183,7 +183,7 @@ void TranspositionTable::logStats()
 
     std::stringstream ss;
     ss << "\n----------------------------------";
-    ss << "\nTransposition Table Stats:"; 
+    ss << "\nTransposition Table Stats:";
     ss << "\n----------------------------------";
     ss << "\nEntries Added:        " << m_stats.entriesAdded;
     ss << "\nEntries In Table:     " << entriesInTable;
@@ -203,7 +203,7 @@ void TranspositionTable::logStats()
     ss << "\n----------------------------------";
 
     LOG(ss.str())
-} 
+}
 
 uint32_t TranspositionTable::permills()
 {

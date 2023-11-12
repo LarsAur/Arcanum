@@ -20,7 +20,7 @@ static void s_findNumMovesAtDepth(int depth, Arcanum::Board *board, uint64_t *co
     {
         return;
     }
-    
+
     if(depth == 1)
     {
         *count += numLegalMoves;
@@ -68,7 +68,7 @@ static uint64_t s_perftPosition(std::string fen, uint8_t ply, uint64_t expected)
     Board board = Board(fen);
 
     s_findNumMovesAtDepth(ply, &board, &count);
-    
+
     if(count != expected)
     {
         ERROR("Failed perft with " << fen << " at " << unsigned(ply) << " depth. Expected: " << expected << " Got: " << count)
@@ -295,7 +295,7 @@ std::string getRandomSymmetricFEN()
     }
 
     // TODO: Randomize castle oppertunities
-    
+
     return fenPosition + " w KQkq - 0 1";
 }
 
@@ -384,7 +384,7 @@ void Test::symmetricEvaluation()
 
         EvalTrace score1 = eval1.evaluate(b1, 0);
         EvalTrace score2 = eval2.evaluate(b2, 0);
-        
+
         if(score1.total != -score2.total)
         {
             success = false;
