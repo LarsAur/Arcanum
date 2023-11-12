@@ -22,6 +22,8 @@ Searcher::Searcher()
         .upperTTValuesUsed  = 0LL,
         .researchesRequired = 0LL,
         .nullWindowSearches = 0LL,
+        .nullMoveCutoffs    = 0LL,
+        .failedNullMoveCutoffs = 0LL,
     };
     #endif
 
@@ -108,7 +110,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     return bestScore;
 }
 
-EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth)
+EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth, bool isNullMoveSearch)
 {
     // NOTE: It is important that the size of the pv line is set to zero
     //       before returning due to searchStop, this is because the size
@@ -158,11 +160,11 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         return m_alphaBetaQuiet(board, alpha, beta, quietDepth, plyFromRoot + 1);
     }
 
-    // First search the move found to be best previously
     EvalTrace bestScore = EvalTrace(-INF);
     Move bestMove = Move(0, 0);
     Move* moves = nullptr;
     uint8_t numMoves = 0;
+    pvLine_t _pvLine;
 
     moves = board.getLegalMoves();
     numMoves = board.getNumLegalMoves();
@@ -173,10 +175,30 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     }
     board.generateCaptureInfo();
     bool isChecked = board.isChecked(board.getTurn());
+    bool nullMoveAllowed = board.hasOfficers(board.getTurn()) && !isNullMoveSearch && !isChecked && depth > 2;
+    // TODO: Test R value for NMP, currently using R=3
+    // Perform potential null move search
+    if(nullMoveAllowed)
+    {
+        Board newBoard = Board(board);
+        newBoard.performNullMove();
+        EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 3, plyFromRoot + 1, quietDepth, true);
+
+        if((int32_t) score.total >= (int32_t)beta.total)
+        {
+            #if SEARCH_RECORD_STATS
+            m_stats.nullMoveCutoffs++;
+            #endif
+            return beta;
+        }
+        #if SEARCH_RECORD_STATS
+            m_stats.failedNullMoveCutoffs++;
+        #endif
+    }
+
     // Push the board on the search stack
     m_search_stack.push_back(board.getHash());
 
-    pvLine_t _pvLine;
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
@@ -198,7 +220,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         {
             EvalTrace nullWindowBeta = -alpha;
             nullWindowBeta.total -= 1;
-            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth);
+            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth, false);
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
             #if SEARCH_RECORD_STATS
@@ -212,7 +234,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             // Extend search for checking moves or check avoiding moves
             // This is to avoid horizon effect occuring by starting with a forced line
             uint8_t extension = checkOrChecking ? 1 : 0;
-            score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, quietDepth);
+            score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, quietDepth, false);
         }
 
         m_evaluator.popMoveFromAccumulator();
@@ -390,7 +412,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
             Board newBoard = Board(board);
             newBoard.performMove(*move);
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
-            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, 4);
+            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, 4, false);
             m_evaluator.popMoveFromAccumulator();
 
             if(m_stopSearch)
@@ -515,10 +537,13 @@ void Searcher::logStats()
     ss << "\nUpper TT Values used:      " << m_stats.upperTTValuesUsed;
     ss << "\nNull-window Searches:      " << m_stats.nullWindowSearches;
     ss << "\nNull-window Re-searches:   " << m_stats.researchesRequired;
+    ss << "\nNull-Move Cutoffs:         " << m_stats.nullMoveCutoffs;
+    ss << "\nFailed Null-Move Cutoffs:  " << m_stats.failedNullMoveCutoffs;
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";
     ss << "\nRe-Searches:          " << (float) (100 * m_stats.researchesRequired) / m_stats.nullWindowSearches << "%";
+    ss << "\nNull-Move Cutoffs:    " << (float) (100 * m_stats.nullMoveCutoffs) / (m_stats.nullMoveCutoffs + m_stats.failedNullMoveCutoffs) << "%";
     ss << "\n----------------------------------";
 
     LOG(ss.str())

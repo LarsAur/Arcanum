@@ -30,6 +30,8 @@ namespace Arcanum
         uint8_t quietSearchDepth;
         uint64_t researchesRequired;
         uint64_t nullWindowSearches;
+        uint64_t nullMoveCutoffs;
+        uint64_t failedNullMoveCutoffs;
     } SearchStats;
 
     struct SearchParameters
@@ -61,7 +63,7 @@ namespace Arcanum
             uint64_t m_numNodesSearched; // Number of nodes searched in a search call. Used to terminate search based on number of nodes.
             volatile bool m_stopSearch;
 
-            EvalTrace m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth);
+            EvalTrace m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth, bool isNullMoveSearch);
             EvalTrace m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot);
             bool m_isDraw(const Board& board) const;
         public:
