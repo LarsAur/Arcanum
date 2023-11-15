@@ -10,8 +10,9 @@
 
 using namespace Arcanum;
 
-TranspositionTable::TranspositionTable(uint8_t mbSize)
+TranspositionTable::TranspositionTable(uint32_t mbSize)
 {
+    m_mbSize = mbSize;
     m_clusterCount = (mbSize * 1024 * 1024) / sizeof(ttCluster_t);
     m_entryCount = clusterSize * m_clusterCount;
     m_table = static_cast<ttCluster_t*>(Memory::pageAlignedMalloc(m_clusterCount * sizeof(ttCluster_t)));
@@ -22,17 +23,53 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
         exit(EXIT_FAILURE);
     }
 
-    // Set all table enties to be invalid
-    // TODO: This can be done using memset
-    //       Without any optimizations, this is slow
-    for(size_t i = 0; i < m_clusterCount; i++)
+    clear();
+
+    LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
+}
+
+TranspositionTable::~TranspositionTable()
+{
+    Memory::alignedFree(m_table);
+}
+
+void TranspositionTable::resize(uint32_t mbSize)
+{
+    if(m_mbSize == mbSize) return;
+
+    size_t clusterCount = (mbSize * 1024 * 1024) / sizeof(ttCluster_t);
+    size_t entryCount = clusterSize * clusterCount;
+    ttCluster_t* newTable = static_cast<ttCluster_t*>(Memory::pageAlignedMalloc(clusterCount * sizeof(ttCluster_t)));
+
+    if(newTable == nullptr)
     {
-        for(size_t j = 0; j < clusterSize; j++)
-        {
-            m_table[i].entries[j].depth = INT8_MIN;
-        }
+        WARNING("Failed to allocate new transposition table of size " << mbSize << "MB")
+        return;
     }
 
+    // Copy the previous entries.
+    // If the new table is smaller, copy as many entries as possible.
+    // Because it just copies the data, the low indices are prioritized over high indices
+    size_t minClusterCount = std::min(m_clusterCount, clusterCount);
+    memcpy(newTable, m_table, minClusterCount * sizeof(ttCluster_t));
+
+    // If the new table is larger, initialize the remaining 'uncopied' entries
+    for(size_t i = minClusterCount; i < clusterCount; i++)
+        for(size_t j = 0; j < clusterSize; j++)
+            newTable[i].entries[j].depth = INT8_MIN;
+
+    // Free the old table and set the new configuration
+    Memory::alignedFree(m_table);
+    m_table = newTable;
+    m_clusterCount = clusterCount;
+    m_entryCount = entryCount;
+    m_stats.maxEntries = entryCount;
+    LOG("Successfully resized the transpostition table from " << m_mbSize << "MB to " << mbSize << "MB")
+    m_mbSize = mbSize;
+}
+
+void TranspositionTable::clearStats()
+{
     m_stats = {
         .entriesAdded = 0LL,
         .replacements = 0LL,
@@ -42,13 +79,18 @@ TranspositionTable::TranspositionTable(uint8_t mbSize)
         .blockedReplacements = 0LL,
         .maxEntries   = m_entryCount,
     };
-
-    LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
 }
 
-TranspositionTable::~TranspositionTable()
+void TranspositionTable::clear()
 {
-    Memory::alignedFree(m_table);
+    clearStats();
+
+    // Set all table enties to be invalid
+    // TODO: This can be done using memset
+    //       Without any optimizations, this is slow
+    for(size_t i = 0; i < m_clusterCount; i++)
+        for(size_t j = 0; j < clusterSize; j++)
+            m_table[i].entries[j].depth = INT8_MIN;
 }
 
 inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
@@ -171,6 +213,7 @@ void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint
 
 }
 
+// Note: If the table has been resized to a smaller table, the stats may not be entirely accurate.
 ttStats_t TranspositionTable::getStats()
 {
     return m_stats;

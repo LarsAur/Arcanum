@@ -48,6 +48,7 @@ namespace Arcanum
     class TranspositionTable
     {
         private:
+            uint32_t m_mbSize;
             ttCluster_t* m_table;
             size_t m_clusterCount;
             size_t m_entryCount;
@@ -55,11 +56,14 @@ namespace Arcanum
             size_t m_getClusterIndex(hash_t hash);
         public:
 
-            TranspositionTable(uint8_t mbSize);
+            TranspositionTable(uint32_t mbSize);
             ~TranspositionTable();
 
             std::optional<ttEntry_t>get(hash_t hash, uint8_t plyFromRoot);
             void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash);
+            void resize(uint32_t mbSize);
+            void clear();
+            void clearStats();
             ttStats_t getStats();
             void logStats();
             uint32_t permills(); // Returns how full the table is in permills

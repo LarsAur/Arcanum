@@ -71,10 +71,9 @@ namespace Arcanum
             ~Searcher();
             Move getBestMove(Board& board, int depth);
             Move getBestMoveInTime(Board& board, uint32_t ms);
-
             Move search(Board board, SearchParameters parameters);
             void stop();
-
+            void resizeTT(uint32_t mbSize);
             SearchStats getStats();
             void logStats();
     };

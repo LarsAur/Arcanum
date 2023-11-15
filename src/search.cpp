@@ -48,6 +48,11 @@ Searcher::~Searcher()
 
 }
 
+void Searcher::resizeTT(uint32_t mbSize)
+{
+    m_tt->resize(mbSize);
+}
+
 EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot)
 {
     if(m_stopSearch)
