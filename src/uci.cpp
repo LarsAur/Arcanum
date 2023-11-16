@@ -24,9 +24,10 @@ namespace UCI
 
     static std::thread searchThread;
     static bool isSearching;
+    static bool useNNUE; // Variable only used for uci 'eval' command
 
     void go(Arcanum::Board& board, Arcanum::Searcher& searcher, std::istringstream& is);
-    void setoption(std::istringstream& is);
+    void setoption(Arcanum::Searcher& searcher, std::istringstream& is);
     void position(Arcanum::Board& board, std::istringstream& is);
     int64_t allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber);
     void ischeckmate(Arcanum::Board& board);
@@ -38,6 +39,7 @@ namespace UCI
 void UCI::loop()
 {
     isSearching = false;
+    useNNUE = true;
 
     // Create Log file
     std::ofstream fileStream(logFileName, std::ofstream::trunc);
@@ -62,14 +64,19 @@ void UCI::loop()
         token.clear();
         std::istringstream is(cmd);
         is >> std::skipws >> token;
+        std::transform(token.begin(), token.end(), token.begin(), [](unsigned char c){ return std::tolower(c); });
 
         if(strcmp(token.c_str(), "uci") == 0)
         {
             UCI_OUT("id name Arcanum")
             UCI_OUT("id author Lars Murud Aurud")
+            UCI_OUT("option name Hash type spin default 32 min 1 max 8196")
+            UCI_OUT("option name ClearHash type button")
+            UCI_OUT("option name UseNNUE check default true")
+            // UCI_OUT("option OwnBook check default true") // TODO: Need a book
             UCI_OUT("uciok")
         }
-        else if (strcmp(token.c_str(), "setoption"  ) == 0) UCI_WARNING("Missing setoption")
+        else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, is);
         else if (strcmp(token.c_str(), "go"         ) == 0) go(board, searcher, is);
         else if (strcmp(token.c_str(), "position"   ) == 0) position(board, is);
         else if (strcmp(token.c_str(), "ucinewgame" ) == 0) UCI_WARNING("ucinewgame")
@@ -84,6 +91,38 @@ void UCI::loop()
     } while(strcmp(token.c_str(), "quit") != 0);
 
     UCI_LOG("Exiting UCI loop")
+}
+
+void UCI::setoption(Arcanum::Searcher& searcher, std::istringstream& is)
+{
+    if(isSearching) return;
+
+    std::string name, valueToken;
+    is >> std::skipws >> name;
+    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c){ return std::tolower(c); });
+    is >> std::skipws >> valueToken;
+    std::transform(valueToken.begin(), valueToken.end(), valueToken.begin(), [](unsigned char c){ return std::tolower(c); });
+
+    // Process button options
+    if(strcmp(name.c_str(), "clearhash") == 0) searcher.clearTT();
+
+    if(strcmp(valueToken.c_str(), "value") != 0) return;
+
+    // Process non-button options
+    if(strcmp(name.c_str(), "hash") == 0)
+    {
+        uint32_t mbSize;
+        is >> std::skipws >> mbSize;
+        searcher.resizeTT(mbSize);
+    }
+    else if(strcmp(name.c_str(), "usennue") == 0)
+    {
+        std::string b;
+        is >> std::skipws >> b;
+        std::transform(b.begin(), b.end(), b.begin(), [](unsigned char c){ return std::tolower(c); });
+        if(strcmp(b.c_str(), "true") == 0)       {searcher.setEnableNNUE(true);  useNNUE = true;  }
+        else if(strcmp(b.c_str(), "false") == 0) {searcher.setEnableNNUE(false); useNNUE = false; }
+    }
 }
 
 void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
@@ -244,6 +283,8 @@ void UCI::sendUciBestMove(const Arcanum::Move& move)
 void UCI::eval(Board& board)
 {
     Evaluator evaluator = Evaluator();
+    evaluator.setEnableNNUE(useNNUE);
+    evaluator.initializeAccumulatorStack(board);
     UCI_OUT(evaluator.evaluate(board, 0).total)
 }
 
