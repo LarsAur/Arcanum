@@ -499,6 +499,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
     info.depth = depth;
     info.msTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
     info.nodes = m_numNodesSearched;
+    info.score = searchScore.total;
     info.hashfull = m_tt->permills();
     info.bestMove = searchBestMove;
     for(uint32_t i = 0; i < pvLine.count; i++)
