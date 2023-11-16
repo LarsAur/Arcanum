@@ -48,9 +48,19 @@ Searcher::~Searcher()
 
 }
 
+void Searcher::setEnableNNUE(bool enabled)
+{
+    m_evaluator.setEnableNNUE(enabled);
+}
+
 void Searcher::resizeTT(uint32_t mbSize)
 {
     m_tt->resize(mbSize);
+}
+
+void Searcher::clearTT()
+{
+    m_tt->clear();
 }
 
 EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot)
