@@ -95,6 +95,7 @@ Evaluator::~Evaluator()
 void Evaluator::setEnableNNUE(bool enabled)
 {
     m_enabledNNUE = enabled;
+    if(!enabled) return;
 
     if(!m_nnue.isLoaded())
     {
