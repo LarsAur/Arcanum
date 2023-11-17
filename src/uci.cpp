@@ -72,8 +72,7 @@ void UCI::loop()
             UCI_OUT("id author Lars Murud Aurud")
             UCI_OUT("option name Hash type spin default 32 min 1 max 8196")
             UCI_OUT("option name ClearHash type button")
-            UCI_OUT("option name UseNNUE check default true")
-            // UCI_OUT("option OwnBook check default true") // TODO: Need a book
+            UCI_OUT("option name UseNNUE type check default true")
             UCI_OUT("uciok")
         }
         else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, is);
@@ -240,9 +239,16 @@ int64_t UCI::allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t m
         return std::max(1U, time / (toGo + 5));
 
     if(inc > 0)
-        return std::max(1U, time / std::max(80U - moveNumber, 5U));
+    {
+        if(moveNumber >= 40)
+            return std::max(1U, (time + inc) / 2U);
+        return std::max(1U, std::min(time, (time + inc) / (45U - moveNumber)));
+    }
 
-    return std::max(1U, time / std::max(80U - moveNumber, 20U));
+    if(moveNumber >= 40 || time < 10000)
+        return std::max(1U, time / 20U);
+
+    return std::max(1U, time / (50U - moveNumber));
 }
 
 void UCI::sendUciInfo(const SearchInfo& info)
