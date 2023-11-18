@@ -3,62 +3,9 @@
 #include <iostream>
 #include <test.hpp>
 #include <search.hpp>
-#include <player.hpp>
 #include <uci.hpp>
 
 using namespace Arcanum;
-
-void play(Color color, std::string fen, int ms)
-{
-    Arcanum::Board board = Arcanum::Board(fen);
-    board.getBoardHistory()->clear();
-    board.addBoardToHistory();
-
-    // Use two different searchers so they use separate transposition tables
-    Searcher searcher = Searcher();
-    Player player = Player();
-
-    while(true)
-    {
-        LOG(std::endl << board.getBoardString())
-        board.getLegalMoves();
-        board.generateCaptureInfo();
-
-        if(board.getNumLegalMoves() == 0)
-        {
-            LOG("Game Ended")
-            break;
-        }
-
-        auto boardHistory = Board::getBoardHistory();
-        auto it = boardHistory->find(board.getHash());
-        if(it != boardHistory->end())
-        {
-            if(it->second == 3) // The check id done after the board is added to history
-            {
-                LOG("Stalemate")
-                break;
-            }
-        }
-
-        // Check for 50 move rule
-        if(board.getHalfMoves() >= 100)
-        {
-            LOG("Draw: Rule50")
-            break;
-        }
-
-        LOG("Turn: " << (board.getTurn() == WHITE ? "White" : "Black"));
-        Move move;
-        if(board.getTurn() == color)
-            move = player.promptForMove(board);
-        else
-            move = searcher.getBestMoveInTime(board, ms);
-
-        board.performMove(move);
-        board.addBoardToHistory();
-    }
-}
 
 std::string _logFileName;
 int main(int argc, char *argv[])
@@ -78,10 +25,6 @@ int main(int argc, char *argv[])
 
     for(int i = 1; i < argc; i++)
     {
-        if(!strncmp("--play", argv[i], 7))
-            // TODO: Add input about player, computer, fen and search
-            play(Color::BLACK, Arcanum::startFEN, 3000);
-
         if(!strncmp("--perft-test", argv[i], 13))
             Test::perft();
 

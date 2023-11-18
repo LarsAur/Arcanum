@@ -16,8 +16,7 @@ To benchmark the engine, build a *UCI build* as described a above, of the two ve
 The python benchmarking script requires [python-chess][python-chess] which can be installed with `pip install python-chess`. The results of all the games will be written to *./benchmarking/results/name1-name2.txt*.
 
 ## Testing
-Arcanum has a number of arguments to run in different modes:
-* `--play` Allows you to play against the engine in interactive mode writing uci moves in the terminal.
+Arcanum has a number of arguments to validate the engine and test the performance:
 * `--capture-test` Test that move generation for capture moves works.
 * `--zobrist-test` Testing that zobrist hashing works.
 * `--perft-test` Runs [perft][perft] on a number of predefined positions with known [results][perft-results].

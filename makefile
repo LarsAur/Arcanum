@@ -1,11 +1,11 @@
 
 PROJECT ?= Arcanum
 SOURCEDIR = src
-HEADERDIR = src	
+HEADERDIR = src
 BUILDDIR = build
 NNUE = nn-04cf2b4ed1da.nnue
 
-DEFINES += -DIS_64BIT 
+DEFINES += -DIS_64BIT
 DEFINES += -DUSE_AVX2 -mavx2
 DEFINES += -DUSE_BMI -mbmi
 DEFINES += -DUSE_BMI2 -mbmi2
@@ -29,16 +29,13 @@ all: $(BUILDDIR)/$(PROJECT).exe
 uci: $(BUILDDIR)/$(PROJECT).exe
 	./$^
 
-play: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --play
-
 test: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --draw-test --capture-test --zobrist-test --symeval-test --perft-test
 
 perf: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --search-perf --engine-perf
 
-clean: 
+clean:
 	-rmdir $(BUILDDIR) /s /q
 
 clean-logs:
