@@ -96,14 +96,20 @@ void UCI::setoption(Arcanum::Searcher& searcher, std::istringstream& is)
 {
     if(isSearching) return;
 
-    std::string name, valueToken;
-    is >> std::skipws >> name;
+    std::string name, valueToken, nameToken;
+    is >> std::skipws >> nameToken; // 'name'
+    std::transform(nameToken.begin(), nameToken.end(), nameToken.begin(), [](unsigned char c){ return std::tolower(c); });
+
+    if(strcmp(nameToken.c_str(), "name") != 0) return;
+
+    is >> std::skipws >> name;      // name of the option
     std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c){ return std::tolower(c); });
-    is >> std::skipws >> valueToken;
-    std::transform(valueToken.begin(), valueToken.end(), valueToken.begin(), [](unsigned char c){ return std::tolower(c); });
 
     // Process button options
     if(strcmp(name.c_str(), "clearhash") == 0) searcher.clearTT();
+
+    is >> std::skipws >> valueToken; // 'value'
+    std::transform(valueToken.begin(), valueToken.end(), valueToken.begin(), [](unsigned char c){ return std::tolower(c); });
 
     if(strcmp(valueToken.c_str(), "value") != 0) return;
 
