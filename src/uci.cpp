@@ -22,6 +22,12 @@ namespace UCI
     #define UCI_DEBUG(_str)   _UCI_PRINT("[DEBUG]  " << _str)
     #define UCI_OUT(_str) {std::cout << _str << std::endl; UCI_LOG("To stdout: " << _str)}
 
+    #ifndef ARCANUM_VERSION
+    #define ARCANUM_VERSION dev_build
+    #endif
+    #define STRINGIFY(s) #s
+    #define TOSTRING(x) STRINGIFY(x)
+
     static std::thread searchThread;
     static bool isSearching;
     static bool useNNUE; // Variable only used for uci 'eval' command
@@ -68,7 +74,7 @@ void UCI::loop()
 
         if(strcmp(token.c_str(), "uci") == 0)
         {
-            UCI_OUT("id name Arcanum")
+            UCI_OUT(std::string("id name Arcanum ").append(TOSTRING(ARCANUM_VERSION)))
             UCI_OUT("id author Lars Murud Aurud")
             UCI_OUT("option name Hash type spin default 32 min 1 max 8196")
             UCI_OUT("option name ClearHash type button")
