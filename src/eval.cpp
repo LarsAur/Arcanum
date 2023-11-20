@@ -105,7 +105,7 @@ void Evaluator::setEnableNNUE(bool enabled)
 
 void Evaluator::initializeAccumulatorStack(const Board& board)
 {
-    if(!m_enabledNNUE) return;
+    if(!m_enabledNNUE || !m_nnue.isLoaded()) return;
 
     if(m_accumulatorStack.empty())
         m_accumulatorStack.push_back(new NN::Accumulator); // 'new' should account for alignas(64) for Accumulator
@@ -116,7 +116,7 @@ void Evaluator::initializeAccumulatorStack(const Board& board)
 
 void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
 {
-    if(!m_enabledNNUE) return;
+    if(!m_enabledNNUE || !m_nnue.isLoaded()) return;
 
     if(m_accumulatorStack.size() == m_accumulatorStackPointer + 1)
     {
@@ -179,7 +179,7 @@ EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
         return eval;
     };
 
-    if(m_enabledNNUE)
+    if(m_enabledNNUE && m_nnue.isLoaded())
     {
         eval_t score = m_nnue.evaluate(*m_accumulatorStack[m_accumulatorStackPointer], board.m_turn);
         eval.total = board.m_turn == WHITE ? score : -score;
