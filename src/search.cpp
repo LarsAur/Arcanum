@@ -410,9 +410,11 @@ Move Searcher::search(Board board, SearchParameters parameters)
         board.generateCaptureInfo();
     }
 
-    uint32_t depth = 1;
+    uint32_t depth = 0;
     while(parameters.depth == 0 || parameters.depth >= depth)
     {
+        depth++;
+
         std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
         MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
 
@@ -489,8 +491,6 @@ Move Searcher::search(Board board, SearchParameters parameters)
         // If checkmate is found, search can be stopped
         if(m_evaluator.isCheckMateScore(bestScore))
             break;
-
-        depth++;
 
         // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
         // or else it would overflow the pvline array
