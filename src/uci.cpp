@@ -79,6 +79,7 @@ void UCI::loop()
             UCI_OUT("option name Hash type spin default 32 min 1 max 8196")
             UCI_OUT("option name ClearHash type button")
             UCI_OUT("option name UseNNUE type check default true")
+            UCI_OUT("option name HCEWeightFile type string default \"\"")
             UCI_OUT("uciok")
         }
         else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, is);
@@ -133,6 +134,12 @@ void UCI::setoption(Arcanum::Searcher& searcher, std::istringstream& is)
         std::transform(b.begin(), b.end(), b.begin(), [](unsigned char c){ return std::tolower(c); });
         if(strcmp(b.c_str(), "true") == 0)       {searcher.setEnableNNUE(true);  useNNUE = true;  }
         else if(strcmp(b.c_str(), "false") == 0) {searcher.setEnableNNUE(false); useNNUE = false; }
+    }
+    else if(strcmp(name.c_str(), "hceweightfile") == 0)
+    {
+        std::string str;
+        is >> std::skipws >> str;
+        searcher.setHCEModelFile(str);
     }
 }
 

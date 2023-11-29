@@ -53,6 +53,11 @@ void Searcher::setEnableNNUE(bool enabled)
     m_evaluator.setEnableNNUE(enabled);
 }
 
+void Searcher::setHCEModelFile(std::string path)
+{
+    m_evaluator.setHCEModelFile(path);
+}
+
 void Searcher::resizeTT(uint32_t mbSize)
 {
     m_tt->resize(mbSize);

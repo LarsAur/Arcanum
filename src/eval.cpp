@@ -150,6 +150,71 @@ Evaluator::~Evaluator()
     }
 }
 
+void Evaluator::setHCEModelFile(std::string path)
+{
+    std::ifstream is(path);
+    if(!is.is_open())
+    {
+        ERROR("Unable to open HCE Model file: " << path)
+        return;
+    }
+
+    eval_t weights[381];
+    int i = 0;
+    while (!is.eof() || i < 381)
+    {
+        std::string s;
+        is >> std::skipws >> s;
+        eval_t v = atoi(s.c_str());
+        weights[i++] = v;
+    }
+    is.close();
+
+    pawnValue   = 100;
+    rookValue   = weights[0];
+    knightValue = weights[1];
+    bishopValue = weights[2];
+    queenValue  = weights[3];
+
+    doublePawnScore = weights[4];
+    pawnSupportScore = weights[5];
+    pawnBackwardScore = weights[6];
+
+    memcpy(mobilityBonusKnightBegin, weights +  7,    9 * sizeof(eval_t));
+    memcpy(mobilityBonusKnightEnd,   weights +  16,   9 * sizeof(eval_t));
+    memcpy(mobilityBonusBishopBegin, weights +  25,  14 * sizeof(eval_t));
+    memcpy(mobilityBonusBishopEnd,   weights +  39,  14 * sizeof(eval_t));
+    memcpy(mobilityBonusRookBegin,   weights +  53,  15 * sizeof(eval_t));
+    memcpy(mobilityBonusRookEnd,     weights +  68,  15 * sizeof(eval_t));
+    memcpy(mobilityBonusQueenBegin,  weights +  83,  28 * sizeof(eval_t));
+    memcpy(mobilityBonusQueenEnd,    weights + 111,  28 * sizeof(eval_t));
+
+    memcpy(pawnRankBonusBegin,       weights + 139,  8 * sizeof(eval_t));
+    memcpy(pawnRankBonusEnd,         weights + 147,  8 * sizeof(eval_t));
+    memcpy(passedPawnRankBonusBegin, weights + 155,  8 * sizeof(eval_t));
+    memcpy(passedPawnRankBonusEnd,   weights + 163,  8 * sizeof(eval_t));
+
+    memcpy(s_kingAreaAttackScore,    weights + 171,  50 * sizeof(eval_t));
+    memcpy(s_whiteKingPositionBegin, weights + 221,  64 * sizeof(eval_t));
+    memcpy(s_kingPositionEnd,        weights + 285,  64 * sizeof(eval_t));
+
+    memcpy(pawnShelterScores[0],        weights + 349,  8 * sizeof(eval_t));
+    memcpy(pawnShelterScores[1],        weights + 357,  8 * sizeof(eval_t));
+    memcpy(pawnShelterScores[2],        weights + 365,  8 * sizeof(eval_t));
+    memcpy(pawnShelterScores[3],        weights + 373,  8 * sizeof(eval_t));
+
+    // Mirror white king version to black perspective
+    for(uint8_t rank = 0; rank < 8; rank++)
+        for(uint8_t file = 0; file < 8; file++)
+            s_blackKingPositionBegin[rank * 8 + file] = s_whiteKingPositionBegin[(7 - rank) * 8 + file];
+
+    // Fill remaining kingAttackScores
+    for(uint8_t i = 50; i < 100; i++)
+        s_kingAreaAttackScore[i] = s_kingAreaAttackScore[49];
+
+    LOG("Loaded HCE model " << path)
+}
+
 void Evaluator::setEnableNNUE(bool enabled)
 {
     m_enabledNNUE = enabled;

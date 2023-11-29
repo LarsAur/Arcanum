@@ -50,7 +50,6 @@ namespace Arcanum
     class Searcher
     {
         private:
-
             std::unique_ptr<TranspositionTable> m_tt;
             std::vector<hash_t> m_search_stack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
@@ -74,6 +73,7 @@ namespace Arcanum
             Move search(Board board, SearchParameters parameters);
             void stop();
             void setEnableNNUE(bool enabled);
+            void setHCEModelFile(std::string path);
             void resizeTT(uint32_t mbSize);
             void clearTT();
             SearchStats getStats();

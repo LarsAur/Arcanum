@@ -143,6 +143,7 @@ namespace Arcanum
             Evaluator();
             ~Evaluator();
             void setEnableNNUE(bool enabled);
+            void setHCEModelFile(std::string path);
             void initializeAccumulatorStack(const Board& board);
             void pushMoveToAccumulator(const Board& board, const Move& move);
             void popMoveFromAccumulator();
