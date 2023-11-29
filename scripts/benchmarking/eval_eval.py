@@ -9,7 +9,7 @@ def main():
         print("usage:", sys.argv[0], "[UciEnginePath]")
         print("UciEngine1Path is required to have the 'ischeckmate' custom command")
         exit(0)
-    
+
     engine_name = os.path.splitext(os.path.basename(sys.argv[1]))[0]
 
     fen_string_file = open("../eval_fen_strings.txt", 'r')
@@ -31,10 +31,10 @@ def main():
         engine.stdin.write(position.encode('utf-8'))
         engine.stdin.write(b"eval\n")
         engine.stdin.flush()
-        
+
         engine.stdout.flush()
         out = bytes.decode(engine.stdout.readline(), 'utf-8')[0:-1]
-        
+
         diff = abs(int(out) - int(float(score)*100))
         total_diff += diff
         if diff > max_diff:
@@ -50,17 +50,17 @@ def main():
     data_list.sort(key= lambda x: -x[0])
     for data in data_list:
         print(f"Difference: {data[0]:>5} ({data[1]:<6.2f}%) Engine: {int(data[2]):>5}  Sf: {int(float(data[3])*100):>5}, {data[4]}")
-    
+
 
     print("\nSort by percent:")
     data_list.sort(key= lambda x: -x[1])
     for data in data_list:
         print(f"Difference: {data[0]:>5} ({data[1]:6.2f}%) Engine: {int(data[2]):>5}  Sf: {int(float(data[3])*100):>5}, {data[4]}")
-    
+
 
     print(f"Average Difference: {total_diff / 200}")
     print(f"Average Percentage: {percent_sum / 200:.2f}%")
-    print(f"Max Difference: {max_diff} ({max_diff_fen})")    
+    print(f"Max Difference: {max_diff} ({max_diff_fen})")
     engine.stdin.write(b"quit\n")
     engine.stdin.flush()
 

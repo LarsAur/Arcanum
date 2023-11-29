@@ -6,7 +6,7 @@ import sys
 if(not os.path.isfile(sys.argv[1])):
     print(sys.argv[1], "is not a file")
     exit(-1)
-    
+
 if(not os.path.isfile(sys.argv[2])):
     print(sys.argv[2], "is not a file")
     exit(-1)
@@ -20,7 +20,7 @@ while(True):
     fen = game_file.readline()
     if(len(fen) == 0):
         break
-    
+
     moves = game_file.readline().split(', ')
     if(len(moves) % 2 == 0):
         moves = moves[0:-8]

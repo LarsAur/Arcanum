@@ -12,19 +12,18 @@ class ChessGame():
         self.moves = []
         self.result = (ChessGame.UNFINISHED, None)
 
-    def play(self, time_ms): 
-        print(self.board)
+    def play(self, time_ms):
         while(not (self.board.can_claim_draw() or self.board.is_stalemate() or self.board.is_checkmate())):
             results = None
             if self.board.turn == chess.WHITE:
                 results = self.white_engine.play(self.board, chess.engine.Limit(time=time_ms/1000.0))
             else:
                 results = self.black_engine.play(self.board, chess.engine.Limit(time=time_ms/1000.0))
-            
+
             move:chess.Move = results.move
             self.board.push(move)
             self.moves.append(move.uci())
-            
+
         if(self.board.is_checkmate()):
             self.result = (ChessGame.CHECKMATE, not self.board.turn)
         elif(self.board.is_stalemate()):
@@ -35,7 +34,7 @@ class ChessGame():
             self.result = (ChessGame.DRAWREPEAT, None)
         elif(self.board.can_claim_draw()):
             self.result = (ChessGame.DRAW, None)
-        
+
         self.white_engine.quit()
         self.black_engine.quit()
         self.white_engine.close()
@@ -43,6 +42,6 @@ class ChessGame():
 
     def get_result(self):
         return self.result
-            
+
     def get_moves(self):
         return self.moves
