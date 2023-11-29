@@ -51,26 +51,84 @@ static constexpr bitboard_t bForwardLookup[] = { // indexed by rank
     0x00FFFFFFFFFFFFFF,
 };
 
+static eval_t pawnValue = 100;
+static eval_t rookValue = 500;
+static eval_t knightValue = 300;
+static eval_t bishopValue = 300;
+static eval_t queenValue = 900;
+
 // Values are from: https://github.com/official-stockfish/Stockfish/blob/sf_15.1/src/evaluate.cpp
-static constexpr eval_t mobilityBonusKnightBegin[] = {-62, -53, -12, -3, 3, 12, 21, 28, 37};
-static constexpr eval_t mobilityBonusKnightEnd[]   = {-79, -57, -31, -17, 7, 13, 16, 21, 26};
-static constexpr eval_t mobilityBonusBishopBegin[] = {-47, -20, 14, 29, 39, 53, 53, 60, 62, 69, 78, 83, 91, 96};
-static constexpr eval_t mobilityBonusBishopEnd[]   = {-59, -25, -8, 12, 21, 40, 56, 58, 65, 72, 78, 87, 88, 98};
-static constexpr eval_t mobilityBonusRookBegin[]   = {-60, -24, 0, 3, 4, 14, 20, 30, 41, 41, 41, 45, 57, 58, 67};
-static constexpr eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 122, 133, 139, 153, 160,165, 170, 175};
-static constexpr eval_t mobilityBonusQueenBegin[]  = {-29, -16, -8, -8, 18, 25, 23, 37, 41,  54, 65, 68, 69, 70, 70,  70 , 71, 72, 74, 76, 90, 104, 105, 106, 112, 114, 114, 119};
-static constexpr eval_t mobilityBonusQueenEnd[]    = {-49,-29, -8, 17, 39,  54, 59, 73, 76, 95, 95 ,101, 124, 128, 132, 133, 136, 140, 147, 149, 153, 169, 171, 171, 178, 185, 187, 221};
+static eval_t mobilityBonusKnightBegin[] = {-62, -53, -12, -3, 3, 12, 21, 28, 37};
+static eval_t mobilityBonusKnightEnd[]   = {-79, -57, -31, -17, 7, 13, 16, 21, 26};
+static eval_t mobilityBonusBishopBegin[] = {-47, -20, 14, 29, 39, 53, 53, 60, 62, 69, 78, 83, 91, 96};
+static eval_t mobilityBonusBishopEnd[]   = {-59, -25, -8, 12, 21, 40, 56, 58, 65, 72, 78, 87, 88, 98};
+static eval_t mobilityBonusRookBegin[]   = {-60, -24, 0, 3, 4, 14, 20, 30, 41, 41, 41, 45, 57, 58, 67};
+static eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 122, 133, 139, 153, 160,165, 170, 175};
+static eval_t mobilityBonusQueenBegin[]  = {-29, -16, -8, -8, 18, 25, 23, 37, 41,  54, 65, 68, 69, 70, 70,  70 , 71, 72, 74, 76, 90, 104, 105, 106, 112, 114, 114, 119};
+static eval_t mobilityBonusQueenEnd[]    = {-49,-29, -8, 17, 39,  54, 59, 73, 76, 95, 95 ,101, 124, 128, 132, 133, 136, 140, 147, 149, 153, 169, 171, 171, 178, 185, 187, 221};
 
-static constexpr eval_t doublePawnScore = -12;
-static constexpr eval_t passedPawnScore = 25;
-static constexpr eval_t pawnRankScore = 5;
-static constexpr eval_t pawnSupportScore = 6;
-static constexpr eval_t pawnBackwardScore = -12;
+static eval_t doublePawnScore = -12;
+static eval_t pawnSupportScore = 6;
+static eval_t pawnBackwardScore = -12;
 
-static constexpr eval_t pawnRankBonusBegin[]         = {0, 0, 4, 4, 8, 12, 16, 0};
-static constexpr eval_t pawnRankBonusEnd[]           = {0, 0, 4, 16, 32, 64, 128, 0};
-static constexpr eval_t isolatedPawnRankBonusBegin[] = {0, 16, 25, 25, 32, 64, 128, 0};
-static constexpr eval_t isolatedPawnRankBonusEnd[]   = {0, 25, 50, 50, 75, 125, 200, 0};
+static eval_t pawnRankBonusBegin[]         = {0, 0, 4, 4, 8, 12, 16, 0};
+static eval_t pawnRankBonusEnd[]           = {0, 0, 4, 16, 32, 64, 128, 0};
+static eval_t passedPawnRankBonusBegin[]   = {0, 16, 25, 25, 32, 64, 128, 0};
+static eval_t passedPawnRankBonusEnd[]     = {0, 25, 50, 50, 75, 125, 200, 0};
+
+static eval_t s_kingAreaAttackScore[100] = {
+    0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
+  18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
+  68,  75,  82,  85,  89,  97, 105, 113, 122, 131,
+ 140, 150, 169, 180, 191, 202, 213, 225, 237, 248,
+ 260, 272, 283, 295, 307, 319, 330, 342, 354, 366,
+ 377, 389, 401, 412, 424, 436, 448, 459, 471, 483,
+ 494, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
+ 500, 500, 500, 500, 500, 500, 500, 500, 500, 500
+};
+
+static eval_t s_whiteKingPositionBegin[64] = {
+    20,  25,  30,   0,  12,  25,  30,  20,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+};
+
+static eval_t s_blackKingPositionBegin[64] = {
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+   -12, -12, -12, -12, -12, -12, -12, -12,
+    20,  25,  30,   0,  12,  25,  30,  20,
+};
+
+static eval_t s_kingPositionEnd[64] = {
+   -50, -25, -25, -25, -25, -25, -25, -50,
+   -25, -25, -12, -12, -12, -12, -25, -25,
+   -25, -12,  12,  12,  12,  12, -12, -25,
+   -25, -12,  12,  12,  12,  12, -12, -25,
+   -25, -12,  12,  12,  12,  12, -12, -25,
+   -25, -12,  12,  12,  12,  12, -12, -25,
+   -25, -25, -12, -12, -12, -12, -25, -25,
+   -50, -25, -25, -25, -25, -25, -25, -50,
+};
+
+static eval_t pawnShelterScores[4][8] =
+{
+    {  -3,  40,  45,  25,  20,  10,  15, 0 },
+    { -25,  30,  15, -27, -15, -10,  -5, 0 },
+    { -10,  35,  10,  10,  10,   5, -25, 0 },
+    { -20,  -5, -10, -20, -25, -30, -35, 0 },
+};
 
 Evaluator::Evaluator()
 {
@@ -321,8 +379,8 @@ inline eval_t Evaluator::m_getPawnEval(const Board& board, uint8_t phase, EvalTr
         // Is passed pawn
         if(((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) == 0)
         {
-            pawnScoreBegin += isolatedPawnRankBonusBegin[rank];
-            pawnScoreEnd += isolatedPawnRankBonusEnd[rank];
+            pawnScoreBegin += passedPawnRankBonusBegin[rank];
+            pawnScoreEnd += passedPawnRankBonusEnd[rank];
         }
         else
         {
@@ -357,8 +415,8 @@ inline eval_t Evaluator::m_getPawnEval(const Board& board, uint8_t phase, EvalTr
         // Is passed pawn
         if(((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) == 0)
         {
-            pawnScoreBegin -= isolatedPawnRankBonusBegin[7 - rank];
-            pawnScoreEnd -= isolatedPawnRankBonusEnd[7 - rank];
+            pawnScoreBegin -= passedPawnRankBonusBegin[7 - rank];
+            pawnScoreEnd -= passedPawnRankBonusEnd[7 - rank];
         }
         else
         {
@@ -408,11 +466,11 @@ inline eval_t Evaluator::m_getMaterialEval(const Board& board, uint8_t phase, Ev
 
     // Evaluate the piece count
     eval_t pieceScore;
-    pieceScore  = 100 * (m_numPawns[Color::WHITE]   - m_numPawns[Color::BLACK]);
-    pieceScore += 300 * (m_numKnights[Color::WHITE] - m_numKnights[Color::BLACK]);
-    pieceScore += 300 * (m_numBishops[Color::WHITE] - m_numBishops[Color::BLACK]);
-    pieceScore += 500 * (m_numRooks[Color::WHITE]   - m_numRooks[Color::BLACK]);
-    pieceScore += 900 * (m_numQueens[Color::WHITE]  - m_numQueens[Color::BLACK]);
+    pieceScore  = pawnValue   * (m_numPawns[Color::WHITE]   - m_numPawns[Color::BLACK]);
+    pieceScore += knightValue * (m_numKnights[Color::WHITE] - m_numKnights[Color::BLACK]);
+    pieceScore += bishopValue * (m_numBishops[Color::WHITE] - m_numBishops[Color::BLACK]);
+    pieceScore += rookValue   * (m_numRooks[Color::WHITE]   - m_numRooks[Color::BLACK]);
+    pieceScore += queenValue  * (m_numQueens[Color::WHITE]  - m_numQueens[Color::BLACK]);
 
     // Write the pawn evaluation to the table
     evalEntry->hash = board.m_materialHash;
@@ -537,60 +595,6 @@ inline uint8_t Evaluator::m_getPhase(const Board& board, EvalTrace& eval)
     return phase;
 }
 
-static constexpr eval_t s_kingAreaAttackScore[100] = {
-    0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
-  18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
-  68,  75,  82,  85,  89,  97, 105, 113, 122, 131,
- 140, 150, 169, 180, 191, 202, 213, 225, 237, 248,
- 260, 272, 283, 295, 307, 319, 330, 342, 354, 366,
- 377, 389, 401, 412, 424, 436, 448, 459, 471, 483,
- 494, 500, 500, 500, 500, 500, 500, 500, 500, 500,
- 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
- 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
- 500, 500, 500, 500, 500, 500, 500, 500, 500, 500
-};
-
-static constexpr eval_t s_whiteKingPositionBegin[64] = {
-    20,  25,  30,   0,  12,  25,  30,  20,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-};
-
-static constexpr eval_t s_blackKingPositionBegin[64] = {
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-    20,  25,  30,   0,  12,  25,  30,  20,
-};
-
-static constexpr eval_t s_kingPositionEnd[64] = {
-   -50, -25, -25, -25, -25, -25, -25, -50,
-   -25, -25, -12, -12, -12, -12, -25, -25,
-   -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -25, -12, -12, -12, -12, -25, -25,
-   -50, -25, -25, -25, -25, -25, -25, -50,
-};
-
-static constexpr eval_t pawnShelterScores[4][8] =
-{
-    {  -3,  40,  45,  25,  20,  10,  15, 0 },
-    { -25,  30,  15, -27, -15, -10,  -5, 0 },
-    { -10,  35,  10,  10,  10,   5, -25, 0 },
-    { -20,  -5, -10, -20, -25, -30, -35, 0 },
-};
-
 template <typename Arcanum::Color turn>
 inline eval_t Evaluator::m_getShelterEval(const Board& board, uint8_t square)
 {
@@ -713,6 +717,7 @@ inline eval_t Evaluator::m_getKingEval(const Board& board, uint8_t phase, EvalTr
     return kingAttackingScore + kingPositionScore;
 }
 
+// TODO: Add center eval to weights
 eval_t Evaluator::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     constexpr uint8_t centerEvalThreshold = 6 * knightPhase;
