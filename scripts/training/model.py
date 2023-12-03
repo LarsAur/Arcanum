@@ -1,5 +1,6 @@
 import random
 import math
+from typing import List
 class EvalModel:
 
     NUM_WEIGHTS = 381
@@ -8,26 +9,11 @@ class EvalModel:
         self.weights = EvalModel.NUM_WEIGHTS * [0]
 
     def copy(self, model:"EvalModel"):
-        self.weights = model.getWeights().copy()
+        self.weights = model.get_weights().copy()
 
-    def merge(self, model:"EvalModel"):
-        for i in range(EvalModel.NUM_WEIGHTS):
-            self.weights[i] = model.getWeights()[i] if random.random() > 0.5 else self.weights[i]
-
-    def mutate(self, rate:float, max_value:int):
-        def generate_normal() -> float:
-            s:float = 0
-            for _ in range(50):
-                s += (random.random()*2 - 1)
-
-            return s / 50
-
-        for i in range(EvalModel.NUM_WEIGHTS):
-            if random.random() < rate:
-                normal_rand = generate_normal()
-                self.weights[i] += math.floor(normal_rand * max_value)
-                if(abs(self.weights[i]) >= 3000): # Avoid drifting. This will never happen
-                    self.weights[i] = 0
+    def add_delta(self, delta_weights:List[int]):
+        for i in range(len(self.weights)):
+            self.weights[i] += delta_weights[i]
 
     def _build_array(self, start_idx:int, size:int) -> str:
         arr_string = "{" + str(self.weights[start_idx:start_idx+size])[1:-1] + "}"
@@ -37,16 +23,7 @@ class EvalModel:
         arr_string = "{" + ", ".join([self._build_array(start_idx + size2 * i, size2) for i in range(size1)]) + "}"
         return arr_string
 
-    def hash(self) -> int:
-        h = 0
-        for w in self.weights:
-            h += w
-            h %= 0xffffffff
-            h = h<<1
-            h %= 0xffffffff
-        return h
-
-    def loadFromFile(self, filename):
+    def load_from_file(self, filename):
         line = ""
         with open(filename, 'r') as f:
             line = f.readline()
@@ -55,13 +32,15 @@ class EvalModel:
         self.weights = [int(t) for t in tokens]
         print("Loaded", filename)
 
-
-    def writeToFile(self, filename):
+    def write_to_file(self, filename):
         with open(filename, 'w+') as f:
             f.write(str(self.weights)[1:-1])
 
-    def getWeights(self):
+    def get_weights(self):
         return self.weights
+
+    def num_weights(self):
+        return EvalModel.NUM_WEIGHTS
 
     def __str__(self) -> str:
         string = ""
