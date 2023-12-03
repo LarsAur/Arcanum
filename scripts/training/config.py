@@ -9,7 +9,7 @@
 ENGINE_PATH = "../../snapshots/Arcanum.exe" # Path to the Arcanum engine, or other uci engine supporting an 'eval' command.
 PGN_PATH = "data/games.pgn"                 # File location for the pgn file used to generate initial positions. Can be downloaded from https://database.lichess.org/
 DATASET_PATH = "tmp/dataset.txt"            # File location for the dataset. When creating a new dataset, the previous file has to be deleted or the name has to be changed.
-INITIAL_MODEL_FILE = "data/HCE_model.txt"  # Initial model to start regression.
+INITIAL_MODEL_FILE = "data/HCE_model.txt"   # Initial model to start regression.
 REGRESSION_THREAD_POOL_SIZE = 2             # Number of threads used when performing regression.
 DATA_GEN_THREAD_POOL_SIZE = 10              # Number of threads used when generating dataset.
 SEARCH_TIME = 50                            # Number of ms used to play each move while generating the dataset.

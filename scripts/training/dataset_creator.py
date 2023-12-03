@@ -16,7 +16,7 @@ def _worker(start_fen):
     game_fens = []
     game = ChessGame(config.ENGINE_PATH, config.ENGINE_PATH, fen=start_fen)
     while not game.is_finished():
-        if not game.is_mate_found():
+        if not game.is_mate_found() and game.is_quiet() and not game.is_check():
             game_fens.append(game.get_fen())
         game.play_single_move(config.SEARCH_TIME)
     game.terminate()

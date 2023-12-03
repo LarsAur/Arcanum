@@ -36,6 +36,12 @@ class ChessGame():
     def is_mate_found(self):
         return self.mate_found
 
+    def is_quiet(self):
+        return len(list(self.board.generate_legal_captures())) == 0
+
+    def is_check(self):
+        return self.board.is_check()
+
     def get_fen(self):
         return self.board.fen()
 
