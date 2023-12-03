@@ -63,7 +63,7 @@ static eval_t mobilityBonusKnightEnd[]   = {-79, -57, -31, -17, 7, 13, 16, 21, 2
 static eval_t mobilityBonusBishopBegin[] = {-47, -20, 14, 29, 39, 53, 53, 60, 62, 69, 78, 83, 91, 96};
 static eval_t mobilityBonusBishopEnd[]   = {-59, -25, -8, 12, 21, 40, 56, 58, 65, 72, 78, 87, 88, 98};
 static eval_t mobilityBonusRookBegin[]   = {-60, -24, 0, 3, 4, 14, 20, 30, 41, 41, 41, 45, 57, 58, 67};
-static eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 122, 133, 139, 153, 160,165, 170, 175};
+static eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 122, 133, 139, 153, 160, 165, 170, 175};
 static eval_t mobilityBonusQueenBegin[]  = {-29, -16, -8, -8, 18, 25, 23, 37, 41,  54, 65, 68, 69, 70, 70,  70 , 71, 72, 74, 76, 90, 104, 105, 106, 112, 114, 114, 119};
 static eval_t mobilityBonusQueenEnd[]    = {-49,-29, -8, 17, 39,  54, 59, 73, 76, 95, 95 ,101, 124, 128, 132, 133, 136, 140, 147, 149, 153, 169, 171, 171, 178, 185, 187, 221};
 
@@ -128,6 +128,10 @@ static eval_t pawnShelterScores[4][8] =
     { -25,  30,  15, -27, -15, -10,  -5, 0 },
     { -10,  35,  10,  10,  10,   5, -25, 0 },
     { -20,  -5, -10, -20, -25, -30, -35, 0 },
+};
+
+static eval_t centerControlScoreBegin[16] = {
+    0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150
 };
 
 Evaluator::Evaluator()
@@ -782,7 +786,6 @@ inline eval_t Evaluator::m_getKingEval(const Board& board, uint8_t phase, EvalTr
     return kingAttackingScore + kingPositionScore;
 }
 
-// TODO: Add center eval to weights
 eval_t Evaluator::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& eval)
 {
     constexpr uint8_t centerEvalThreshold = 6 * knightPhase;
@@ -857,7 +860,13 @@ eval_t Evaluator::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& 
         whiteCenterIndex += CNTSBITS(board.m_bbColoredPieces[Color::WHITE] & centerExtended);
     }
 
-    eval_t centerEval = 3 * ((whiteCenterIndex - blackCenterIndex) * (centerEvalThreshold + phase - totalPhase));
+    // Limit the index to 15, as there are only 16 indices in the score table
+    whiteCenterIndex = whiteCenterIndex <= 15 ? whiteCenterIndex : 15;
+    blackCenterIndex = blackCenterIndex <= 15 ? blackCenterIndex : 15;
+    eval_t whiteCenterScoreBegin = centerControlScoreBegin[whiteCenterIndex];
+    eval_t blackCenterScoreBegin = centerControlScoreBegin[blackCenterIndex];
+    uint8_t centerPhase = (centerEvalThreshold + phase - totalPhase); // Center phase between centerEvalThreshold and zero
+    eval_t centerEval = ((whiteCenterScoreBegin - blackCenterScoreBegin) * centerPhase) / centerEvalThreshold;
     #ifdef FULL_TRACE
     eval.center = centerEval;
     #endif
