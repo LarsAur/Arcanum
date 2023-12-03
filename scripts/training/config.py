@@ -13,4 +13,4 @@ INITIAL_MODEL_FILE = "data/HCE_model.txt"   # Initial model to start regression.
 REGRESSION_THREAD_POOL_SIZE = 2             # Number of threads used when performing regression.
 DATA_GEN_THREAD_POOL_SIZE = 10              # Number of threads used when generating dataset.
 SEARCH_TIME = 50                            # Number of ms used to play each move while generating the dataset.
-NUM_GAMES = 10000                           # Number of grames to generate positions from. (10K games results in ~1M positions)
+NUM_GAMES = 10000                           # Number of grames to generate positions from. (10K games results in ~400K positions)
