@@ -3,7 +3,7 @@ import math
 from typing import List
 class EvalModel:
 
-    NUM_WEIGHTS = 381
+    NUM_WEIGHTS = 397
 
     def __init__(self):
         self.weights = EvalModel.NUM_WEIGHTS * [0]
@@ -74,5 +74,6 @@ class EvalModel:
         string += "s_kingPositionEnd = "        + self._build_array(285, 64)  + "\n"
 
         string += "pawnShelterScores"           + self._build_2d_array(349, 4, 8) + "\n"
+        string += "centerControlScoreBegin"     + self._build_array(381, 16) + "\n"
 
         return string

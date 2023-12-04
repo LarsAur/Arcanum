@@ -163,9 +163,9 @@ void Evaluator::setHCEModelFile(std::string path)
         return;
     }
 
-    eval_t weights[381];
+    eval_t weights[397];
     int i = 0;
-    while (!is.eof() || i < 381)
+    while (!is.eof() || i < 397)
     {
         std::string s;
         is >> std::skipws >> s;
@@ -192,20 +192,18 @@ void Evaluator::setHCEModelFile(std::string path)
     memcpy(mobilityBonusRookEnd,     weights +  68,  15 * sizeof(eval_t));
     memcpy(mobilityBonusQueenBegin,  weights +  83,  28 * sizeof(eval_t));
     memcpy(mobilityBonusQueenEnd,    weights + 111,  28 * sizeof(eval_t));
-
-    memcpy(pawnRankBonusBegin,       weights + 139,  8 * sizeof(eval_t));
-    memcpy(pawnRankBonusEnd,         weights + 147,  8 * sizeof(eval_t));
-    memcpy(passedPawnRankBonusBegin, weights + 155,  8 * sizeof(eval_t));
-    memcpy(passedPawnRankBonusEnd,   weights + 163,  8 * sizeof(eval_t));
-
+    memcpy(pawnRankBonusBegin,       weights + 139,   8 * sizeof(eval_t));
+    memcpy(pawnRankBonusEnd,         weights + 147,   8 * sizeof(eval_t));
+    memcpy(passedPawnRankBonusBegin, weights + 155,   8 * sizeof(eval_t));
+    memcpy(passedPawnRankBonusEnd,   weights + 163,   8 * sizeof(eval_t));
     memcpy(s_kingAreaAttackScore,    weights + 171,  50 * sizeof(eval_t));
     memcpy(s_whiteKingPositionBegin, weights + 221,  64 * sizeof(eval_t));
     memcpy(s_kingPositionEnd,        weights + 285,  64 * sizeof(eval_t));
-
-    memcpy(pawnShelterScores[0],        weights + 349,  8 * sizeof(eval_t));
-    memcpy(pawnShelterScores[1],        weights + 357,  8 * sizeof(eval_t));
-    memcpy(pawnShelterScores[2],        weights + 365,  8 * sizeof(eval_t));
-    memcpy(pawnShelterScores[3],        weights + 373,  8 * sizeof(eval_t));
+    memcpy(pawnShelterScores[0],     weights + 349,   8 * sizeof(eval_t));
+    memcpy(pawnShelterScores[1],     weights + 357,   8 * sizeof(eval_t));
+    memcpy(pawnShelterScores[2],     weights + 365,   8 * sizeof(eval_t));
+    memcpy(pawnShelterScores[3],     weights + 373,   8 * sizeof(eval_t));
+    memcpy(centerControlScoreBegin,  weights + 381,  16 * sizeof(eval_t));
 
     // Mirror white king version to black perspective
     for(uint8_t rank = 0; rank < 8; rank++)
