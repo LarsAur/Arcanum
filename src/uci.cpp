@@ -11,10 +11,14 @@ using namespace Arcanum;
 
 namespace UCI
 {
+    #ifdef ENABLE_UCI_PRINT
     const static std::string logFileName = "uci.log";
     #define _UCI_PRINT(_str) {std::ofstream fileStream(logFileName, std::ofstream::out | std::ifstream::app); \
     fileStream << _str << std::endl; \
     fileStream.close();}
+    #else
+    #define _UCI_PRINT(_str) ;
+    #endif
 
     #define UCI_ERROR(_str)   _UCI_PRINT("[ERROR]  " << _str)
     #define UCI_WARNING(_str) _UCI_PRINT("[WARNING]" << _str)
@@ -48,9 +52,11 @@ void UCI::loop()
     useNNUE = true;
 
     // Create Log file
+    #ifdef ENABLE_UCI_PRINT
     std::ofstream fileStream(logFileName, std::ofstream::trunc);
     fileStream << "Created log file: " << logFileName << std::endl;
     fileStream.close();
+    #endif
 
     Board board = Board(startFEN);
     Searcher searcher = Searcher();
