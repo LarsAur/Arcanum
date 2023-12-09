@@ -1,4 +1,5 @@
 #include <eval.hpp>
+#include <weights.hpp>
 #include <algorithm>
 
 using namespace Arcanum;
@@ -49,89 +50,6 @@ static constexpr bitboard_t bForwardLookup[] = { // indexed by rank
     0x000000FFFFFFFFFF,
     0x0000FFFFFFFFFFFF,
     0x00FFFFFFFFFFFFFF,
-};
-
-static eval_t pawnValue = 100;
-static eval_t rookValue = 500;
-static eval_t knightValue = 300;
-static eval_t bishopValue = 300;
-static eval_t queenValue = 900;
-
-// Values are from: https://github.com/official-stockfish/Stockfish/blob/sf_15.1/src/evaluate.cpp
-static eval_t mobilityBonusKnightBegin[] = {-62, -53, -12, -3, 3, 12, 21, 28, 37};
-static eval_t mobilityBonusKnightEnd[]   = {-79, -57, -31, -17, 7, 13, 16, 21, 26};
-static eval_t mobilityBonusBishopBegin[] = {-47, -20, 14, 29, 39, 53, 53, 60, 62, 69, 78, 83, 91, 96};
-static eval_t mobilityBonusBishopEnd[]   = {-59, -25, -8, 12, 21, 40, 56, 58, 65, 72, 78, 87, 88, 98};
-static eval_t mobilityBonusRookBegin[]   = {-60, -24, 0, 3, 4, 14, 20, 30, 41, 41, 41, 45, 57, 58, 67};
-static eval_t mobilityBonusRookEnd[]     = {-82, -15, 17, 43, 72, 100, 102, 122, 133, 139, 153, 160, 165, 170, 175};
-static eval_t mobilityBonusQueenBegin[]  = {-29, -16, -8, -8, 18, 25, 23, 37, 41,  54, 65, 68, 69, 70, 70,  70 , 71, 72, 74, 76, 90, 104, 105, 106, 112, 114, 114, 119};
-static eval_t mobilityBonusQueenEnd[]    = {-49,-29, -8, 17, 39,  54, 59, 73, 76, 95, 95 ,101, 124, 128, 132, 133, 136, 140, 147, 149, 153, 169, 171, 171, 178, 185, 187, 221};
-
-static eval_t doublePawnScore = -12;
-static eval_t pawnSupportScore = 6;
-static eval_t pawnBackwardScore = -12;
-
-static eval_t pawnRankBonusBegin[]         = {0, 0, 4, 4, 8, 12, 16, 0};
-static eval_t pawnRankBonusEnd[]           = {0, 0, 4, 16, 32, 64, 128, 0};
-static eval_t passedPawnRankBonusBegin[]   = {0, 16, 25, 25, 32, 64, 128, 0};
-static eval_t passedPawnRankBonusEnd[]     = {0, 25, 50, 50, 75, 125, 200, 0};
-
-static eval_t s_kingAreaAttackScore[100] = {
-    0,  0,   1,   2,   3,   5,   7,   9,  12,  15,
-  18,  22,  26,  30,  35,  39,  44,  50,  56,  62,
-  68,  75,  82,  85,  89,  97, 105, 113, 122, 131,
- 140, 150, 169, 180, 191, 202, 213, 225, 237, 248,
- 260, 272, 283, 295, 307, 319, 330, 342, 354, 366,
- 377, 389, 401, 412, 424, 436, 448, 459, 471, 483,
- 494, 500, 500, 500, 500, 500, 500, 500, 500, 500,
- 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
- 500, 500, 500, 500, 500, 500, 500, 500, 500, 500,
- 500, 500, 500, 500, 500, 500, 500, 500, 500, 500
-};
-
-static eval_t s_whiteKingPositionBegin[64] = {
-    20,  25,  30,   0,  12,  25,  30,  20,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-};
-
-static eval_t s_blackKingPositionBegin[64] = {
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-   -12, -12, -12, -12, -12, -12, -12, -12,
-    20,  25,  30,   0,  12,  25,  30,  20,
-};
-
-static eval_t s_kingPositionEnd[64] = {
-   -50, -25, -25, -25, -25, -25, -25, -50,
-   -25, -25, -12, -12, -12, -12, -25, -25,
-   -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -12,  12,  12,  12,  12, -12, -25,
-   -25, -25, -12, -12, -12, -12, -25, -25,
-   -50, -25, -25, -25, -25, -25, -25, -50,
-};
-
-static eval_t pawnShelterScores[4][8] =
-{
-    {  -3,  40,  45,  25,  20,  10,  15, 0 },
-    { -25,  30,  15, -27, -15, -10,  -5, 0 },
-    { -10,  35,  10,  10,  10,   5, -25, 0 },
-    { -20,  -5, -10, -20, -25, -30, -35, 0 },
-};
-
-static eval_t centerControlScoreBegin[16] = {
-    0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150
 };
 
 Evaluator::Evaluator()
@@ -204,15 +122,6 @@ void Evaluator::setHCEModelFile(std::string path)
     memcpy(pawnShelterScores[2],     weights + 365,   8 * sizeof(eval_t));
     memcpy(pawnShelterScores[3],     weights + 373,   8 * sizeof(eval_t));
     memcpy(centerControlScoreBegin,  weights + 381,  16 * sizeof(eval_t));
-
-    // Mirror white king version to black perspective
-    for(uint8_t rank = 0; rank < 8; rank++)
-        for(uint8_t file = 0; file < 8; file++)
-            s_blackKingPositionBegin[rank * 8 + file] = s_whiteKingPositionBegin[(7 - rank) * 8 + file];
-
-    // Fill remaining kingAttackScores
-    for(uint8_t i = 50; i < 100; i++)
-        s_kingAreaAttackScore[i] = s_kingAreaAttackScore[49];
 
     LOG("Loaded HCE model " << path)
 }
@@ -762,19 +671,17 @@ inline eval_t Evaluator::m_getKingEval(const Board& board, uint8_t phase, EvalTr
         for(int i = 0; i < m_numQueens[Color::WHITE]; i++)  whiteAttackingIndex += 5 * CNTSBITS(m_queenMoves[Color::WHITE][i]  & blackKingZone);
     }
 
-    // NOTE: This is probably not required, but it might be needed if the kingZone is increased
-    //       Anyways, it does not hurt to be safe and guard against out of bound reads :^)
-    if(blackAttackingIndex >= 100 || whiteAttackingIndex >= 100)
-    {
-        WARNING("Safety index is too large " << whiteKingZone << " " << blackAttackingIndex)
-        blackAttackingIndex = std::min(blackAttackingIndex, uint8_t(100));
-        whiteAttackingIndex = std::min(whiteAttackingIndex, uint8_t(100));
-    }
+    // Limit the index to 49, as there are only 50 indices in the score table
+    whiteAttackingIndex = std::min(whiteAttackingIndex, uint8_t(49));
+    blackAttackingIndex = std::min(blackAttackingIndex, uint8_t(49));
 
+    uint8_t bKingRank = bKingIdx >> 3;
+    uint8_t bkingFile = bKingIdx & 0b111;
+    uint8_t kingMirrorIdx = (7 - bKingRank) * 8 + bkingFile;
     eval_t kingAttackingScore = s_kingAreaAttackScore[whiteAttackingIndex] - s_kingAreaAttackScore[blackAttackingIndex];
     eval_t kingPositionScore = PHASE_LERP(
-        (s_whiteKingPositionBegin[wKingIdx] - s_blackKingPositionBegin[bKingIdx] + kingShelterScore),
-        (s_kingPositionEnd[wKingIdx] - s_kingPositionEnd[bKingIdx]),
+        (s_whiteKingPositionBegin[wKingIdx] - s_whiteKingPositionBegin[kingMirrorIdx] + kingShelterScore),
+        (s_kingPositionEnd[wKingIdx] - s_kingPositionEnd[kingMirrorIdx]),
         phase);
 
     #ifdef FULL_TRACE
@@ -859,8 +766,8 @@ eval_t Evaluator::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& 
     }
 
     // Limit the index to 15, as there are only 16 indices in the score table
-    whiteCenterIndex = whiteCenterIndex <= 15 ? whiteCenterIndex : 15;
-    blackCenterIndex = blackCenterIndex <= 15 ? blackCenterIndex : 15;
+    whiteCenterIndex = whiteCenterIndex <= std::min(whiteCenterIndex, uint8_t(15));
+    blackCenterIndex = blackCenterIndex <= std::min(blackCenterIndex, uint8_t(15));
     eval_t whiteCenterScoreBegin = centerControlScoreBegin[whiteCenterIndex];
     eval_t blackCenterScoreBegin = centerControlScoreBegin[blackCenterIndex];
     uint8_t centerPhase = (centerEvalThreshold + phase - totalPhase); // Center phase between centerEvalThreshold and zero
