@@ -34,14 +34,13 @@ namespace UCI
 
     static std::thread searchThread;
     static bool isSearching;
-    static bool useNNUE; // Variable only used for uci 'eval' command
 
     void go(Arcanum::Board& board, Arcanum::Searcher& searcher, std::istringstream& is);
-    void setoption(Arcanum::Searcher& searcher, std::istringstream& is);
+    void setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is);
     void position(Arcanum::Board& board, std::istringstream& is);
     int64_t allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber);
     void ischeckmate(Arcanum::Board& board);
-    void eval(Arcanum::Board& board);
+    void eval(Arcanum::Board& board, Arcanum::Evaluator& evaluator);
     void drawBoard(Arcanum::Board& board);
 }
 
@@ -49,7 +48,6 @@ namespace UCI
 void UCI::loop()
 {
     isSearching = false;
-    useNNUE = true;
 
     // Create Log file
     #ifdef ENABLE_UCI_PRINT
@@ -60,6 +58,8 @@ void UCI::loop()
 
     Board board = Board(startFEN);
     Searcher searcher = Searcher();
+    Evaluator evaluator = Evaluator();
+    evaluator.setEnableNNUE(true);
     std::string token, cmd;
 
     UCI_LOG("Entering UCI loop")
@@ -88,7 +88,7 @@ void UCI::loop()
             UCI_OUT("option name HCEWeightFile type string default \"\"")
             UCI_OUT("uciok")
         }
-        else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, is);
+        else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, evaluator, is);
         else if (strcmp(token.c_str(), "go"         ) == 0) go(board, searcher, is);
         else if (strcmp(token.c_str(), "position"   ) == 0) position(board, is);
         else if (strcmp(token.c_str(), "ucinewgame" ) == 0) UCI_WARNING("ucinewgame")
@@ -96,7 +96,7 @@ void UCI::loop()
         else if (strcmp(token.c_str(), "stop"       ) == 0) searcher.stop();
 
         // Custom
-        else if (strcmp(token.c_str(), "eval") == 0) eval(board);
+        else if (strcmp(token.c_str(), "eval") == 0) eval(board, evaluator);
         else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board);
         else if (strcmp(token.c_str(), "d") == 0) drawBoard(board);
 
@@ -105,7 +105,7 @@ void UCI::loop()
     UCI_LOG("Exiting UCI loop")
 }
 
-void UCI::setoption(Arcanum::Searcher& searcher, std::istringstream& is)
+void UCI::setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is)
 {
     if(isSearching) return;
 
@@ -138,8 +138,8 @@ void UCI::setoption(Arcanum::Searcher& searcher, std::istringstream& is)
         std::string b;
         is >> std::skipws >> b;
         std::transform(b.begin(), b.end(), b.begin(), [](unsigned char c){ return std::tolower(c); });
-        if(strcmp(b.c_str(), "true") == 0)       {searcher.setEnableNNUE(true);  useNNUE = true;  }
-        else if(strcmp(b.c_str(), "false") == 0) {searcher.setEnableNNUE(false); useNNUE = false; }
+        if(strcmp(b.c_str(), "true") == 0)       {searcher.setEnableNNUE(true); evaluator.setEnableNNUE(true); }
+        else if(strcmp(b.c_str(), "false") == 0) {searcher.setEnableNNUE(false); evaluator.setEnableNNUE(false); }
     }
     else if(strcmp(name.c_str(), "hceweightfile") == 0)
     {
@@ -311,10 +311,8 @@ void UCI::sendUciBestMove(const Arcanum::Move& move)
 }
 
 // Returns the statc eval score for white
-void UCI::eval(Board& board)
+void UCI::eval(Board& board, Evaluator& evaluator)
 {
-    Evaluator evaluator = Evaluator();
-    evaluator.setEnableNNUE(useNNUE);
     evaluator.initializeAccumulatorStack(board);
     UCI_OUT(evaluator.evaluate(board, 0).total)
 }
@@ -335,7 +333,7 @@ void UCI::ischeckmate(Board& board)
         }
     }
 
-        // Check for 50 move rule
+    // Check for 50 move rule
     if(board.getHalfMoves() >= 100)
     {
         std::cout << "stalemate" << std::endl;
