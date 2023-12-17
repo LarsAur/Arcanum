@@ -41,6 +41,9 @@ int main(int argc, char *argv[])
         if(!strncmp("--symeval-test", argv[i], 15))
             Test::symmetricEvaluation();
 
+        if(!strncmp("--see-test", argv[i], 11))
+            Test::see();
+
         if(!strncmp("--search-perf", argv[i], 14))
             Perf::search();
 

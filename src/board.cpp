@@ -2095,3 +2095,156 @@ std::string Board::getFEN() const
 
     return ss.str();
 }
+
+bitboard_t Board::attackersTo(const uint8_t square) const
+{
+    bitboard_t attackers = 0LL;
+    bitboard_t rooks   = m_bbTypedPieces[Piece::W_ROOK][Color::WHITE]   | m_bbTypedPieces[Piece::W_ROOK][Color::BLACK];
+    bitboard_t knights = m_bbTypedPieces[Piece::W_KNIGHT][Color::WHITE] | m_bbTypedPieces[Piece::W_KNIGHT][Color::BLACK];
+    bitboard_t bishops = m_bbTypedPieces[Piece::W_BISHOP][Color::WHITE] | m_bbTypedPieces[Piece::W_BISHOP][Color::BLACK];
+    bitboard_t queens  = m_bbTypedPieces[Piece::W_QUEEN][Color::WHITE]  | m_bbTypedPieces[Piece::W_QUEEN][Color::BLACK];
+    bitboard_t kings   = m_bbTypedPieces[Piece::W_KING][Color::WHITE]   | m_bbTypedPieces[Piece::W_KING][Color::BLACK];
+
+    attackers |= getKnightAttacks(square) & knights;
+    attackers |= getRookMoves(m_bbAllPieces, square) & (rooks | queens);
+    attackers |= getBishopMoves(m_bbAllPieces, square) & (bishops | queens);
+    attackers |= getKingMoves(square) & kings;
+
+    attackers |= getBlackPawnAttacks(1LL << square) & m_bbTypedPieces[Piece::W_PAWN][Color::WHITE];
+    attackers |= getWhitePawnAttacks(1LL << square) & m_bbTypedPieces[Piece::W_PAWN][Color::BLACK];
+
+    return attackers;
+}
+
+bitboard_t Board::m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const
+{
+    bitboard_t bbPawns = mask & m_bbTypedPieces[Piece::W_PAWN][color];
+    if(bbPawns) { piece = W_PAWN; return 1LL << LS1B(bbPawns); }
+    bitboard_t bbKnights = mask & m_bbTypedPieces[Piece::W_KNIGHT][color];
+    if(bbKnights) { piece = W_KNIGHT; return 1LL << LS1B(bbKnights); }
+    bitboard_t bbBishops = mask & m_bbTypedPieces[Piece::W_BISHOP][color];
+    if(bbBishops) { piece = W_BISHOP; return 1LL << LS1B(bbBishops); }
+    bitboard_t bbRooks = mask & m_bbTypedPieces[Piece::W_ROOK][color];
+    if(bbRooks) { piece = W_ROOK; return 1LL << LS1B(bbRooks); }
+    bitboard_t bbQueens = mask & m_bbTypedPieces[Piece::W_QUEEN][color];
+    if(bbQueens) { piece = W_QUEEN; return 1LL << LS1B(bbQueens); }
+    bitboard_t bbKing = mask & m_bbTypedPieces[Piece::W_KING][color];
+    if(bbKing) { piece = W_KING; return 1LL << LS1B(bbKing); }
+
+    piece = NO_PIECE;
+    return 0LL;
+}
+
+// Static exchange evaluation based on the swap algorithm:
+// https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
+// TODO: This function does not handle enpassant moves
+bool Board::see(const Move& move) const
+{
+    // Piece values used bu SEE.
+    static constexpr uint16_t values[] = {100, 300, 300, 500, 900, 32000};
+
+    Piece target = Piece(LS1B(move.moveInfo & MOVE_INFO_CAPTURE_MASK) - 16);
+    Piece attacker = Piece(LS1B(move.moveInfo & MOVE_INFO_MOVE_MASK));
+
+    // It is always ok to capture equal of higher value pieces
+    int16_t swap = values[attacker] - values[target];
+    if(swap <= 0)
+        return true;
+
+    // Calulate slider blockers and pinners
+    // TODO: This can be optimized out of this function and done one time for each board
+    // TODO: This can probably also be used when generating moves
+    bitboard_t pinners[2];  // Pieces which cause the pin (attackers)
+    bitboard_t blockers[2]; // Pieces which are pinned (blockers)
+
+    for(uint8_t i = 0; i < 2; i++)
+    {
+        bitboard_t snipers;
+        bitboard_t occupancy;
+        Color c = Color(i);
+        pinners[c]  = 0LL;
+        blockers[c] = 0LL;
+        uint8_t kingIdx = LS1B(m_bbTypedPieces[Piece::W_KING][c]);
+
+        snipers =  getRookMoves(m_bbAllPieces, kingIdx)
+                    & (m_bbTypedPieces[Piece::W_ROOK][c^1]   | m_bbTypedPieces[Piece::W_QUEEN][c^1]);
+        snipers |= getBishopMoves(m_bbAllPieces, kingIdx)
+                    & (m_bbTypedPieces[Piece::W_BISHOP][c^1] | m_bbTypedPieces[Piece::W_QUEEN][c^1]);
+
+        occupancy = m_bbAllPieces ^ snipers;
+
+        while (snipers)
+        {
+            uint8_t sniperIdx = popLS1B(&snipers);
+            bitboard_t blkers = getBetweens(kingIdx, sniperIdx) & occupancy;
+
+            if(CNTSBITS(blkers) == 1)
+            {
+                blockers[c]  |= blkers;
+                pinners[c^1] |= sniperIdx;
+            }
+        }
+    }
+
+    // Knights and kings cannot cause a discovered attack. (Because they are not on any line containing move.to)
+    const bitboard_t bishops = m_bbTypedPieces[Piece::W_BISHOP][Color::WHITE] | m_bbTypedPieces[Piece::W_BISHOP][Color::BLACK];
+    const bitboard_t rooks   = m_bbTypedPieces[Piece::W_ROOK][Color::WHITE]   | m_bbTypedPieces[Piece::W_ROOK][Color::BLACK];
+    const bitboard_t queens  = m_bbTypedPieces[Piece::W_QUEEN][Color::WHITE]  | m_bbTypedPieces[Piece::W_QUEEN][Color::BLACK];
+
+    bitboard_t bbFrom = 1LL << move.from;
+    bitboard_t bbTo   = 1LL << move.to;
+    bitboard_t occupancy = m_bbAllPieces ^ bbTo ^ bbFrom;
+    Color turn = m_turn;
+    bitboard_t attackers = attackersTo(move.to); // Attackers and defenders of the square
+    bool result = true;
+
+    while (true)
+    {
+        turn = Color(turn^1);
+        attackers &= occupancy;
+        bitboard_t currentAttackers = attackers & m_bbColoredPieces[turn];
+
+        // Break when the side to move has no attackers
+        if(!currentAttackers)
+            break;
+
+        if(pinners[turn^1] & occupancy)
+        {
+            currentAttackers &= ~blockers[turn];
+
+            if(!currentAttackers)
+                break;
+        }
+
+        result ^= 1;
+
+        // Find the least valuable piece to perform the next capture
+        Piece lvp;
+        bitboard_t bbLvp = m_getLeastValuablePiece(currentAttackers, turn, lvp);
+        swap = values[lvp] - swap;
+
+        if(swap < 0)
+            break;
+
+        occupancy ^= bbLvp;
+
+        // Note: Knights cannot reveil new attackers
+        if(lvp == Piece::W_PAWN)
+            attackers |= getBishopMoves(occupancy, move.to) & (bishops | queens);
+        else if(lvp == Piece::W_BISHOP)
+            attackers |= getBishopMoves(occupancy, move.to) & (bishops | queens);
+        else if(lvp == Piece::W_ROOK)
+            attackers |= getRookMoves(occupancy, move.to) & (rooks | queens);
+        else if(lvp == Piece::W_QUEEN)
+        {
+            attackers |= getBishopMoves(occupancy, move.to) & (bishops | queens);
+            attackers |= getRookMoves(occupancy, move.to)   & (rooks   | queens);
+        }
+        else if(lvp == Piece::W_KING)
+        {
+            return (attackers & m_bbColoredPieces[turn^1]) ? result ^ 1 : result;
+        }
+    }
+
+    return result;
+}

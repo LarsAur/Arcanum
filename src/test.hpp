@@ -8,6 +8,7 @@ namespace Test
     void zobrist();
     void draw();
     void symmetricEvaluation();
+    void see();
 }
 
 namespace Perf

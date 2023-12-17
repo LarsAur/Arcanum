@@ -146,6 +146,7 @@ namespace Arcanum
 
             // Tests if the king will be checked before adding the move
             bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
+            bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
         public:
             Board(const Board& board);
             Board(const std::string fen);
@@ -178,6 +179,8 @@ namespace Arcanum
             uint8_t getNumColoredPieces(Color color) const;
             std::string getBoardString() const;
             std::string getFEN() const;
+            bitboard_t attackersTo(uint8_t square) const;
+            bool see(const Move& move) const;
             static std::unordered_map<hash_t, uint8_t, HashFunction>* getBoardHistory();
     };
 
