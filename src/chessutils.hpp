@@ -19,6 +19,12 @@ namespace Arcanum
 {
     typedef uint64_t bitboard_t;
 
+    void initGenerateBetweens();
+    // Includes the open set of squares between two squares.
+    // I.e. not including to and from
+    // Zero if not on the same rank, file or diagonal
+    extern bitboard_t betweens[64][64];
+
     void initGenerateKnightAttacks();
     extern bitboard_t knightAttacks[64];
 
@@ -281,6 +287,11 @@ namespace Arcanum
     static inline bitboard_t getQueenMoves(const bitboard_t allPiecesBitboard, const uint8_t queenIdx)
     {
         return getRookMoves(allPiecesBitboard, queenIdx) | getBishopMoves(allPiecesBitboard, queenIdx);
+    }
+
+    static inline bitboard_t getBetweens(const uint8_t fromIdx, const uint8_t toIdx)
+    {
+        return betweens[fromIdx][toIdx];
     }
 
     static inline std::string getArithmeticNotation(uint8_t square)

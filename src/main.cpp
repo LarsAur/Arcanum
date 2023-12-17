@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
     Arcanum::initGenerateKingMoves();
     Arcanum::initGenerateRookMoves();
     Arcanum::initGenerateBishopMoves();
+    Arcanum::initGenerateBetweens();
 
     if(argc == 1)
     {

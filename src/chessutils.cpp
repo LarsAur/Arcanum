@@ -5,6 +5,68 @@
 
 namespace Arcanum
 {
+    bitboard_t betweens[64][64];
+    void initGenerateBetweens()
+    {
+        for(uint8_t from = 0; from < 64; from++)
+        {
+            uint8_t fromFile = from & 0b111;
+            uint8_t fromRank = from >> 3;
+            for(uint8_t to = 0; to < 64; to++)
+            {
+                uint8_t toFile = to & 0b111;
+                uint8_t toRank = to >> 3;
+
+                // If not on the same rank, file or diagonal, set to zero.
+                betweens[from][to] = 0LL;
+
+                // Check if to and from are on the same rank or file
+                if(toFile == fromFile)
+                {
+                    uint8_t start = std::min(toRank, fromRank);
+                    uint8_t end   = std::max(toRank, fromRank);
+                    for(uint8_t i = start + 1; i < end; i++)
+                        betweens[from][to] |= (1LL << toFile) << (i << 3);
+                }
+                else if(toRank == fromRank)
+                {
+                    uint8_t start = std::min(toFile, fromFile);
+                    uint8_t end   = std::max(toFile, fromFile);
+                    for(uint8_t i = start + 1; i < end; i++)
+                        betweens[from][to] |= (1LL << i) << (toRank << 3);
+                }
+                // Check if to and from are on the same diagonal
+                else if(std::abs(toFile - fromFile) == std::abs(toRank - fromRank))
+                {
+                    uint8_t x1, y1, y2; // x1 is always less than 'x2'
+                    if(fromFile < toFile)
+                    {
+                        x1 = fromFile;   y1 = fromRank;
+                        y2 = toRank;
+                    }
+                    else
+                    {
+                        x1 = toFile;       y1 = toRank;
+                        y2 = fromRank;
+                    }
+
+                    if(y1 < y2) // Up right
+                    {
+                        uint8_t d = y2 - y1;
+                        for(uint8_t i = 1; i < d; i++)
+                            betweens[from][to] |= (1LL << (x1 + i)) << ((y1 + i) << 3);
+                    }
+                    else // Down right
+                    {
+                        uint8_t d = y1 - y2;
+                        for(uint8_t i = 1; i < d; i++)
+                            betweens[from][to] |= (1LL << (x1 + i)) << ((y2 - i) << 3);
+                    }
+                }
+            }
+        }
+    }
+
     bitboard_t knightAttacks[64];
     void initGenerateKnightAttacks()
     {
