@@ -30,7 +30,7 @@ uci: $(BUILDDIR)/$(PROJECT).exe
 	./$^
 
 test: $(BUILDDIR)/$(PROJECT).exe
-	./$^ --draw-test --capture-test --zobrist-test --symeval-test --perft-test
+	./$^ --see-test --draw-test --capture-test --zobrist-test --symeval-test --perft-test
 
 perf: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --search-perf --engine-perf
