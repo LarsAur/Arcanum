@@ -132,11 +132,12 @@ namespace Arcanum
             bitboard_t m_bbAllPieces;
             bitboard_t m_bbColoredPieces[NUM_COLORS];
             bitboard_t m_bbTypedPieces[6][NUM_COLORS];
+            bitboard_t m_blockers[NUM_COLORS]; // Pieces blocking the king from a sliding piece
+            bitboard_t m_pinners[NUM_COLORS];  // Pieces pinning blockers in front of the king
 
             Piece m_pieces[64];
             uint8_t m_numLegalMoves;
             Move m_legalMoves[218];
-
             hash_t m_hash;
             hash_t m_materialHash;
             hash_t m_pawnHash;
@@ -147,6 +148,7 @@ namespace Arcanum
             // Tests if the king will be checked before adding the move
             bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
+            void m_findPinnedPieces();
         public:
             Board(const Board& board);
             Board(const std::string fen);

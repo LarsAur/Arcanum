@@ -226,6 +226,7 @@ Board::Board(const std::string fen)
     m_fullMoves = atoi(fen.c_str() + fenPosition);
 
     s_zobrist.getHashs(*this, m_hash, m_pawnHash, m_materialHash);
+    m_findPinnedPieces();
 }
 
 Board::Board(const Board& board)
@@ -260,6 +261,43 @@ Board::Board(const Board& board)
     m_bbTypedPieces[W_BISHOP][BLACK]    = board.m_bbTypedPieces[W_BISHOP][BLACK];
     m_bbTypedPieces[W_QUEEN][BLACK]     = board.m_bbTypedPieces[W_QUEEN][BLACK];
     m_bbTypedPieces[W_KING][BLACK]      = board.m_bbTypedPieces[W_KING][BLACK];
+
+    m_findPinnedPieces();
+}
+
+// Calulate slider blockers and pinners
+// Pinners and blockers are required for both sides because they are used by see().
+// TODO: This can probably also be used when generating moves
+inline void Board::m_findPinnedPieces()
+{
+    for(uint8_t i = 0; i < 2; i++)
+    {
+        bitboard_t snipers;
+        bitboard_t occupancy;
+        Color c = Color(i);
+        m_pinners[c]  = 0LL;
+        m_blockers[c] = 0LL;
+        uint8_t kingIdx = LS1B(m_bbTypedPieces[Piece::W_KING][c]);
+
+        snipers =  getRookMoves(m_bbAllPieces, kingIdx)
+                    & (m_bbTypedPieces[Piece::W_ROOK][c^1]   | m_bbTypedPieces[Piece::W_QUEEN][c^1]);
+        snipers |= getBishopMoves(m_bbAllPieces, kingIdx)
+                    & (m_bbTypedPieces[Piece::W_BISHOP][c^1] | m_bbTypedPieces[Piece::W_QUEEN][c^1]);
+
+        occupancy = m_bbAllPieces ^ snipers;
+
+        while (snipers)
+        {
+            uint8_t sniperIdx = popLS1B(&snipers);
+            bitboard_t blkers = getBetweens(kingIdx, sniperIdx) & occupancy;
+
+            if(CNTSBITS(blkers) == 1)
+            {
+                m_blockers[c]  |= blkers;
+                m_pinners[c^1] |= sniperIdx;
+            }
+        }
+    }
 }
 
 inline bool Board::m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights)
@@ -2137,12 +2175,12 @@ bitboard_t Board::m_getLeastValuablePiece(const bitboard_t mask, const Color col
 
 // Static exchange evaluation based on the swap algorithm:
 // https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
-// TODO: This function does not handle enpassant moves
 bool Board::see(const Move& move) const
 {
     // Piece values used bu SEE.
     static constexpr uint16_t values[] = {100, 300, 300, 500, 900, 32000};
 
+    // Note: This also works for enpassant
     Piece target = Piece(LS1B(move.moveInfo & MOVE_INFO_CAPTURE_MASK) - 16);
     Piece attacker = Piece(LS1B(move.moveInfo & MOVE_INFO_MOVE_MASK));
 
@@ -2150,41 +2188,6 @@ bool Board::see(const Move& move) const
     int16_t swap = values[attacker] - values[target];
     if(swap <= 0)
         return true;
-
-    // Calulate slider blockers and pinners
-    // TODO: This can be optimized out of this function and done one time for each board
-    // TODO: This can probably also be used when generating moves
-    bitboard_t pinners[2];  // Pieces which cause the pin (attackers)
-    bitboard_t blockers[2]; // Pieces which are pinned (blockers)
-
-    for(uint8_t i = 0; i < 2; i++)
-    {
-        bitboard_t snipers;
-        bitboard_t occupancy;
-        Color c = Color(i);
-        pinners[c]  = 0LL;
-        blockers[c] = 0LL;
-        uint8_t kingIdx = LS1B(m_bbTypedPieces[Piece::W_KING][c]);
-
-        snipers =  getRookMoves(m_bbAllPieces, kingIdx)
-                    & (m_bbTypedPieces[Piece::W_ROOK][c^1]   | m_bbTypedPieces[Piece::W_QUEEN][c^1]);
-        snipers |= getBishopMoves(m_bbAllPieces, kingIdx)
-                    & (m_bbTypedPieces[Piece::W_BISHOP][c^1] | m_bbTypedPieces[Piece::W_QUEEN][c^1]);
-
-        occupancy = m_bbAllPieces ^ snipers;
-
-        while (snipers)
-        {
-            uint8_t sniperIdx = popLS1B(&snipers);
-            bitboard_t blkers = getBetweens(kingIdx, sniperIdx) & occupancy;
-
-            if(CNTSBITS(blkers) == 1)
-            {
-                blockers[c]  |= blkers;
-                pinners[c^1] |= sniperIdx;
-            }
-        }
-    }
 
     // Knights and kings cannot cause a discovered attack. (Because they are not on any line containing move.to)
     const bitboard_t bishops = m_bbTypedPieces[Piece::W_BISHOP][Color::WHITE] | m_bbTypedPieces[Piece::W_BISHOP][Color::BLACK];
@@ -2208,9 +2211,9 @@ bool Board::see(const Move& move) const
         if(!currentAttackers)
             break;
 
-        if(pinners[turn^1] & occupancy)
+        if(m_pinners[turn^1] & occupancy)
         {
-            currentAttackers &= ~blockers[turn];
+            currentAttackers &= ~m_blockers[turn];
 
             if(!currentAttackers)
                 break;
