@@ -60,7 +60,7 @@ namespace Arcanum
                     {
                         uint8_t d = y1 - y2;
                         for(uint8_t i = 1; i < d; i++)
-                            betweens[from][to] |= (1LL << (x1 + i)) << ((y2 - i) << 3);
+                            betweens[from][to] |= (1LL << (x1 + i)) << ((y1 - i) << 3);
                     }
                 }
             }
