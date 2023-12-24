@@ -275,13 +275,13 @@ inline void Board::m_findPinnedPieces()
         bitboard_t snipers;
         bitboard_t occupancy;
         Color c = Color(i);
-        m_pinners[c]  = 0LL;
         m_blockers[c] = 0LL;
+        m_pinners[c^1]  = 0LL;
         uint8_t kingIdx = LS1B(m_bbTypedPieces[Piece::W_KING][c]);
 
-        snipers =  getRookMoves(m_bbAllPieces, kingIdx)
+        snipers =  getRookMoves(0LL, kingIdx)
                     & (m_bbTypedPieces[Piece::W_ROOK][c^1]   | m_bbTypedPieces[Piece::W_QUEEN][c^1]);
-        snipers |= getBishopMoves(m_bbAllPieces, kingIdx)
+        snipers |= getBishopMoves(0LL, kingIdx)
                     & (m_bbTypedPieces[Piece::W_BISHOP][c^1] | m_bbTypedPieces[Piece::W_QUEEN][c^1]);
 
         occupancy = m_bbAllPieces ^ snipers;
@@ -289,11 +289,11 @@ inline void Board::m_findPinnedPieces()
         while (snipers)
         {
             uint8_t sniperIdx = popLS1B(&snipers);
-            bitboard_t blkers = getBetweens(kingIdx, sniperIdx) & occupancy;
+            bitboard_t blockingSquares = getBetweens(kingIdx, sniperIdx) & occupancy;
 
-            if(CNTSBITS(blkers) == 1)
+            if(CNTSBITS(blockingSquares) == 1)
             {
-                m_blockers[c]  |= blkers;
+                m_blockers[c]  |= blockingSquares;
                 m_pinners[c^1] |= sniperIdx;
             }
         }
