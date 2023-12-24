@@ -226,7 +226,6 @@ Board::Board(const std::string fen)
     m_fullMoves = atoi(fen.c_str() + fenPosition);
 
     s_zobrist.getHashs(*this, m_hash, m_pawnHash, m_materialHash);
-    m_findPinnedPieces();
 }
 
 Board::Board(const Board& board)
@@ -261,8 +260,6 @@ Board::Board(const Board& board)
     m_bbTypedPieces[W_BISHOP][BLACK]    = board.m_bbTypedPieces[W_BISHOP][BLACK];
     m_bbTypedPieces[W_QUEEN][BLACK]     = board.m_bbTypedPieces[W_QUEEN][BLACK];
     m_bbTypedPieces[W_KING][BLACK]      = board.m_bbTypedPieces[W_KING][BLACK];
-
-    m_findPinnedPieces();
 }
 
 // Calulate slider blockers and pinners
@@ -317,6 +314,14 @@ inline bool Board::m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitbo
         }
     }
 
+    if(!(bbFrom & m_blockers[m_turn]))
+    {
+        m_legalMoves[m_numLegalMoves++] = move;
+        return true;
+    }
+
+    // TODO: Have to check for blockers still blocking after move
+
     if(bbFrom & kingDiagonals)
     {
         // Queens and bishops after removing potential capture
@@ -355,6 +360,7 @@ inline bool Board::m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitbo
 
 Move* Board::getLegalMovesFromCheck()
 {
+    m_findPinnedPieces();
     m_numLegalMoves = 0;
     Color opponent = Color(m_turn^1);
     bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];
@@ -668,6 +674,7 @@ Move* Board::getLegalMoves()
         return getLegalMovesFromCheck();
     }
 
+    m_findPinnedPieces();
     m_numLegalMoves = 0;
 
     // Create bitboard for where the king would be attacked
@@ -906,13 +913,14 @@ Move* Board::getLegalMoves()
 // Note: Does not include castle
 Move* Board::getLegalCaptureAndCheckMoves()
 {
-    m_numLegalMoves = 0;
-
     // If in check, the existing function for generating legal moves will be used
     if(isChecked(m_turn))
     {
         return getLegalMovesFromCheck();
     }
+
+    m_findPinnedPieces();
+    m_numLegalMoves = 0;
 
     // Everything below is generating moves when not in check, thus we can filter for capturing moves
     Color opponent = Color(m_turn ^ 1);
@@ -1116,6 +1124,7 @@ Move* Board::getLegalCaptureMoves()
         return getLegalMovesFromCheck();
     }
 
+    m_findPinnedPieces();
     m_numLegalMoves = 0;
     // Everything below is generating moves when not in check, thus we can filter for capturing moves
     Color opponent = Color(m_turn ^ 1);
@@ -1279,6 +1288,7 @@ bool Board::hasLegalMove()
         return hasLegalMoveFromCheck();
     }
 
+    m_findPinnedPieces();
     m_numLegalMoves = 0;
 
     // Create bitboard for where the king would be attacked
@@ -1442,6 +1452,7 @@ bool Board::hasLegalMove()
 
 bool Board::hasLegalMoveFromCheck()
 {
+    m_findPinnedPieces();
     m_numLegalMoves = 0;
     Color opponent = Color(m_turn^1);
     bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];
