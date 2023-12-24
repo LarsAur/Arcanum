@@ -482,12 +482,8 @@ Move* Board::getLegalMovesFromCheck()
 
     // -- The attacking piece is a sliding piece (Rook, Bishop or Queen)
 
-    // Create a blocking mask
-    bitboard_t blockingMask = attackers;
-    if(bishopAttackers)
-        blockingMask |= kingBishopAttacks & getBishopMoves(m_bbAllPieces, attackerIdx);
-    else // rookAttackers
-        blockingMask |= kingRookAttacks & getRookMoves(m_bbAllPieces, attackerIdx);
+    // Create a blocking mask, consisting of all squares in which pieces can move to block attackers
+    bitboard_t blockingMask = attackers | getBetweens(attackerIdx, kingIdx);
 
     // Queen moves
     bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
@@ -1557,12 +1553,8 @@ bool Board::hasLegalMoveFromCheck()
 
     // -- The attacking piece is a sliding piece (Rook, Bishop or Queen)
 
-    // Create a blocking mask
-    bitboard_t blockingMask = attackers;
-    if(bishopAttackers)
-        blockingMask |= kingBishopAttacks & getBishopMoves(m_bbAllPieces, attackerIdx);
-    else // rookAttackers
-        blockingMask |= kingRookAttacks & getRookMoves(m_bbAllPieces, attackerIdx);
+    // Create a blocking mask, consisting of all squares in which pieces can move to block attackers
+    bitboard_t blockingMask = attackers | getBetweens(kingIdx, attackerIdx);
 
     // Queen moves
     bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
