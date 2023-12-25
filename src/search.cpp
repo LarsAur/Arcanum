@@ -106,8 +106,12 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board);
     EvalTrace bestScore = EvalTrace(-INF);
     for (int i = 0; i < numMoves; i++)  {
-        Board newBoard = Board(board);
         const Move *move = moveSelector.getNextMove();
+
+        if(i > 0 && !board.see(*move))
+            continue;
+
+        Board newBoard = Board(board);
         newBoard.performMove(*move);
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
         EvalTrace score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, depth - 1, plyFromRoot + 1);
@@ -494,8 +498,9 @@ Move Searcher::search(Board board, SearchParameters parameters)
         UCI::sendUciInfo(info);
 
         // If checkmate is found, search can be stopped
-        if(m_evaluator.isCheckMateScore(bestScore))
-            break;
+        // EDIT: This cannot be done, as qsearch might not find correct checkmates
+        // if(m_evaluator.isCheckMateScore(bestScore))
+        //     break;
 
         // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
         // or else it would overflow the pvline array
