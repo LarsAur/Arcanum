@@ -133,7 +133,8 @@ namespace Arcanum
             bitboard_t m_bbColoredPieces[NUM_COLORS];
             bitboard_t m_bbTypedPieces[6][NUM_COLORS];
             bitboard_t m_blockers[NUM_COLORS]; // Pieces blocking the king from a sliding piece
-            bitboard_t m_pinners[NUM_COLORS];  // Pieces pinning blockers in front of the king
+            bitboard_t m_pinners[NUM_COLORS];  // Pieces which targets the king with only one opponent piece blocking
+            uint8_t m_pinnerBlockerIdxPairs[64]; // Array containing the idx of the pinner
 
             Piece m_pieces[64];
             uint8_t m_numLegalMoves;
@@ -146,7 +147,7 @@ namespace Arcanum
             friend class Evaluator;
 
             // Tests if the king will be checked before adding the move
-            bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx, bitboard_t kingDiagonals, bitboard_t kingStraights);
+            bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx);
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
         public:
