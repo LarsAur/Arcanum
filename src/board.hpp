@@ -147,6 +147,7 @@ namespace Arcanum
             friend class Evaluator;
 
             // Tests if the king will be checked before adding the move
+            bool m_attemptAddPseudoLegalEnpassant(Move move, uint8_t kingIdx);
             bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx);
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
