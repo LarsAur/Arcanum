@@ -76,7 +76,9 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     if(m_isDraw(board))
         return DRAW_VALUE;
 
-    if(!board.isChecked(board.getTurn()))
+    bool isChecked = board.isChecked(board.getTurn());
+
+    if(!isChecked)
     {
         m_numNodesSearched++;
         EvalTrace standPat = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
@@ -108,7 +110,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     for (int i = 0; i < numMoves; i++)  {
         const Move *move = moveSelector.getNextMove();
 
-        if(i > 0 && !board.see(*move))
+        if(i > 0 && !board.see(*move) && !isChecked)
             continue;
 
         Board newBoard = Board(board);
@@ -438,7 +440,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
             Board newBoard = Board(board);
             newBoard.performMove(*move);
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
-            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, 4, false);
+            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, 0, false);
             m_evaluator.popMoveFromAccumulator();
 
             if(m_stopSearch)
@@ -498,9 +500,8 @@ Move Searcher::search(Board board, SearchParameters parameters)
         UCI::sendUciInfo(info);
 
         // If checkmate is found, search can be stopped
-        // EDIT: This cannot be done, as qsearch might not find correct checkmates
-        // if(m_evaluator.isCheckMateScore(bestScore))
-        //     break;
+        if(m_evaluator.isCheckMateScore(bestScore))
+            break;
 
         // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
         // or else it would overflow the pvline array
