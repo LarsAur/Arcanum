@@ -14,3 +14,5 @@ REGRESSION_THREAD_POOL_SIZE = 2             # Number of threads used when perfor
 DATA_GEN_THREAD_POOL_SIZE = 10              # Number of threads used when generating dataset.
 SEARCH_TIME = 50                            # Number of ms used to play each move while generating the dataset.
 NUM_GAMES = 10000                           # Number of grames to generate positions from. (10K games results in ~400K positions)
+NUM_WEIGHTS = 397                           # Number of weights in the model
+WEIGHT_RANGE = (0, NUM_WEIGHTS-1)           # Range of weights to train

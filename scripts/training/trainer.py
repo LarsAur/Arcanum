@@ -4,7 +4,6 @@ from subprocess import Popen, PIPE, STDOUT
 from concurrent.futures import ThreadPoolExecutor
 import time
 import os
-import math
 
 p_errors = None
 n_errors = None
@@ -99,12 +98,12 @@ def train():
         n_errors = num_weights * [1]
         executor = ThreadPoolExecutor(max_workers=config.REGRESSION_THREAD_POOL_SIZE)
 
-        for i in range(num_weights):
+        for i in range(config.WEIGHT_RANGE[0], config.WEIGHT_RANGE[1] + 1):
             executor.submit(_worker, model, current_model_error, i, delta)
         executor.shutdown(wait=True)
 
         delta_weights = num_weights * [0]
-        for i in range(num_weights):
+        for i in range(config.WEIGHT_RANGE[0], config.WEIGHT_RANGE[1] + 1):
             if(p_errors[i] < current_model_error):
                 delta_weights[i] = delta
             elif(n_errors[i] < current_model_error):

@@ -1,9 +1,8 @@
-import random
-import math
+import config
 from typing import List
 class EvalModel:
 
-    NUM_WEIGHTS = 397
+    NUM_WEIGHTS = config.NUM_WEIGHTS
 
     def __init__(self):
         self.weights = EvalModel.NUM_WEIGHTS * [0]
