@@ -36,6 +36,7 @@ namespace UCI
     static bool isSearching;
 
     void go(Arcanum::Board& board, Arcanum::Searcher& searcher, std::istringstream& is);
+    void newgame(Arcanum::Searcher& Searcher, Arcanum::Evaluator& evaluatorm, Arcanum::Board& board);
     void setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is);
     void position(Arcanum::Board& board, std::istringstream& is);
     int64_t allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber);
@@ -91,7 +92,7 @@ void UCI::loop()
         else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, evaluator, is);
         else if (strcmp(token.c_str(), "go"         ) == 0) go(board, searcher, is);
         else if (strcmp(token.c_str(), "position"   ) == 0) position(board, is);
-        else if (strcmp(token.c_str(), "ucinewgame" ) == 0) UCI_WARNING("ucinewgame")
+        else if (strcmp(token.c_str(), "ucinewgame" ) == 0) newgame(searcher, evaluator, board);
         else if (strcmp(token.c_str(), "isready"    ) == 0) UCI_OUT("readyok")
         else if (strcmp(token.c_str(), "stop"       ) == 0) searcher.stop();
 
@@ -103,6 +104,14 @@ void UCI::loop()
     } while(strcmp(token.c_str(), "quit") != 0);
 
     UCI_LOG("Exiting UCI loop")
+}
+
+void UCI::newgame(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, Arcanum::Board& board)
+{
+    if(isSearching) return;
+
+    searcher.clearTT();
+    board = Board(Arcanum::startFEN);
 }
 
 void UCI::setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is)
