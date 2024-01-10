@@ -68,7 +68,7 @@ void Searcher::clearTT()
     m_tt->clear();
 }
 
-EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot)
+EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int plyFromRoot)
 {
     if(m_stopSearch)
         return EvalTrace(0);
@@ -92,8 +92,8 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         }
     }
 
-    // Only genereate checking moves up to a certain depth
-    Move *moves = depth > 0 ? board.getLegalCaptureAndCheckMoves() : board.getLegalCaptureMoves();
+    // Genereate only capture moves if not in check, else generate all moves
+    Move *moves = board.getLegalCaptureMoves();
     uint8_t numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
@@ -116,7 +116,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         Board newBoard = Board(board);
         newBoard.performMove(*move);
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
-        EvalTrace score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, depth - 1, plyFromRoot + 1);
+        EvalTrace score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, plyFromRoot + 1);
         m_evaluator.popMoveFromAccumulator();
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
@@ -136,7 +136,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     return bestScore;
 }
 
-EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, int quietDepth, bool isNullMoveSearch)
+EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, bool isNullMoveSearch)
 {
     // NOTE: It is important that the size of the pv line is set to zero
     //       before returning due to searchStop, this is because the size
@@ -183,7 +183,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
 
     if(depth == 0)
     {
-        return m_alphaBetaQuiet(board, alpha, beta, quietDepth, plyFromRoot + 1);
+        return m_alphaBetaQuiet(board, alpha, beta, plyFromRoot + 1);
     }
 
     EvalTrace bestScore = EvalTrace(-INF);
@@ -208,7 +208,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     {
         Board newBoard = Board(board);
         newBoard.performNullMove();
-        EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 3, plyFromRoot + 1, quietDepth, true);
+        EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 3, plyFromRoot + 1, true);
 
         if((int32_t) score.total >= (int32_t)beta.total)
         {
@@ -246,7 +246,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         {
             EvalTrace nullWindowBeta = -alpha;
             nullWindowBeta.total -= 1;
-            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, quietDepth, false);
+            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, false);
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
             #if SEARCH_RECORD_STATS
@@ -260,7 +260,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             // Extend search for checking moves or check avoiding moves
             // This is to avoid horizon effect occuring by starting with a forced line
             uint8_t extension = checkOrChecking ? 1 : 0;
-            score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, quietDepth, false);
+            score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false);
         }
 
         m_evaluator.popMoveFromAccumulator();
@@ -440,7 +440,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
             Board newBoard = Board(board);
             newBoard.performMove(*move);
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
-            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, 0, false);
+            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false);
             m_evaluator.popMoveFromAccumulator();
 
             if(m_stopSearch)
