@@ -1,5 +1,4 @@
 #include <eval.hpp>
-#include <weights.hpp>
 #include <algorithm>
 
 using namespace Arcanum;
@@ -92,38 +91,43 @@ void Evaluator::setHCEModelFile(std::string path)
     }
     is.close();
 
-    pawnValue   = 100;
-    rookValue   = weights[0];
-    knightValue = weights[1];
-    bishopValue = weights[2];
-    queenValue  = weights[3];
-
-    doublePawnScore = weights[4];
-    pawnSupportScore = weights[5];
-    pawnBackwardScore = weights[6];
-
-    memcpy(mobilityBonusKnightBegin, weights +  7,    9 * sizeof(eval_t));
-    memcpy(mobilityBonusKnightEnd,   weights +  16,   9 * sizeof(eval_t));
-    memcpy(mobilityBonusBishopBegin, weights +  25,  14 * sizeof(eval_t));
-    memcpy(mobilityBonusBishopEnd,   weights +  39,  14 * sizeof(eval_t));
-    memcpy(mobilityBonusRookBegin,   weights +  53,  15 * sizeof(eval_t));
-    memcpy(mobilityBonusRookEnd,     weights +  68,  15 * sizeof(eval_t));
-    memcpy(mobilityBonusQueenBegin,  weights +  83,  28 * sizeof(eval_t));
-    memcpy(mobilityBonusQueenEnd,    weights + 111,  28 * sizeof(eval_t));
-    memcpy(pawnRankBonusBegin,       weights + 139,   8 * sizeof(eval_t));
-    memcpy(pawnRankBonusEnd,         weights + 147,   8 * sizeof(eval_t));
-    memcpy(passedPawnRankBonusBegin, weights + 155,   8 * sizeof(eval_t));
-    memcpy(passedPawnRankBonusEnd,   weights + 163,   8 * sizeof(eval_t));
-    memcpy(s_kingAreaAttackScore,    weights + 171,  50 * sizeof(eval_t));
-    memcpy(s_whiteKingPositionBegin, weights + 221,  64 * sizeof(eval_t));
-    memcpy(s_kingPositionEnd,        weights + 285,  64 * sizeof(eval_t));
-    memcpy(pawnShelterScores[0],     weights + 349,   8 * sizeof(eval_t));
-    memcpy(pawnShelterScores[1],     weights + 357,   8 * sizeof(eval_t));
-    memcpy(pawnShelterScores[2],     weights + 365,   8 * sizeof(eval_t));
-    memcpy(pawnShelterScores[3],     weights + 373,   8 * sizeof(eval_t));
-    memcpy(centerControlScoreBegin,  weights + 381,  16 * sizeof(eval_t));
+    loadWeights(weights);
 
     LOG("Loaded HCE model " << path)
+}
+
+void Evaluator::loadWeights(eval_t* weights)
+{
+    m_pawnValue   = 100;
+    m_rookValue   = weights[0];
+    m_knightValue = weights[1];
+    m_bishopValue = weights[2];
+    m_queenValue  = weights[3];
+
+    m_doublePawnScore = weights[4];
+    m_pawnSupportScore = weights[5];
+    m_pawnBackwardScore = weights[6];
+
+    memcpy(m_mobilityBonusKnightBegin, weights +  7,    9 * sizeof(eval_t));
+    memcpy(m_mobilityBonusKnightEnd,   weights +  16,   9 * sizeof(eval_t));
+    memcpy(m_mobilityBonusBishopBegin, weights +  25,  14 * sizeof(eval_t));
+    memcpy(m_mobilityBonusBishopEnd,   weights +  39,  14 * sizeof(eval_t));
+    memcpy(m_mobilityBonusRookBegin,   weights +  53,  15 * sizeof(eval_t));
+    memcpy(m_mobilityBonusRookEnd,     weights +  68,  15 * sizeof(eval_t));
+    memcpy(m_mobilityBonusQueenBegin,  weights +  83,  28 * sizeof(eval_t));
+    memcpy(m_mobilityBonusQueenEnd,    weights + 111,  28 * sizeof(eval_t));
+    memcpy(m_pawnRankBonusBegin,       weights + 139,   8 * sizeof(eval_t));
+    memcpy(m_pawnRankBonusEnd,         weights + 147,   8 * sizeof(eval_t));
+    memcpy(m_passedPawnRankBonusBegin, weights + 155,   8 * sizeof(eval_t));
+    memcpy(m_passedPawnRankBonusEnd,   weights + 163,   8 * sizeof(eval_t));
+    memcpy(m_kingAreaAttackScore,      weights + 171,  50 * sizeof(eval_t));
+    memcpy(m_whiteKingPositionBegin,   weights + 221,  64 * sizeof(eval_t));
+    memcpy(m_kingPositionEnd,          weights + 285,  64 * sizeof(eval_t));
+    memcpy(m_pawnShelterScores[0],     weights + 349,   8 * sizeof(eval_t));
+    memcpy(m_pawnShelterScores[1],     weights + 357,   8 * sizeof(eval_t));
+    memcpy(m_pawnShelterScores[2],     weights + 365,   8 * sizeof(eval_t));
+    memcpy(m_pawnShelterScores[3],     weights + 373,   8 * sizeof(eval_t));
+    memcpy(m_centerControlScoreBegin,  weights + 381,  16 * sizeof(eval_t));
 }
 
 void Evaluator::setEnableNNUE(bool enabled)
@@ -355,20 +359,20 @@ inline eval_t Evaluator::m_getPawnEval(const Board& board, uint8_t phase, EvalTr
         // Is passed pawn
         if(((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) == 0)
         {
-            pawnScoreBegin += passedPawnRankBonusBegin[rank];
-            pawnScoreEnd += passedPawnRankBonusEnd[rank];
+            pawnScoreBegin += m_passedPawnRankBonusBegin[rank];
+            pawnScoreEnd += m_passedPawnRankBonusEnd[rank];
         }
         else
         {
-            pawnScoreBegin += pawnRankBonusBegin[rank];
-            pawnScoreEnd += pawnRankBonusEnd[rank];
+            pawnScoreBegin += m_pawnRankBonusBegin[rank];
+            pawnScoreEnd += m_pawnRankBonusEnd[rank];
         }
 
         // Pawn has supporting pawns (in the neighbour files)
-        pawnScore += CNTSBITS((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][WHITE])) * pawnSupportScore;
+        pawnScore += CNTSBITS((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][WHITE])) * m_pawnSupportScore;
 
         // Is not a doubled pawn
-        pawnScore += ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * doublePawnScore;
+        pawnScore += ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) != 0) * m_doublePawnScore;
     }
 
     while (bPawns)
@@ -391,20 +395,20 @@ inline eval_t Evaluator::m_getPawnEval(const Board& board, uint8_t phase, EvalTr
         // Is passed pawn
         if(((pawnNeighbourFiles | pawnFile) & forward & board.m_bbTypedPieces[W_PAWN][WHITE]) == 0)
         {
-            pawnScoreBegin -= passedPawnRankBonusBegin[7 - rank];
-            pawnScoreEnd -= passedPawnRankBonusEnd[7 - rank];
+            pawnScoreBegin -= m_passedPawnRankBonusBegin[7 - rank];
+            pawnScoreEnd -= m_passedPawnRankBonusEnd[7 - rank];
         }
         else
         {
-            pawnScoreBegin -= pawnRankBonusBegin[7 - rank];
-            pawnScoreEnd -= pawnRankBonusEnd[7 - rank];
+            pawnScoreBegin -= m_pawnRankBonusBegin[7 - rank];
+            pawnScoreEnd -= m_pawnRankBonusEnd[7 - rank];
         }
 
         // Pawn has supporting pawns (in the neighbour files)
-        pawnScore -= CNTSBITS((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][BLACK])) * pawnSupportScore;
+        pawnScore -= CNTSBITS((pawnNeighbourFiles & backward & board.m_bbTypedPieces[W_PAWN][BLACK])) * m_pawnSupportScore;
 
         // Is not a doubled pawn
-        pawnScore -= ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) != 0) * doublePawnScore;
+        pawnScore -= ((pawnFile & forward & board.m_bbTypedPieces[W_PAWN][BLACK]) != 0) * m_doublePawnScore;
     }
 
     pawnScore += ((pawnScoreBegin * phase) + (pawnScoreEnd * (totalPhase - phase))) / totalPhase;
@@ -413,7 +417,7 @@ inline eval_t Evaluator::m_getPawnEval(const Board& board, uint8_t phase, EvalTr
     // TODO: If used to calculate stragglers, move biatboard from move possiton to pawn possiton >> 8
     bitboard_t wBackwardsPawns = wPawnsMoves & bPawnsAttacks & ~wPawnAttackSpans;
     bitboard_t bBackwardsPawns = bPawnsMoves & wPawnsAttacks & ~bPawnAttackSpans;
-    pawnScore += (CNTSBITS(wBackwardsPawns) - CNTSBITS(bBackwardsPawns)) * pawnBackwardScore;
+    pawnScore += (CNTSBITS(wBackwardsPawns) - CNTSBITS(bBackwardsPawns)) * m_pawnBackwardScore;
 
     // Write the pawn evaluation to the table
     evalEntry->hash = board.m_pawnHash;
@@ -442,11 +446,11 @@ inline eval_t Evaluator::m_getMaterialEval(const Board& board, uint8_t phase, Ev
 
     // Evaluate the piece count
     eval_t pieceScore;
-    pieceScore  = pawnValue   * (m_numPawns[Color::WHITE]   - m_numPawns[Color::BLACK]);
-    pieceScore += knightValue * (m_numKnights[Color::WHITE] - m_numKnights[Color::BLACK]);
-    pieceScore += bishopValue * (m_numBishops[Color::WHITE] - m_numBishops[Color::BLACK]);
-    pieceScore += rookValue   * (m_numRooks[Color::WHITE]   - m_numRooks[Color::BLACK]);
-    pieceScore += queenValue  * (m_numQueens[Color::WHITE]  - m_numQueens[Color::BLACK]);
+    pieceScore  = m_pawnValue   * (m_numPawns[Color::WHITE]   - m_numPawns[Color::BLACK]);
+    pieceScore += m_knightValue * (m_numKnights[Color::WHITE] - m_numKnights[Color::BLACK]);
+    pieceScore += m_bishopValue * (m_numBishops[Color::WHITE] - m_numBishops[Color::BLACK]);
+    pieceScore += m_rookValue   * (m_numRooks[Color::WHITE]   - m_numRooks[Color::BLACK]);
+    pieceScore += m_queenValue  * (m_numQueens[Color::WHITE]  - m_numQueens[Color::BLACK]);
 
     // Write the pawn evaluation to the table
     evalEntry->hash = board.m_materialHash;
@@ -470,29 +474,29 @@ inline eval_t Evaluator::m_getMobilityEval(const Board& board, uint8_t phase, Ev
         for(int i = 0; i < m_numRooks[Color::WHITE]; i++)
         {
             int cnt = CNTSBITS(m_rookMoves[Color::WHITE][i] & mobilityArea);
-            mobilityScoreBegin += mobilityBonusRookBegin[cnt];
-            mobilityScoreEnd += mobilityBonusRookEnd[cnt];
+            mobilityScoreBegin += m_mobilityBonusRookBegin[cnt];
+            mobilityScoreEnd += m_mobilityBonusRookEnd[cnt];
         }
 
         for(int i = 0; i < m_numKnights[Color::WHITE]; i++)
         {
             int cnt = CNTSBITS(m_knightMoves[Color::WHITE][i] & mobilityArea);
-            mobilityScoreBegin += mobilityBonusKnightBegin[cnt];
-            mobilityScoreEnd += mobilityBonusKnightEnd[cnt];
+            mobilityScoreBegin += m_mobilityBonusKnightBegin[cnt];
+            mobilityScoreEnd += m_mobilityBonusKnightEnd[cnt];
         }
 
         for(int i = 0; i < m_numBishops[Color::WHITE]; i++)
         {
             int cnt = CNTSBITS(m_bishopMoves[Color::WHITE][i] & mobilityArea);
-            mobilityScoreBegin += mobilityBonusBishopBegin[cnt];
-            mobilityScoreEnd += mobilityBonusBishopEnd[cnt];
+            mobilityScoreBegin += m_mobilityBonusBishopBegin[cnt];
+            mobilityScoreEnd += m_mobilityBonusBishopEnd[cnt];
         }
 
         for(int i = 0; i < m_numQueens[Color::WHITE]; i++)
         {
             int cnt = CNTSBITS(m_queenMoves[Color::WHITE][i] & mobilityArea);
-            mobilityScoreBegin += mobilityBonusQueenBegin[cnt];
-            mobilityScoreEnd += mobilityBonusQueenEnd[cnt];
+            mobilityScoreBegin += m_mobilityBonusQueenBegin[cnt];
+            mobilityScoreEnd += m_mobilityBonusQueenEnd[cnt];
         }
     }
 
@@ -503,29 +507,29 @@ inline eval_t Evaluator::m_getMobilityEval(const Board& board, uint8_t phase, Ev
         for(int i = 0; i < m_numRooks[Color::BLACK]; i++)
         {
             int cnt = CNTSBITS(m_rookMoves[Color::BLACK][i] & mobilityArea);
-            mobilityScoreBegin -= mobilityBonusRookBegin[cnt];
-            mobilityScoreEnd -= mobilityBonusRookEnd[cnt];
+            mobilityScoreBegin -= m_mobilityBonusRookBegin[cnt];
+            mobilityScoreEnd -= m_mobilityBonusRookEnd[cnt];
         }
 
         for(int i = 0; i < m_numKnights[Color::BLACK]; i++)
         {
             int cnt = CNTSBITS(m_knightMoves[Color::BLACK][i] & mobilityArea);
-            mobilityScoreBegin -= mobilityBonusKnightBegin[cnt];
-            mobilityScoreEnd -= mobilityBonusKnightEnd[cnt];
+            mobilityScoreBegin -= m_mobilityBonusKnightBegin[cnt];
+            mobilityScoreEnd -= m_mobilityBonusKnightEnd[cnt];
         }
 
         for(int i = 0; i < m_numBishops[Color::BLACK]; i++)
         {
             int cnt = CNTSBITS(m_bishopMoves[Color::BLACK][i] & mobilityArea);
-            mobilityScoreBegin -= mobilityBonusBishopBegin[cnt];
-            mobilityScoreEnd -= mobilityBonusBishopEnd[cnt];
+            mobilityScoreBegin -= m_mobilityBonusBishopBegin[cnt];
+            mobilityScoreEnd -= m_mobilityBonusBishopEnd[cnt];
         }
 
         for(int i = 0; i < m_numQueens[Color::BLACK]; i++)
         {
             int cnt = CNTSBITS(m_queenMoves[Color::BLACK][i] & mobilityArea);
-            mobilityScoreBegin -= mobilityBonusQueenBegin[cnt];
-            mobilityScoreEnd -= mobilityBonusQueenEnd[cnt];
+            mobilityScoreBegin -= m_mobilityBonusQueenBegin[cnt];
+            mobilityScoreEnd -= m_mobilityBonusQueenEnd[cnt];
         }
     }
 
@@ -607,13 +611,13 @@ inline eval_t Evaluator::m_getShelterEval(const Board& board, uint8_t square)
         {
             pawnRank = filePawns ? LS1B(filePawns) >> 3 : 0;
             opponentPawnRank = opponentFilePawns ? LS1B(opponentFilePawns) >> 3: 0;
-            shelterScore += pawnShelterScores[ed][pawnRank];
+            shelterScore += m_pawnShelterScores[ed][pawnRank];
         }
         else
         {
             pawnRank = filePawns ? MS1B(filePawns) >> 3 : 7;
             opponentPawnRank = opponentFilePawns ? MS1B(opponentFilePawns) >> 3 : 0;
-            shelterScore += pawnShelterScores[ed][7 - pawnRank];
+            shelterScore += m_pawnShelterScores[ed][7 - pawnRank];
         }
     }
 
@@ -678,10 +682,10 @@ inline eval_t Evaluator::m_getKingEval(const Board& board, uint8_t phase, EvalTr
     uint8_t bKingRank = bKingIdx >> 3;
     uint8_t bkingFile = bKingIdx & 0b111;
     uint8_t kingMirrorIdx = (7 - bKingRank) * 8 + bkingFile;
-    eval_t kingAttackingScore = s_kingAreaAttackScore[whiteAttackingIndex] - s_kingAreaAttackScore[blackAttackingIndex];
+    eval_t kingAttackingScore = m_kingAreaAttackScore[whiteAttackingIndex] - m_kingAreaAttackScore[blackAttackingIndex];
     eval_t kingPositionScore = PHASE_LERP(
-        (s_whiteKingPositionBegin[wKingIdx] - s_whiteKingPositionBegin[kingMirrorIdx] + kingShelterScore),
-        (s_kingPositionEnd[wKingIdx] - s_kingPositionEnd[kingMirrorIdx]),
+        (m_whiteKingPositionBegin[wKingIdx] - m_whiteKingPositionBegin[kingMirrorIdx] + kingShelterScore),
+        (m_kingPositionEnd[wKingIdx] - m_kingPositionEnd[kingMirrorIdx]),
         phase);
 
     #ifdef FULL_TRACE
@@ -768,8 +772,8 @@ eval_t Evaluator::m_getCenterEval(const Board& board, uint8_t phase, EvalTrace& 
     // Limit the index to 15, as there are only 16 indices in the score table
     whiteCenterIndex = whiteCenterIndex <= std::min(whiteCenterIndex, uint8_t(15));
     blackCenterIndex = blackCenterIndex <= std::min(blackCenterIndex, uint8_t(15));
-    eval_t whiteCenterScoreBegin = centerControlScoreBegin[whiteCenterIndex];
-    eval_t blackCenterScoreBegin = centerControlScoreBegin[blackCenterIndex];
+    eval_t whiteCenterScoreBegin = m_centerControlScoreBegin[whiteCenterIndex];
+    eval_t blackCenterScoreBegin = m_centerControlScoreBegin[blackCenterIndex];
     uint8_t centerPhase = (centerEvalThreshold + phase - totalPhase); // Center phase between centerEvalThreshold and zero
     eval_t centerEval = ((whiteCenterScoreBegin - blackCenterScoreBegin) * centerPhase) / centerEvalThreshold;
     #ifdef FULL_TRACE
