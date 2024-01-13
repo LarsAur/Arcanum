@@ -62,13 +62,13 @@ namespace Arcanum
 
     typedef struct Move
     {
-        uint8_t from;
-        uint8_t to;
+        square_t from;
+        square_t to;
         uint32_t moveInfo;
 
         Move(){}
 
-        Move(uint8_t _from, uint8_t _to, uint32_t _moveInfo = 0)
+        Move(square_t _from, square_t _to, uint32_t _moveInfo = 0)
         {
             from = _from;
             to = _to;
@@ -124,8 +124,8 @@ namespace Arcanum
             uint8_t m_rule50;
             uint8_t m_castleRights;
             // set to 64 for invalid enpassant
-            uint8_t m_enPassantSquare; // Square moved to when capturing
-            uint8_t m_enPassantTarget; // Square of the captured piece
+            square_t m_enPassantSquare; // Square moved to when capturing
+            square_t m_enPassantTarget; // Square of the captured piece
             bitboard_t m_bbEnPassantSquare; // Square moved to when capturing
             bitboard_t m_bbEnPassantTarget; // Square of the captured piece
 
@@ -134,7 +134,7 @@ namespace Arcanum
             bitboard_t m_bbTypedPieces[6][NUM_COLORS];
             bitboard_t m_blockers[NUM_COLORS]; // Pieces blocking the king from a sliding piece
             bitboard_t m_pinners[NUM_COLORS];  // Pieces which targets the king with only one opponent piece blocking
-            uint8_t m_pinnerBlockerIdxPairs[64]; // Array containing the idx of the pinner
+            square_t m_pinnerBlockerIdxPairs[64]; // Array containing the idx of the pinner
 
             Piece m_pieces[64];
             uint8_t m_numLegalMoves;
@@ -147,8 +147,8 @@ namespace Arcanum
             friend class Evaluator;
 
             // Tests if the king will be checked before adding the move
-            bool m_attemptAddPseudoLegalEnpassant(Move move, uint8_t kingIdx);
-            bool m_attemptAddPseudoLegalMove(Move move, uint8_t kingIdx);
+            bool m_attemptAddPseudoLegalEnpassant(Move move, square_t kingIdx);
+            bool m_attemptAddPseudoLegalMove(Move move, square_t kingIdx);
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
         public:
@@ -183,7 +183,7 @@ namespace Arcanum
             uint8_t getNumColoredPieces(Color color) const;
             std::string getBoardString() const;
             std::string getFEN() const;
-            bitboard_t attackersTo(uint8_t square) const;
+            bitboard_t attackersTo(square_t square) const;
             bool see(const Move& move) const;
             static std::unordered_map<hash_t, uint8_t, HashFunction>* getBoardHistory();
     };
@@ -201,6 +201,6 @@ namespace Arcanum
             ~Zobrist();
 
             void getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
-            void getUpdatedHashs(const Board &board, Move move, uint8_t oldEnPassentSquare, uint8_t newEnPassentSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
+            void getUpdatedHashs(const Board &board, Move move, square_t oldEnPassentSquare, square_t newEnPassentSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
     };
 }

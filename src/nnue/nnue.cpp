@@ -1,3 +1,4 @@
+#include <types.hpp>
 #include <nnue/nnue.hpp>
 #include <utils.hpp>
 #include <fstream>
@@ -78,13 +79,13 @@ static inline uint32_t windex(uint32_t row, uint32_t column, uint32_t dims)
     return column * 32 + row;
 }
 
-static inline uint8_t orientSquare(Arcanum::Color color, uint8_t square)
+static inline Arcanum::square_t orientSquare(Arcanum::Color color, Arcanum::square_t square)
 {
     return square ^ (color == Arcanum::Color::WHITE ? 0x00 : 0x3F);
 }
 
 // feature index
-static inline uint32_t findex(Arcanum::Color perspective, uint8_t square, Arcanum::Piece piece, uint8_t kingSquare)
+static inline uint32_t findex(Arcanum::Color perspective, Arcanum::square_t square, Arcanum::Piece piece, Arcanum::square_t kingSquare)
 {
     return orientSquare(perspective, square) + pieceToIndex[perspective][piece] + PS_END * kingSquare;
 }
@@ -181,7 +182,7 @@ void NNUE::incrementAccumulator(
         // Find the rook positions
         uint32_t activated, deactivated;
         Arcanum::Color nPerspective = Arcanum::Color(1^perspective);
-        uint8_t kingSquare = orientSquare(nPerspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, nPerspective)));
+        Arcanum::square_t kingSquare = orientSquare(nPerspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, nPerspective)));
         Arcanum::Piece rookPiece = Arcanum::Piece(Arcanum::Piece::W_ROOK + Arcanum::Piece::B_PAWN * perspective);
         if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_QUEEN)        { activated = findex(nPerspective,  3, rookPiece, kingSquare); deactivated = findex(nPerspective,  0, rookPiece, kingSquare); }
         else if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_QUEEN)   { activated = findex(nPerspective, 59, rookPiece, kingSquare); deactivated = findex(nPerspective, 56, rookPiece, kingSquare); }

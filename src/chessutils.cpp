@@ -8,11 +8,11 @@ namespace Arcanum
     bitboard_t betweens[64][64];
     void initGenerateBetweens()
     {
-        for(uint8_t from = 0; from < 64; from++)
+        for(square_t from = 0; from < 64; from++)
         {
             uint8_t fromFile = from & 0b111;
             uint8_t fromRank = from >> 3;
-            for(uint8_t to = 0; to < 64; to++)
+            for(square_t to = 0; to < 64; to++)
             {
                 uint8_t toFile = to & 0b111;
                 uint8_t toRank = to >> 3;

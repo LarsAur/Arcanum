@@ -1,10 +1,11 @@
 #pragma once
 
+#include <types.hpp>
+#include <utils.hpp>
 #include <cstdint>
 #include <iostream>
 #include <bitset>
 #include <sstream>
-#include <utils.hpp>
 
 #if __x86_64__
     // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html
@@ -89,7 +90,7 @@ namespace Arcanum
          * @return index (0..63) of least significant one bit
          */
 
-        constexpr static uint8_t popLS1B_index64[64] = {
+        constexpr static square_t popLS1B_index64[64] = {
             0, 47,  1, 56, 48, 27,  2, 60,
             57, 49, 41, 37, 28, 16,  3, 61,
             54, 58, 35, 52, 50, 42, 21, 44,
@@ -123,7 +124,7 @@ namespace Arcanum
          * @return index (0..63) of least significant one bit
          */
 
-        constexpr static uint8_t popLS1B_index64[64] = {
+        constexpr static square_t popLS1B_index64[64] = {
             0, 47,  1, 56, 48, 27,  2, 60,
             57, 49, 41, 37, 28, 16,  3, 61,
             54, 58, 35, 52, 50, 42, 21, 44,
@@ -284,17 +285,17 @@ namespace Arcanum
         #endif
     }
 
-    static inline bitboard_t getQueenMoves(const bitboard_t allPiecesBitboard, const uint8_t queenIdx)
+    static inline bitboard_t getQueenMoves(const bitboard_t allPiecesBitboard, const square_t queenIdx)
     {
         return getRookMoves(allPiecesBitboard, queenIdx) | getBishopMoves(allPiecesBitboard, queenIdx);
     }
 
-    static inline bitboard_t getBetweens(const uint8_t fromIdx, const uint8_t toIdx)
+    static inline bitboard_t getBetweens(const square_t fromIdx, const square_t toIdx)
     {
         return betweens[fromIdx][toIdx];
     }
 
-    static inline std::string getArithmeticNotation(uint8_t square)
+    static inline std::string getArithmeticNotation(const square_t square)
     {
         std::stringstream ss;
 

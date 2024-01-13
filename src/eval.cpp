@@ -660,8 +660,8 @@ inline eval_t Evaluator::m_getKingEval(const Board& board, uint8_t phase, EvalTr
 
     // Calculate the king attack zones (all squares the king can move)
     // The king square does not need to be included as a search would not stop on a check
-    const uint8_t wKingIdx = LS1B(board.m_bbTypedPieces[W_KING][Color::WHITE]);
-    const uint8_t bKingIdx = LS1B(board.m_bbTypedPieces[W_KING][Color::BLACK]);
+    const square_t wKingIdx = LS1B(board.m_bbTypedPieces[W_KING][Color::WHITE]);
+    const square_t bKingIdx = LS1B(board.m_bbTypedPieces[W_KING][Color::BLACK]);
     bitboard_t whiteKingZone = getKingMoves(wKingIdx);
     bitboard_t blackKingZone = getKingMoves(bKingIdx);
 
@@ -694,7 +694,7 @@ inline eval_t Evaluator::m_getKingEval(const Board& board, uint8_t phase, EvalTr
 
     uint8_t bKingRank = bKingIdx >> 3;
     uint8_t bkingFile = bKingIdx & 0b111;
-    uint8_t kingMirrorIdx = (7 - bKingRank) * 8 + bkingFile;
+    square_t kingMirrorIdx = (7 - bKingRank) * 8 + bkingFile;
     eval_t kingAttackingScore = m_kingAreaAttackScore[whiteAttackingIndex] - m_kingAreaAttackScore[blackAttackingIndex];
     eval_t kingPositionScore = PHASE_LERP(
         (m_whiteKingPositionBegin[wKingIdx] - m_whiteKingPositionBegin[kingMirrorIdx] + kingShelterScore),
