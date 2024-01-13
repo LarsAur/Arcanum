@@ -1,5 +1,6 @@
 #pragma once
 
+#include <types.hpp>
 #include <chessutils.hpp>
 #include <string>
 #include <iostream>
@@ -9,7 +10,6 @@
 
 namespace Arcanum
 {
-    typedef uint64_t hash_t;
     static const std::string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     typedef enum Color

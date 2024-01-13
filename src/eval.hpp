@@ -1,10 +1,11 @@
 #pragma once
+
+#include <types.hpp>
 #include <board.hpp>
 #include <nnue/nnue.hpp>
 
 namespace Arcanum
 {
-    typedef int16_t eval_t;
     typedef struct EvalTrace
     {
         #ifdef FULL_TRACE

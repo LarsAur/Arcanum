@@ -1,4 +1,3 @@
-
 #include <board.hpp>
 #include <random>
 #include <utils.hpp>
