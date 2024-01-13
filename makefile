@@ -48,6 +48,7 @@ $(BUILDDIR):
 	mkdir $(BUILDDIR)
 	cd $(BUILDDIR) && mkdir src
 	cd $(BUILDDIR)/src && mkdir nnue
+	cd $(BUILDDIR)/src && mkdir tuning
 
 $(BUILDDIR)/$(NNUE):
 ifeq ($(OS),Windows_NT)

@@ -4,7 +4,7 @@
 #include <test.hpp>
 #include <search.hpp>
 #include <uci.hpp>
-
+#include <tuning/tuning.hpp>
 using namespace Arcanum;
 
 std::string _logFileName;
@@ -49,6 +49,21 @@ int main(int argc, char *argv[])
 
         if(!strncmp("--engine-perf", argv[i], 14))
             Perf::engineTest();
+
+        if(!strncmp("--tune", argv[i], 14))
+        {
+            Tuning::Tuner tuner = Tuning::Tuner();
+            if(argc < i + 3)
+            {
+                ERROR("Missing arguments for tuning '--tune input output dataset'")
+                exit(-1);
+            }
+            tuner.setInputFile(argv[i + 1]);
+            tuner.setOutputFile(argv[i + 2]);
+            tuner.setTrainingDataFilePath(argv[i + 3]);
+            tuner.start();
+            argc += 3;
+        }
     }
 
     return 0;
