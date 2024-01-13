@@ -39,8 +39,6 @@ Searcher::Searcher()
     m_knownEndgameMaterialDraws.push_back(kingsBBishop.getMaterialHash());
     m_knownEndgameMaterialDraws.push_back(kingsWKnight.getMaterialHash());
     m_knownEndgameMaterialDraws.push_back(kingsBKnight.getMaterialHash());
-
-    m_evaluator.setEnableNNUE(true);
 }
 
 Searcher::~Searcher()

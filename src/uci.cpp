@@ -60,7 +60,6 @@ void UCI::loop()
     Board board = Board(startFEN);
     Searcher searcher = Searcher();
     Evaluator evaluator = Evaluator();
-    evaluator.setEnableNNUE(true);
     std::string token, cmd;
 
     UCI_LOG("Entering UCI loop")
@@ -85,7 +84,7 @@ void UCI::loop()
             UCI_OUT("id author Lars Murud Aurud")
             UCI_OUT("option name Hash type spin default 32 min 1 max 8196")
             UCI_OUT("option name ClearHash type button")
-            UCI_OUT("option name UseNNUE type check default true")
+            UCI_OUT("option name UseNNUE type check default false")
             UCI_OUT("option name HCEWeightFile type string default hceWeights.dat")
             UCI_OUT("uciok")
         }
