@@ -4,6 +4,14 @@
 #include <string.h>
 #include <fstream>
 
+#if defined(_WIN64)
+#include <Libloaderapi.h>
+#elif defined(__linux__)
+
+#else
+    LOG("Else")
+#endif
+
 #define COLOR_BLACK "\e[0;30m"
 #define COLOR_RED "\e[0;31m"
 #define COLOR_GREEN "\e[0;32m"
@@ -99,3 +107,6 @@ extern std::string _logFileName;
 #else
     #define SUCCESS(_str) ;
 #endif
+
+// Gets the path to the folder which the executable is in
+std::string getWorkPath();
