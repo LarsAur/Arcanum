@@ -1,6 +1,14 @@
 #include <eval.hpp>
 #include <algorithm>
 
+#if defined(_WIN64)
+#include <Libloaderapi.h>
+#elif defined(__linux__)
+
+#else
+    LOG("Else")
+#endif
+
 using namespace Arcanum;
 
 bool EvalTrace::operator==(const EvalTrace& other) const { return total == other.total; }
@@ -51,10 +59,14 @@ static constexpr bitboard_t bForwardLookup[] = { // indexed by rank
     0x00FFFFFFFFFFFFFF,
 };
 
+std::string Evaluator::s_hceWeightsFile = "hceWeights.dat";
+
 Evaluator::Evaluator()
 {
     m_enabledNNUE = false;
     m_accumulatorStackPointer = 0;
+
+    setHCEModelFile(s_hceWeightsFile);
 
     // Use default value 0xff...ff for initial value, as it is more common that 0 is the value of for example the pawnHash
     memset(m_pawnEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::pawnTableSize);
@@ -71,29 +83,51 @@ Evaluator::~Evaluator()
     }
 }
 
-void Evaluator::setHCEModelFile(std::string path)
+void Evaluator::setHCEModelFile(std::string filename)
 {
-    std::ifstream is(path);
+    Evaluator::s_hceWeightsFile = filename;
+
+    // Get the path of the executable file
+    char execFullPath[2048];
+    #if defined(_WIN64)
+        GetModuleFileNameA(NULL, execFullPath, 2048);
+    #elif defined(__linux__)
+        ERROR("Missing implementation")
+    #else
+        ERROR("Missing implementation")
+    #endif
+
+    // Move one folder up
+    std::string path = std::string(execFullPath);
+    size_t idx = path.find_last_of('\\');
+    path = std::string(path).substr(0, idx + 1); // Keep the last '\'
+    path.append(filename);
+
+    std::ifstream is(path, std::ios::in | std::ios::binary);
+
     if(!is.is_open())
     {
-        ERROR("Unable to open HCE Model file: " << path)
-        return;
+        ERROR("Unable to open file " << path)
+        exit(-1);
+    }
+
+    std::streampos bytesize = is.tellg();
+    is.seekg(0, std::ios::end);
+    bytesize = is.tellg() - bytesize;
+    size_t numWeights = bytesize >> 1;
+    is.seekg(0);
+
+    if(numWeights != 397)
+    {
+        ERROR("Illegal number of weights " << numWeights << " needs to be " << 397)
+        exit(-1);
     }
 
     eval_t weights[397];
-    int i = 0;
-    while (!is.eof() || i < 397)
-    {
-        std::string s;
-        is >> std::skipws >> s;
-        eval_t v = atoi(s.c_str());
-        weights[i++] = v;
-    }
+    is.read((char*) weights, bytesize);
     is.close();
 
     loadWeights(weights);
-
-    LOG("Loaded HCE model " << path)
 }
 
 void Evaluator::loadWeights(eval_t* weights)

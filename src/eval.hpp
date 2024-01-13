@@ -83,7 +83,6 @@ namespace Arcanum
 
     class Evaluator
     {
-
         private:
             static constexpr size_t pawnTableSize     = 1 << 13; // Required to be a power of 2
             static constexpr size_t materialTableSize = 1 << 13; // Required to be a power of 2
@@ -168,6 +167,7 @@ namespace Arcanum
         public:
             Evaluator();
             ~Evaluator();
+            static std::string s_hceWeightsFile;
             void setEnableNNUE(bool enabled);
             void setHCEModelFile(std::string path);
             void loadWeights(eval_t* weights);

@@ -4,6 +4,7 @@ SOURCEDIR = src
 HEADERDIR = src
 BUILDDIR = build
 NNUE = nn-04cf2b4ed1da.nnue
+MODEL = hceWeights.dat
 
 DEFINES += -DIS_64BIT
 DEFINES += -DUSE_AVX2 -mavx2
@@ -55,8 +56,15 @@ else
 	-cp $(NNUE) $(BUILDDIR)
 endif
 
+$(BUILDDIR)/$(MODEL):
+ifeq ($(OS),Windows_NT)
+	-copy /b "$(MODEL)" /b "$(BUILDDIR)/$(MODEL)"
+else
+	-cp $(MODEL) $(BUILDDIR)
+endif
+
 $(BUILDDIR)/%.o: %.cpp $(HEADERS) | $(BUILDDIR)
 	$(CC) $(CFLAGS) $(LDFLAGS) -I$(HEADERDIR) -I$(dir $<) -c $< -o $@
 
-$(BUILDDIR)/$(PROJECT).exe: $(OBJECTS) | $(BUILDDIR)/$(NNUE)
+$(BUILDDIR)/$(PROJECT).exe: $(OBJECTS) | $(BUILDDIR)/$(NNUE) $(BUILDDIR)/$(MODEL)
 	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) -o $@
