@@ -108,7 +108,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     for (int i = 0; i < numMoves; i++)  {
         const Move *move = moveSelector.getNextMove();
 
-        if(i > 0 && !board.see(*move) && !isChecked)
+        if(!board.see(*move) && !isChecked)
             continue;
 
         Board newBoard = Board(board);
@@ -130,8 +130,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
 
     // Pop the board off the search stack
     m_search_stack.pop_back();
-
-    return bestScore;
+    return alpha;
 }
 
 EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, bool isNullMoveSearch)
