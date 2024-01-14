@@ -521,6 +521,12 @@ Move Searcher::search(Board board, SearchParameters parameters)
     info.score = searchScore.total;
     info.hashfull = m_tt->permills();
     info.bestMove = searchBestMove;
+    if(Evaluator::isCheckMateScore(searchScore))
+    {
+        info.mate = true;
+        uint16_t distance = (INT16_MAX - std::abs(searchScore.total)) / 2; // Divide by 2 to get moves and not plys.
+        info.mateDistance = searchScore.total > 0 ? distance : -distance;
+    }
     for(uint32_t i = 0; i < pvLine.count; i++)
         info.pvLine.push_back(pvLine.moves[i]);
     UCI::sendUciInfo(info);
