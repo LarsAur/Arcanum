@@ -318,7 +318,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     }
     m_tt->add(bestScore, bestMove, depth, plyFromRoot, flags, board.getHash());
 
-    return bestScore;
+    return alpha;
 }
 
 inline bool Searcher::m_isDraw(const Board& board) const
