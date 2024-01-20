@@ -37,26 +37,31 @@ void TranspositionTable::resize(uint32_t mbSize)
 {
     if(m_mbSize == mbSize) return;
 
+    ttCluster_t* newTable = nullptr;
     size_t clusterCount = (mbSize * 1024 * 1024) / sizeof(ttCluster_t);
     size_t entryCount = clusterSize * clusterCount;
-    ttCluster_t* newTable = static_cast<ttCluster_t*>(Memory::pageAlignedMalloc(clusterCount * sizeof(ttCluster_t)));
 
-    if(newTable == nullptr)
+    if(mbSize != 0)
     {
-        WARNING("Failed to allocate new transposition table of size " << mbSize << "MB")
-        return;
+        newTable = static_cast<ttCluster_t*>(Memory::pageAlignedMalloc(clusterCount * sizeof(ttCluster_t)));
+
+        if(newTable == nullptr)
+        {
+            WARNING("Failed to allocate new transposition table of size " << mbSize << "MB")
+            return;
+        }
+
+        // Copy the previous entries.
+        // If the new table is smaller, copy as many entries as possible.
+        // Because it just copies the data, the low indices are prioritized over high indices
+        size_t minClusterCount = std::min(m_clusterCount, clusterCount);
+        memcpy(newTable, m_table, minClusterCount * sizeof(ttCluster_t));
+
+        // If the new table is larger, initialize the remaining 'uncopied' entries
+        for(size_t i = minClusterCount; i < clusterCount; i++)
+            for(size_t j = 0; j < clusterSize; j++)
+                newTable[i].entries[j].depth = INT8_MIN;
     }
-
-    // Copy the previous entries.
-    // If the new table is smaller, copy as many entries as possible.
-    // Because it just copies the data, the low indices are prioritized over high indices
-    size_t minClusterCount = std::min(m_clusterCount, clusterCount);
-    memcpy(newTable, m_table, minClusterCount * sizeof(ttCluster_t));
-
-    // If the new table is larger, initialize the remaining 'uncopied' entries
-    for(size_t i = minClusterCount; i < clusterCount; i++)
-        for(size_t j = 0; j < clusterSize; j++)
-            newTable[i].entries[j].depth = INT8_MIN;
 
     // Free the old table and set the new configuration
     Memory::alignedFree(m_table);
@@ -100,6 +105,9 @@ inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
 
 std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
 {
+    if(!m_table)
+        return {};
+
     ttCluster_t* clusterPtr = static_cast<ttCluster_t*>(__builtin_assume_aligned(m_table + m_getClusterIndex(hash), CACHE_LINE_SIZE));
     ttCluster_t cluster = *clusterPtr;
 
@@ -136,6 +144,9 @@ inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
 
 void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash)
 {
+    if(!m_table)
+        return;
+
     ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
     ttEntry_t entry =
     {
