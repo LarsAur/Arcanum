@@ -1,5 +1,6 @@
 #include <eval.hpp>
 #include <algorithm>
+#include <memory.hpp>
 
 using namespace Arcanum;
 
@@ -60,6 +61,11 @@ Evaluator::Evaluator()
 
     setHCEModelFile(s_hceWeightsFile);
 
+    m_pawnEvalTable     = static_cast<EvalEntry*>(Memory::pageAlignedMalloc(pawnTableSize     * sizeof(EvalEntry)));
+    m_materialEvalTable = static_cast<EvalEntry*>(Memory::pageAlignedMalloc(materialTableSize * sizeof(EvalEntry)));
+    m_shelterEvalTable  = static_cast<EvalEntry*>(Memory::pageAlignedMalloc(shelterTableSize  * sizeof(EvalEntry)));
+    m_phaseTable        = static_cast<PhaseEntry*>(Memory::pageAlignedMalloc(phaseTableSize   * sizeof(PhaseEntry)));
+
     // Use default value 0xff...ff for initial value, as it is more common that 0 is the value of for example the pawnHash
     memset(m_pawnEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::pawnTableSize);
     memset(m_materialEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::materialTableSize);
@@ -69,6 +75,11 @@ Evaluator::Evaluator()
 
 Evaluator::~Evaluator()
 {
+    Memory::alignedFree(m_pawnEvalTable);
+    Memory::alignedFree(m_materialEvalTable);
+    Memory::alignedFree(m_shelterEvalTable);
+    Memory::alignedFree(m_phaseTable);
+
     for(auto accPtr : m_accumulatorStack)
     {
         delete accPtr;

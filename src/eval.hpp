@@ -125,10 +125,10 @@ namespace Arcanum
             bitboard_t m_queenMoves[Color::NUM_COLORS][10];
             bitboard_t m_kingMoves[Color::NUM_COLORS];
 
-            EvalEntry m_pawnEvalTable[Evaluator::pawnTableSize];
-            EvalEntry m_materialEvalTable[Evaluator::materialTableSize];
-            EvalEntry m_shelterEvalTable[Evaluator::shelterTableSize];
-            PhaseEntry m_phaseTable[Evaluator::phaseTableSize];
+            EvalEntry* m_pawnEvalTable;
+            EvalEntry* m_materialEvalTable;
+            EvalEntry* m_shelterEvalTable;
+            PhaseEntry* m_phaseTable;
 
             eval_t m_pawnValue          = 100;
             eval_t m_rookValue          = 481;
