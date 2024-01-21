@@ -13,4 +13,6 @@ make clean
 make -j CFLAGS="%FLAGS%"
 make -j
 copy ".\build\%PROJECT%.exe" /b ".\snapshots\%PROJECT%.exe" /b
+copy "nn-04cf2b4ed1da.nnue" /b ".\snapshots\nn-04cf2b4ed1da.nnue" /b
+copy "hceWeights.dat" /b ".\snapshots\hceWeights.dat" /b
 make clean
