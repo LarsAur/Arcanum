@@ -423,12 +423,14 @@ Move Searcher::search(Board board, SearchParameters parameters)
     {
         depth++;
 
-        std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), 0);
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
+        // The local variable for the best move from the previous iteration is used by the move selector.
+        // This is in case the move from the transposition is not 'correct' due to a miss.
+        // Misses can happen if the position cannot replace another position
+        // This is required to allow using results of incomplete searches
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, searchBestMove);
 
         EvalTrace alpha = EvalTrace(-INF);
         EvalTrace beta = EvalTrace(INF);
-        EvalTrace bestScore = EvalTrace(-INF);
         Move bestMove = Move(0,0);
         m_evaluator.initializeAccumulatorStack(board);
 
@@ -443,17 +445,13 @@ Move Searcher::search(Board board, SearchParameters parameters)
             if(m_stopSearch)
                 break;
 
-            if(score > bestScore)
+            if(score > alpha)
             {
-                bestScore = score;
+                alpha = score;
                 bestMove = *move;
                 pvLineTmp.moves[0] = bestMove;
                 memcpy(pvLineTmp.moves + 1, _pvLineTmp.moves, _pvLineTmp.count * sizeof(Move));
                 pvLineTmp.count = _pvLineTmp.count + 1;
-                if(score > alpha)
-                {
-                    alpha = score;
-                }
             }
         }
 
@@ -461,7 +459,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
         // If a better move is found, is is guaranteed to be better than the best move at the previous depth
         if(!(bestMove == Move(0, 0)))
         {
-            searchScore = bestScore;
+            searchScore = alpha;
             searchBestMove = bestMove;
             memcpy(pvLine.moves, pvLineTmp.moves, pvLineTmp.count * sizeof(Move));
             pvLine.count = pvLineTmp.count;
@@ -476,28 +474,28 @@ Move Searcher::search(Board board, SearchParameters parameters)
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt->add(bestScore, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
+        m_tt->add(alpha, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
 
         // Send UCI info
         UCI::SearchInfo info = UCI::SearchInfo();
         info.depth = depth;
         info.msTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
         info.nodes = m_numNodesSearched;
-        info.score = bestScore.total;
+        info.score = alpha.total;
         info.hashfull = m_tt->permills();
         info.bestMove = bestMove;
-        if(Evaluator::isCheckMateScore(bestScore))
+        if(Evaluator::isCheckMateScore(alpha))
         {
             info.mate = true;
-            uint16_t distance = (INT16_MAX - std::abs(bestScore.total)) / 2; // Divide by 2 to get moves and not plys.
-            info.mateDistance = bestScore.total > 0 ? distance : -distance;
+            uint16_t distance = (INT16_MAX - std::abs(alpha.total)) / 2; // Divide by 2 to get moves and not plys.
+            info.mateDistance = alpha.total > 0 ? distance : -distance;
         }
         for(uint32_t i = 0; i < pvLine.count; i++)
             info.pvLine.push_back(pvLine.moves[i]);
         UCI::sendUciInfo(info);
 
         // If checkmate is found, search can be stopped
-        if(m_evaluator.isCheckMateScore(bestScore))
+        if(m_evaluator.isCheckMateScore(alpha))
             break;
 
         // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
