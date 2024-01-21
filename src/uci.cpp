@@ -111,6 +111,7 @@ void UCI::newgame(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, Ar
 
     searcher.clearTT();
     board = Board(Arcanum::startFEN);
+    board.getBoardHistory()->clear();
 }
 
 void UCI::setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is)
