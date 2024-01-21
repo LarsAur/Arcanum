@@ -150,31 +150,34 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
     if(entry.has_value() && (entry->depth >= depth))
     {
-        if((entry->flags & TT_FLAG_MASK) == TT_FLAG_EXACT)
+        switch (entry->flags & TT_FLAG_MASK)
         {
+        case TT_FLAG_EXACT:
             #if SEARCH_RECORD_STATS
             m_stats.exactTTValuesUsed++;
             #endif
             return entry->value;
-        }
-        else if((entry->flags & TT_FLAG_MASK) == TT_FLAG_LOWERBOUND)
-        {
-            #if SEARCH_RECORD_STATS
-            m_stats.lowerTTValuesUsed++;
-            #endif
+        case TT_FLAG_LOWERBOUND:
+            if(entry->value >= beta)
+            {
+                #if SEARCH_RECORD_STATS
+                m_stats.upperTTValuesUsed++;
+                #endif
+                return beta;
+            }
             alpha = std::max(alpha, entry->value);
-        }
-        else if((entry->flags & TT_FLAG_MASK) == TT_FLAG_UPPERBOUND)
-        {
+
+            break;
+        case TT_FLAG_UPPERBOUND:
+            if(entry->value <= alpha)
+            {
             #if SEARCH_RECORD_STATS
             m_stats.upperTTValuesUsed++;
             #endif
+            return alpha;
+            }
             beta = std::min(beta, entry->value);
-        }
 
-        if(alpha >= beta)
-        {
-            return entry->value;
         }
     }
 
@@ -207,7 +210,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         newBoard.performNullMove();
         EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 3, plyFromRoot + 1, true);
 
-        if((int32_t) score.total >= (int32_t)beta.total)
+        if(score >= beta)
         {
             #if SEARCH_RECORD_STATS
             m_stats.nullMoveCutoffs++;
@@ -270,7 +273,9 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             memcpy(pvLine->moves + 1, _pvLine.moves, _pvLine.count * sizeof(Move));
             pvLine->count = _pvLine.count + 1;
         }
+
         alpha = std::max(alpha, bestScore);
+
         if(alpha >= beta) // Beta-cutoff
         {
             if(!(move->moveInfo & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
