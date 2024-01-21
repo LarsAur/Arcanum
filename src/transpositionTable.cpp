@@ -139,7 +139,7 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
 inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
 {
     return (newEntry.depth - oldEntry.depth) // Depth
-           + (((newEntry.flags & ~TT_FLAG_MASK) - (oldEntry.flags & ~TT_FLAG_MASK)) >> 2);
+           + (((newEntry.flags & ~TT_FLAG_MASK) - (oldEntry.flags & ~TT_FLAG_MASK)));
 }
 
 void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash)
