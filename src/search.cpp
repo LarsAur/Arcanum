@@ -494,10 +494,6 @@ Move Searcher::search(Board board, SearchParameters parameters)
             info.pvLine.push_back(pvLine.moves[i]);
         UCI::sendUciInfo(info);
 
-        // If checkmate is found, search can be stopped
-        if(m_evaluator.isCheckMateScore(alpha))
-            break;
-
         // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
         // or else it would overflow the pvline array
         // This is set to a high number, but this failsafe is added just in case
