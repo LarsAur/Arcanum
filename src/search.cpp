@@ -340,7 +340,7 @@ inline bool Searcher::m_isDraw(const Board& board) const
     // Check for repeated positions from previous searches
     auto boardHistory = Board::getBoardHistory();
     auto globalSearchIt = boardHistory->find(board.getHash());
-    if(globalSearchIt != boardHistory->end())
+    if(globalSearchIt != boardHistory->end() && globalSearchIt->second > 1)
     {
         return true;
     }
