@@ -500,15 +500,17 @@ void NNUE::m_initializeAccumulatorPerspective(Accumulator& accumulator, const Ar
 
 void NNUE::m_loadHeader(std::ifstream& stream)
 {
-    LOG("NNUE Version:        " << ifstreamGet<uint32_t>(stream));
-    LOG("NNUE Hash:           " << ifstreamGet<uint32_t>(stream));
-    uint32_t descSize = ifstreamGet<uint32_t>(stream);
-    LOG("Description Size:    " << descSize)
-
     std::string description;
+    uint32_t version  = ifstreamGet<uint32_t>(stream);
+    uint32_t hash     = ifstreamGet<uint32_t>(stream);
+    uint32_t descSize = ifstreamGet<uint32_t>(stream);
+
     description.resize(descSize);
     stream.read(description.data(), descSize);
-    LOG("Description : " << description)
+
+    LOG("NNUE Version:        " << version)
+    LOG("NNUE Hash:           " << hash)
+    LOG("Description :        " << description)
 }
 
 void NNUE::m_loadWeights(std::ifstream& stream)
