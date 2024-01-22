@@ -161,23 +161,21 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             if(entry->value >= beta)
             {
                 #if SEARCH_RECORD_STATS
-                m_stats.upperTTValuesUsed++;
+                m_stats.lowerTTValuesUsed++;
                 #endif
                 return beta;
             }
             alpha = std::max(alpha, entry->value);
-
             break;
         case TT_FLAG_UPPERBOUND:
             if(entry->value <= alpha)
             {
-            #if SEARCH_RECORD_STATS
-            m_stats.upperTTValuesUsed++;
-            #endif
-            return alpha;
+                #if SEARCH_RECORD_STATS
+                m_stats.upperTTValuesUsed++;
+                #endif
+                return alpha;
             }
             beta = std::min(beta, entry->value);
-
         }
     }
 
