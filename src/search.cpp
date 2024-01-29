@@ -387,6 +387,9 @@ Move Searcher::search(Board board, SearchParameters parameters)
     pvline_t pvLine, pvLineTmp, _pvLineTmp;
     auto start = std::chrono::high_resolution_clock::now();
 
+    // Only the upper 6 bits of the generation is used
+    m_generation = std::min((uint8_t) board.getFullMoves(), uint8_t(0xff));
+
     // Start a thread which will stop the search if the limit is reached
     std::thread trd = std::thread([&] {
         while (!m_stopSearch)
@@ -533,10 +536,6 @@ Move Searcher::search(Board board, SearchParameters parameters)
     #endif
     m_tt->logStats();
     logStats();
-
-    //TODO: Generation should use board full moves
-    m_generation += 1; // Generation will update every 4th search
-
 
     return searchBestMove;
 }
