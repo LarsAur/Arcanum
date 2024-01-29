@@ -133,7 +133,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     return alpha;
 }
 
-EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, bool isNullMoveSearch)
+EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions)
 {
     // NOTE: It is important that the size of the pv line is set to zero
     //       before returning due to searchStop, this is because the size
@@ -206,7 +206,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     {
         Board newBoard = Board(board);
         newBoard.performNullMove();
-        EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 3, plyFromRoot + 1, true);
+        EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 3, plyFromRoot + 1, true, totalExtensions);
 
         if(score >= beta)
         {
@@ -244,7 +244,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         {
             EvalTrace nullWindowBeta = -alpha;
             nullWindowBeta.total -= 1;
-            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, false);
+            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, false, totalExtensions);
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
             #if SEARCH_RECORD_STATS
@@ -258,7 +258,11 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             // Extend search for checking moves or check avoiding moves
             // This is to avoid horizon effect occuring by starting with a forced line
             uint8_t extension = checkOrChecking ? 1 : 0;
-            score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false);
+            // Limit the number of extensions
+            if(totalExtensions > 32)
+                extension = 0;
+
+            score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
         }
 
         m_evaluator.popMoveFromAccumulator();
@@ -445,7 +449,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
             Board newBoard = Board(board);
             newBoard.performMove(*move);
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
-            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false);
+            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
             m_evaluator.popMoveFromAccumulator();
 
             if(m_stopSearch)
