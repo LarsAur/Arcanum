@@ -257,7 +257,11 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         {
             // Extend search for checking moves or check avoiding moves
             // This is to avoid horizon effect occuring by starting with a forced line
-            uint8_t extension = checkOrChecking ? 1 : 0;
+            uint8_t extension = (
+                checkOrChecking ||
+                ((move->moveInfo & MOVE_INFO_PAWN_MOVE) && ((move->to >> 3) == 6 || (move->to >> 3) == 1)) || // Pawn moved to the 7th rank
+                (numMoves == 1)
+            ) ? 1 : 0;
             // Limit the number of extensions
             if(totalExtensions > 32)
                 extension = 0;
