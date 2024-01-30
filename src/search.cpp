@@ -24,6 +24,7 @@ Searcher::Searcher()
         .nullWindowSearches = 0LL,
         .nullMoveCutoffs    = 0LL,
         .failedNullMoveCutoffs = 0LL,
+        .futilityPrunedMoves = 0LL,
     };
     #endif
 
@@ -63,6 +64,7 @@ void Searcher::resizeTT(uint32_t mbSize)
 
 void Searcher::clearTT()
 {
+    m_generation = 0;
     m_tt->clear();
 }
 
@@ -220,6 +222,13 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         #endif
     }
 
+    eval_t staticEvaluation = 0;
+    if(depth == 1 && !isChecked)
+    {
+        staticEvaluation = m_evaluator.evaluate(board, plyFromRoot).total;
+        if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
+    }
+
     // Push the board on the search stack
     m_search_stack.push_back(board.getHash());
 
@@ -234,6 +243,20 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         bool requireFullSearch = true;
         bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
+
+
+        // Futility pruning
+        if(depth == 1 && !checkOrChecking && !(move->moveInfo & MOVE_INFO_PROMOTE_MASK) && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
+        {
+            if(staticEvaluation + 300 < alpha.total && alpha < 900)
+            {
+                #if SEARCH_RECORD_STATS
+                m_stats.futilityPrunedMoves++;
+                #endif
+                continue;
+            }
+        }
+
 
         // Check for late move reduction
         // Conditions for not doing LMR
@@ -573,6 +596,7 @@ void Searcher::logStats()
     ss << "\nNull-window Re-searches:   " << m_stats.researchesRequired;
     ss << "\nNull-Move Cutoffs:         " << m_stats.nullMoveCutoffs;
     ss << "\nFailed Null-Move Cutoffs:  " << m_stats.failedNullMoveCutoffs;
+    ss << "\nFutilityPrunedMoves:       " << m_stats.futilityPrunedMoves;
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";

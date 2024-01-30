@@ -33,6 +33,7 @@ namespace Arcanum
         uint64_t nullWindowSearches;
         uint64_t nullMoveCutoffs;
         uint64_t failedNullMoveCutoffs;
+        uint64_t futilityPrunedMoves;
     } SearchStats;
 
     struct SearchParameters
