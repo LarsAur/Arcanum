@@ -34,6 +34,7 @@ namespace Arcanum
         uint64_t nullMoveCutoffs;
         uint64_t failedNullMoveCutoffs;
         uint64_t futilityPrunedMoves;
+        uint64_t reverseFutilityCutoffs;
     } SearchStats;
 
     struct SearchParameters

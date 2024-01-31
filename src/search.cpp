@@ -25,6 +25,7 @@ Searcher::Searcher()
         .nullMoveCutoffs    = 0LL,
         .failedNullMoveCutoffs = 0LL,
         .futilityPrunedMoves = 0LL,
+        .reverseFutilityCutoffs = 0LL,
     };
     #endif
 
@@ -227,6 +228,15 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     {
         staticEvaluation = m_evaluator.evaluate(board, plyFromRoot).total;
         if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
+
+        // Reverse futility pruning
+        if(staticEvaluation - 300 >= beta.total)
+        {
+            #if SEARCH_RECORD_STATS
+            m_stats.reverseFutilityCutoffs++;
+            #endif
+            return beta;
+        }
     }
 
     // Push the board on the search stack
@@ -256,7 +266,6 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
                 continue;
             }
         }
-
 
         // Check for late move reduction
         // Conditions for not doing LMR
@@ -597,6 +606,7 @@ void Searcher::logStats()
     ss << "\nNull-Move Cutoffs:         " << m_stats.nullMoveCutoffs;
     ss << "\nFailed Null-Move Cutoffs:  " << m_stats.failedNullMoveCutoffs;
     ss << "\nFutilityPrunedMoves:       " << m_stats.futilityPrunedMoves;
+    ss << "\nReverseFutilityCutoffs:    " << m_stats.reverseFutilityCutoffs;
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";
