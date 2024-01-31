@@ -252,8 +252,6 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         EvalTrace score;
         bool requireFullSearch = true;
         bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
-        m_evaluator.pushMoveToAccumulator(newBoard, *move);
-
 
         // Futility pruning
         if(depth == 1 && !checkOrChecking && !(move->moveInfo & MOVE_INFO_PROMOTE_MASK) && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
@@ -266,6 +264,8 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
                 continue;
             }
         }
+
+        m_evaluator.pushMoveToAccumulator(newBoard, *move);
 
         // Check for late move reduction
         // Conditions for not doing LMR
