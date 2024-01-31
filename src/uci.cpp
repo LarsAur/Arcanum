@@ -271,13 +271,13 @@ int64_t UCI::allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t m
         return 0;
 
     if(toGo > 0)
-        return std::max(1U, time / (toGo + 5));
+        return std::max(1U, (time / (toGo + 1)) + inc);
 
     if(inc > 0)
     {
         if(moveNumber >= 40)
             return std::max(1U, (time + inc) / 2U);
-        return std::max(1U, std::min(time, (time + inc) / (45U - moveNumber)));
+        return std::max(1U, std::min(time, (time + inc * (40 - moveNumber)) / (45U - moveNumber)));
     }
 
     if(moveNumber >= 40 || time < 10000)
