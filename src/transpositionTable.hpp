@@ -60,6 +60,7 @@ namespace Arcanum
             TranspositionTable(uint32_t mbSize);
             ~TranspositionTable();
 
+            void prefetch(hash_t hash);
             std::optional<ttEntry_t>get(hash_t hash, uint8_t plyFromRoot);
             void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash);
             void resize(uint32_t mbSize);

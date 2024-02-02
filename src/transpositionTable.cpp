@@ -103,6 +103,11 @@ inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
     return hash % m_clusterCount;
 }
 
+void TranspositionTable::prefetch(hash_t hash)
+{
+    _mm_prefetch(m_table + m_getClusterIndex(hash), _MM_HINT_T2);
+}
+
 std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
 {
     if(!m_table)

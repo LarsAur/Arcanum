@@ -249,6 +249,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         // Generate new board and make the move
         Board newBoard = Board(board);
         newBoard.performMove(*move);
+        m_tt->prefetch(newBoard.getHash());
         EvalTrace score;
         bool requireFullSearch = true;
         bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
