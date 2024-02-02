@@ -26,31 +26,16 @@ int main(int argc, char *argv[])
 
     for(int i = 1; i < argc; i++)
     {
-        if(!strncmp("--perft-test", argv[i], 13))
-            Test::perft();
+        if("--perft-test"   == std::string(argv[i])) Test::perft();
+        if("--capture-test" == std::string(argv[i])) Test::captureMoves();
+        if("--zobrist-test" == std::string(argv[i])) Test::zobrist();
+        if("--draw-test"    == std::string(argv[i])) Test::draw();
+        if("--symeval-test" == std::string(argv[i])) Test::symmetricEvaluation();
+        if("--see-test"     == std::string(argv[i])) Test::see();
+        if("--search-perf"  == std::string(argv[i])) Perf::search();
+        if("--engine-perf"  == std::string(argv[i])) Perf::engineTest();
 
-        if(!strncmp("--capture-test", argv[i], 15))
-            Test::captureMoves();
-
-        if(!strncmp("--zobrist-test", argv[i], 15))
-            Test::zobrist();
-
-        if(!strncmp("--draw-test", argv[i], 12))
-            Test::draw();
-
-        if(!strncmp("--symeval-test", argv[i], 15))
-            Test::symmetricEvaluation();
-
-        if(!strncmp("--see-test", argv[i], 11))
-            Test::see();
-
-        if(!strncmp("--search-perf", argv[i], 14))
-            Perf::search();
-
-        if(!strncmp("--engine-perf", argv[i], 14))
-            Perf::engineTest();
-
-        if(!strncmp("--tune", argv[i], 14))
+        if("--tune"         == std::string(argv[i]))
         {
             Tuning::Tuner tuner = Tuning::Tuner();
             if(argc < i + 3)
