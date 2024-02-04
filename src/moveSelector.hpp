@@ -15,6 +15,7 @@ namespace Arcanum
             KillerMoveManager();
             void add(Move move, uint8_t plyFromRoot);
             bool contains(Move move, uint8_t plyFromRoot) const;
+            void clear();
     };
 
     class RelativeHistory
@@ -27,6 +28,7 @@ namespace Arcanum
             void addHistory(const Move& move, uint8_t depth, Color turn);
             void addButterfly(const Move& move, uint8_t depth, Color turn);
             uint32_t get(const Move& move, Color turn);
+            void clear();
     };
 
     class MoveSelector

@@ -104,14 +104,7 @@ const Move* MoveSelector::getNextMove()
 
 KillerMoveManager::KillerMoveManager()
 {
-    // Initialize the killer move table to not contain any moves
-    for(int i = 0; i < KILLER_MOVES_MAX_PLY; i++)
-    {
-        for(int j = 0; j < 2; j++)
-        {
-            m_killerMoves[i][j] = Move(0,0);
-        }
-    }
+    clear();
 }
 
 // Have to check if the move is not a capture move before adding it to the killer move list
@@ -158,18 +151,20 @@ bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
     return false;
 }
 
-RelativeHistory::RelativeHistory()
+void KillerMoveManager::clear()
 {
-    for(int i = 0; i < 64; i++)
+    for(int i = 0; i < KILLER_MOVES_MAX_PLY; i++)
     {
-        for(int j = 0; j < 64; j++)
+        for(int j = 0; j < 2; j++)
         {
-            m_hhScores[Color::WHITE][i][j] = 0;
-            m_hhScores[Color::BLACK][i][j] = 0;
-            m_bfScores[Color::WHITE][i][j] = 1;
-            m_bfScores[Color::BLACK][i][j] = 1;
+            m_killerMoves[i][j] = Move(0,0);
         }
     }
+}
+
+RelativeHistory::RelativeHistory()
+{
+    clear();
 }
 
 // Moves should only be added to the history if at an appropriate depth
@@ -193,3 +188,16 @@ uint32_t RelativeHistory::get(const Move& move, Color turn)
     return (m_hhScores[turn][move.from][move.to] << 16) / m_bfScores[turn][move.from][move.to];
 }
 
+void RelativeHistory::clear()
+{
+    for(int i = 0; i < 64; i++)
+    {
+        for(int j = 0; j < 64; j++)
+        {
+            m_hhScores[Color::WHITE][i][j] = 0;
+            m_hhScores[Color::BLACK][i][j] = 0;
+            m_bfScores[Color::WHITE][i][j] = 1;
+            m_bfScores[Color::BLACK][i][j] = 1;
+        }
+    }
+}

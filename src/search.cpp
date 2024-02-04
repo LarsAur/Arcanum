@@ -67,6 +67,8 @@ void Searcher::clearTT()
 {
     m_generation = 0;
     m_tt->clear();
+    m_relativeHistory.clear();
+    m_killerMoveManager.clear();
 }
 
 EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int plyFromRoot)
