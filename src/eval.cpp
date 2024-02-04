@@ -225,12 +225,16 @@ bool Evaluator::isCheckMateScore(EvalTrace eval)
 }
 
 // Evaluates positive value for WHITE
-EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
+EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
 {
     EvalTrace eval = EvalTrace(0);
 
+    // If it is known from search that the position has no moves
+    // Checking for legal moves can be skipped
+    if(!noMoves) noMoves = !board.hasLegalMove();
+
     // Check for stalemate and checkmate
-    if(!board.hasLegalMove())
+    if(noMoves)
     {
         if(board.isChecked(board.m_turn))
         {

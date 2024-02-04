@@ -175,7 +175,7 @@ namespace Arcanum
             void initializeAccumulatorStack(const Board& board);
             void pushMoveToAccumulator(const Board& board, const Move& move);
             void popMoveFromAccumulator();
-            EvalTrace evaluate(Board& board, uint8_t plyFromRoot);
+            EvalTrace evaluate(Board& board, uint8_t plyFromRoot, bool noMoves = false);
             EvalTrace getDrawValue(Board& board, uint8_t plyFromRoot);
             static bool isCheckMateScore(EvalTrace eval);
     };

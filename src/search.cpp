@@ -99,6 +99,8 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     if(numMoves == 0)
     {
         m_numNodesSearched++;
+        // Note: The noMoves parameter for evaluate cannot be used here, as numMoves only check for captures.
+        //       Thus there may be other legal quiet moves
         return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
     }
 
@@ -198,7 +200,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     if(numMoves == 0)
     {
         m_numNodesSearched++;
-        return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
+        return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot, true) : -m_evaluator.evaluate(board, plyFromRoot, true);
     }
     board.generateCaptureInfo();
     bool isChecked = board.isChecked(board.getTurn());
