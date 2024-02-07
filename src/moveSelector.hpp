@@ -45,10 +45,13 @@ namespace Arcanum
             KillerMoveManager* m_killerMoveManager;
             RelativeHistory* m_relativeHistory;
             uint8_t m_numMoves;
+            uint8_t m_numLowScoreMoves;
+            uint8_t m_numHighScoreMoves;
             Move m_ttMove;
             bitboard_t m_bbOpponentPawnAttacks;
             bitboard_t m_bbOpponentAttacks;
-            ScoreIndex m_scoreIdxPairs[218];
+            ScoreIndex m_highScoreIdxPairs[218];
+            ScoreIndex m_lowScoreIdxPairs[218];
             int32_t m_getMoveScore(const Move& move);
             void m_scoreMoves();
         public:

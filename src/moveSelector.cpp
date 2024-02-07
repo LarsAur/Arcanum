@@ -67,9 +67,15 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
 
 inline void MoveSelector::m_scoreMoves()
 {
+    m_numHighScoreMoves = 0;
+    m_numLowScoreMoves = 0;
     for(uint8_t i = 0; i < m_numMoves; i++)
     {
-        m_scoreIdxPairs[i] = {.score = m_getMoveScore(m_moves[i]), .index = i};
+        int32_t score = m_getMoveScore(m_moves[i]);
+        if(score > MILLION)
+            m_highScoreIdxPairs[m_numHighScoreMoves++] = {.score = score, .index = i};
+        else
+            m_lowScoreIdxPairs[m_numLowScoreMoves++] = {.score = score, .index = i};
     }
 }
 
@@ -79,7 +85,8 @@ MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFro
     m_moves = moves;
     if(m_numMoves == 1)
     {
-        m_scoreIdxPairs[0].index = 0;
+        m_numHighScoreMoves = 1;
+        m_highScoreIdxPairs[0].index = 0;
         return;
     }
 
@@ -94,12 +101,23 @@ MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFro
 
     m_scoreMoves();
 
-    std::sort(m_scoreIdxPairs, m_scoreIdxPairs + m_numMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+    std::sort(m_highScoreIdxPairs, m_highScoreIdxPairs + m_numHighScoreMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
 }
 
 const Move* MoveSelector::getNextMove()
 {
-    return m_moves + m_scoreIdxPairs[--m_numMoves].index;
+    if(m_numHighScoreMoves > 0 && m_numHighScoreMoves != 0xff)
+    {
+        return m_moves + m_highScoreIdxPairs[--m_numHighScoreMoves].index;
+    }
+
+    if(m_numHighScoreMoves == 0)
+    {
+        m_numHighScoreMoves = 0xff; // Set the number of moves to an 'illegal' number
+        std::sort(m_lowScoreIdxPairs, m_lowScoreIdxPairs + m_numLowScoreMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+    }
+
+    return m_moves + m_lowScoreIdxPairs[--m_numLowScoreMoves].index;
 }
 
 KillerMoveManager::KillerMoveManager()
