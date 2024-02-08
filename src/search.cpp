@@ -228,13 +228,18 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     }
 
     eval_t staticEvaluation = 0;
-    if(depth == 1 && !isChecked)
+    static constexpr eval_t futilityMargins[] = {300, 500, 900};
+    if(depth > 0 && depth < 4 && !isChecked)
     {
-        staticEvaluation = m_evaluator.evaluate(board, plyFromRoot).total;
-        if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
+        // if(entry.has_value())
+        //     staticEvaluation = entry->value.total;
+        // else{
+            staticEvaluation = m_evaluator.evaluate(board, plyFromRoot).total;
+            if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
+        // }
 
         // Reverse futility pruning
-        if(staticEvaluation - 300 >= beta.total)
+        if(staticEvaluation - futilityMargins[depth - 1] >= beta.total)
         {
             #if SEARCH_RECORD_STATS
             m_stats.reverseFutilityCutoffs++;
@@ -259,9 +264,9 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
 
         // Futility pruning
-        if(depth == 1 && !checkOrChecking && !(move->moveInfo & MOVE_INFO_PROMOTE_MASK) && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK))
+        if(depth > 0 && depth < 4 && !checkOrChecking && !(move->moveInfo & (MOVE_INFO_PROMOTE_MASK | MOVE_INFO_CAPTURE_MASK)))
         {
-            if(staticEvaluation + 300 < alpha.total && alpha < 900)
+            if(staticEvaluation + futilityMargins[depth - 1] < alpha.total && alpha < 900)
             {
                 #if SEARCH_RECORD_STATS
                 m_stats.futilityPrunedMoves++;
