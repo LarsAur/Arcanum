@@ -5,6 +5,7 @@
 #include <search.hpp>
 #include <uci.hpp>
 #include <tuning/tuning.hpp>
+#include <tuning/fenGen.hpp>
 using namespace Arcanum;
 
 std::string _logFileName;
@@ -35,7 +36,7 @@ int main(int argc, char *argv[])
         if("--search-perf"  == std::string(argv[i])) Perf::search();
         if("--engine-perf"  == std::string(argv[i])) Perf::engineTest();
 
-        if("--tune"         == std::string(argv[i]))
+        if("--tune" == std::string(argv[i]))
         {
             Tuning::Tuner tuner = Tuning::Tuner();
             if(argc < i + 3)
@@ -48,6 +49,19 @@ int main(int argc, char *argv[])
             tuner.setTrainingDataFilePath(argv[i + 3]);
             tuner.start();
             argc += 3;
+        }
+
+        if("--fengen" ==  std::string(argv[i]))
+        {
+            Tuning::FenGen dataCreator = Tuning::FenGen();
+            if(argc < i + 2)
+            {
+                ERROR("Missing arguments for data creation '--fengen output pgndir'")
+                exit(-1);
+            }
+            dataCreator.setOutputFile(argv[i + 1]);
+            dataCreator.start(10, argv[i + 2]);
+            argc += 2;
         }
     }
 
