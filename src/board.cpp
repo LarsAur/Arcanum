@@ -460,9 +460,9 @@ Move* Board::getLegalMovesFromCheck()
         else
             capturingPawns = getWhitePawnAttacks(m_bbEnPassantSquare);
         capturingPawns = m_bbTypedPieces[W_PAWN][m_turn] & capturingPawns;
-        if(capturingPawns)
+        while(capturingPawns)
         {
-            m_attemptAddPseudoLegalEnpassant(Move(LS1B(capturingPawns), m_enPassantSquare, MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_PAWN_MOVE | MOVE_INFO_ENPASSANT), kingIdx);
+            m_attemptAddPseudoLegalEnpassant(Move(popLS1B(&capturingPawns), m_enPassantSquare, MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_PAWN_MOVE | MOVE_INFO_ENPASSANT), kingIdx);
         }
 
         // -- Rook + Queen captures
