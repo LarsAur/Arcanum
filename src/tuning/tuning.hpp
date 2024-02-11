@@ -1,5 +1,6 @@
 #pragma once
 
+#include <types.hpp>
 #include <string>
 #include <vector>
 
@@ -15,9 +16,9 @@ namespace Tuning
         std::vector<int16_t> m_deltas;
         bool m_changed;
 
-        double m_sigmoid(int16_t eval);
+        double m_sigmoid(Arcanum::eval_t eval);
         // Result: 1 White, 0.5 Draw, 0 Black
-        double m_squareError(float result, int16_t eval);
+        double m_squareError(float result, Arcanum::eval_t eval);
         double m_getError();
         void m_loadWeights();
         void m_storeWeights();

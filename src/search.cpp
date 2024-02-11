@@ -8,8 +8,6 @@
 
 using namespace Arcanum;
 
-#define DRAW_VALUE EvalTrace(0)
-
 Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(32));
@@ -71,28 +69,24 @@ void Searcher::clearTT()
     m_killerMoveManager.clear();
 }
 
-EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace beta, int plyFromRoot)
+eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot)
 {
     if(m_stopSearch)
-        return EvalTrace(0);
+        return 0;
 
     if(m_isDraw(board))
-        return DRAW_VALUE;
+        return 0;
 
     bool isChecked = board.isChecked(board.getTurn());
 
     if(!isChecked)
     {
         m_numNodesSearched++;
-        EvalTrace standPat = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
+        eval_t standPat = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
         if(standPat >= beta)
-        {
             return beta;
-        }
         if(alpha < standPat)
-        {
             alpha = standPat;
-        }
     }
 
     // Genereate only capture moves if not in check, else generate all moves
@@ -111,7 +105,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
 
     board.generateCaptureInfo();
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board);
-    EvalTrace bestScore = EvalTrace(-INF);
+    eval_t bestScore = -INF;
     for (int i = 0; i < numMoves; i++)  {
         const Move *move = moveSelector.getNextMove();
 
@@ -121,7 +115,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         Board newBoard = Board(board);
         newBoard.performMove(*move);
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
-        EvalTrace score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, plyFromRoot + 1);
+        eval_t score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, plyFromRoot + 1);
         m_evaluator.popMoveFromAccumulator();
         bestScore = std::max(bestScore, score);
         alpha = std::max(alpha, bestScore);
@@ -140,7 +134,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
     return alpha;
 }
 
-EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha, EvalTrace beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions)
+eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions)
 {
     // NOTE: It is important that the size of the pv line is set to zero
     //       before returning due to searchStop, this is because the size
@@ -148,12 +142,12 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     pvLine->count = 0;
 
     if(m_stopSearch)
-        return EvalTrace(0);
+        return 0;
 
     if(m_isDraw(board))
-        return DRAW_VALUE;
+        return 0;
 
-    EvalTrace originalAlpha = alpha;
+    eval_t originalAlpha = alpha;
     std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
     if(entry.has_value() && (entry->depth >= depth))
     {
@@ -191,7 +185,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         return m_alphaBetaQuiet(board, alpha, beta, plyFromRoot + 1);
     }
 
-    EvalTrace bestScore = EvalTrace(-INF);
+    eval_t bestScore = -INF;
     Move bestMove = Move(0, 0);
     Move* moves = nullptr;
     uint8_t numMoves = 0;
@@ -213,7 +207,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     {
         Board newBoard = Board(board);
         newBoard.performNullMove();
-        EvalTrace score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 3, plyFromRoot + 1, true, totalExtensions);
+        eval_t score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth - 3, plyFromRoot + 1, true, totalExtensions);
 
         if(score >= beta)
         {
@@ -231,15 +225,11 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
     if(depth > 0 && depth < 4 && !isChecked)
     {
-        // if(entry.has_value())
-        //     staticEvaluation = entry->value.total;
-        // else{
-            staticEvaluation = m_evaluator.evaluate(board, plyFromRoot).total;
-            if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
-        // }
+        staticEvaluation = m_evaluator.evaluate(board, plyFromRoot);
+        if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
 
         // Reverse futility pruning
-        if(staticEvaluation - futilityMargins[depth - 1] >= beta.total)
+        if(staticEvaluation - futilityMargins[depth - 1] >= beta)
         {
             #if SEARCH_RECORD_STATS
             m_stats.reverseFutilityCutoffs++;
@@ -259,14 +249,14 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         Board newBoard = Board(board);
         newBoard.performMove(*move);
         m_tt->prefetch(newBoard.getHash());
-        EvalTrace score;
+        eval_t score;
         bool requireFullSearch = true;
         bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
 
         // Futility pruning
         if(depth > 0 && depth < 4 && !checkOrChecking && !(move->moveInfo & (MOVE_INFO_PROMOTE_MASK | MOVE_INFO_CAPTURE_MASK)))
         {
-            if(staticEvaluation + futilityMargins[depth - 1] < alpha.total && alpha < 900)
+            if(staticEvaluation + futilityMargins[depth - 1] < alpha && alpha < 900)
             {
                 #if SEARCH_RECORD_STATS
                 m_stats.futilityPrunedMoves++;
@@ -284,9 +274,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         // * The move is a checking move
         if(i >= 3 && depth >= 3 && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK) && !checkOrChecking)
         {
-            EvalTrace nullWindowBeta = -alpha;
-            nullWindowBeta.total -= 1;
-            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, false, totalExtensions);
+            score = -m_alphaBeta(newBoard, &_pvLine, -alpha - 1, -alpha, depth - 2, plyFromRoot + 1, false, totalExtensions);
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
             #if SEARCH_RECORD_STATS
@@ -353,7 +341,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     // Stop the thread from writing to the TT when search is stopped
     if(m_stopSearch)
     {
-        return EvalTrace(0);
+        return 0;
     }
 
     uint8_t flags;
@@ -432,7 +420,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
 {
     m_stopSearch = false;
     m_numNodesSearched = 0;
-    EvalTrace searchScore = EvalTrace(0);
+    eval_t searchScore = 0;
     Move searchBestMove = Move(0,0);
     pvline_t pvLine, pvLineTmp, _pvLineTmp;
     auto start = std::chrono::high_resolution_clock::now();
@@ -485,8 +473,8 @@ Move Searcher::search(Board board, SearchParameters parameters)
         // This is required to allow using results of incomplete searches
         MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, searchBestMove);
 
-        EvalTrace alpha = EvalTrace(-INF);
-        EvalTrace beta = EvalTrace(INF);
+        eval_t alpha = -INF;
+        eval_t beta = INF;
         Move bestMove = Move(0,0);
         m_evaluator.initializeAccumulatorStack(board);
 
@@ -495,7 +483,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
             Board newBoard = Board(board);
             newBoard.performMove(*move);
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
-            EvalTrace score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
+            eval_t score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
             m_evaluator.popMoveFromAccumulator();
 
             if(m_stopSearch)
@@ -537,14 +525,14 @@ Move Searcher::search(Board board, SearchParameters parameters)
         info.depth = depth;
         info.msTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
         info.nodes = m_numNodesSearched;
-        info.score = alpha.total;
+        info.score = alpha;
         info.hashfull = m_tt->permills();
         info.bestMove = bestMove;
         if(Evaluator::isCheckMateScore(alpha))
         {
             info.mate = true;
-            uint16_t distance = (INT16_MAX - std::abs(alpha.total)) / 2; // Divide by 2 to get moves and not plys.
-            info.mateDistance = alpha.total > 0 ? distance : -distance;
+            uint16_t distance = (INT16_MAX - std::abs(alpha)) / 2; // Divide by 2 to get moves and not plys.
+            info.mateDistance = alpha > 0 ? distance : -distance;
         }
         for(uint32_t i = 0; i < pvLine.count; i++)
             info.pvLine.push_back(pvLine.moves[i]);
@@ -567,14 +555,14 @@ Move Searcher::search(Board board, SearchParameters parameters)
     info.depth = depth;
     info.msTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
     info.nodes = m_numNodesSearched;
-    info.score = searchScore.total;
+    info.score = searchScore;
     info.hashfull = m_tt->permills();
     info.bestMove = searchBestMove;
     if(Evaluator::isCheckMateScore(searchScore))
     {
         info.mate = true;
-        uint16_t distance = (INT16_MAX - std::abs(searchScore.total)) / 2; // Divide by 2 to get moves and not plys.
-        info.mateDistance = searchScore.total > 0 ? distance : -distance;
+        uint16_t distance = (INT16_MAX - std::abs(searchScore)) / 2; // Divide by 2 to get moves and not plys.
+        info.mateDistance = searchScore > 0 ? distance : -distance;
     }
     for(uint32_t i = 0; i < pvLine.count; i++)
         info.pvLine.push_back(pvLine.moves[i]);

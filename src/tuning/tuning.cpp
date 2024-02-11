@@ -3,7 +3,6 @@
 #include <fstream>
 #include <utils.hpp>
 #include <cmath>
-#include <iomanip>
 
 using namespace Tuning;
 
@@ -54,7 +53,7 @@ inline double Tuner::m_sigmoid(int16_t eval)
     return 1.0 / (1.0 + pow(10.0, -double(eval)/400));
 }
 
-double Tuner::m_squareError(float result, int16_t eval)
+double Tuner::m_squareError(float result, Arcanum::eval_t eval)
 {
     return pow(result - m_sigmoid(eval), 2);
 }
@@ -94,7 +93,7 @@ double Tuner::m_getError()
         {
             std::getline(is, fen);
             Arcanum::Board board = Arcanum::Board(fen);
-            int16_t eval = evaluator.evaluate(board, 0).total;
+            Arcanum::eval_t eval = evaluator.evaluate(board, 0);
             totalError += m_squareError(result, eval);
         }
     }

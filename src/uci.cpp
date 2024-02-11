@@ -324,7 +324,7 @@ void UCI::sendUciBestMove(const Arcanum::Move& move)
 void UCI::eval(Board& board, Evaluator& evaluator)
 {
     evaluator.initializeAccumulatorStack(board);
-    UCI_OUT(evaluator.evaluate(board, 0).total)
+    UCI_OUT(evaluator.evaluate(board, 0))
 }
 
 // Returns "checkmate 'winner'" if checkmate
