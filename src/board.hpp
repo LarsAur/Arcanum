@@ -137,7 +137,7 @@ namespace Arcanum
             square_t m_pinnerBlockerIdxPairs[64]; // Array containing the idx of the pinner
 
             Piece m_pieces[64];
-            uint8_t m_numLegalMoves;
+            uint8_t m_numLegalMoves = 0;
             Move m_legalMoves[218];
             hash_t m_hash;
             hash_t m_materialHash;
@@ -149,6 +149,8 @@ namespace Arcanum
             // Tests if the king will be checked before adding the move
             bool m_attemptAddPseudoLegalEnpassant(Move move, square_t kingIdx);
             bool m_attemptAddPseudoLegalMove(Move move, square_t kingIdx);
+            bool m_isLegalEnpassant(Move move, square_t kingIdx);
+            bool m_isLegalMove(Move move, square_t kingIdx);
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
         public:
