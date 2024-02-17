@@ -187,9 +187,9 @@ bool PGNParser::m_isMatchingMove(std::string pgnMove, Arcanum::Move move)
     }
 
     if(pgnMove == "O-O")
-        return move.moveInfo & (MOVE_INFO_CASTLE_WHITE_KING | MOVE_INFO_CASTLE_BLACK_KING);
+        return move.moveInfo & (Arcanum::CASTLE_WHITE_KING | Arcanum::CASTLE_BLACK_KING);
     if(pgnMove == "O-O-O")
-        return move.moveInfo & (MOVE_INFO_CASTLE_WHITE_QUEEN | MOVE_INFO_CASTLE_BLACK_QUEEN);
+        return move.moveInfo & (Arcanum::CASTLE_WHITE_QUEEN | Arcanum::CASTLE_BLACK_QUEEN);
 
     // Promition
     if(pgnMove[pgnMove.length() - 2] == '=')
@@ -197,16 +197,16 @@ bool PGNParser::m_isMatchingMove(std::string pgnMove, Arcanum::Move move)
         switch (pgnMove[pgnMove.length() - 1])
         {
             case 'R':
-            if(!(move.moveInfo & MOVE_INFO_PROMOTE_ROOK)) return false;
+            if(!(move.moveInfo & Arcanum::PROMOTE_ROOK)) return false;
             break;
             case 'N':
-            if(!(move.moveInfo & MOVE_INFO_PROMOTE_KNIGHT)) return false;
+            if(!(move.moveInfo & Arcanum::PROMOTE_KNIGHT)) return false;
             break;
             case 'B':
-            if(!(move.moveInfo & MOVE_INFO_PROMOTE_BISHOP)) return false;
+            if(!(move.moveInfo & Arcanum::PROMOTE_BISHOP)) return false;
             break;
             case 'Q':
-            if(!(move.moveInfo & MOVE_INFO_PROMOTE_QUEEN)) return false;
+            if(!(move.moveInfo & Arcanum::PROMOTE_QUEEN)) return false;
             break;
         }
 
@@ -218,7 +218,7 @@ bool PGNParser::m_isMatchingMove(std::string pgnMove, Arcanum::Move move)
     // Find potential capture and remove the x
     if(pgnMove.find('x') != std::string::npos)
     {
-        if(!(move.moveInfo & MOVE_INFO_CAPTURE_MASK)) return false;
+        if(!CAPTURED_PIECE(move.moveInfo)) return false;
         size_t pos = pgnMove.find('x');
         std::string pre = pgnMove.substr(0, pos);
         std::string post = pgnMove.substr(pos + 1);
@@ -229,27 +229,27 @@ bool PGNParser::m_isMatchingMove(std::string pgnMove, Arcanum::Move move)
     switch (pgnMove[0])
     {
     case 'R':
-        if(!(move.moveInfo & MOVE_INFO_ROOK_MOVE)) return false;
+        if(!(move.moveInfo & Arcanum::ROOK_MOVE)) return false;
         pgnMove = pgnMove.substr(1);
         break;
     case 'N':
-        if(!(move.moveInfo & MOVE_INFO_KNIGHT_MOVE)) return false;
+        if(!(move.moveInfo & Arcanum::KNIGHT_MOVE)) return false;
         pgnMove = pgnMove.substr(1);
         break;
     case 'B':
-        if(!(move.moveInfo & MOVE_INFO_BISHOP_MOVE)) return false;
+        if(!(move.moveInfo & Arcanum::BISHOP_MOVE)) return false;
         pgnMove = pgnMove.substr(1);
         break;
     case 'Q':
-        if(!(move.moveInfo & MOVE_INFO_QUEEN_MOVE)) return false;
+        if(!(move.moveInfo & Arcanum::QUEEN_MOVE)) return false;
         pgnMove = pgnMove.substr(1);
         break;
     case 'K':
-        if(!(move.moveInfo & MOVE_INFO_KING_MOVE)) return false;
+        if(!(move.moveInfo & Arcanum::KING_MOVE)) return false;
         pgnMove = pgnMove.substr(1);
         break;
     default: // Pawn
-        if(!(move.moveInfo & MOVE_INFO_PAWN_MOVE)) return false;
+        if(!(move.moveInfo & Arcanum::PAWN_MOVE)) return false;
         break;
     }
 

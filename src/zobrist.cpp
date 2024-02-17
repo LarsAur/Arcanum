@@ -88,9 +88,9 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
 {
     // TODO: Include castle opertunities
     // XOR in and out the moved piece corresponding to its location
-    if(move.moveInfo & MOVE_INFO_PROMOTE_MASK)
+    if(PROMOTED_PIECE(move.moveInfo))
     {
-        Piece promoteType = Piece(LS1B(move.moveInfo & MOVE_INFO_PROMOTE_MASK) - 11);
+        Piece promoteType = Piece(LS1B(PROMOTED_PIECE(move.moveInfo)) - 11);
         uint8_t pawnCount = CNTSBITS(board.m_bbTypedPieces[W_PAWN][board.m_turn]);
         uint8_t promoteCount = CNTSBITS(board.m_bbTypedPieces[promoteType][board.m_turn]) - 1;
         hash ^= m_tables[W_PAWN][board.m_turn][move.from] ^ m_tables[promoteType][board.m_turn][move.to];
@@ -99,40 +99,39 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     }
     else
     {
-        uint8_t pieceIndex = Piece(LS1B(move.moveInfo & MOVE_INFO_MOVE_MASK));
+        uint8_t pieceIndex = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
         hash_t moveHash = m_tables[pieceIndex][board.m_turn][move.from] ^ m_tables[pieceIndex][board.m_turn][move.to];
         hash ^= moveHash;
-        pawnHash ^= moveHash * (move.moveInfo & MOVE_INFO_PAWN_MOVE); // Multiplication works as MOVE_INFO_PAWN_MOVE == 1
+        pawnHash ^= moveHash * (move.moveInfo & MoveInfoBit::PAWN_MOVE); // Multiplication works as MoveInfoBit::PAWN_MOVE == 1
     }
 
     // Handle the moved rook when castling
-    if(move.moveInfo & MOVE_INFO_CASTLE_MASK)
+    if(CASTLE_SIDE(move.moveInfo))
     {
-        if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_QUEEN)
+        if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
         {
             hash ^= m_tables[W_ROOK][WHITE][0] ^  m_tables[W_ROOK][WHITE][3];
         }
-        else if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_KING)
+        else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
         {
             hash ^= m_tables[W_ROOK][WHITE][7] ^  m_tables[W_ROOK][WHITE][5];
         }
-        else if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_QUEEN)
+        else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
         {
             hash ^= m_tables[W_ROOK][BLACK][56] ^ m_tables[W_ROOK][BLACK][59];
         }
-        else if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_KING)
+        else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
         {
             hash ^= m_tables[W_ROOK][BLACK][63] ^ m_tables[W_ROOK][BLACK][61];
         }
     }
 
     // XOR out the captured piece
-    uint32_t capturedBitmask = move.moveInfo & MOVE_INFO_CAPTURE_MASK;
-    if(capturedBitmask != 0)
+    if(CAPTURED_PIECE(move.moveInfo))
     {
         Color opponent = Color(board.m_turn^1);
 
-        if(move.moveInfo & MOVE_INFO_ENPASSANT)
+        if(move.moveInfo & MoveInfoBit::ENPASSANT)
         {
             Arcanum::square_t oldEnPassantTarget = oldEnPassantSquare > 32 ? oldEnPassantSquare - 8 : oldEnPassantSquare + 8;
             uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
@@ -140,7 +139,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
             pawnHash ^= m_tables[W_PAWN][opponent][oldEnPassantTarget];
             materialHash ^= m_tables[W_PAWN][opponent][count];
         }
-        else if(move.moveInfo & MOVE_INFO_CAPTURE_PAWN)
+        else if(move.moveInfo & MoveInfoBit::CAPTURE_PAWN)
         {
             uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
             hash ^= m_tables[W_PAWN][opponent][move.to];
@@ -149,7 +148,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
         }
         else
         {
-            uint8_t capturedIndex = LS1B(capturedBitmask) - 16;
+            uint8_t capturedIndex = LS1B(CAPTURED_PIECE(move.moveInfo)) - 16;
             uint8_t count = CNTSBITS(board.m_bbTypedPieces[capturedIndex][opponent]);
             hash ^= m_tables[capturedIndex][opponent][move.to];
             materialHash ^= m_tables[capturedIndex][opponent][count];

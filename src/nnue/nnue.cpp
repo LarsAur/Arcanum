@@ -175,7 +175,7 @@ void NNUE::incrementAccumulator(
     constexpr int numChunks = ftOuts / registerWidth;
     __m256i regs[numChunks]; // Temp accumulators in AVX register
 
-    if(move.moveInfo & MOVE_INFO_CASTLE_MASK)
+    if(CASTLE_SIDE(move.moveInfo))
     {
         m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
 
@@ -184,10 +184,10 @@ void NNUE::incrementAccumulator(
         Arcanum::Color nPerspective = Arcanum::Color(1^perspective);
         Arcanum::square_t kingSquare = orientSquare(nPerspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, nPerspective)));
         Arcanum::Piece rookPiece = Arcanum::Piece(Arcanum::Piece::W_ROOK + Arcanum::Piece::B_PAWN * perspective);
-        if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_QUEEN)        { activated = findex(nPerspective,  3, rookPiece, kingSquare); deactivated = findex(nPerspective,  0, rookPiece, kingSquare); }
-        else if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_QUEEN)   { activated = findex(nPerspective, 59, rookPiece, kingSquare); deactivated = findex(nPerspective, 56, rookPiece, kingSquare); }
-        else if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_KING)    { activated = findex(nPerspective,  5, rookPiece, kingSquare); deactivated = findex(nPerspective,  7, rookPiece, kingSquare); }
-        else /*move.moveInfo & MOVE_INFO_CASTLE_BLACK_KING*/    { activated = findex(nPerspective, 61, rookPiece, kingSquare); deactivated = findex(nPerspective, 63, rookPiece, kingSquare); }
+        if(move.moveInfo & Arcanum::CASTLE_WHITE_QUEEN)        { activated = findex(nPerspective,  3, rookPiece, kingSquare); deactivated = findex(nPerspective,  0, rookPiece, kingSquare); }
+        else if(move.moveInfo & Arcanum::CASTLE_BLACK_QUEEN)   { activated = findex(nPerspective, 59, rookPiece, kingSquare); deactivated = findex(nPerspective, 56, rookPiece, kingSquare); }
+        else if(move.moveInfo & Arcanum::CASTLE_WHITE_KING)    { activated = findex(nPerspective,  5, rookPiece, kingSquare); deactivated = findex(nPerspective,  7, rookPiece, kingSquare); }
+        else /*move.moveInfo & Arcanum::CASTLE_BLACK_KING*/    { activated = findex(nPerspective, 61, rookPiece, kingSquare); deactivated = findex(nPerspective, 63, rookPiece, kingSquare); }
 
         for(int i = 0; i < numChunks; i++)
         {
@@ -206,7 +206,7 @@ void NNUE::incrementAccumulator(
     // If the move is a king move, the whole accumulator
     // for the moving color has to be updated.
     // if the move does not capture anything, the other perspective does not need to be updated.
-    if(move.moveInfo & MOVE_INFO_KING_MOVE && !(move.moveInfo & MOVE_INFO_CAPTURE_MASK))
+    if(move.moveInfo & Arcanum::KING_MOVE && !CAPTURED_PIECE(move.moveInfo))
     {
         m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
 
@@ -220,7 +220,7 @@ void NNUE::incrementAccumulator(
 
     }
 
-    if(move.moveInfo & MOVE_INFO_KING_MOVE)
+    if(move.moveInfo & Arcanum::KING_MOVE)
     {
         m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
 
@@ -386,10 +386,10 @@ uint32_t NNUE::m_calculateChangedIndices(uint32_t& activated, std::array<uint32_
 {
     uint8_t kingSquare = orientSquare(perspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, perspective)));
     // It is assumed that the move is already made, and that the color of the moved piece is the opposite of the board turn
-    Arcanum::Piece movedPiece = Arcanum::Piece(lsb64(move.moveInfo & MOVE_INFO_MOVE_MASK) + Arcanum::B_PAWN * (1^board.getTurn()));
-    if(move.moveInfo & MOVE_INFO_PROMOTE_MASK)
+    Arcanum::Piece movedPiece = Arcanum::Piece(lsb64(MOVED_PIECE(move.moveInfo)) + Arcanum::B_PAWN * (1^board.getTurn()));
+    if(PROMOTED_PIECE(move.moveInfo))
     {
-        Arcanum::Piece promotedPiece = Arcanum::Piece(lsb64(move.moveInfo & MOVE_INFO_PROMOTE_MASK) - 11 + Arcanum::B_PAWN * (1^board.getTurn()));
+        Arcanum::Piece promotedPiece = Arcanum::Piece(lsb64(PROMOTED_PIECE(move.moveInfo)) - 11 + Arcanum::B_PAWN * (1^board.getTurn()));
         activated = findex(perspective, move.to, promotedPiece, kingSquare);
     }
     else
@@ -399,12 +399,12 @@ uint32_t NNUE::m_calculateChangedIndices(uint32_t& activated, std::array<uint32_
 
     deactivated[0] = findex(perspective, move.from, movedPiece, kingSquare);
 
-    if(!(move.moveInfo & MOVE_INFO_CAPTURE_MASK))
+    if(!CAPTURED_PIECE(move.moveInfo))
         return 1; // If there is no capture, there is only 1 deactivated index
 
     // It is assumed that the move is already made, and that the color of the captured piece is the board turn
-    Arcanum::Piece capturedPiece = Arcanum::Piece(lsb64(move.moveInfo & MOVE_INFO_CAPTURE_MASK) - 16 + Arcanum::B_PAWN * board.getTurn());
-    if(move.moveInfo & MOVE_INFO_ENPASSANT)
+    Arcanum::Piece capturedPiece = Arcanum::Piece(lsb64(CAPTURED_PIECE(move.moveInfo)) - 16 + Arcanum::B_PAWN * board.getTurn());
+    if(move.moveInfo & Arcanum::ENPASSANT)
     {
         // getTurn returns the color of the captured piece in this case
         uint8_t targetSquare = board.getTurn() == Arcanum::Color::BLACK ? (move.to - 8) : (move.to + 8);

@@ -127,7 +127,7 @@ EvalTrace Searcher::m_alphaBetaQuiet(Board& board, EvalTrace alpha, EvalTrace be
         alpha = std::max(alpha, bestScore);
         if(alpha >= beta)
         {
-            if(!(move->moveInfo & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
+            if(!(CAPTURED_PIECE(move->moveInfo) | PROMOTED_PIECE(move->moveInfo)))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
             }
@@ -264,7 +264,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
 
         // Futility pruning
-        if(depth > 0 && depth < 4 && !checkOrChecking && !(move->moveInfo & (MOVE_INFO_PROMOTE_MASK | MOVE_INFO_CAPTURE_MASK)))
+        if(depth > 0 && depth < 4 && !checkOrChecking && !(PROMOTED_PIECE(move->moveInfo) | CAPTURED_PIECE(move->moveInfo)))
         {
             if(staticEvaluation + futilityMargins[depth - 1] < alpha.total && alpha < 900)
             {
@@ -282,7 +282,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         // * Move is a capture move
         // * The previous board was a check
         // * The move is a checking move
-        if(i >= 3 && depth >= 3 && !(move->moveInfo & MOVE_INFO_CAPTURE_MASK) && !checkOrChecking)
+        if(i >= 3 && depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking)
         {
             EvalTrace nullWindowBeta = -alpha;
             nullWindowBeta.total -= 1;
@@ -301,7 +301,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             // This is to avoid horizon effect occuring by starting with a forced line
             uint8_t extension = (
                 checkOrChecking ||
-                ((move->moveInfo & MOVE_INFO_PAWN_MOVE) && ((move->to >> 3) == 6 || (move->to >> 3) == 1)) || // Pawn moved to the 7th rank
+                ((move->moveInfo & MoveInfoBit::PAWN_MOVE) && ((move->to >> 3) == 6 || (move->to >> 3) == 1)) || // Pawn moved to the 7th rank
                 (numMoves == 1)
             ) ? 1 : 0;
             // Limit the number of extensions
@@ -326,7 +326,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
 
         if(alpha >= beta) // Beta-cutoff
         {
-            if(!(move->moveInfo & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
+            if(!(CAPTURED_PIECE(move->moveInfo) | PROMOTED_PIECE(move->moveInfo)))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
                 if(depth > 3)
@@ -338,7 +338,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         }
 
         // Quiet move did not cause a beta-cutoff, increase the relative butterfly history
-        if(!(move->moveInfo & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
+        if(!(CAPTURED_PIECE(move->moveInfo) | PROMOTED_PIECE(move->moveInfo)))
         {
             if(depth > 3)
             {

@@ -142,7 +142,7 @@ void Test::zobrist()
 
     // Move Rook
     Board board1 = Board("k5r1/8/8/8/8/8/8/1R5K w - - 0 1");
-    board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE));
+    board1.performMove(Move(1, 2, MoveInfoBit::ROOK_MOVE));
     Board board2 = Board("k5r1/8/8/8/8/8/8/2R4K b - - 0 1");
     if(board1.getHash() != board2.getHash())
         ERROR("ROOK: Zobrist did not match")
@@ -155,7 +155,7 @@ void Test::zobrist()
 
     // Capture Rook
     board1 = Board("k7/8/8/8/8/8/8/1Rr4K w - - 0 1");
-    board1.performMove(Move(1, 2, MOVE_INFO_ROOK_MOVE | MOVE_INFO_CAPTURE_ROOK));
+    board1.performMove(Move(1, 2, MoveInfoBit::ROOK_MOVE | MoveInfoBit::CAPTURE_ROOK));
     board2 = Board("k7/8/8/8/8/8/8/2R4K b - - 0 1");
     if(board1.getHash() != board2.getHash())
         ERROR("Capture rook: Zobrist did not match")
@@ -169,10 +169,10 @@ void Test::zobrist()
     // Move back and forth
     board1 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
     board2 = Board("r2qkbnr/pppppppp/8/8/8/8/PPPPPPPP/R2QK2R w - - 0 1");
-    board1.performMove(Move(3, 2, MOVE_INFO_QUEEN_MOVE));
-    board1.performMove(Move(59, 58, MOVE_INFO_QUEEN_MOVE));
-    board1.performMove(Move(2, 3, MOVE_INFO_QUEEN_MOVE));
-    board1.performMove(Move(58, 59, MOVE_INFO_QUEEN_MOVE));
+    board1.performMove(Move(3, 2, MoveInfoBit::QUEEN_MOVE));
+    board1.performMove(Move(59, 58, MoveInfoBit::QUEEN_MOVE));
+    board1.performMove(Move(2, 3, MoveInfoBit::QUEEN_MOVE));
+    board1.performMove(Move(58, 59, MoveInfoBit::QUEEN_MOVE));
     if(board1.getHash() != board2.getHash())
         ERROR("Repeat: Zobrist did not match")
     else if(board1.getPawnHash() != board2.getPawnHash())
@@ -196,7 +196,7 @@ void Test::zobrist()
 
     // Capture pawn
     board1 = Board("rnbqkbnr/pp3ppp/8/2pP4/P7/8/1P1PPPPP/R1BQKBNR b - - 0 1");
-    board1.performMove(Move(59, 35, MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_QUEEN_MOVE));
+    board1.performMove(Move(59, 35, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::QUEEN_MOVE));
     board2 = Board("rnb1kbnr/pp3ppp/8/2pq4/P7/8/1P1PPPPP/R1BQKBNR w - - 0 1");
     if(board1.getHash() != board2.getHash())
         ERROR("Capture pawn: Zobrist did not match")
@@ -209,7 +209,7 @@ void Test::zobrist()
 
     // Enpassant
     board1 = Board("rnbqkbnr/1pp1pppp/8/p2pP3/8/8/PPPP1PPP/RNBQKBNR w - d6 0 1");
-    board1.performMove(Move(36, 43, MOVE_INFO_PAWN_MOVE | MOVE_INFO_CAPTURE_PAWN | MOVE_INFO_ENPASSANT));
+    board1.performMove(Move(36, 43, MoveInfoBit::PAWN_MOVE | MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT));
     board2 = Board("rnbqkbnr/1pp1pppp/3P4/p7/8/8/PPPP1PPP/RNBQKBNR b - - 0 1");
     if(board1.getHash() != board2.getHash())
         ERROR("Enpassant: Zobrist did not match")
@@ -242,11 +242,11 @@ void Test::draw()
     {
         ERROR("Repeated position: k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
     }
-    board.performMove(Move(56, 57, MOVE_INFO_KING_MOVE));
+    board.performMove(Move(56, 57, MoveInfoBit::KING_MOVE));
     board.addBoardToHistory();
     board.performMove(wsearcher.getBestMoveInTime(board, 200));
     board.addBoardToHistory();
-    board.performMove(Move(57, 56, MOVE_INFO_KING_MOVE));
+    board.performMove(Move(57, 56, MoveInfoBit::KING_MOVE));
     board.addBoardToHistory();
     board.performMove(wsearcher.getBestMoveInTime(board, 200));
     board.addBoardToHistory();
@@ -414,13 +414,13 @@ void Test::see()
     LOG("Starting SEE test")
     int32_t successes = 0;
     constexpr uint32_t numTests = 7;
-    successes += s_seeTestPosition("7k/p7/1p6/8/8/1Q6/8/7K w - - 0 1", Move(17, 41, MOVE_INFO_QUEEN_MOVE | MOVE_INFO_CAPTURE_PAWN), false);
-    successes += s_seeTestPosition("8/8/2k5/1q6/8/1K6/8/5B2 w - - 0 1", Move(5, 33, MOVE_INFO_BISHOP_MOVE | MOVE_INFO_CAPTURE_QUEEN), true);
-    successes += s_seeTestPosition("8/8/2k5/1q6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MOVE_INFO_BISHOP_MOVE | MOVE_INFO_CAPTURE_QUEEN), true);
-    successes += s_seeTestPosition("8/8/2k5/1p6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MOVE_INFO_BISHOP_MOVE | MOVE_INFO_CAPTURE_PAWN), true);
-    successes += s_seeTestPosition("8/8/b1k5/1p6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MOVE_INFO_BISHOP_MOVE | MOVE_INFO_CAPTURE_PAWN), false);
-    successes += s_seeTestPosition("8/8/B1K5/1P6/8/1kn5/8/5b2 b - - 0 1", Move(5, 33, MOVE_INFO_BISHOP_MOVE | MOVE_INFO_CAPTURE_PAWN), false);
-    successes += s_seeTestPosition("8/6k1/6r1/8/4n3/6PQ/4N1K1/8 b - - 0 1", Move(28, 22, MOVE_INFO_KNIGHT_MOVE | MOVE_INFO_CAPTURE_PAWN), false);
+    successes += s_seeTestPosition("7k/p7/1p6/8/8/1Q6/8/7K w - - 0 1", Move(17, 41, MoveInfoBit::QUEEN_MOVE | MoveInfoBit::CAPTURE_PAWN), false);
+    successes += s_seeTestPosition("8/8/2k5/1q6/8/1K6/8/5B2 w - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_QUEEN), true);
+    successes += s_seeTestPosition("8/8/2k5/1q6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_QUEEN), true);
+    successes += s_seeTestPosition("8/8/2k5/1p6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_PAWN), true);
+    successes += s_seeTestPosition("8/8/b1k5/1p6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_PAWN), false);
+    successes += s_seeTestPosition("8/8/B1K5/1P6/8/1kn5/8/5b2 b - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_PAWN), false);
+    successes += s_seeTestPosition("8/6k1/6r1/8/4n3/6PQ/4N1K1/8 b - - 0 1", Move(28, 22, MoveInfoBit::KNIGHT_MOVE | MoveInfoBit::CAPTURE_PAWN), false);
 
     if(numTests != successes)
         ERROR("Completed SEE test. Successes: " << successes << " / " << numTests)
