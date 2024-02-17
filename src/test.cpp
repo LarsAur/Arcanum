@@ -361,6 +361,7 @@ void Test::symmetricEvaluation()
         Evaluator eval = Evaluator();
         std::string fen = getRandomSymmetricFEN();
         Board board(fen);
+        eval.initializeAccumulatorStack(board);
         eval_t score = eval.evaluate(board, 0);
         if(score != 0 && abs(score) != 32767)
         {
@@ -377,11 +378,14 @@ void Test::symmetricEvaluation()
     {
         Evaluator eval1 = Evaluator();
         Evaluator eval2 = Evaluator();
+
         std::pair fenPair = getRandomEqualFENPairs();
 
         Board b1 = Board(fenPair.first);
         Board b2 = Board(fenPair.second);
 
+        eval1.initializeAccumulatorStack(b1);
+        eval2.initializeAccumulatorStack(b2);
         eval_t score1 = eval1.evaluate(b1, 0);
         eval_t score2 = eval2.evaluate(b2, 0);
 
