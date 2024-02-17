@@ -1294,6 +1294,9 @@ Move* Board::getLegalCaptureMoves()
 // checkmate and stalemate at evaluation
 bool Board::hasLegalMove()
 {
+    if(m_numLegalMoves > 0)
+        return true;
+
     if(isChecked(m_turn))
     {
         return hasLegalMoveFromCheck();
@@ -1457,6 +1460,9 @@ bool Board::hasLegalMove()
 
 bool Board::hasLegalMoveFromCheck()
 {
+    if(m_numLegalMoves > 0)
+        return true;
+
     m_findPinnedPieces();
     Color opponent = Color(m_turn^1);
     bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];

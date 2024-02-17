@@ -137,7 +137,7 @@ namespace Arcanum
             square_t m_pinnerBlockerIdxPairs[64]; // Array containing the idx of the pinner
 
             Piece m_pieces[64];
-            uint8_t m_numLegalMoves;
+            uint8_t m_numLegalMoves = 0;
             Move m_legalMoves[218];
             hash_t m_hash;
             hash_t m_materialHash;
