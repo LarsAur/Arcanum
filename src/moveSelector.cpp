@@ -23,14 +23,14 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
         return INT32_MAX;
     }
 
-    Piece movePiece = Piece(LS1B(move.moveInfo & MOVE_INFO_MOVE_MASK));
+    Piece movePiece = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
     bitboard_t bbTo = (1LL << move.to);
     int32_t score = 0;
 
     // If it is a capture
-    if(move.moveInfo & MOVE_INFO_CAPTURE_MASK)
+    if(CAPTURED_PIECE(move.moveInfo))
     {
-        Piece capturePiece = Piece(LS1B(move.moveInfo & MOVE_INFO_CAPTURE_MASK) - 16);
+        Piece capturePiece = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
         int32_t materialDelta = s_pieceValues[capturePiece] - s_pieceValues[movePiece];
 
         // Check if recapture is available
@@ -51,9 +51,9 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
         }
     }
 
-    if(move.moveInfo & MOVE_INFO_PROMOTE_MASK)
+    if(PROMOTED_PIECE(move.moveInfo))
     {
-        Piece promotePiece = Piece(LS1B(move.moveInfo & MOVE_INFO_PROMOTE_MASK) - 11); // Not -12 because rook is at index 1
+        Piece promotePiece = Piece(LS1B(PROMOTED_PIECE(move.moveInfo)) - 11); // Not -12 because rook is at index 1
         score += PROMOTE_BIAS + s_pieceValues[promotePiece];
     }
 

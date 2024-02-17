@@ -292,23 +292,23 @@ void Evaluator::m_incrementImmediateEval(ImmEvalEntry& prevImmEval, ImmEvalEntry
         }
 
         // Move the rook when castling
-        if(move.moveInfo & MOVE_INFO_CASTLE_MASK)
+        if(CASTLE_SIDE(move.moveInfo))
         {
-            if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_QUEEN)
+            if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
             {
                 newImmEval.early += m_pieceSquareTablesEarly[W_ROOK][PST_INDEX(3)] - m_pieceSquareTablesEarly[W_ROOK][PST_INDEX(0)];
                 newImmEval.late  += m_pieceSquareTablesLate[W_ROOK][PST_INDEX(3)]  - m_pieceSquareTablesLate[W_ROOK][PST_INDEX(0)];
             }
-            else if(move.moveInfo & MOVE_INFO_CASTLE_WHITE_KING)
+            else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
             {
                 newImmEval.early += m_pieceSquareTablesEarly[W_ROOK][PST_INDEX(5)] - m_pieceSquareTablesEarly[W_ROOK][PST_INDEX(7)];
                 newImmEval.late  += m_pieceSquareTablesLate[W_ROOK][PST_INDEX(5)]  - m_pieceSquareTablesLate[W_ROOK][PST_INDEX(7)];
             }
         }
 
-        if(move.moveInfo & MOVE_INFO_CAPTURE_MASK)
+        if(CAPTURED_PIECE(move.moveInfo))
         {
-            if(move.moveInfo & MOVE_INFO_ENPASSANT)
+            if(move.moveInfo & MoveInfoBit::ENPASSANT)
             {
                 square_t targetPawnPosition = move.to - 8;
                 newImmEval.early += m_pieceValues[W_PAWN] + m_pieceSquareTablesEarly[W_PAWN][MIRROR_PST_INDEX(targetPawnPosition)];
@@ -345,23 +345,23 @@ void Evaluator::m_incrementImmediateEval(ImmEvalEntry& prevImmEval, ImmEvalEntry
         }
 
         // Move the rook when castling
-        if(move.moveInfo & MOVE_INFO_CASTLE_MASK)
+        if(CASTLE_SIDE(move.moveInfo))
         {
-            if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_QUEEN)
+            if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
             {
                 newImmEval.early -= m_pieceSquareTablesEarly[W_ROOK][MIRROR_PST_INDEX(59)] - m_pieceSquareTablesEarly[W_ROOK][MIRROR_PST_INDEX(56)];
                 newImmEval.late  -= m_pieceSquareTablesLate[W_ROOK][MIRROR_PST_INDEX(59)]  - m_pieceSquareTablesLate[W_ROOK][MIRROR_PST_INDEX(56)];
             }
-            else if(move.moveInfo & MOVE_INFO_CASTLE_BLACK_KING)
+            else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
             {
                 newImmEval.early -= m_pieceSquareTablesEarly[W_ROOK][MIRROR_PST_INDEX(61)] - m_pieceSquareTablesEarly[W_ROOK][MIRROR_PST_INDEX(63)];
                 newImmEval.late  -= m_pieceSquareTablesLate[W_ROOK][MIRROR_PST_INDEX(61)]  - m_pieceSquareTablesLate[W_ROOK][MIRROR_PST_INDEX(63)];
             }
         }
 
-        if(move.moveInfo & MOVE_INFO_CAPTURE_MASK)
+        if(CAPTURED_PIECE(move.moveInfo))
         {
-            if(move.moveInfo & MOVE_INFO_ENPASSANT)
+            if(move.moveInfo & MoveInfoBit::ENPASSANT)
             {
                 square_t targetPawnPosition = move.to + 8;
                 newImmEval.early -= m_pieceValues[W_PAWN] + m_pieceSquareTablesEarly[W_PAWN][PST_INDEX(targetPawnPosition)];
