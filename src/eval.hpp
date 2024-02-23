@@ -6,6 +6,11 @@
 
 namespace Arcanum
 {
+    #define MATE_SCORE (INT16_MAX)
+    #define MAX_MATE_DISTANCE (256)
+    #define TB_MATE_SCORE (INT16_MAX - MAX_MATE_DISTANCE)
+    #define TB_MAX_MATE_DISTANCE (256)
+
     class Evaluator
     {
         private:
@@ -66,5 +71,6 @@ namespace Arcanum
             eval_t evaluate(Board& board, uint8_t plyFromRoot, bool noMoves = false);
             eval_t immEvaluation(Board& board, uint8_t plyFromRoot);
             static bool isCheckMateScore(eval_t eval);
+            static bool isTbCheckMateScore(eval_t eval);
     };
 }

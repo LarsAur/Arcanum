@@ -265,12 +265,12 @@ bool PGNParser::m_isMatchingMove(std::string pgnMove, Arcanum::Move move)
         if(pgnMove[0] >= 'a' && pgnMove[0] <= 'h')
         {
             uint8_t file = pgnMove[0] - 'a';
-            if((move.from & 0b111) != file) return false;
+            if(FILE(move.from) != file) return false;
         }
         else if(pgnMove[0] >= '1' && pgnMove[0] <= '8')
         {
             uint8_t rank = pgnMove[0] - '1';
-            if((move.from >> 3) != rank) return false;
+            if(RANK(move.from) != rank) return false;
         }
 
         Arcanum::square_t to = m_getSquareIdx(pgnMove.substr(1));

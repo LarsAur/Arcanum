@@ -28,6 +28,7 @@ namespace Arcanum
         uint64_t exactTTValuesUsed; // Number of boards where all branches are pruned by getting the exact value from TT
         uint64_t lowerTTValuesUsed;
         uint64_t upperTTValuesUsed;
+        uint64_t tbHits;
         uint8_t quietSearchDepth;
         uint64_t researchesRequired;
         uint64_t nullWindowSearches;

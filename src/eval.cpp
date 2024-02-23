@@ -386,7 +386,12 @@ eval_t Evaluator::immEvaluation(Board& board, uint8_t plyFromRoot)
 
 bool Evaluator::isCheckMateScore(eval_t eval)
 {
-    return std::abs(eval) > (INT16_MAX - UINT8_MAX);
+    return std::abs(eval) > (MATE_SCORE - MAX_MATE_DISTANCE);
+}
+
+bool Evaluator::isTbCheckMateScore(eval_t eval)
+{
+    return std::abs(eval) > (TB_MATE_SCORE - MAX_MATE_DISTANCE);
 }
 
 // Evaluates positive value for WHITE

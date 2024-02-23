@@ -19,6 +19,7 @@ LDFLAGS = -lm -lstdc++ --static
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 SOURCES := $(call rwildcard, $(SOURCEDIR)/, %.cpp)							     # Recursive search all files in source directory
+SOURCES := $(filter-out %/LICENSE, $(SOURCES))									 # LICENSE
 HEADERS := $(filter %.hpp, $(SOURCES))										     # Find all headers
 SOURCES := $(filter-out %.hpp, $(SOURCES))									     # Filter out header files
 SOURCES := $(filter-out %/, $(SOURCES))											 # Filter out folder
@@ -49,6 +50,7 @@ $(BUILDDIR):
 	cd $(BUILDDIR) && mkdir src
 	cd $(BUILDDIR)/src && mkdir nnue
 	cd $(BUILDDIR)/src && mkdir tuning
+	cd $(BUILDDIR)/src && mkdir syzygy
 
 $(BUILDDIR)/$(NNUE):
 ifeq ($(OS),Windows_NT)

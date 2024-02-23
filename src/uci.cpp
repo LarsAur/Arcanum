@@ -6,6 +6,7 @@
 #include <string>
 #include <fstream>
 #include <thread>
+#include <syzygy.hpp>
 
 using namespace Arcanum;
 
@@ -86,6 +87,7 @@ void UCI::loop()
             UCI_OUT("option name ClearHash type button")
             UCI_OUT("option name UseNNUE type check default false")
             UCI_OUT("option name HCEWeightFile type string default hceWeights.dat")
+            UCI_OUT("option name SyzygyPath type string default <empty>")
             UCI_OUT("uciok")
         }
         else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, evaluator, is);
@@ -102,6 +104,7 @@ void UCI::loop()
 
     } while(strcmp(token.c_str(), "quit") != 0);
 
+    TBFree();
     UCI_LOG("Exiting UCI loop")
 }
 
@@ -156,6 +159,16 @@ void UCI::setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, 
         is >> std::skipws >> str;
         evaluator.setHCEModelFile(str);
         searcher.setHCEModelFile(str);
+    }
+    else if(strcmp(name.c_str(), "syzygypath") == 0)
+    {
+        std::string str;
+        is >> std::skipws >> str;
+        if(!Arcanum::TBInit(str))
+        {
+            UCI_ERROR("Failed to set SyzygyPath " << str)
+            exit(-1);
+        }
     }
 }
 
