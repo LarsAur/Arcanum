@@ -6,6 +6,11 @@
 
 namespace Arcanum
 {
+    #define MATE_SCORE (INT16_MAX)
+    #define MAX_MATE_DISTANCE (256)
+    #define TB_MATE_SCORE (INT16_MAX - MAX_MATE_DISTANCE)
+    #define TB_MAX_MATE_DISTANCE (256)
+
     typedef struct EvalTrace
     {
         #ifdef FULL_TRACE
@@ -178,5 +183,6 @@ namespace Arcanum
             EvalTrace evaluate(Board& board, uint8_t plyFromRoot, bool noMoves = false);
             EvalTrace getDrawValue(Board& board, uint8_t plyFromRoot);
             static bool isCheckMateScore(EvalTrace eval);
+            static bool isTbCheckMateScore(EvalTrace eval);
     };
 }

@@ -126,7 +126,7 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
         if(entry.depth != INT8_MIN && entry.hash == (ttEntryHash_t)hash)
         {
             ttEntry_t retEntry = entry;
-            if(Evaluator::isCheckMateScore(entry.value))
+            if(Evaluator::isCheckMateScore(entry.value) || Evaluator::isTbCheckMateScore(entry.value))
             {
                 retEntry.value.total = entry.value > 0 ? entry.value.total - plyFromRoot : entry.value.total + plyFromRoot;
             }
@@ -162,7 +162,7 @@ void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint
         .flags = flags
     };
 
-    if(Evaluator::isCheckMateScore(entry.value))
+    if(Evaluator::isCheckMateScore(entry.value) || Evaluator::isTbCheckMateScore(entry.value))
     {
         entry.value.total = entry.value > 0 ? entry.value.total + plyFromRoot : entry.value.total - plyFromRoot;
     }

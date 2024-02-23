@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <utils.hpp>
 #include <thread>
+#include <syzygy.hpp>
 
 using namespace Arcanum;
 
@@ -20,6 +21,7 @@ Searcher::Searcher()
         .exactTTValuesUsed  = 0LL,
         .lowerTTValuesUsed  = 0LL,
         .upperTTValuesUsed  = 0LL,
+        .tbHits             = 0LL,
         .researchesRequired = 0LL,
         .nullWindowSearches = 0LL,
         .nullMoveCutoffs    = 0LL,
@@ -186,6 +188,23 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
         }
     }
 
+    // Table base probe
+    if(board.getNumPiecesLeft() <= TB_LARGEST && board.getHalfMoves() == 0)
+    {
+        uint32_t tbResult = TBProbeWDL(board);
+
+        #if SEARCH_RECORD_STATS
+        if(tbResult != TB_RESULT_FAILED)
+        {
+            m_stats.tbHits++;
+        }
+        #endif
+
+        if(tbResult == TB_DRAW) return 0;
+        if(tbResult == TB_WIN) return TB_MATE_SCORE - plyFromRoot;
+        if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
+    }
+
     if(depth == 0)
     {
         return m_alphaBetaQuiet(board, alpha, beta, plyFromRoot + 1);
@@ -231,12 +250,8 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
     if(depth > 0 && depth < 4 && !isChecked)
     {
-        // if(entry.has_value())
-        //     staticEvaluation = entry->value.total;
-        // else{
-            staticEvaluation = m_evaluator.evaluate(board, plyFromRoot).total;
-            if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
-        // }
+        staticEvaluation = m_evaluator.evaluate(board, plyFromRoot).total;
+        if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
 
         // Reverse futility pruning
         if(staticEvaluation - futilityMargins[depth - 1] >= beta.total)
@@ -410,7 +425,6 @@ inline bool Searcher::m_isDraw(const Board& board) const
         return true;
     }
 
-
     return false;
 }
 
@@ -465,13 +479,23 @@ Move Searcher::search(Board board, SearchParameters parameters)
     });
 
     // Check if only a select set of moves should be searched
+    // This set can be set by the search parameters or the table base
     Move* moves = parameters.searchMoves;
     uint8_t numMoves = parameters.numSearchMoves;
+    bool forceTBScore = false;
+    uint8_t tbwdl = 0xff;
     if(parameters.numSearchMoves == 0)
     {
-        moves = board.getLegalMoves();
-        numMoves = board.getNumLegalMoves();
-        board.generateCaptureInfo();
+        if(TBProbeDTZ(board, moves, numMoves, tbwdl))
+        {
+            forceTBScore = true;
+        }
+        else
+        {
+            moves = board.getLegalMoves();
+            numMoves = board.getNumLegalMoves();
+            board.generateCaptureInfo();
+        }
     }
 
     uint32_t depth = 0;
@@ -543,8 +567,14 @@ Move Searcher::search(Board board, SearchParameters parameters)
         if(Evaluator::isCheckMateScore(alpha))
         {
             info.mate = true;
-            uint16_t distance = (INT16_MAX - std::abs(alpha.total)) / 2; // Divide by 2 to get moves and not plys.
+            uint16_t distance = (MATE_SCORE - std::abs(alpha.total)) / 2; // Divide by 2 to get moves and not plys.
             info.mateDistance = alpha.total > 0 ? distance : -distance;
+        }
+        else if(forceTBScore)
+        {
+            if(tbwdl >= TB_BLESSED_LOSS && tbwdl <= TB_CURSED_WIN) info.score = 0;
+            if(tbwdl == TB_LOSS) info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE;
+            if(tbwdl >= TB_WIN ) info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE;
         }
         for(uint32_t i = 0; i < pvLine.count; i++)
             info.pvLine.push_back(pvLine.moves[i]);
@@ -573,9 +603,16 @@ Move Searcher::search(Board board, SearchParameters parameters)
     if(Evaluator::isCheckMateScore(searchScore))
     {
         info.mate = true;
-        uint16_t distance = (INT16_MAX - std::abs(searchScore.total)) / 2; // Divide by 2 to get moves and not plys.
+        uint16_t distance = (MATE_SCORE - std::abs(searchScore.total)) / 2; // Divide by 2 to get moves and not plys.
         info.mateDistance = searchScore.total > 0 ? distance : -distance;
     }
+    else if(forceTBScore)
+    {
+        if(tbwdl >= TB_BLESSED_LOSS && tbwdl <= TB_CURSED_WIN) info.score = 0;
+        if(tbwdl == TB_LOSS) info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE;
+        if(tbwdl >= TB_WIN ) info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE;
+    }
+
     for(uint32_t i = 0; i < pvLine.count; i++)
         info.pvLine.push_back(pvLine.moves[i]);
     UCI::sendUciInfo(info);
@@ -611,6 +648,7 @@ void Searcher::logStats()
     ss << "\nExact TT Values used:      " << m_stats.exactTTValuesUsed;
     ss << "\nLower TT Values used:      " << m_stats.lowerTTValuesUsed;
     ss << "\nUpper TT Values used:      " << m_stats.upperTTValuesUsed;
+    ss << "\nTB Hits:                   " << m_stats.tbHits;
     ss << "\nNull-window Searches:      " << m_stats.nullWindowSearches;
     ss << "\nNull-window Re-searches:   " << m_stats.researchesRequired;
     ss << "\nNull-Move Cutoffs:         " << m_stats.nullMoveCutoffs;

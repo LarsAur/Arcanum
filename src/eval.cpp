@@ -221,7 +221,12 @@ EvalTrace Evaluator::getDrawValue(Board& board, uint8_t plyFromRoot)
 
 bool Evaluator::isCheckMateScore(EvalTrace eval)
 {
-    return std::abs(eval.total) > (INT16_MAX - UINT8_MAX);
+    return std::abs(eval.total) > MATE_SCORE - MAX_MATE_DISTANCE;
+}
+
+bool Evaluator::isTbCheckMateScore(EvalTrace eval)
+{
+    return std::abs(eval.total) > (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isCheckMateScore(eval);
 }
 
 // Evaluates positive value for WHITE
@@ -238,7 +243,7 @@ EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
     {
         if(board.isChecked(board.m_turn))
         {
-            eval.total = board.m_turn == WHITE ? -INT16_MAX + plyFromRoot : INT16_MAX - plyFromRoot;
+            eval.total = board.m_turn == WHITE ? -MATE_SCORE + plyFromRoot : MATE_SCORE - plyFromRoot;
             return eval;
         }
 

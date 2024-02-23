@@ -1,10 +1,8 @@
 __pycache__
-build/
-emsdk/
-scripts/benchmarking/results/**.txt
-scripts/training/tmp/**.txt
-snapshots/
-lichess-bot/
+/build/
+/syzygy/
+/snapshots/
+/lichess-bot/
 .vscode
 *.o
 *.exe

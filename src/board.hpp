@@ -174,6 +174,7 @@ namespace Arcanum
             hash_t getMaterialHash() const;
             uint16_t getFullMoves() const;
             uint16_t getHalfMoves() const;
+            uint8_t getCastleRights() const;
             bool isChecked(Color color);
             bool isSlidingChecked(Color color);
             bool isDiagonalChecked(Color color);
@@ -184,6 +185,8 @@ namespace Arcanum
             bitboard_t getOpponentAttacks();
             bitboard_t getOpponentPawnAttacks();
             bitboard_t getTypedPieces(Piece type, Color color) const;
+            bitboard_t getColoredPieces(Color color) const;
+            square_t getEnpassantSquare() const;
             Move* getLegalMovesFromCheck();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();

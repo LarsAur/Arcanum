@@ -1915,6 +1915,11 @@ uint16_t Board::getHalfMoves() const
     return m_rule50;
 }
 
+uint8_t Board::getCastleRights() const
+{
+    return m_castleRights;
+}
+
 // Generates a bitboard of all attacks of opponents
 // The moves does not check if the move will make the opponent become checked, or if the attack is on its own pieces
 // Used for checking if the king is in check after king moves.
@@ -1964,6 +1969,16 @@ bitboard_t Board::getOpponentPawnAttacks()
 bitboard_t Board::getTypedPieces(Piece type, Color color) const
 {
     return m_bbTypedPieces[type][color];
+}
+
+bitboard_t Board::getColoredPieces(Color color) const
+{
+    return m_bbColoredPieces[color];
+}
+
+square_t Board::getEnpassantSquare() const
+{
+    return m_enPassantSquare;
 }
 
 bool Board::isChecked(Color color)
