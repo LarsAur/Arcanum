@@ -10,12 +10,12 @@ namespace Arcanum
     {
         for(square_t from = 0; from < 64; from++)
         {
-            uint8_t fromFile = from & 0b111;
-            uint8_t fromRank = from >> 3;
+            uint8_t fromFile = FILE(from);
+            uint8_t fromRank = RANK(from);
             for(square_t to = 0; to < 64; to++)
             {
-                uint8_t toFile = to & 0b111;
-                uint8_t toRank = to >> 3;
+                uint8_t toFile = FILE(to);
+                uint8_t toRank = RANK(to);
 
                 // If not on the same rank, file or diagonal, set to zero.
                 betweens[from][to] = 0LL;
@@ -74,7 +74,7 @@ namespace Arcanum
         for(bitboard_t i = 0; i < 64; i++)
         {
             // Get what file the knight is on
-            int file = i & 0b111;
+            int file = FILE(i);
             bool A  = file == 0;
             bool AB = file <= 1;
             bool H  = file == 7;
@@ -104,8 +104,8 @@ namespace Arcanum
         for(bitboard_t i = 0; i < 64; i++)
         {
             // Get what file the king is on
-            bool A  = (i & 0b111) == 0;
-            bool H  = (i & 0b111) == 7;
+            bool A  = FILE(i) == 0;
+            bool H  = FILE(i) == 7;
 
             // King bitboard
             bitboard_t kbb = 1LL << i;
@@ -153,8 +153,8 @@ namespace Arcanum
         for(int rookIdx = 0; rookIdx < 64; rookIdx++)
         {
 
-            uint8_t file = rookIdx & 0b111;
-            uint8_t rank = rookIdx >> 3;
+            uint8_t file = FILE(rookIdx);
+            uint8_t rank = RANK(rookIdx);
 
             // For each combination of occupancy on the file
             for(uint64_t fileOcc = 0; fileOcc < (1 << 6); fileOcc++)
@@ -269,8 +269,8 @@ namespace Arcanum
             // Generate occupancy mask
             for(int i = 0; i < 64; i++)
             {
-                int rank = i >> 3;
-                int file = i & 0b111;
+                int rank = RANK(i);
+                int file = FILE(i);
 
                 for(int j = 1; j < 7; j++)
                 {
@@ -296,8 +296,8 @@ namespace Arcanum
 
             for(int i = 0; i < 64; i++)
             {
-                int rank = i >> 3;
-                int file = i & 0b111;
+                int rank = RANK(i);
+                int file = FILE(i);
 
                 int numBits = CNTSBITS(bishopOccupancyMask[i]);
 
@@ -379,8 +379,8 @@ namespace Arcanum
         // Generate diagonals
         for(int i = 0; i < 64; i++)
         {
-            int rank = i >> 3;
-            int file = i & 0b111;
+            int rank = RANK(i);
+            int file = FILE(i);
             diagonal[i] = 0LL;
             antiDiagonal[i] = 0LL;
 
@@ -409,8 +409,8 @@ namespace Arcanum
         // Generate bishop moves
         for(int i = 0; i < 64; i++)
         {
-            int rank = i >> 3;
-            int file = i & 0b111;
+            int rank = RANK(i);
+            int file = FILE(i);
 
             for(int j = 0; j < (1 << 6); j++)
             {

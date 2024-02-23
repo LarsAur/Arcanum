@@ -375,8 +375,8 @@ inline eval_t Evaluator::m_getPawnEval(const Board& board, uint8_t phase, EvalTr
     while (wPawns)
     {
         int index = popLS1B(&wPawns);
-        int rank = index >> 3;
-        int file = index & 0b111;
+        int rank = RANK(index);
+        int file = FILE(index);
 
         bitboard_t forward = wForwardLookup[rank];
         bitboard_t backward = bForwardLookup[rank];
@@ -411,8 +411,8 @@ inline eval_t Evaluator::m_getPawnEval(const Board& board, uint8_t phase, EvalTr
     while (bPawns)
     {
         int index = popLS1B(&bPawns);
-        int rank = index >> 3;
-        int file = index & 0b111;
+        int rank = RANK(index);
+        int file = FILE(index);
 
         bitboard_t forward = bForwardLookup[rank];
         bitboard_t backward = wForwardLookup[rank];
@@ -621,7 +621,7 @@ inline eval_t Evaluator::m_getShelterEval(const Board& board, uint8_t square)
 
     constexpr Color opponent = Color(turn^1);
 
-    uint8_t rank = square >> 3;
+    uint8_t rank = RANK(square);
     eval_t shelterScore = 0;
 
     bitboard_t opponentPawnAttacks = m_pawnAttacks[opponent];
@@ -629,7 +629,7 @@ inline eval_t Evaluator::m_getShelterEval(const Board& board, uint8_t square)
     bitboard_t forward  = turn == WHITE ? wForwardLookup[rank] : bForwardLookup[rank];
     bitboard_t forwardPawns = board.m_bbTypedPieces[W_PAWN][turn] & forward & ~opponentPawnAttacks;
 
-    uint8_t centerFile = std::clamp(square & 0b111, 1, 6);
+    uint8_t centerFile = std::clamp(FILE(square), 1, 6);
     for(int file = centerFile - 1; file <= centerFile + 1; file++)
     {
         bitboard_t bbFile = bbAFile << file;
@@ -642,14 +642,14 @@ inline eval_t Evaluator::m_getShelterEval(const Board& board, uint8_t square)
         uint8_t opponentPawnRank;
         if constexpr(turn == Color::WHITE)
         {
-            pawnRank = filePawns ? LS1B(filePawns) >> 3 : 0;
-            opponentPawnRank = opponentFilePawns ? LS1B(opponentFilePawns) >> 3: 0;
+            pawnRank = filePawns ? RANK(LS1B(filePawns)) : 0;
+            opponentPawnRank = opponentFilePawns ? RANK(LS1B(opponentFilePawns)): 0;
             shelterScore += m_pawnShelterScores[ed][pawnRank];
         }
         else
         {
-            pawnRank = filePawns ? MS1B(filePawns) >> 3 : 7;
-            opponentPawnRank = opponentFilePawns ? MS1B(opponentFilePawns) >> 3 : 0;
+            pawnRank = filePawns ? RANK(MS1B(filePawns)) : 7;
+            opponentPawnRank = opponentFilePawns ? RANK(MS1B(opponentFilePawns)) : 0;
             shelterScore += m_pawnShelterScores[ed][7 - pawnRank];
         }
     }
@@ -712,8 +712,8 @@ inline eval_t Evaluator::m_getKingEval(const Board& board, uint8_t phase, EvalTr
     whiteAttackingIndex = std::min(whiteAttackingIndex, uint8_t(49));
     blackAttackingIndex = std::min(blackAttackingIndex, uint8_t(49));
 
-    uint8_t bKingRank = bKingIdx >> 3;
-    uint8_t bkingFile = bKingIdx & 0b111;
+    uint8_t bKingRank = RANK(bKingIdx);
+    uint8_t bkingFile = FILE(bKingIdx);
     square_t kingMirrorIdx = (7 - bKingRank) * 8 + bkingFile;
     eval_t kingAttackingScore = m_kingAreaAttackScore[whiteAttackingIndex] - m_kingAreaAttackScore[blackAttackingIndex];
     eval_t kingPositionScore = PHASE_LERP(

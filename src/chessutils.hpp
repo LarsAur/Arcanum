@@ -16,6 +16,9 @@
     #endif
 #endif
 
+#define RANK(_square) ((_square) >> 3)
+#define FILE(_square) ((_square) & 0b111)
+
 namespace Arcanum
 {
     typedef uint64_t bitboard_t;
@@ -246,7 +249,7 @@ namespace Arcanum
         return rookMoves[rookIdx][occupancyIdx];
         #else
         // Find file and rank of rook
-        const uint8_t file = rookIdx & 0b111;
+        const uint8_t file = FILE(rookIdx);
         const uint8_t rank8 = rookIdx & ~0b111; // 8 * rank
 
         // Shift the file down to the first rank and get the 6 middle squares
@@ -271,7 +274,7 @@ namespace Arcanum
         bitboard_t occupancyIdx = _pext_u64(allPiecesBitboard, bishopOccupancyMask[bishopIdx]);
         return bishopMoves[bishopIdx][occupancyIdx];
         #else
-        const uint8_t file = bishopIdx & 0b111;
+        const uint8_t file = FILE(bishopIdx);
 
         constexpr static bitboard_t bFile = 0x0202020202020202LL;
         const bitboard_t diagonalOccupancy     = ((diagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
@@ -299,8 +302,8 @@ namespace Arcanum
     {
         std::stringstream ss;
 
-        int rank = square >> 3;
-        int file = square & 0b111;
+        int rank = RANK(square);
+        int file = FILE(square);
 
         ss << char('a' + file) << char('1' + rank);
 

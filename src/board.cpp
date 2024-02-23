@@ -315,7 +315,7 @@ inline bool Board::m_isLegalEnpassant(Move move, square_t kingIdx)
     // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
     if(move.moveInfo & MoveInfoBit::ENPASSANT)
     {
-        if((m_enPassantTarget >> 3) == (kingIdx >> 3))
+        if(RANK(m_enPassantTarget) == RANK(kingIdx))
         {
             bitboard_t kingRookMoves = getRookMoves((m_bbAllPieces & ~m_bbEnPassantTarget & ~bbFrom) | bbTo, kingIdx);
             if(kingRookMoves & (m_bbTypedPieces[W_ROOK][opponent] | m_bbTypedPieces[W_QUEEN][opponent]))

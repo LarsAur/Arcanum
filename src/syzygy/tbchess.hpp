@@ -83,7 +83,7 @@ bool pyrrhic_test_bit           (uint64_t bb, int sq)  { return (bb >> sq) & 0x1
 void pyrrhic_enable_bit         (uint64_t *b, int sq)  { *b |=  (1ull << sq);                   }
 void pyrrhic_disable_bit        (uint64_t *b, int sq)  { *b &= ~(1ull << sq);                   }
 bool pyrrhic_promo_square       (int sq)               { return (PYRRHIC_PROMOSQS >> sq) & 0x1; }
-bool pyrrhic_pawn_start_square  (int colour, int sq)   { return (sq >> 3) == (colour ? 1 : 6);  }
+bool pyrrhic_pawn_start_square  (int colour, int sq)   { return RANK(sq) == (colour ? 1 : 6);  }
 
 // The only two forward-declarations that are needed
 bool pyrrhic_do_move(PyrrhicPosition *pos, const PyrrhicPosition *pos0, PyrrhicMove move);

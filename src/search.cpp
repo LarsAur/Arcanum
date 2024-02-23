@@ -316,7 +316,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
             // This is to avoid horizon effect occuring by starting with a forced line
             uint8_t extension = (
                 checkOrChecking ||
-                ((move->moveInfo & MoveInfoBit::PAWN_MOVE) && ((move->to >> 3) == 6 || (move->to >> 3) == 1)) || // Pawn moved to the 7th rank
+                ((move->moveInfo & MoveInfoBit::PAWN_MOVE) && (RANK(move->to) == 6 || RANK(move->to) == 1)) || // Pawn moved to the 7th rank
                 (numMoves == 1)
             ) ? 1 : 0;
             // Limit the number of extensions
