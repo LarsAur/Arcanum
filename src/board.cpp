@@ -93,7 +93,7 @@ Board::Board(const std::string fen)
             m_pieces[square] = Piece(W_QUEEN + (B_PAWN - W_PAWN) * color);
             break;
         default:
-            ERROR("Unknown piece: " << chr)
+            ERROR("Unknown piece: " << chr << " in " << fen)
             exit(-1);
         }
     }
@@ -102,7 +102,7 @@ Board::Board(const std::string fen)
     char chr = fen[fenPosition++];
     if(chr != ' ')
     {
-        ERROR("Missing space after board");
+        ERROR("Missing space after board in " << fen);
         exit(-1);
     }
 
@@ -111,7 +111,7 @@ Board::Board(const std::string fen)
     if(chr == 'w') m_turn = WHITE;
     else if(chr == 'b') m_turn = BLACK;
     else {
-        ERROR("Illegal turn: " << chr);
+        ERROR("Illegal turn: " << chr << " in " << fen);
         exit(-1);
     }
 
@@ -119,7 +119,7 @@ Board::Board(const std::string fen)
     chr = fen[fenPosition++];
     if(chr != ' ')
     {
-        ERROR("Missing space after turn");
+        ERROR("Missing space after turn in " << fen);
         exit(-1);
     }
 
@@ -138,7 +138,7 @@ Board::Board(const std::string fen)
             case 'k': m_castleRights |= BLACK_KING_SIDE; break;
             case 'q': m_castleRights |= BLACK_QUEEN_SIDE; break;
             default:
-                ERROR("Illegal castle right: " << chr);
+                ERROR("Illegal castle right: " << chr << " in " << fen);
                 exit(-1);
                 break;
             }
@@ -152,7 +152,7 @@ Board::Board(const std::string fen)
         chr = fen[fenPosition++];
         if(chr != ' ')
         {
-            ERROR("Missing space after castle rights");
+            ERROR("Missing space after castle rights in " << fen);
             exit(-1);
         }
     }
@@ -170,7 +170,7 @@ Board::Board(const std::string fen)
 
         if(file < 0 || file > 7 || rank < 0 || rank > 7)
         {
-            ERROR("Illegal enpassant square");
+            ERROR("Illegal enpassant square in " << fen);
             exit(-1);
         }
 
@@ -192,14 +192,14 @@ Board::Board(const std::string fen)
     chr = fen[fenPosition++];
     if(chr != ' ')
     {
-        ERROR("Missing space after enpassant square");
+        ERROR("Missing space after enpassant square in " << fen);
         exit(-1);
     }
 
     chr = fen[fenPosition++];
     if(chr < '0' || chr > '9')
     {
-        ERROR("Number of half moves is not a number: " << chr)
+        ERROR("Number of half moves is not a number: " << chr << " in " << fen)
         exit(-1);
     }
 
@@ -211,14 +211,14 @@ Board::Board(const std::string fen)
 
     if(fenPosition == (int) fen.length())
     {
-        ERROR("Missing number of full moves")
+        ERROR("Missing number of full moves in " << fen)
         exit(-1);
     }
 
     chr = fen[fenPosition];
     if(chr < '0' || chr > '9')
     {
-        ERROR("Number of full moves is not a number")
+        ERROR("Number of full moves is not a number in " << fen)
         exit(-1);
     }
 
@@ -1735,7 +1735,7 @@ void Board::generateCaptureInfo()
     }
 }
 
-void Board::performMove(const Move move)
+void Board::performMove(const Move& move)
 {
     bitboard_t bbFrom = 0b1LL << move.from;
     bitboard_t bbTo = 0b1LL << move.to;

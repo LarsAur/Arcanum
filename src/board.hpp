@@ -165,7 +165,7 @@ namespace Arcanum
         public:
             Board(const Board& board);
             Board(const std::string fen);
-            void performMove(const Move move);
+            void performMove(const Move& move);
             void addBoardToHistory();
             void generateCaptureInfo();
             void performNullMove();
