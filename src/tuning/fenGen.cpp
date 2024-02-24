@@ -34,7 +34,7 @@ void FenGen::m_runIteration(std::string pgnFile)
     for(uint32_t i = 0; i < moves.size() - std::min(moves.size(), (size_t)10); i++)
     {
         board.performMove(moves[i]);
-        if(m_isQuiet(board))
+        if(m_isQuiet(board) && board.getNumPiecesLeft() > 5)
             fens.push_back(board.getFEN());
     }
 
