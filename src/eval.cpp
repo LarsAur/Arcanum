@@ -52,7 +52,7 @@ static constexpr bitboard_t bForwardLookup[] = { // indexed by rank
     0x00FFFFFFFFFFFFFF,
 };
 
-std::string Evaluator::s_hceWeightsFile = "hceWeights.dat";
+std::string Evaluator::s_hceWeightsFile = "hceWeights670.dat";
 
 Evaluator::Evaluator()
 {
@@ -101,13 +101,13 @@ void Evaluator::setHCEModelFile(std::string filename)
     size_t numWeights = bytesize >> 1;
     is.seekg(0);
 
-    if(numWeights != 397)
+    if(numWeights != Evaluator::NUM_WEIGHTS)
     {
-        ERROR("Illegal number of weights " << numWeights << " needs to be " << 397)
+        ERROR("Illegal number of weights " << numWeights << " needs to be " << Evaluator::NUM_WEIGHTS)
         exit(-1);
     }
 
-    eval_t weights[397];
+    eval_t weights[Evaluator::NUM_WEIGHTS];
     is.read((char*) weights, bytesize);
     is.close();
 
@@ -118,12 +118,14 @@ void Evaluator::loadWeights(eval_t* weights)
 {
     uint32_t widx = 0;
     #define LOAD_SINGLE(_var) _var = weights[widx++];
-    #define LOAD_ARRAY(_arr, _num) memcpy(&_arr, weights + widx, sizeof(eval_t) * _num); widx += _num;
-    #define LOAD_ARRAY_2D(_arr, _num1, _num2) memcpy(&_arr, weights + widx, sizeof(eval_t) * (_num1) * (_num2)); widx += (_num1) * (_num2);
+    #define LOAD_ARRAY(_arr, _num) memcpy(&_arr[0], weights + widx, sizeof(eval_t) * _num); widx += _num;
+    #define LOAD_ARRAY_2D(_arr, _num1, _num2) memcpy(&_arr[0][0], weights + widx, sizeof(eval_t) * (_num1) * (_num2)); widx += (_num1) * (_num2);
 
     LOAD_ARRAY(m_pieceValues, 6)
     LOAD_ARRAY_2D(m_pieceSquareTablesEarly, 6, 32)
-    LOAD_ARRAY_2D(m_pieceSquareTablesLate, 6, 32)
+    LOAD_ARRAY_2D(m_pieceSquareTablesLate,  6, 32)
+    LOAD_ARRAY_2D(m_mobilityBonusEarly, 5, 28)
+    LOAD_ARRAY_2D(m_mobilityBonusLate,  5, 28)
 
     #undef LOAD_ARRAY
     #undef LOAD_SINGLE
@@ -418,9 +420,57 @@ eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
         return board.m_turn == WHITE ? score : -score;
     }
 
-    return phaseLerp(
+    eval_t immEval = phaseLerp(
         m_immAccumulatorStack[m_accumulatorStackPointer].early,
         m_immAccumulatorStack[m_accumulatorStackPointer].late,
         m_immAccumulatorStack[m_accumulatorStackPointer].phase
     );
+    eval_t mobiltyBonus    = m_getMobiltyBonus(board, m_immAccumulatorStack[m_accumulatorStackPointer].phase);
+
+    return immEval + mobiltyBonus;
+}
+
+inline bitboard_t Evaluator::m_getPieceMobility(const Board& board, Piece type, Color color, square_t idx)
+{
+    switch (type)
+    {
+    case W_ROOK: return getRookMoves(board.m_bbAllPieces, idx) & ~board.m_bbColoredPieces[color];
+    case W_KNIGHT: return getKnightAttacks(idx) & ~board.m_bbColoredPieces[color];
+    case W_BISHOP: return getBishopMoves(board.m_bbAllPieces, idx) & ~board.m_bbColoredPieces[color];
+    case W_QUEEN: return getQueenMoves(board.m_bbAllPieces, idx) & ~board.m_bbColoredPieces[color];
+    case W_KING: return getKingMoves(idx) & ~board.m_bbColoredPieces[color];
+    default:
+    ERROR("Cannot get piece mobility of pawn")
+    exit(-1);
+    }
+}
+
+eval_t Evaluator::m_getMobiltyBonus(const Board& board, const uint8_t phase)
+{
+    eval_t mobiltyBonusEarly = 0;
+    eval_t mobiltyBonusLate  = 0;
+
+    // Calculate mobility for all pieces
+    // Mobility for pawns are not included
+    for(uint8_t i = 1; i < 6; i++)
+    {
+        bitboard_t wPieces = board.m_bbTypedPieces[i][WHITE];
+        bitboard_t bPieces = board.m_bbTypedPieces[i][BLACK];
+
+        while(wPieces)
+        {
+            uint8_t mobility = CNTSBITS(m_getPieceMobility(board, Piece(i), WHITE, popLS1B(&wPieces)));
+            mobiltyBonusEarly += m_mobilityBonusEarly[i-1][mobility];
+            mobiltyBonusLate  += m_mobilityBonusLate[i-1][mobility];
+        }
+
+        while(bPieces)
+        {
+            uint8_t mobility = CNTSBITS(m_getPieceMobility(board, Piece(i), BLACK, popLS1B(&bPieces)));
+            mobiltyBonusEarly -= m_mobilityBonusEarly[i-1][mobility];
+            mobiltyBonusLate  -= m_mobilityBonusLate[i-1][mobility];
+        }
+    }
+
+    return phaseLerp(mobiltyBonusEarly, mobiltyBonusLate, phase);
 }

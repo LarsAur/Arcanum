@@ -54,11 +54,16 @@ namespace Arcanum
             eval_t m_pieceValues[6];
             eval_t m_pieceSquareTablesEarly[6][32];
             eval_t m_pieceSquareTablesLate[6][32];
+            eval_t m_mobilityBonusEarly[5][28]; // Mobility for pawns not included
+            eval_t m_mobilityBonusLate[5][28];  // Mobility for pawns not included
 
             // void m_initEval(const Board& board);
             void m_initImmediateEval(ImmEvalEntry& immEval, const Board& board);
             void m_incrementImmediateEval(ImmEvalEntry& prevImmEval, ImmEvalEntry& newImmEval, const Board& board, const Move& move);
+            bitboard_t m_getPieceMobility(const Board& board, Piece type, Color color, square_t idx);
+            eval_t m_getMobiltyBonus(const Board& board, const uint8_t phase);
         public:
+            static constexpr size_t NUM_WEIGHTS = 670;
             Evaluator();
             ~Evaluator();
             static std::string s_hceWeightsFile;

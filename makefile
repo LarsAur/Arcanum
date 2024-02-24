@@ -4,7 +4,7 @@ SOURCEDIR = src
 HEADERDIR = src
 BUILDDIR = build
 NNUE = nn-04cf2b4ed1da.nnue
-MODEL = hceWeights.dat
+MODEL = hceWeights670.dat
 
 DEFINES += -DIS_64BIT
 DEFINES += -DUSE_AVX2 -mavx2
