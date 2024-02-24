@@ -17,8 +17,11 @@ void Tuner::m_loadWeights() //TODO: Path should be relative to exe
 
     if(!is.is_open())
     {
-        ERROR("Unable to open file " << m_inputFilePath)
-        exit(-1);
+        WARNING("Unable to open file " << m_inputFilePath)
+        LOG("Creating empty weights")
+        m_weights.resize(Arcanum::Evaluator::NUM_WEIGHTS);
+        memset(m_weights.data(), 0, Arcanum::Evaluator::NUM_WEIGHTS * sizeof(Arcanum::eval_t));
+        return;
     }
 
     std::streampos bytesize = is.tellg();
@@ -28,9 +31,12 @@ void Tuner::m_loadWeights() //TODO: Path should be relative to exe
 
     LOG("Reading " << (bytesize >> 1) << " weights from " << m_inputFilePath)
 
-    m_weights.resize(bytesize >> 1);
+    m_weights.resize(Arcanum::Evaluator::NUM_WEIGHTS);
     is.read((char*) m_weights.data(), bytesize);
+    // Set the remaining weights to zero
+    memset(m_weights.data() + (bytesize >> 1), 0, Arcanum::Evaluator::NUM_WEIGHTS - (bytesize >> 1));
     is.close();
+
 }
 
 void Tuner::m_storeWeights() //TODO: Path should be relative to exe
@@ -79,7 +85,8 @@ double Tuner::m_getError()
     std::string strGames;
     std::string fen;
 
-    while (!is.eof())
+    is.seekg(m_iterationStartPos);
+    while (!is.eof() && totalGames < Tuner::BATCH_SIZE)
     {
         std::getline(is, header, ' ');
         std::getline(is, strResult, ' ');
@@ -93,6 +100,7 @@ double Tuner::m_getError()
         {
             std::getline(is, fen);
             Arcanum::Board board = Arcanum::Board(fen);
+            evaluator.initializeAccumulatorStack(board);
             Arcanum::eval_t eval = evaluator.evaluate(board, 0);
             totalError += m_squareError(result, eval);
         }
@@ -105,23 +113,20 @@ double Tuner::m_getError()
 void Tuner::m_runIteration()
 {
     constexpr int16_t rate = 1;
-
     double baselineError = m_getError();
-    m_changed = false;
-    for(size_t i = 0; i < m_weights.size(); i++)
+    LOG("Baseline Error: " << baselineError)
+    for(size_t i = 0; i < Arcanum::Evaluator::NUM_WEIGHTS; i++)
     {
+
         int16_t delta = rate;
         if(m_deltas[i])
             delta = m_deltas[i];
 
         m_weights[i] += delta;
         double error = m_getError();
-
         if(error < baselineError)
         {
-            DEBUG(i << "  " << error)
             baselineError = error;
-            m_changed = true;
             m_deltas[i] = delta;
             continue;
         }
@@ -131,9 +136,7 @@ void Tuner::m_runIteration()
 
         if(error < baselineError)
         {
-            DEBUG(i << "  " << error)
             baselineError = error;
-            m_changed = true;
             m_deltas[i] = -delta;
             continue;
         }
@@ -141,6 +144,46 @@ void Tuner::m_runIteration()
         // Reset the weight
         m_weights[i] += delta;
     }
+}
+
+void Tuner::m_calculateNextStartPos()
+{
+    std::ifstream is(m_trainingDataFilePath, std::ios::in);
+
+    if(!is.is_open())
+    {
+        ERROR("Unable to open file " << m_trainingDataFilePath)
+        exit(-1);
+    }
+
+    uint64_t totalGames = 0LL;
+    std::string header;
+    std::string strResult;
+    std::string strGames;
+    std::string fen;
+
+    is.seekg(m_iterationStartPos);
+    while (!is.eof() && totalGames < Tuner::BATCH_SIZE)
+    {
+        std::getline(is, header, ' ');
+        std::getline(is, strResult, ' ');
+        std::getline(is, strGames);
+
+        uint8_t numGames = atoi(strGames.c_str());
+        totalGames += numGames;
+
+        for(uint8_t i = 0; i < numGames; i++)
+        {
+            std::getline(is, fen);
+        }
+    }
+
+    if(is.eof())
+        m_iterationStartPos = 0;
+    else
+        m_iterationStartPos = is.tellg();
+
+    is.close();
 }
 
 void Tuner::setInputFile(std::string path)
@@ -166,11 +209,11 @@ void Tuner::start()
     for(size_t i = 0; i < m_weights.size(); i++)
         m_deltas.push_back(0);
 
+    m_iterationStartPos = 0;
     while(true)
     {
         m_runIteration();
         m_storeWeights();
-        if(!m_changed)
-            break;
+        m_calculateNextStartPos();
     }
 }
