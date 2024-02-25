@@ -60,7 +60,7 @@ void TranspositionTable::resize(uint32_t mbSize)
         // If the new table is larger, initialize the remaining 'uncopied' entries
         for(size_t i = minClusterCount; i < clusterCount; i++)
             for(size_t j = 0; j < clusterSize; j++)
-                newTable[i].entries[j].depth = INT8_MIN;
+                newTable[i].entries[j].depth = UINT8_MAX;
     }
 
     // Free the old table and set the new configuration
@@ -95,7 +95,7 @@ void TranspositionTable::clear()
     //       Without any optimizations, this is slow
     for(size_t i = 0; i < m_clusterCount; i++)
         for(size_t j = 0; j < clusterSize; j++)
-            m_table[i].entries[j].depth = INT8_MIN;
+            m_table[i].entries[j].depth = UINT8_MAX;
 }
 
 inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
@@ -123,7 +123,7 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
     for(size_t i = 0; i < clusterSize; i++)
     {
         ttEntry_t entry = cluster.entries[i];
-        if(entry.depth != INT8_MIN && entry.hash == (ttEntryHash_t)hash)
+        if(entry.depth != UINT8_MAX && entry.hash == (ttEntryHash_t)hash)
         {
             ttEntry_t retEntry = entry;
             if(Evaluator::isCheckMateScore(entry.value) || Evaluator::isTbCheckMateScore(entry.value))
@@ -144,10 +144,10 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
 inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
 {
     return (newEntry.depth - oldEntry.depth) // Depth
-           + (((newEntry.flags & ~TT_FLAG_MASK) - (oldEntry.flags & ~TT_FLAG_MASK)));
+           + (newEntry.generation - oldEntry.generation);
 }
 
-void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash)
+void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, uint8_t generation, uint8_t numNonRevMovesRoot, uint8_t numNonRevMoves, hash_t hash)
 {
     if(!m_table)
         return;
@@ -156,10 +156,13 @@ void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint
     ttEntry_t entry =
     {
         .hash = (ttEntryHash_t)hash,
-        .bestMove = bestMove,
         .value = score,
-        .depth = (int8_t) depth,
-        .flags = flags
+        .depth = depth,
+        .flags = flags,
+        .generation = generation,
+        .numNonRevMoves = numNonRevMoves,
+        .bestMove = bestMove,
+        // Padding is not set
     };
 
     if(Evaluator::isCheckMateScore(entry.value) || Evaluator::isTbCheckMateScore(entry.value))
@@ -167,7 +170,7 @@ void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint
         entry.value.total = entry.value > 0 ? entry.value.total + plyFromRoot : entry.value.total - plyFromRoot;
     }
 
-    #if TT_RECORD_STATS == 1
+    #if TT_RECORD_STATS
         m_stats.entriesAdded++;
     #endif
 
@@ -178,7 +181,7 @@ void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint
         ttEntry_t _entry = cluster->entries[i];
         if(_entry.hash == entry.hash && _entry.depth < entry.depth)
         {
-            #if TT_RECORD_STATS == 1
+            #if TT_RECORD_STATS
                 m_stats.updates++;
             #endif
             cluster->entries[i] = entry;
@@ -187,11 +190,16 @@ void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint
     }
 
     // Search the cluster for an empty entry
+    // Or if it can replace a position which cannot be hit again (safe replacement)
     for(size_t i = 0; i < clusterSize; i++)
     {
         ttEntry_t _entry = cluster->entries[i];
-        if(_entry.depth < 0)
+        if((_entry.depth == UINT8_MAX) || (_entry.numNonRevMoves < numNonRevMovesRoot))
         {
+            #if TT_RECORD_STATS
+            m_stats.replacements += (_entry.depth != UINT8_MAX);
+            #endif
+
             cluster->entries[i] = entry;
             return;
         }

@@ -159,7 +159,7 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
     if(entry.has_value() && (entry->depth >= depth))
     {
-        switch (entry->flags & TT_FLAG_MASK)
+        switch (entry->flags)
         {
         case TT_FLAG_EXACT:
             #if SEARCH_RECORD_STATS
@@ -372,19 +372,11 @@ EvalTrace Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, EvalTrace alpha,
     }
 
     uint8_t flags;
-    if(bestScore <= originalAlpha)
-    {
-        flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_UPPERBOUND;
-    }
-    else if(bestScore >= beta)
-    {
-        flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_LOWERBOUND;
-    }
-    else
-    {
-        flags = (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT;
-    }
-    m_tt->add(bestScore, bestMove, depth, plyFromRoot, flags, board.getHash());
+    if(bestScore <= originalAlpha) flags = TT_FLAG_UPPERBOUND;
+    else if(bestScore >= beta)     flags = TT_FLAG_LOWERBOUND;
+    else                           flags = TT_FLAG_EXACT;
+
+    m_tt->add(bestScore, bestMove, depth, plyFromRoot, flags, m_generation, m_nonRevMovesRoot, board.getNumNonReversableMovesPerformed(), board.getHash());
 
     return alpha;
 }
@@ -451,8 +443,8 @@ Move Searcher::search(Board board, SearchParameters parameters)
     pvline_t pvLine, pvLineTmp, _pvLineTmp;
     auto start = std::chrono::high_resolution_clock::now();
 
-    // Only the upper 6 bits of the generation is used
-    m_generation = std::min((uint8_t) board.getFullMoves(), uint8_t(0xff));
+    m_generation = (uint8_t) std::min(board.getFullMoves(), uint16_t(0x00ff));
+    m_nonRevMovesRoot = board.getNumNonReversableMovesPerformed();
 
     // Start a thread which will stop the search if the limit is reached
     std::thread trd = std::thread([&] {
@@ -554,7 +546,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt->add(alpha, bestMove, depth, 0, (m_generation & ~TT_FLAG_MASK) | TT_FLAG_EXACT, board.getHash());
+        m_tt->add(alpha, bestMove, depth, 0, TT_FLAG_EXACT, m_generation, m_nonRevMovesRoot, m_nonRevMovesRoot, board.getHash());
 
         // Send UCI info
         UCI::SearchInfo info = UCI::SearchInfo();

@@ -19,10 +19,16 @@ namespace Arcanum
     typedef struct ttEntry_t
     {
         ttEntryHash_t hash;
-        Move bestMove;
         EvalTrace value;
-        int8_t depth; // Depth == INT8_MIN marks the entry as invalid
-        uint8_t flags; // Two first bits are FLAG, upper 6 bits are generation
+        uint8_t depth;     // Depth == UINT8_MAX is invalid
+        uint8_t flags;
+        uint8_t generation;
+        // Number of non-reversable moves performed in the position.
+        // If the root has more non-reversable moves performed, this position can never be reached.
+        // In that case it can safely be replaced.
+        uint8_t numNonRevMoves;
+        Move bestMove;     // It would also be possible to pack this data into 6 bytes. For now it is 8
+        uint32_t _padding; // These bytes are free and can be used for something later
     } ttEntry_t;
 
     typedef struct ttStats_t
@@ -62,7 +68,7 @@ namespace Arcanum
 
             void prefetch(hash_t hash);
             std::optional<ttEntry_t>get(hash_t hash, uint8_t plyFromRoot);
-            void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, hash_t hash);
+            void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, uint8_t generation, uint8_t nonRevMovesRoot, uint8_t nonRevMoves, hash_t hash);
             void resize(uint32_t mbSize);
             void clear();
             void clearStats();
