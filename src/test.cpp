@@ -367,6 +367,7 @@ void Test::symmetricEvaluation()
         {
             success = false;
             ERROR("Uneven evaluation for symmetric position: \n Evaluation: " << score << "\n" << board.getBoardString())
+            exit(-1);
         }
     }
 
@@ -393,6 +394,7 @@ void Test::symmetricEvaluation()
         {
             success = false;
             ERROR("Uneven evaluation for equal positions: \n Evaluation: " << score1 << " " << score2 << "\n" << b1.getBoardString() << "\n" << b2.getBoardString())
+            exit(-1);
         }
     }
 
@@ -430,6 +432,115 @@ void Test::see()
         ERROR("Completed SEE test. Successes: " << successes << " / " << numTests)
     else
         SUCCESS("Completed SEE test. Successes: " << successes << " / " << numTests)
+}
+
+void Test::evalPawnType()
+{
+    LOG("Starting PawnType test")
+    bitboard_t wPawns, bPawns;
+    Evaluator evaluator = Evaluator();
+    bool failed = false;
+
+    Board startBoard = Board(Arcanum::startFEN);
+    wPawns = startBoard.getTypedPieces(W_PAWN, WHITE);
+    bPawns = startBoard.getTypedPieces(W_PAWN, BLACK);
+
+    while(wPawns)
+    {
+        square_t idx = popLS1B(&wPawns);
+        uint8_t type = evaluator.getPawnType(startBoard, WHITE, idx);
+        if(type != 0) { ERROR("White pawn (" << unsigned(idx) << ") in start position did not have type 0. Found " << unsigned(type)) failed = true; }
+    }
+
+    while(bPawns)
+    {
+        square_t idx = popLS1B(&bPawns);
+        uint8_t type = evaluator.getPawnType(startBoard, BLACK, idx);
+        if(type != 0) { ERROR("Black pawn (" << unsigned(idx) << ") in start position did not have type 0. Found " << unsigned(type)) failed = true; }
+    }
+
+    Board wOpenBoard = Board("rnbqkbnr/pp2p2p/8/8/8/8/2PP1PP1/RNBQKBNR w kq - 0 1");
+    wPawns = wOpenBoard.getTypedPieces(W_PAWN, WHITE);
+
+    while(wPawns)
+    {
+        square_t idx = popLS1B(&wPawns);
+        uint8_t type = evaluator.getPawnType(wOpenBoard, WHITE, idx);
+        if(type != PawnType::OPEN) { ERROR("White pawn (" << unsigned(idx) << ") in open position did not have type OPEN. Found " << unsigned(type)) failed = true; }
+    }
+
+    Board bOpenBoard = Board("rnbqkbnr/2pp1pp1/8/8/8/8/PP2P2P/RNBQKBNR w kq - 0 1");
+    bPawns = bOpenBoard.getTypedPieces(W_PAWN, BLACK);
+    while(bPawns)
+    {
+        square_t idx = popLS1B(&bPawns);
+        uint8_t type = evaluator.getPawnType(bOpenBoard, BLACK, idx);
+        if(type != PawnType::OPEN) { ERROR("Black pawn (" << unsigned(idx) << ") in open position did not have type OPEN. Found " << unsigned(type)) failed = true; }
+    }
+
+    Board isolatedBoard = Board("rnbqkbnr/p1p1p1p1/8/8/8/8/P1P1P1P1/RNBQKBNR w kq - 0 1");
+
+    wPawns = isolatedBoard.getTypedPieces(W_PAWN, WHITE);
+    bPawns = isolatedBoard.getTypedPieces(W_PAWN, BLACK);
+
+    while(wPawns)
+    {
+        square_t idx = popLS1B(&wPawns);
+        uint8_t type = evaluator.getPawnType(isolatedBoard, WHITE, idx);
+        if(type != PawnType::ISOLATED) { ERROR("White pawn (" << unsigned(idx) << ") in isolated position did not have type ISOLATED. Found " << unsigned(type)) failed = true; }
+    }
+
+    while(bPawns)
+    {
+        square_t idx = popLS1B(&bPawns);
+        uint8_t type = evaluator.getPawnType(isolatedBoard, BLACK, idx);
+        if(type != PawnType::ISOLATED) { ERROR("Black pawn (" << unsigned(idx) << ") in isolated position did not have type ISOLATED. Found " << unsigned(type)) failed = true; }
+    }
+
+    Board passedIsolatedBoard = Board("rnbqkbnr/1p3p2/8/8/8/8/3P3P/RNBQKBNR w kq - 0 1");
+
+    wPawns = passedIsolatedBoard.getTypedPieces(W_PAWN, WHITE);
+    bPawns = passedIsolatedBoard.getTypedPieces(W_PAWN, BLACK);
+
+    while(wPawns)
+    {
+        square_t idx = popLS1B(&wPawns);
+        uint8_t type = evaluator.getPawnType(passedIsolatedBoard, WHITE, idx);
+        if(type != (PawnType::ISOLATED | PawnType::PASSED)) { ERROR("White pawn (" << unsigned(idx) << ") in passed-isolated position did not have correct type. Found " << unsigned(type)) failed = true; }
+    }
+
+    while(bPawns)
+    {
+        square_t idx = popLS1B(&bPawns);
+        uint8_t type = evaluator.getPawnType(passedIsolatedBoard, BLACK, idx);
+        if(type != (PawnType::ISOLATED | PawnType::PASSED)) { ERROR("Black pawn (" << unsigned(idx) << ") in passed-isolated position did not have correct type. Found " << unsigned(type)) failed = true; }
+    }
+
+    Board doubledIsolatedBoard = Board("rnbqkbnr/p4p1p/p4p1p/8/8/P4P1P/P4P1P/RNBQKBNR w kq - 0 1");
+
+    wPawns = doubledIsolatedBoard.getTypedPieces(W_PAWN, WHITE);
+    bPawns = doubledIsolatedBoard.getTypedPieces(W_PAWN, BLACK);
+
+    while(wPawns)
+    {
+        square_t idx = popLS1B(&wPawns);
+        uint8_t type = evaluator.getPawnType(doubledIsolatedBoard, WHITE, idx);
+        if((RANK(idx) == 2) && type != (PawnType::ISOLATED)) { ERROR("White pawn (" << unsigned(idx) << ") in doubled-isolated position did not have correct type. Found " << unsigned(type)) failed = true; }
+        if((RANK(idx) == 1) && type != (PawnType::ISOLATED | PawnType::DOUBLED)) { ERROR("White pawn (" << unsigned(idx) << ") in doubled-isolated position did not have correct type. Found " << unsigned(type)) failed = true; }
+    }
+
+    while(bPawns)
+    {
+        square_t idx = popLS1B(&bPawns);
+        uint8_t type = evaluator.getPawnType(doubledIsolatedBoard, BLACK, idx);
+        if((RANK(idx) == 5) && type != (PawnType::ISOLATED)) { ERROR("Black pawn (" << unsigned(idx) << ") in doubled-isolated position did not have correct type. Found " << unsigned(type)) failed = true; }
+        if((RANK(idx) == 6) && type != (PawnType::ISOLATED | PawnType::DOUBLED)) { ERROR("Black pawn (" << unsigned(idx) << ") in doubled-isolated position did not have correct type. Found " << unsigned(type)) failed = true; }
+    }
+
+    if(!failed)
+    {
+        SUCCESS("All pawn type tests succeeded")
+    }
 }
 
 // -- Perf functions
