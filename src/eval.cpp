@@ -482,7 +482,7 @@ uint8_t Evaluator::getPawnType(const Board& board, Color color, square_t idx)
 {
     uint8_t type = 0;
 
-    bitboard_t forward, backward;
+    bitboard_t forward;
     uint8_t rank = RANK(idx);
     uint8_t file = FILE(idx);
 
@@ -491,15 +491,9 @@ uint8_t Evaluator::getPawnType(const Board& board, Color color, square_t idx)
 
     // Calulate the forward mask based on the color and rank
     if(color == WHITE)
-    {
         forward  = wForwardLookup[rank];
-        backward = bForwardLookup[rank];
-    }
     else
-    {
         forward  = bForwardLookup[rank];
-        backward = wForwardLookup[rank];
-    }
 
     // Calulate the neighbour files
     bitboard_t pawnNeighbourFiles = 0L;
@@ -507,9 +501,6 @@ uint8_t Evaluator::getPawnType(const Board& board, Color color, square_t idx)
         pawnNeighbourFiles |= (bbAFile << (file - 1));
     if(file != 7)
         pawnNeighbourFiles |= (bbAFile << (file + 1));
-
-    // Attack span is all forward neighbour squares
-    bitboard_t attackSpans = pawnNeighbourFiles & forward;
 
     bitboard_t fileMask = bbAFile << file;
 
