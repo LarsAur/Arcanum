@@ -9,6 +9,7 @@ namespace Test
     void draw();
     void symmetricEvaluation();
     void see();
+    void evalPawnType();
 }
 
 namespace Perf

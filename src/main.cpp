@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
         if("--draw-test"    == std::string(argv[i])) Test::draw();
         if("--symeval-test" == std::string(argv[i])) Test::symmetricEvaluation();
         if("--see-test"     == std::string(argv[i])) Test::see();
+        if("--pawn-test"    == std::string(argv[i])) Test::evalPawnType();
         if("--search-perf"  == std::string(argv[i])) Perf::search();
         if("--engine-perf"  == std::string(argv[i])) Perf::engineTest();
 
