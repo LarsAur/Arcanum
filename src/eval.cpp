@@ -52,27 +52,24 @@ static constexpr bitboard_t bForwardLookup[] = { // indexed by rank
     0x00FFFFFFFFFFFFFF,
 };
 
-std::string Evaluator::s_hceWeightsFile = "hceWeights670.dat";
+std::string Evaluator::s_hceWeightsFile = "hceWeights1630.dat";
 
 Evaluator::Evaluator()
 {
     m_enabledNNUE = false;
     m_accumulatorStackPointer = 0;
 
-    setHCEModelFile(s_hceWeightsFile);
-
     m_pawnEvalTable     = static_cast<EvalEntry*>(Memory::pageAlignedMalloc(pawnTableSize     * sizeof(EvalEntry)));
-    m_shelterEvalTable  = static_cast<EvalEntry*>(Memory::pageAlignedMalloc(shelterTableSize  * sizeof(EvalEntry)));
 
     // Use default value 0xff...ff for initial value, as it is more common that 0 is the value of for example the pawnHash
     memset(m_pawnEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::pawnTableSize);
-    memset(m_shelterEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::shelterTableSize);
+
+    setHCEModelFile(s_hceWeightsFile);
 }
 
 Evaluator::~Evaluator()
 {
     Memory::alignedFree(m_pawnEvalTable);
-    Memory::alignedFree(m_shelterEvalTable);
 
     for(auto accPtr : m_accumulatorStack)
     {
@@ -126,9 +123,15 @@ void Evaluator::loadWeights(eval_t* weights)
     LOAD_ARRAY_2D(m_pieceSquareTablesLate,  6, 32)
     LOAD_ARRAY_2D(m_mobilityBonusEarly, 5, 28)
     LOAD_ARRAY_2D(m_mobilityBonusLate,  5, 28)
+    LOAD_ARRAY_2D(m_pawnBonusEarly,  15, 32)
+    LOAD_ARRAY_2D(m_pawnBonusLate,  15, 32)
 
     #undef LOAD_ARRAY
     #undef LOAD_SINGLE
+
+    // Reset the pawn eval cache
+    // This is needed as the evaluation of these positions will change when the weights change
+    memset(m_pawnEvalTable, 0xFF, sizeof(EvalEntry) * Evaluator::pawnTableSize);
 }
 
 void Evaluator::setEnableNNUE(bool enabled)
@@ -426,8 +429,8 @@ eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
         m_immAccumulatorStack[m_accumulatorStackPointer].phase
     );
     eval_t mobiltyBonus    = m_getMobiltyBonus(board, m_immAccumulatorStack[m_accumulatorStackPointer].phase);
-
-    return immEval + mobiltyBonus;
+    eval_t pawnBonus       = m_getPawnBonus(board, m_immAccumulatorStack[m_accumulatorStackPointer].phase);
+    return immEval + mobiltyBonus + pawnBonus;
 }
 
 inline bitboard_t Evaluator::m_getPieceMobility(const Board& board, Piece type, Color color, square_t idx)
@@ -473,4 +476,107 @@ eval_t Evaluator::m_getMobiltyBonus(const Board& board, const uint8_t phase)
     }
 
     return phaseLerp(mobiltyBonusEarly, mobiltyBonusLate, phase);
+}
+
+uint8_t Evaluator::getPawnType(const Board& board, Color color, square_t idx)
+{
+    uint8_t type = 0;
+
+    bitboard_t forward, backward;
+    uint8_t rank = RANK(idx);
+    uint8_t file = FILE(idx);
+
+    bitboard_t otherPawns = board.getTypedPieces(W_PAWN, Color(color)) & ~(1LL << idx);
+    bitboard_t opponentPawns = board.getTypedPieces(W_PAWN, Color(color^1));
+
+    // Calulate the forward mask based on the color and rank
+    if(color == WHITE)
+    {
+        forward  = wForwardLookup[rank];
+        backward = bForwardLookup[rank];
+    }
+    else
+    {
+        forward  = bForwardLookup[rank];
+        backward = wForwardLookup[rank];
+    }
+
+    // Calulate the neighbour files
+    bitboard_t pawnNeighbourFiles = 0L;
+    if(file != 0)
+        pawnNeighbourFiles |= (bbAFile << (file - 1));
+    if(file != 7)
+        pawnNeighbourFiles |= (bbAFile << (file + 1));
+
+    // Attack span is all forward neighbour squares
+    bitboard_t attackSpans = pawnNeighbourFiles & forward;
+
+    bitboard_t fileMask = bbAFile << file;
+
+    bool doubled = (fileMask & forward & otherPawns) != 0;
+    bool isolated = (pawnNeighbourFiles & otherPawns) == 0;
+    bool passed = ((pawnNeighbourFiles | fileMask) & forward & opponentPawns) == 0;
+    bool open = !passed && ((fileMask & forward & opponentPawns) == 0);
+
+    type |= doubled  << 0;
+    type |= isolated << 1;
+    type |= open     << 2;
+    type |= passed   << 3;
+
+    return type;
+}
+
+// // https://www.chessprogramming.org/Pawn_Structure
+eval_t Evaluator::m_getPawnBonus(const Board& board, uint8_t phase)
+{
+    // Check the pawn eval table
+    size_t evalIdx = board.m_pawnHash & Evaluator::pawnTableMask;
+    EvalEntry* evalEntry = &m_pawnEvalTable[evalIdx];
+    if(evalEntry->hash == board.m_pawnHash)
+    {
+        return phaseLerp(evalEntry->early, evalEntry->late, phase);
+    }
+
+    eval_t pawnBonusEarly = 0;
+    eval_t pawnBonusLate = 0;
+
+    // Pre-calculate pawn movements
+    bitboard_t wPawns = board.getTypedPieces(W_PAWN, WHITE);
+    bitboard_t bPawns = board.getTypedPieces(W_PAWN, BLACK);
+
+    while (wPawns)
+    {
+        int index = popLS1B(&wPawns);
+
+        uint8_t pawnType = getPawnType(board, WHITE, index);
+
+        if(pawnType)
+        {
+            index = PST_INDEX(index);
+            pawnBonusEarly += m_pawnBonusEarly[pawnType - 1][index];
+            pawnBonusLate  += m_pawnBonusLate[pawnType - 1][index];
+        }
+    }
+
+    while (bPawns)
+    {
+        int index = popLS1B(&bPawns);
+
+        uint8_t pawnType = getPawnType(board, BLACK, index);
+
+        if(pawnType)
+        {
+            index = MIRROR_PST_INDEX(index);
+            pawnBonusEarly -= m_pawnBonusEarly[pawnType - 1][index];
+            pawnBonusLate  -= m_pawnBonusLate[pawnType - 1][index];
+        }
+    }
+
+    // Store the result in the table
+    evalEntry->hash  = board.m_pawnHash;
+    evalEntry->early = pawnBonusEarly;
+    evalEntry->late  = pawnBonusLate;
+
+
+    return phaseLerp(pawnBonusEarly, pawnBonusLate, phase);
 }

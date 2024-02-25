@@ -11,19 +11,25 @@ namespace Arcanum
     #define TB_MATE_SCORE (INT16_MAX - MAX_MATE_DISTANCE)
     #define TB_MAX_MATE_DISTANCE (256)
 
+    enum PawnType
+    {
+        DOUBLED = 1,
+        ISOLATED = 2,
+        OPEN = 4,
+        PASSED = 8,
+    };
+
     class Evaluator
     {
         private:
             static constexpr size_t pawnTableSize     = 1 << 13; // Required to be a power of 2
-            static constexpr size_t shelterTableSize  = 1 << 13; // Required to be a power of 2
-
             static constexpr size_t pawnTableMask     = Evaluator::pawnTableSize     - 1;
-            static constexpr size_t shelterTableMask  = Evaluator::shelterTableSize  - 1;
 
             typedef struct EvalEntry
             {
                 hash_t hash;
-                eval_t value;
+                eval_t early;
+                eval_t late;
             } EvalEntry;
 
             typedef struct ImmEvalEntry
@@ -49,21 +55,23 @@ namespace Arcanum
             bitboard_t m_kingMoves[Color::NUM_COLORS];
 
             EvalEntry* m_pawnEvalTable;
-            EvalEntry* m_shelterEvalTable;
 
             eval_t m_pieceValues[6];
             eval_t m_pieceSquareTablesEarly[6][32];
             eval_t m_pieceSquareTablesLate[6][32];
             eval_t m_mobilityBonusEarly[5][28]; // Mobility for pawns not included
             eval_t m_mobilityBonusLate[5][28];  // Mobility for pawns not included
+            eval_t m_pawnBonusEarly[15][32]; // Index '0' is not included, so -1 of the type masks
+            eval_t m_pawnBonusLate[15][32]; // Index '0' is not included, so -1 of the type masks
 
             // void m_initEval(const Board& board);
             void m_initImmediateEval(ImmEvalEntry& immEval, const Board& board);
             void m_incrementImmediateEval(ImmEvalEntry& prevImmEval, ImmEvalEntry& newImmEval, const Board& board, const Move& move);
             bitboard_t m_getPieceMobility(const Board& board, Piece type, Color color, square_t idx);
             eval_t m_getMobiltyBonus(const Board& board, const uint8_t phase);
+            eval_t m_getPawnBonus(const Board& board, const uint8_t phase);
         public:
-            static constexpr size_t NUM_WEIGHTS = 670;
+            static constexpr size_t NUM_WEIGHTS = 1630;
             Evaluator();
             ~Evaluator();
             static std::string s_hceWeightsFile;
@@ -77,5 +85,6 @@ namespace Arcanum
             eval_t immEvaluation(Board& board, uint8_t plyFromRoot);
             static bool isCheckMateScore(eval_t eval);
             static bool isTbCheckMateScore(eval_t eval);
+            uint8_t getPawnType(const Board& board, Color color, square_t idx);
     };
 }

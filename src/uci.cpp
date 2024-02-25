@@ -86,7 +86,7 @@ void UCI::loop()
             UCI_OUT("option name Hash type spin default 32 min 0 max 8196")
             UCI_OUT("option name ClearHash type button")
             UCI_OUT("option name UseNNUE type check default false")
-            UCI_OUT("option name HCEWeightFile type string default hceWeights670.dat")
+            UCI_OUT("option name HCEWeightFile type string default hceWeights1630.dat")
             UCI_OUT("option name SyzygyPath type string default <empty>")
             UCI_OUT("uciok")
         }
