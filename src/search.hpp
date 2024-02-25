@@ -61,6 +61,7 @@ namespace Arcanum
             KillerMoveManager m_killerMoveManager;
             RelativeHistory m_relativeHistory;
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
+            uint8_t m_nonRevMovesRoot; // Number of non-reversable moves performed on the board in the root position.
             SearchStats m_stats;
 
             uint64_t m_numNodesSearched; // Number of nodes searched in a search call. Used to terminate search based on number of nodes.
