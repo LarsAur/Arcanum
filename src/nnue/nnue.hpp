@@ -84,12 +84,12 @@ namespace NN
             NNUE();
             ~NNUE();
 
-            void initBackPropagate();
+            void randomizeFNNUE();
             void quantize();
             void backPropagate(Arcanum::Board& board, float result);
-            void load(std::string filename);
+            void loadQnnue(std::string filename);
+            void loadFnnue(std::string filename);
             void store(std::string filename);
-            void setNet(Net& net);
             void initializeAccumulator(Accumulator& acc, const Arcanum::Board& board);
             void incrementAccumulator(Accumulator& accIn, Accumulator& accOut, Arcanum::Color color, const Arcanum::Board& board, const Arcanum::Move& move);
             Arcanum::eval_t evaluate(Accumulator& acc, Arcanum::Color turn);

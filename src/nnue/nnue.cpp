@@ -9,8 +9,18 @@ using namespace Arcanum;
 
 #define ALIGN64(p) __builtin_assume_aligned((p), 64)
 
-NNUE::NNUE() : m_net(nullptr)
-{}
+NNUE::NNUE() : m_net(nullptr), m_floatNet({nullptr})
+{
+    m_net = new Net;
+    m_floatNet.ftWeights  = new Matrixf(128, 384);
+    m_floatNet.ftBiases   = new Matrixf(128, 1);
+    m_floatNet.l1Weights  = new Matrixf(32, 256);
+    m_floatNet.l1Biases   = new Matrixf(32, 1);
+    m_floatNet.l2Weights  = new Matrixf(32, 32);
+    m_floatNet.l2Biases   = new Matrixf(32, 1);
+    m_floatNet.l3Weights  = new Matrixf(1, 32);
+    m_floatNet.l3Bias     = new Matrixf(1, 1);
+}
 
 NNUE::~NNUE()
 {
@@ -25,32 +35,20 @@ NNUE::~NNUE()
     delete m_floatNet.l3Bias;
 }
 
-void NNUE::load(std::string filename)
+// TODO: Only store the fnnue and quantize it on the fly
+void NNUE::loadQnnue(std::string filename)
 {
-    if(m_net)
-    {
-        delete m_net;
-        m_net = nullptr;
-    }
-
-    m_net = new Net;
-
     std::string path = getWorkPath();
+    std::stringstream ss;
+    ss << path << filename << ".qnnue";
+    std::ifstream is(ss.str(), std::ios::in | std::ios::binary);
 
-    std::ifstream is(filename, std::ios::in | std::ios::binary);
-
-    std::streampos bytesize = is.tellg();
-    is.seekg(0, std::ios::end);
-    bytesize = is.tellg() - bytesize;
-    is.seekg(0);
-
-    if(bytesize < 108068)
+    LOG("Loading QNNUE " << ss.str())
+    if(!is.is_open())
     {
-        ERROR("Unsufficient number of bytes in file " << bytesize << " requires " << 108068)
-        exit(-1);
+        ERROR("Unable to open " << ss.str())
+        return;
     }
-
-    LOG("Reading " << bytesize << " bytes")
 
     is.read((char*) m_net->ftWeights, 384 * 128 * sizeof(int16_t));
     is.read((char*) m_net->ftBiases,        128 * sizeof(int16_t));
@@ -63,31 +61,94 @@ void NNUE::load(std::string filename)
 
     is.close();
 
-    // #define RANDOM(_set, _size, _type) for(uint32_t i = 0; i < (_size); i++) _set[i] = 1;//_type(rand());
-
-    // RANDOM(m_net->ftWeights, 384 * 128, int16_t);
-    // RANDOM(m_net->ftBiases,        128, int16_t);
-    // RANDOM(m_net->l1Weights, 256 *  32, int8_t);
-    // RANDOM(m_net->l1Biases,         32, int32_t);
-    // RANDOM(m_net->l2Weights,  32 *  32, int8_t);
-    // RANDOM(m_net->l2Biases,         32, int32_t);
-    // RANDOM(m_net->l3Weights,        32, int8_t);
-    // RANDOM(m_net->l3Bias,            1, int32_t);
-
-    // #undef RANDOM
+    LOG("Finished loading QNNUE " << ss.str())
 }
 
-void NNUE::setNet(Net& net)
+void NNUE::loadFnnue(std::string filename)
 {
-    if(!m_net) m_net = new Net;
-    memcpy(m_net->ftWeights, net.ftWeights, 384 * 128 * sizeof(int16_t));
-    memcpy(m_net->ftBiases,  net.ftBiases,        128 * sizeof(int16_t));
-    memcpy(m_net->l1Weights, net.l1Weights, 256 *  32 * sizeof(int8_t));
-    memcpy(m_net->l1Biases,  net.l1Biases,         32 * sizeof(int32_t));
-    memcpy(m_net->l2Weights, net.l2Weights,  32 *  32 * sizeof(int8_t));
-    memcpy(m_net->l2Biases,  net.l2Biases,         32 * sizeof(int32_t));
-    memcpy(m_net->l3Weights, net.l3Weights,        32 * sizeof(int8_t));
-    memcpy(m_net->l3Bias,    net.l3Bias,            1 * sizeof(int32_t));
+    std::string path = getWorkPath();
+    std::stringstream ss;
+    ss << path << filename << ".fnnue";
+    std::ifstream is(ss.str(), std::ios::in | std::ios::binary);
+
+    LOG("Loading FNNUE " << ss.str())
+    if(!is.is_open())
+    {
+        ERROR("Unable to open " << ss.str())
+        return;
+    }
+
+    is.read((char*) m_floatNet.ftWeights->data(), 384 * 128 * sizeof(float));
+    is.read((char*) m_floatNet.ftBiases->data(),        128 * sizeof(float));
+    is.read((char*) m_floatNet.l1Weights->data(), 256 *  32 * sizeof(float));
+    is.read((char*) m_floatNet.l1Biases->data(),         32 * sizeof(float));
+    is.read((char*) m_floatNet.l2Weights->data(),  32 *  32 * sizeof(float));
+    is.read((char*) m_floatNet.l2Biases->data(),         32 * sizeof(float));
+    is.read((char*) m_floatNet.l3Weights->data(),        32 * sizeof(float));
+    is.read((char*) m_floatNet.l3Bias->data(),            1 * sizeof(float));
+
+    is.close();
+
+    LOG("Finished loading FNNUE " << ss.str())
+}
+
+void NNUE::store(std::string filename)
+{
+    std::string path = getWorkPath();
+
+    std::stringstream qss;
+    qss << path << filename << ".qnnue";
+    LOG("Storing qnnue in " << qss.str())
+    std::ofstream qstream(qss.str(), std::ios::out | std::ios::binary);
+
+    if(!qstream.is_open())
+    {
+        ERROR("Unable to open " << qss.str())
+        return;
+    }
+
+    qstream.write((char*) m_net->ftWeights, 384 * 128 * sizeof(int16_t));
+    qstream.write((char*) m_net->ftBiases,        128 * sizeof(int16_t));
+    qstream.write((char*) m_net->l1Weights, 256 *  32 * sizeof(int8_t));
+    qstream.write((char*) m_net->l1Biases,         32 * sizeof(int32_t));
+    qstream.write((char*) m_net->l2Weights,  32 *  32 * sizeof(int8_t));
+    qstream.write((char*) m_net->l2Biases,         32 * sizeof(int32_t));
+    qstream.write((char*) m_net->l3Weights,        32 * sizeof(int8_t));
+    qstream.write((char*) m_net->l3Bias,            1 * sizeof(int32_t));
+
+    qstream.close();
+
+    LOG("Finished storing qnnue in " << qss.str())
+
+    if(!m_floatNet.ftWeights)
+    {
+        LOG("No floating net to store. Done!")
+        return;
+    }
+
+    std::stringstream fss;
+    fss << path << filename << ".fnnue";
+    LOG("Storing fnnue in " << fss.str())
+    std::ofstream fstream(fss.str(), std::ios::out | std::ios::binary);
+
+    if(!fstream.is_open())
+    {
+        ERROR("Unable to open " << fss.str())
+        return;
+    }
+
+    fstream.write((char*) m_floatNet.ftWeights->data(), 384 * 128 * sizeof(float));
+    fstream.write((char*) m_floatNet.ftBiases->data(),        128 * sizeof(float));
+    fstream.write((char*) m_floatNet.l1Weights->data(), 256 *  32 * sizeof(float));
+    fstream.write((char*) m_floatNet.l1Biases->data(),         32 * sizeof(float));
+    fstream.write((char*) m_floatNet.l2Weights->data(),  32 *  32 * sizeof(float));
+    fstream.write((char*) m_floatNet.l2Biases->data(),         32 * sizeof(float));
+    fstream.write((char*) m_floatNet.l3Weights->data(),        32 * sizeof(float));
+    fstream.write((char*) m_floatNet.l3Bias->data(),            1 * sizeof(float));
+
+    fstream.close();
+
+    LOG("Finished storing fnnue in " << fss.str())
 }
 
 void NNUE::initializeAccumulator(Accumulator& acc, const Arcanum::Board& board)
@@ -329,17 +390,8 @@ void NNUE::quantize()
     #undef QUANTIZE
 }
 
-void NNUE::initBackPropagate()
+void NNUE::randomizeFNNUE()
 {
-    m_floatNet.ftWeights  = new Matrixf(128, 384);
-    m_floatNet.ftBiases   = new Matrixf(128, 1);
-    m_floatNet.l1Weights  = new Matrixf(32, 256);
-    m_floatNet.l1Biases   = new Matrixf(32, 1);
-    m_floatNet.l2Weights  = new Matrixf(32, 32);
-    m_floatNet.l2Biases   = new Matrixf(32, 1);
-    m_floatNet.l3Weights  = new Matrixf(1, 32);
-    m_floatNet.l3Bias     = new Matrixf(1, 1);
-
     m_floatNet.ftWeights ->randomize(0.1f, 1.0f);
     m_floatNet.ftBiases  ->randomize(0.1f, 1.0f);
     m_floatNet.l1Weights ->randomize(0.1f, 1.0f);
