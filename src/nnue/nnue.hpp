@@ -1,101 +1,98 @@
 #pragma once
 
 #include <board.hpp>
-#include <string>
-#include <array>
-
-/**
- * The code related to NNUE is an adaptation of the NNUE-probe library created by dshawul on Github.
- * https://github.com/dshawul/nnue-probe
-**/
+#include <nnue/linalg.hpp>
 
 namespace NN
 {
-    typedef int16_t AccData;
-    typedef int16_t FTWeight;
-    typedef int16_t FTBias;
-    typedef int8_t Weight;
-    typedef int32_t Bias;
-    typedef int8_t Clipped;
-    typedef uint32_t Mask;
-    typedef uint64_t Mask2;
-
-    constexpr uint32_t ftIns = 41024;
-    constexpr uint32_t ftOuts = 256;
-    constexpr uint32_t l1outs = 32;
-    constexpr uint32_t l2outs = 32;
-    constexpr uint32_t lastouts = 1;
-    constexpr uint32_t shift = 6;
-    constexpr int32_t fv_scale = 16;
-
     struct Accumulator
     {
-        alignas(64) AccData acc[2][ftOuts];
+        alignas(64) int16_t acc[2][128];
+
+        std::string toString() const
+        {
+            std::stringstream ss;
+            ss << "\nWHITE:";
+            for(uint8_t i = 0; i < 128; i++)
+            {
+                if(i % 32 == 0) ss << "\n";
+                ss << unsigned(acc[0][i]) << " ";
+            }
+
+            ss << "\n";
+
+            ss << "BLACK:";
+            for(uint8_t i = 0; i < 128; i++)
+            {
+                if(i % 32 == 0) ss << "\n";
+                ss << signed(acc[1][i]) << " ";
+            }
+
+            return ss.str();
+        }
+    };
+
+    struct Net
+    {
+        alignas(64) int16_t ftWeights[384 * 128];
+        alignas(64) int16_t ftBiases[128];
+
+        alignas(64) int8_t l1Weights[256 * 32];
+        alignas(64) int32_t l1Biases[32];
+
+        alignas(64) int8_t l2Weights[32 * 32];
+        alignas(64) int32_t l2Biases[32];
+
+        alignas(64) int8_t l3Weights[32];
+        alignas(64) int32_t l3Bias[1];
+    };
+
+    struct FloatNet
+    {
+        Matrixf* ftWeights;
+        Matrixf* ftBiases;
+        Matrixf* l1Weights;
+        Matrixf* l1Biases;
+        Matrixf* l2Weights;
+        Matrixf* l2Biases;
+        Matrixf* l3Weights;
+        Matrixf* l3Bias;
     };
 
     class NNUE
     {
         private:
-            struct NetData {
-                alignas(64) Clipped input[2*ftOuts];
-                Clipped hiddenOut1[32];
-                Clipped hiddenOut2[32];
-            };
+            // Intermediate results in the net
+            alignas(64) int8_t m_clampedAcc[2 * 128];
+            alignas(64) int8_t m_hiddenOut1[32];
+            alignas(64) int8_t m_hiddenOut2[32];
 
-            template <int In, int Out>
-            struct LinearLayer
-            {
-                alignas(64) Weight weights[In * Out];
-                alignas(64) Bias   biases[Out];
-            };
+            uint8_t m_numActiveIndices[2];
+            int32_t m_activeIndices[2][16];
+            Net* m_net;
+            FloatNet m_floatNet;
 
-            struct FeatureTransformer
-            {
-                FTWeight *weights;
-                FTBias   *biases;
-            };
+            uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
+            void m_initializeAccumulatorBias(Accumulator& acc);
+            void m_setFeature(Accumulator& acc, uint32_t findex, Arcanum::Color color);
+            void m_clearFeature(Accumulator& acc, uint32_t findex, Arcanum::Color color);
+            template<uint32_t dimIn, uint32_t dimOut>
+            void m_affineTransform(int8_t *input, int8_t *output, int32_t* biases, int8_t* weights);
+            int32_t m_affinePropagate(int8_t* input, int32_t* biases, int8_t* weights);
 
-            FeatureTransformer m_featureTransformer;
-            LinearLayer<2*ftOuts, 32> m_hiddenLayer1;
-            LinearLayer<32, 32> m_hiddenLayer2;
-            LinearLayer<32, 1> m_outputLayer;
-            bool m_loaded;
-            void m_affineTransform(
-                Clipped *input,
-                void *output,
-                uint32_t inDim,
-                uint32_t outDim,
-                const Bias* biases,
-                const Weight* weights,
-                const Mask *inMask,
-                Mask *outMask,
-                const bool pack8Mask
-            );
-            int32_t m_affinePropagate(Clipped* input, Bias* biases, Weight* weights);
-            void m_permuteBiases(Bias* biases);
-            uint32_t m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, const Arcanum::Color perspective, const Arcanum::Board& board);
-            uint32_t m_calculateChangedIndices(uint32_t& activated, std::array<uint32_t, 2>& deactivated, const Arcanum::Color perspective, const Arcanum::Move& move, const Arcanum::Board board);
-            void m_initializeAccumulatorPerspective(Accumulator& accumulator, const Arcanum::Color perspective, const Arcanum::Board& board);
-            void m_loadHeader(std::ifstream& stream);
-            void m_loadWeights(std::ifstream& stream);
         public:
             NNUE();
             ~NNUE();
 
-            // Loads a .nnue file given a full path
-            bool loadFullPath(std::string fullPath);
-            // Loads a .nnue file in a position relative to the executable
-            bool loadRelative(std::string filename);
-            void initializeAccumulator(Accumulator& accumulator, const Arcanum::Board& board);
-            void incrementAccumulator(
-                const Accumulator& prevAccumulator,
-                Accumulator& newAccumulator,
-                const Arcanum::Color perspective,
-                const Arcanum::Board& board,
-                const Arcanum::Move& move
-            );
-            int evaluateBoard(const Arcanum::Board& board);
-            int evaluate(const Accumulator& accumulator, Arcanum::Color turn);
-            bool isLoaded();
+            void initBackPropagate();
+            void quantize();
+            void backPropagate(Arcanum::Board& board, float result);
+            void load(std::string filename);
+            void store(std::string filename);
+            void setNet(Net& net);
+            void initializeAccumulator(Accumulator& acc, const Arcanum::Board& board);
+            void incrementAccumulator(Accumulator& accIn, Accumulator& accOut, Arcanum::Color color, const Arcanum::Board& board, const Arcanum::Move& move);
+            Arcanum::eval_t evaluate(Accumulator& acc, Arcanum::Color turn);
+            Arcanum::eval_t evaluateBoard(const Arcanum::Board& board);
     };
 }

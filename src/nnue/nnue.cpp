@@ -1,297 +1,169 @@
-#include <types.hpp>
 #include <nnue/nnue.hpp>
-#include <utils.hpp>
-#include <fstream>
+#include <nnue/linalg.hpp>
 #include <memory.hpp>
-
-/**
- * The code related to NNUE is an adaptation of the NNUE-probe library created by dshawul on Github.
- * https://github.com/dshawul/nnue-probe
-**/
+#include <utils.hpp>
+#include <math.h>
 
 using namespace NN;
+using namespace Arcanum;
 
 #define ALIGN64(p) __builtin_assume_aligned((p), 64)
 
-enum {
-  PS_W_PAWN   =  1,
-  PS_B_PAWN   =  1 * 64 + 1,
-  PS_W_KNIGHT =  2 * 64 + 1,
-  PS_B_KNIGHT =  3 * 64 + 1,
-  PS_W_BISHOP =  4 * 64 + 1,
-  PS_B_BISHOP =  5 * 64 + 1,
-  PS_W_ROOK   =  6 * 64 + 1,
-  PS_B_ROOK   =  7 * 64 + 1,
-  PS_W_QUEEN  =  8 * 64 + 1,
-  PS_B_QUEEN  =  9 * 64 + 1,
-  PS_END      = 10 * 64 + 1
-};
-
-static uint32_t pieceToIndex[2][12] = {
-  { PS_W_PAWN, PS_W_ROOK, PS_W_KNIGHT, PS_W_BISHOP, PS_W_QUEEN, 0/*KING*/, PS_B_PAWN, PS_B_ROOK, PS_B_KNIGHT, PS_B_BISHOP, PS_B_QUEEN, 0/*KING*/ },
-  { PS_B_PAWN, PS_B_ROOK, PS_B_KNIGHT, PS_B_BISHOP, PS_B_QUEEN, 0/*KING*/, PS_W_PAWN, PS_W_ROOK, PS_W_KNIGHT, PS_W_BISHOP, PS_W_QUEEN, 0/*KING*/ },
-};
-
-static int lsb64(uint64_t v)
-{
-    return _tzcnt_u64(v);
-}
-
-static int popLsb64(uint64_t* v)
-{
-    int popIdx = _tzcnt_u64(*v);
-    *v = _blsr_u64(*v);
-    return popIdx;
-}
-
-template <typename T>
-static inline T ifstreamGet(std::ifstream& fileStream)
-{
-    T value = 0;
-    for(size_t i = 0; i < sizeof(T); i++)
-    {
-        value |= fileStream.get() << (8 * i);
-    }
-    return value;
-}
-
-template<class T> static inline void Log(const __m256i & value)
-{
-    const size_t n = sizeof(__m256i) / sizeof(T);
-    T buffer[n];
-    _mm256_storeu_si256((__m256i*)buffer, value);
-    for (int i = 0; i < n; i++)
-        std::cout << buffer[i] << " ";
-}
-
-// Weight index
-static inline uint32_t windex(uint32_t row, uint32_t column, uint32_t dims)
-{
-    #if defined(USE_AVX2)
-    if(dims > 32)
-    {
-        uint32_t b = column & 0x18;
-        b = (b << 1) | (b >> 1);
-        column = (column & ~0x18) | (b & 0x18);
-    }
-    #endif
-
-    return column * 32 + row;
-}
-
-static inline Arcanum::square_t orientSquare(Arcanum::Color color, Arcanum::square_t square)
-{
-    return square ^ (color == Arcanum::Color::WHITE ? 0x00 : 0x3F);
-}
-
-// feature index
-static inline uint32_t findex(Arcanum::Color perspective, Arcanum::square_t square, Arcanum::Piece piece, Arcanum::square_t kingSquare)
-{
-    return orientSquare(perspective, square) + pieceToIndex[perspective][piece] + PS_END * kingSquare;
-}
-
-NNUE::NNUE(){ m_loaded = false; }
+NNUE::NNUE() : m_net(nullptr)
+{}
 
 NNUE::~NNUE()
 {
-    if(m_loaded)
-    {
-        Memory::alignedFree(m_featureTransformer.biases);
-        Memory::alignedFree(m_featureTransformer.weights);
-    }
+    delete m_net;
+    delete m_floatNet.ftWeights;
+    delete m_floatNet.ftBiases;
+    delete m_floatNet.l1Weights;
+    delete m_floatNet.l1Biases;
+    delete m_floatNet.l2Weights;
+    delete m_floatNet.l2Biases;
+    delete m_floatNet.l3Weights;
+    delete m_floatNet.l3Bias;
 }
 
-bool NNUE::loadFullPath(std::string fullPath)
+void NNUE::load(std::string filename)
 {
-    LOG("Loading: " << fullPath)
-
-    std::ifstream stream = std::ifstream(fullPath, std::ios::binary | std::ios::in);
-
-    if(!stream.is_open())
+    if(m_net)
     {
-        ERROR("Unable to open file")
-        return false;
+        delete m_net;
+        m_net = nullptr;
     }
 
-    m_loadHeader(stream);
-    m_loadWeights(stream);
-    m_loaded = true;
-    stream.close();
+    m_net = new Net;
 
-    return true;
-}
-
-bool NNUE::loadRelative(std::string filename)
-{
-    // Get the path of the executable file
     std::string path = getWorkPath();
-    path.append(filename);
 
-    return loadFullPath(path);
+    std::ifstream is(filename, std::ios::in | std::ios::binary);
+
+    std::streampos bytesize = is.tellg();
+    is.seekg(0, std::ios::end);
+    bytesize = is.tellg() - bytesize;
+    is.seekg(0);
+
+    if(bytesize < 108068)
+    {
+        ERROR("Unsufficient number of bytes in file " << bytesize << " requires " << 108068)
+        exit(-1);
+    }
+
+    LOG("Reading " << bytesize << " bytes")
+
+    is.read((char*) m_net->ftWeights, 384 * 128 * sizeof(int16_t));
+    is.read((char*) m_net->ftBiases,        128 * sizeof(int16_t));
+    is.read((char*) m_net->l1Weights, 256 *  32 * sizeof(int8_t));
+    is.read((char*) m_net->l1Biases,         32 * sizeof(int32_t));
+    is.read((char*) m_net->l2Weights,  32 *  32 * sizeof(int8_t));
+    is.read((char*) m_net->l2Biases,         32 * sizeof(int32_t));
+    is.read((char*) m_net->l3Weights,        32 * sizeof(int8_t));
+    is.read((char*) m_net->l3Bias,            1 * sizeof(int32_t));
+
+    is.close();
+
+    // #define RANDOM(_set, _size, _type) for(uint32_t i = 0; i < (_size); i++) _set[i] = 1;//_type(rand());
+
+    // RANDOM(m_net->ftWeights, 384 * 128, int16_t);
+    // RANDOM(m_net->ftBiases,        128, int16_t);
+    // RANDOM(m_net->l1Weights, 256 *  32, int8_t);
+    // RANDOM(m_net->l1Biases,         32, int32_t);
+    // RANDOM(m_net->l2Weights,  32 *  32, int8_t);
+    // RANDOM(m_net->l2Biases,         32, int32_t);
+    // RANDOM(m_net->l3Weights,        32, int8_t);
+    // RANDOM(m_net->l3Bias,            1, int32_t);
+
+    // #undef RANDOM
 }
 
-int NNUE::evaluate(const Accumulator& accumulator, Arcanum::Color turn)
+void NNUE::setNet(Net& net)
 {
-    constexpr uint32_t numChunks = 16 * ftOuts / 256;
-    alignas(8) Mask mask[numChunks];
-    alignas(8) Mask hiddenMask[8 / sizeof(Mask)] = {0};
-    NetData netData;
+    if(!m_net) m_net = new Net;
+    memcpy(m_net->ftWeights, net.ftWeights, 384 * 128 * sizeof(int16_t));
+    memcpy(m_net->ftBiases,  net.ftBiases,        128 * sizeof(int16_t));
+    memcpy(m_net->l1Weights, net.l1Weights, 256 *  32 * sizeof(int8_t));
+    memcpy(m_net->l1Biases,  net.l1Biases,         32 * sizeof(int32_t));
+    memcpy(m_net->l2Weights, net.l2Weights,  32 *  32 * sizeof(int8_t));
+    memcpy(m_net->l2Biases,  net.l2Biases,         32 * sizeof(int32_t));
+    memcpy(m_net->l3Weights, net.l3Weights,        32 * sizeof(int8_t));
+    memcpy(m_net->l3Bias,    net.l3Bias,            1 * sizeof(int32_t));
+}
 
-    // Transform the accumulator to Clipped netdata
+void NNUE::initializeAccumulator(Accumulator& acc, const Arcanum::Board& board)
+{
+    m_initializeAccumulatorBias(acc);
+
+    m_numActiveIndices[WHITE] = 0;
+    m_numActiveIndices[BLACK] = 0;
+
+    for(uint32_t color = 0; color < 2; color++)
+    {
+        for(uint32_t type = 0; type < 6; type++)
+        {
+            Arcanum::bitboard_t pieces = board.getTypedPieces(Piece(type), Color(color));
+            while(pieces)
+            {
+                square_t idx = popLS1B(&pieces);
+                uint32_t findex = m_getFeatureIndex(idx, Color(color), Piece(type));
+                m_activeIndices[color][m_numActiveIndices[color]++] = findex;
+                m_setFeature(acc, findex, Color(color));
+            }
+        }
+    }
+}
+
+void NNUE::incrementAccumulator(Accumulator& accIn, Accumulator& accOut, Arcanum::Color, const Arcanum::Board& board, const Arcanum::Move& move)
+{
+
+}
+
+Arcanum::eval_t NNUE::evaluate(Accumulator& acc, Arcanum::Color turn)
+{
+    constexpr  uint32_t num256Chunks = 16 * 128 / 256;
+    alignas(8) const uint32_t permuateIdx[8] = {0, 1, 4, 5, 2, 3, 6, 7};
+
+    const __m256i zero = _mm256_setzero_si256();
+
+    // Transform the accumulator to int8_t netdata
     // The data is transformed from a vector of 16-bit values to a vector of 8-bit values
     const Arcanum::Color perspectives[2] = {turn, Arcanum::Color(turn^1)};
     for(uint32_t i = 0; i < 2; i++)
     {
         const Arcanum::Color p = perspectives[i];
-        for(uint32_t j = 0; j < numChunks / 2; j++)
+        for(uint32_t j = 0; j < num256Chunks / 2; j++)
         {
-            uint32_t index = j + i*(numChunks/2);
-            __m256i s0 = ((__m256i*) accumulator.acc[p])[j * 2];
-            __m256i s1 = ((__m256i*) accumulator.acc[p])[j * 2 + 1];
+            uint32_t index = j + i*(num256Chunks/2);
+            __m256i s0 = ((__m256i*) acc.acc[p])[j * 2];
+            __m256i s1 = ((__m256i*) acc.acc[p])[j * 2 + 1];
+            // Saturate8 (clamp) all int16_t values
+            // The int8_t values are packed as follows
+            // 8 x s0_0, 8 x s1_0, 8 x s0_1, 8 x s1_1
             __m256i packed = _mm256_packs_epi16(s0, s1);
-            _mm256_store_si256(&((__m256i*) netData.input)[index], packed);
-            // Create a bitmask (1 bit for each 8-bit element) for all elements larger than 0
-            mask[index] = _mm256_movemask_epi8(_mm256_cmpgt_epi8(packed,_mm256_setzero_si256()));
+
+            // Shuffle the values back into order
+            // 8 x s0_0, 8 x s0_1, 8 x s1_0, 8 x s1_1
+            __m256i shuffled =  _mm256_permutevar8x32_epi32(packed, _mm256_load_si256((__m256i*)permuateIdx));
+
+            // Clamp the values between 0 and 127 (ReLU)
+            shuffled = _mm256_max_epi8(shuffled, zero);
+
+            _mm256_store_si256(&((__m256i*) m_clampedAcc)[index], shuffled);
         }
     }
 
-    m_affineTransform(netData.input, netData.hiddenOut1, 2*ftOuts, l1outs, m_hiddenLayer1.biases, m_hiddenLayer1.weights, mask, hiddenMask, true);
+    m_affineTransform<256, 32>(m_clampedAcc, m_hiddenOut1, m_net->l1Biases, m_net->l1Weights);
+    m_affineTransform<32, 32>(m_hiddenOut1, m_hiddenOut2, m_net->l2Biases, m_net->l2Weights);
 
-    m_affineTransform(netData.hiddenOut1, netData.hiddenOut2, l1outs, l2outs, m_hiddenLayer2.biases, m_hiddenLayer2.weights, hiddenMask, nullptr, false);
+    int32_t score = m_affinePropagate(m_hiddenOut2, m_net->l3Bias, m_net->l3Weights);
 
-    int32_t score = m_affinePropagate(netData.hiddenOut2, m_outputLayer.biases, m_outputLayer.weights);
-    return score / fv_scale;
+    return turn == WHITE ? score : -score;
 }
 
-void NNUE::incrementAccumulator(
-    const Accumulator& prevAccumulator, // Accumulator from the boardstate before the move
-    Accumulator& newAccumulator,        // Uninitialized accumulator
-    const Arcanum::Color perspective,   // Color for which the move was made
-    const Arcanum::Board& board,        // Board after the move
-    const Arcanum::Move& move           // Move being made
-) {
-    constexpr int registerWidth = 256 / (8*sizeof(AccData)); // Number of AccData (int16_t) in AVX2 register (256 bit)
-    static_assert(ftOuts % registerWidth == 0);
-    constexpr int numChunks = ftOuts / registerWidth;
-    __m256i regs[numChunks]; // Temp accumulators in AVX register
-
-    if(CASTLE_SIDE(move.moveInfo))
-    {
-        m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
-
-        // Find the rook positions
-        uint32_t activated, deactivated;
-        Arcanum::Color nPerspective = Arcanum::Color(1^perspective);
-        Arcanum::square_t kingSquare = orientSquare(nPerspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, nPerspective)));
-        Arcanum::Piece rookPiece = Arcanum::Piece(Arcanum::Piece::W_ROOK + Arcanum::Piece::B_PAWN * perspective);
-        if(move.moveInfo & Arcanum::CASTLE_WHITE_QUEEN)        { activated = findex(nPerspective,  3, rookPiece, kingSquare); deactivated = findex(nPerspective,  0, rookPiece, kingSquare); }
-        else if(move.moveInfo & Arcanum::CASTLE_BLACK_QUEEN)   { activated = findex(nPerspective, 59, rookPiece, kingSquare); deactivated = findex(nPerspective, 56, rookPiece, kingSquare); }
-        else if(move.moveInfo & Arcanum::CASTLE_WHITE_KING)    { activated = findex(nPerspective,  5, rookPiece, kingSquare); deactivated = findex(nPerspective,  7, rookPiece, kingSquare); }
-        else /*move.moveInfo & Arcanum::CASTLE_BLACK_KING*/    { activated = findex(nPerspective, 61, rookPiece, kingSquare); deactivated = findex(nPerspective, 63, rookPiece, kingSquare); }
-
-        for(int i = 0; i < numChunks; i++)
-        {
-            // Copy previous accumulator
-            __m256i value = _mm256_load_si256((__m256i*)&prevAccumulator.acc[nPerspective][i * registerWidth]);
-            // Activate and deactivate features features
-            value = _mm256_add_epi16(value, _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[activated * 256 + i * registerWidth])));
-            value = _mm256_sub_epi16(value, _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[deactivated * 256 + i * registerWidth])));
-            // Store new accumulator
-            _mm256_store_si256((__m256i*)&newAccumulator.acc[nPerspective][i * registerWidth], value);
-        }
-
-        return;
-    }
-
-    // If the move is a king move, the whole accumulator
-    // for the moving color has to be updated.
-    // if the move does not capture anything, the other perspective does not need to be updated.
-    if(move.moveInfo & Arcanum::KING_MOVE && !CAPTURED_PIECE(move.moveInfo))
-    {
-        m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
-
-        // Copy the accumulator of the other perspective
-        for(int i = 0; i < numChunks; i++)
-        {
-            __m256i value = _mm256_load_si256((__m256i*)&prevAccumulator.acc[1^perspective][i * registerWidth]);
-            _mm256_store_si256((__m256i*)&newAccumulator.acc[1^perspective][i * registerWidth], value);
-        }
-        return;
-
-    }
-
-    if(move.moveInfo & Arcanum::KING_MOVE)
-    {
-        m_initializeAccumulatorPerspective(newAccumulator, perspective, board);
-
-        // Copy the accumulator of the other perspective
-        for(int i = 0; i < numChunks; i++)
-        {
-            regs[i] = _mm256_load_si256((__m256i*)&prevAccumulator.acc[1^perspective][i * registerWidth]);
-        }
-
-        std::array<uint32_t, 2> deactivated;
-        uint32_t activated; // Unused. When the king moves, no features are activated for the other perspective
-        m_calculateChangedIndices(activated, deactivated, Arcanum::Color(1^perspective), move, board);
-
-        // Deactivated features
-        // Only the captured feature is removed, as the moved king does not deactivate a feature for the other perspective
-        uint32_t feature = deactivated[1];
-        for(int i = 0; i < numChunks; i++)
-        {
-            regs[i] = _mm256_sub_epi16(regs[i], _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[feature * 256 + i * registerWidth])));
-        }
-
-        for(int i = 0; i < numChunks; i++)
-        {
-            _mm256_store_si256((__m256i*)&newAccumulator.acc[1^perspective][i * registerWidth], regs[i]);
-        }
-
-        return;
-    }
-
-    // For each perspective
-    for(int p = 0; p < 2; p++)
-    {
-        std::array<uint32_t, 2> deactivated;
-        uint32_t activated;
-        uint32_t numDeactivated = m_calculateChangedIndices(activated, deactivated, Arcanum::Color(p), move, board);
-
-        // Copy the accumulator of the other perspective
-        for(int i = 0; i < numChunks; i++)
-        {
-            regs[i] = _mm256_load_si256((__m256i*)&prevAccumulator.acc[p][i * registerWidth]);
-        }
-
-        // Activated features
-        for(int i = 0; i < numChunks; i++)
-        {
-            regs[i] = _mm256_add_epi16(regs[i], _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[activated * 256 + i * registerWidth])));
-        }
-
-        // Deactivated features
-        for(uint32_t d = 0; d < numDeactivated; d++)
-        {
-            uint32_t feature = deactivated[d];
-            for(int i = 0; i < numChunks; i++)
-            {
-                regs[i] = _mm256_sub_epi16(regs[i], _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[feature * 256 + i * registerWidth])));
-            }
-        }
-
-        for(uint32_t i = 0; i < numChunks; i++)
-        {
-            _mm256_store_si256((__m256i*)&newAccumulator.acc[p][i * registerWidth], regs[i]);
-        }
-    }
-}
-
-bool NNUE::isLoaded() { return m_loaded; }
-
-int32_t NNUE::m_affinePropagate(Clipped* input, Bias* biases, Weight* weights)
+int32_t NNUE::m_affinePropagate(int8_t* input, int32_t* biases, int8_t* weights)
 {
     __m256i *iv = (__m256i *)input;
-    __m256i *row = (__m256i *)ALIGN64(weights);
+    __m256i *row = (__m256i *)weights;
     __m256i prod = _mm256_maddubs_epi16(iv[0], row[0]);
     prod = _mm256_madd_epi16(prod, _mm256_set1_epi16(1));
     __m128i sum = _mm_add_epi32(
@@ -300,266 +172,355 @@ int32_t NNUE::m_affinePropagate(Clipped* input, Bias* biases, Weight* weights)
     return _mm_cvtsi128_si32(sum) + _mm_extract_epi32(sum, 1) + biases[0];
 }
 
-static inline bool nextIdx(uint32_t *idx, uint32_t *offset, Mask2 *v, const Mask *mask, uint32_t inDim)
+template<uint32_t dimIn, uint32_t dimOut>
+void NNUE::m_affineTransform(int8_t *input, int8_t *output, int32_t* biases, int8_t* weights)
 {
-    while (*v == 0) {
-        *offset += 8 * sizeof(Mask2);
-        if (*offset >= inDim) return false;
-        memcpy(v, (char *)mask + (*offset / 8), sizeof(Mask2));
-    }
+    constexpr uint32_t numRegs32 = 32 * dimOut / 256; // Number of 256 bit registers required to keep 32-bit data
 
-    *idx = *offset + lsb64(*v);
-    *v &= *v - 1;
+    __m256i regs[numRegs32];
 
-    return true;
-}
-
-void NNUE::m_affineTransform(
-    Clipped *input,
-    void *output,
-    uint32_t inDim,
-    uint32_t outDim,
-    const Bias* biases,
-    const Weight* weights,
-    const Mask *inMask,
-    Mask *outMask,
-    const bool pack8Mask
-) {
-      const __m256i kZero = _mm256_setzero_si256();
-    __m256i out0 = _mm256_load_si256(&((__m256i*) biases)[0]);
-    __m256i out1 = _mm256_load_si256(&((__m256i*) biases)[1]);
-    __m256i out2 = _mm256_load_si256(&((__m256i*) biases)[2]);
-    __m256i out3 = _mm256_load_si256(&((__m256i*) biases)[3]);
-    __m256i first, second;
-    uint32_t idx;
-    Mask2 v;
-
-    memcpy(&v, inMask, sizeof(Mask2));
-    for(uint32_t offset = 0; offset < inDim;)
+    // Load the biases into the registers
+    for(uint32_t i = 0; i < numRegs32; i++)
     {
-        if (!nextIdx(&idx, &offset, &v, inMask, inDim))
-            break;
-
-        first = ((__m256i *)ALIGN64(weights))[idx];
-        uint16_t factor = input[idx];
-
-        if (nextIdx(&idx, &offset, &v, inMask, inDim)) {
-            second = ((__m256i *)ALIGN64(weights))[idx];
-            factor |= input[idx] << 8;
-        } else {
-            second = kZero;
-        }
-
-        __m256i mul = _mm256_set1_epi16(factor), prod, signs;
-        prod = _mm256_maddubs_epi16(mul, _mm256_unpacklo_epi8(first, second));
-        signs = _mm256_cmpgt_epi16(kZero, prod);
-        out0 = _mm256_add_epi32(out0, _mm256_unpacklo_epi16(prod, signs));
-        out1 = _mm256_add_epi32(out1, _mm256_unpackhi_epi16(prod, signs));
-        prod = _mm256_maddubs_epi16(mul, _mm256_unpackhi_epi8(first, second));
-        signs = _mm256_cmpgt_epi16(kZero, prod);
-        out2 = _mm256_add_epi32(out2, _mm256_unpacklo_epi16(prod, signs));
-        out3 = _mm256_add_epi32(out3, _mm256_unpackhi_epi16(prod, signs));
+        regs[i] = _mm256_load_si256(((__m256i*)biases) + i);
     }
 
-    __m256i out16_0 = _mm256_srai_epi16(_mm256_packs_epi32(out0, out1), shift);
-    __m256i out16_1 = _mm256_srai_epi16(_mm256_packs_epi32(out2, out3), shift);
+    const __m256i zero = _mm256_setzero_si256();
 
-    __m256i *outVec = (__m256i *)output;
-    outVec[0] = _mm256_packs_epi16(out16_0, out16_1);
-    if (pack8Mask)
-        outMask[0] = _mm256_movemask_epi8(_mm256_cmpgt_epi8(outVec[0], kZero));
-    else
-        outVec[0] = _mm256_max_epi8(outVec[0], kZero);
-}
-
-int NNUE::evaluateBoard(const Arcanum::Board& board)
-{
-    NN::Accumulator accumulator;
-    initializeAccumulator(accumulator, board);
-    return evaluate(accumulator, board.getTurn());
-}
-
-// Calculates the activated and deactivated indices of a selected perspective
-// There can be at most 1 activated index, and 2 deactivated indices in case of captures
-// The returned value is the number of deactivated indices
-uint32_t NNUE::m_calculateChangedIndices(uint32_t& activated, std::array<uint32_t, 2>& deactivated, const Arcanum::Color perspective, const Arcanum::Move& move, const Arcanum::Board board)
-{
-    uint8_t kingSquare = orientSquare(perspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, perspective)));
-    // It is assumed that the move is already made, and that the color of the moved piece is the opposite of the board turn
-    Arcanum::Piece movedPiece = Arcanum::Piece(lsb64(MOVED_PIECE(move.moveInfo)) + Arcanum::B_PAWN * (1^board.getTurn()));
-    if(PROMOTED_PIECE(move.moveInfo))
+    for(uint32_t i = 0; i < dimIn / 2; i++)
     {
-        Arcanum::Piece promotedPiece = Arcanum::Piece(lsb64(PROMOTED_PIECE(move.moveInfo)) - 11 + Arcanum::B_PAWN * (1^board.getTurn()));
-        activated = findex(perspective, move.to, promotedPiece, kingSquare);
-    }
-    else
-    {
-        activated = findex(perspective, move.to, movedPiece, kingSquare);
-    }
+        // Load alternating input[2*i] and input[2*i + 1] into factor
+        // This is done as _mm256_maddubs_epi16 is calculated as (a_1*b_1 + a_2*b_2)
+        // Where a is the weights and b is input.
+        uint16_t factors16 = uint16_t((input[2*i + 1] << 8) | input[2*i]);
 
-    deactivated[0] = findex(perspective, move.from, movedPiece, kingSquare);
+        // Skip this calculation if the input is zero
+        // These calculations have no effect on the result, and ReLU may clamp a lot of inputs to zero.
+        if(factors16 == 0) continue;
+        __m256i factor = _mm256_set1_epi16(factors16);
 
-    if(!CAPTURED_PIECE(move.moveInfo))
-        return 1; // If there is no capture, there is only 1 deactivated index
-
-    // It is assumed that the move is already made, and that the color of the captured piece is the board turn
-    Arcanum::Piece capturedPiece = Arcanum::Piece(lsb64(CAPTURED_PIECE(move.moveInfo)) - 16 + Arcanum::B_PAWN * board.getTurn());
-    if(move.moveInfo & Arcanum::ENPASSANT)
-    {
-        // getTurn returns the color of the captured piece in this case
-        uint8_t targetSquare = board.getTurn() == Arcanum::Color::BLACK ? (move.to - 8) : (move.to + 8);
-        deactivated[1] = findex(perspective, targetSquare, capturedPiece, kingSquare);
-    }
-    else
-        deactivated[1] = findex(perspective, move.to, capturedPiece, kingSquare);
-
-    return 2;
-}
-
-// Note on a normal chess board 30 is the maximum number of pieces without the king
-// In the case where there are more pieces, eg. in a custom setup, this will not work.
-uint32_t NNUE::m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, const Arcanum::Color perspective, const Arcanum::Board& board)
-{
-    int idxCounter = 0;
-
-    uint8_t kingSquare = orientSquare(perspective, lsb64(board.getTypedPieces(Arcanum::Piece::W_KING, perspective)));
-
-    // Pawns
-    Arcanum::bitboard_t whitePawns = board.getTypedPieces(Arcanum::Piece::W_PAWN, Arcanum::Color::WHITE);
-    while (whitePawns) { indicies[idxCounter++] = findex(perspective, popLsb64(&whitePawns), Arcanum::W_PAWN, kingSquare); }
-    Arcanum::bitboard_t blackPawns = board.getTypedPieces(Arcanum::Piece::W_PAWN, Arcanum::Color::BLACK);
-    while (blackPawns) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackPawns), Arcanum::B_PAWN, kingSquare); }
-
-    // Rooks
-    Arcanum::bitboard_t whiteRooks = board.getTypedPieces(Arcanum::Piece::W_ROOK, Arcanum::Color::WHITE);
-    while (whiteRooks) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteRooks), Arcanum::W_ROOK, kingSquare); }
-    Arcanum::bitboard_t blackRooks = board.getTypedPieces(Arcanum::Piece::W_ROOK, Arcanum::Color::BLACK);
-    while (blackRooks) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackRooks), Arcanum::B_ROOK, kingSquare); }
-
-    // Knights
-    Arcanum::bitboard_t whiteKnights = board.getTypedPieces(Arcanum::Piece::W_KNIGHT, Arcanum::Color::WHITE);
-    while (whiteKnights) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteKnights), Arcanum::W_KNIGHT, kingSquare); }
-    Arcanum::bitboard_t blackKnights = board.getTypedPieces(Arcanum::Piece::W_KNIGHT, Arcanum::Color::BLACK);
-    while (blackKnights) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackKnights), Arcanum::B_KNIGHT, kingSquare); }
-
-    // Bishops
-    Arcanum::bitboard_t whiteBishops = board.getTypedPieces(Arcanum::Piece::W_BISHOP, Arcanum::Color::WHITE);
-    while (whiteBishops) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteBishops), Arcanum::W_BISHOP, kingSquare); }
-    Arcanum::bitboard_t blackBishops = board.getTypedPieces(Arcanum::Piece::W_BISHOP, Arcanum::Color::BLACK);
-    while (blackBishops) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackBishops), Arcanum::B_BISHOP, kingSquare); }
-
-    // Queens
-    Arcanum::bitboard_t whiteQueens = board.getTypedPieces(Arcanum::Piece::W_QUEEN, Arcanum::Color::WHITE);
-    while (whiteQueens) { indicies[idxCounter++] = findex(perspective, popLsb64(&whiteQueens), Arcanum::W_QUEEN, kingSquare); }
-    Arcanum::bitboard_t blackQueens = board.getTypedPieces(Arcanum::Piece::W_QUEEN, Arcanum::Color::BLACK);
-    while (blackQueens) { indicies[idxCounter++] = findex(perspective, popLsb64(&blackQueens), Arcanum::B_QUEEN, kingSquare); }
-
-    if(idxCounter > 30)
-        ERROR("Too many pieces on the board")
-
-    return idxCounter;
-}
-
-void NNUE::initializeAccumulator(Accumulator& accumulator, const Arcanum::Board& board)
-{
-    m_initializeAccumulatorPerspective(accumulator, Arcanum::Color::WHITE, board);
-    m_initializeAccumulatorPerspective(accumulator, Arcanum::Color::BLACK, board);
-}
-
-void NNUE::m_initializeAccumulatorPerspective(Accumulator& accumulator, const Arcanum::Color perspective, const Arcanum::Board& board)
-{
-    constexpr uint32_t registerWidth = 256 / 16; // Number of int16_t in AVX2 register
-    constexpr uint32_t numRegs = 256 / registerWidth;
-    __m256i regs[numRegs]; // Temp accumulators in AVX register
-
-    // Calculate the active feature indices
-    std::array<uint32_t, 30> indicies;
-    uint32_t numIndices = m_calculateActiveIndices(indicies, perspective, board);
-
-    // Load bias to registers
-    for(uint32_t i = 0; i < numRegs; i++)
-    {
-        regs[i] = _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.biases[i * registerWidth]));
-    }
-
-    // Add the active features
-    for(uint32_t i = 0; i < numIndices; i++){
-        uint32_t featureIndex = indicies[i];
-        for(uint32_t j = 0; j < numRegs; j++)
+        for(uint32_t j = 0; j < dimOut / 32; j++)
         {
-            regs[j] = _mm256_add_epi16(regs[j], _mm256_load_si256((__m256i*) ALIGN64(&m_featureTransformer.weights[featureIndex * 256 + j * registerWidth])));
+            // Load the weights
+            __m256i weights1 = _mm256_load_si256((__m256i*) (weights + j * 32 + (2*i + 0) * dimOut));
+            __m256i weights2 = _mm256_load_si256((__m256i*) (weights + j * 32 + (2*i + 1) * dimOut));
+
+            // Alternate the weights
+            __m256i weightPackLo = _mm256_unpacklo_epi8(weights1, weights2);
+            __m256i weightPackHi = _mm256_unpackhi_epi8(weights1, weights2);
+
+            // Calulate the products
+            // Each prodXX contains 16 partial product sums
+            __m256i prodLo = _mm256_maddubs_epi16(factor, weightPackLo);
+            __m256i prodHi = _mm256_maddubs_epi16(factor, weightPackHi);
+
+            // Sign extend these products to be 32-bit
+            __m256i signs = _mm256_cmpgt_epi16(zero, prodLo);
+            __m256i prodLoLo = _mm256_unpacklo_epi16(prodLo, signs);
+            __m256i prodLoHi = _mm256_unpackhi_epi16(prodLo, signs);
+
+                    signs = _mm256_cmpgt_epi16(zero, prodHi);
+            __m256i prodHiLo = _mm256_unpacklo_epi16(prodHi, signs);
+            __m256i prodHiHi = _mm256_unpackhi_epi16(prodHi, signs);
+
+            // Add the 32-bit products to the 32-bit accumulator registers
+            regs[4*j + 0] = _mm256_add_epi32(regs[4*j + 0], prodLoLo);
+            regs[4*j + 1] = _mm256_add_epi32(regs[4*j + 1], prodLoHi);
+            regs[4*j + 2] = _mm256_add_epi32(regs[4*j + 2], prodHiLo);
+            regs[4*j + 3] = _mm256_add_epi32(regs[4*j + 3], prodHiHi);
         }
     }
 
-    // Write the registers to the the accumulator
-    for(uint32_t i = 0; i < numRegs; i++)
+    alignas(8) const uint32_t permuateIdx[8] = {0, 4, 1, 5, 2, 6, 3, 7};
+
+    for(uint32_t j = 0; j < dimOut / 32; j++)
     {
-        _mm256_store_si256((__m256i*)&accumulator.acc[perspective][i * registerWidth], regs[i]);
+        // Pack the 32-bit accumulator to 16-bit
+        __m256i out16_0 = _mm256_packs_epi32(regs[4*j + 0], regs[4*j + 1]);
+        __m256i out16_1 = _mm256_packs_epi32(regs[4*j + 2], regs[4*j + 3]);
+
+        // Right shift by 6
+        out16_0 = _mm256_srai_epi16(out16_0, 6);
+        out16_1 = _mm256_srai_epi16(out16_1, 6);
+
+        // Pack the 16-bit accumulator to 8-bit
+        __m256i out8    = _mm256_packs_epi16(out16_0, out16_1);
+
+        // Shuffle the result
+        out8 = _mm256_permutevar8x32_epi32(out8, _mm256_load_si256((__m256i*)permuateIdx));
+
+        // Clamp the signed 8-bit values between 0 and 127
+                out8    = _mm256_max_epi8(out8, zero);
+
+        // Store the output
+        _mm256_store_si256((__m256i*)(output + j*32), out8);
     }
 }
 
-void NNUE::m_loadHeader(std::ifstream& stream)
+Arcanum::eval_t NNUE::evaluateBoard(const Arcanum::Board& board)
 {
-    std::string description;
-    uint32_t version  = ifstreamGet<uint32_t>(stream);
-    uint32_t hash     = ifstreamGet<uint32_t>(stream);
-    uint32_t descSize = ifstreamGet<uint32_t>(stream);
-
-    description.resize(descSize);
-    stream.read(description.data(), descSize);
-
-    LOG("NNUE Version:        " << version)
-    LOG("NNUE Hash:           " << hash)
-    LOG("Description :        " << description)
+    Accumulator acc;
+    initializeAccumulator(acc, board);
+    return evaluate(acc, board.getTurn());
 }
 
-void NNUE::m_loadWeights(std::ifstream& stream)
+uint32_t NNUE::m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece)
 {
-    // Allocate space for the transformer
-    m_featureTransformer.biases  = static_cast<FTBias*>(Memory::alignedMalloc(ftOuts * sizeof(FTBias), 64));
-    m_featureTransformer.weights = static_cast<FTWeight*>(Memory::alignedMalloc(ftIns * ftOuts * sizeof(FTWeight), 64));
+    if(color == BLACK)
+        square ^= 0x3F;
 
-    ifstreamGet<uint32_t>(stream); // Read unused hash
-    // Read the transformer
-    for(uint32_t i = 0; i < ftOuts; i++)
-        m_featureTransformer.biases[i] = ifstreamGet<FTBias>(stream);
-    for(uint32_t i = 0; i < ftIns*ftOuts; i++)
-        m_featureTransformer.weights[i] = ifstreamGet<FTWeight>(stream);
-
-    // Read network
-    ifstreamGet<uint32_t>(stream); // Read unused hash
-    for(uint32_t i = 0; i < l1outs; i++)
-        m_hiddenLayer1.biases[i] = ifstreamGet<Bias>(stream);
-    for(uint32_t r = 0; r < l1outs; r++)
-        for(uint32_t c = 0; c < 2*ftOuts; c++)
-            m_hiddenLayer1.weights[windex(r, c, 2*ftOuts)] = ifstreamGet<Weight>(stream);
-
-    for(uint32_t i = 0; i < l2outs; i++)
-        m_hiddenLayer2.biases[i] = ifstreamGet<Bias>(stream);
-    for(uint32_t r = 0; r < l2outs; r++)
-        for(uint32_t c = 0; c < l1outs; c++)
-            m_hiddenLayer2.weights[windex(r, c, l1outs)] = ifstreamGet<Weight>(stream);
-
-    for(uint32_t i = 0; i < lastouts; i++)
-        m_outputLayer.biases[i] = ifstreamGet<Bias>(stream);
-    for(uint32_t c = 0; c < l2outs; c++)
-        m_outputLayer.weights[c] = ifstreamGet<Weight>(stream);
-
-    m_permuteBiases(m_hiddenLayer1.biases);
-    m_permuteBiases(m_hiddenLayer2.biases);
+    return (uint32_t(piece) << 6) | uint32_t(square);
 }
 
-void NNUE::m_permuteBiases(Bias* biases)
+void NNUE::m_setFeature(Accumulator& acc, uint32_t findex, Arcanum::Color color)
 {
-    __m128i *b128 = (__m128i *)biases;
-    __m128i tmp[8];
-    tmp[0] = b128[0];
-    tmp[1] = b128[4];
-    tmp[2] = b128[1];
-    tmp[3] = b128[5];
-    tmp[4] = b128[2];
-    tmp[5] = b128[6];
-    tmp[6] = b128[3];
-    tmp[7] = b128[7];
-    memcpy(b128, tmp, 8 * sizeof(__m128i));
+    constexpr uint32_t numElementsInReg = 256 / 16; // Number of int16_t in (256 bit) AVX2 register
+    constexpr uint32_t numRegs = 128 / numElementsInReg;
+    __m256i reg; // Temp accumulators in AVX register
+    for(uint32_t i = 0; i < numRegs; i++)
+    {
+        reg = _mm256_load_si256((__m256i*) &acc.acc[color][i * numElementsInReg]);
+        reg = _mm256_add_epi16(reg, _mm256_load_si256((__m256i*) &(m_net->ftWeights[findex * 128 + i * numElementsInReg])));
+        _mm256_store_si256((__m256i*) &acc.acc[color][i * numElementsInReg], reg);
+    }
+}
+
+void NNUE::m_clearFeature(Accumulator& acc, uint32_t findex, Arcanum::Color color)
+{
+    constexpr uint32_t numElementsInReg = 256 / 16; // Number of int16_t in (256 bit) AVX2 register
+    constexpr uint32_t numRegs = 128 / numElementsInReg;
+    __m256i reg; // Temp accumulators in AVX register
+
+    for(uint32_t i = 0; i < numRegs; i++)
+    {
+        reg = _mm256_load_si256((__m256i*) &acc.acc[color][i * numElementsInReg]);
+        reg = _mm256_sub_epi16(reg, _mm256_load_si256((__m256i*) &(m_net->ftWeights[findex * 128 + i * numElementsInReg])));
+        _mm256_store_si256((__m256i*) &acc.acc[color][i * numElementsInReg], reg);
+    }
+}
+
+void NNUE::m_initializeAccumulatorBias(Accumulator& acc)
+{
+    constexpr uint32_t numElementsInReg = 256 / 16; // Number of int16_t in (256 bit) AVX2 register
+    constexpr uint32_t numRegs = 128 / numElementsInReg;
+    __m256i reg; // Temp accumulators in AVX register
+
+    for(uint32_t i = 0; i < numRegs; i++)
+    {
+        reg = _mm256_load_si256((__m256i*) &m_net->ftBiases[i * numElementsInReg]);
+        _mm256_store_si256((__m256i*) &acc.acc[WHITE][i * numElementsInReg], reg);
+        _mm256_store_si256((__m256i*) &acc.acc[BLACK][i * numElementsInReg], reg);
+    }
+}
+
+void NNUE::quantize()
+{
+    #define QUANTIZE(_w, _s, _t) for(uint32_t i = 0; i < _s; i++) m_net->_w[i] = static_cast<_t>(std::lroundf(m_floatNet._w->data()[i])); //static_cast<_t>(m_floatNet._w->data()[i]);
+
+    QUANTIZE(ftWeights, 384 * 128, int16_t)
+    QUANTIZE(ftBiases,  128,       int16_t)
+    QUANTIZE(l1Weights, 256 * 32,  int8_t)
+    QUANTIZE(l1Biases,  32,        int32_t)
+    QUANTIZE(l2Weights, 32 * 32,   int8_t)
+    QUANTIZE(l2Biases,  32,        int32_t)
+    QUANTIZE(l3Weights, 32,        int8_t)
+    QUANTIZE(l3Bias,    1,         int32_t)
+
+    #undef QUANTIZE
+}
+
+void NNUE::initBackPropagate()
+{
+    m_floatNet.ftWeights  = new Matrixf(128, 384);
+    m_floatNet.ftBiases   = new Matrixf(128, 1);
+    m_floatNet.l1Weights  = new Matrixf(32, 256);
+    m_floatNet.l1Biases   = new Matrixf(32, 1);
+    m_floatNet.l2Weights  = new Matrixf(32, 32);
+    m_floatNet.l2Biases   = new Matrixf(32, 1);
+    m_floatNet.l3Weights  = new Matrixf(1, 32);
+    m_floatNet.l3Bias     = new Matrixf(1, 1);
+
+    m_floatNet.ftWeights ->randomize(0.1f, 1.0f);
+    m_floatNet.ftBiases  ->randomize(0.1f, 1.0f);
+    m_floatNet.l1Weights ->randomize(0.1f, 1.0f);
+    m_floatNet.l1Biases  ->randomize(0.1f, 1.0f);
+    m_floatNet.l2Weights ->randomize(0.1f, 1.0f);
+    m_floatNet.l2Biases  ->randomize(0.1f, 1.0f);
+    m_floatNet.l3Weights ->randomize(-1.0f, 1.0f);
+    m_floatNet.l3Bias    ->randomize(-1.0f, 1.0f);
+}
+
+// http://neuralnetworksanddeeplearning.com/chap2.html
+void NNUE::backPropagate(Arcanum::Board& board, float result)
+{
+    constexpr float rate = 0.01f;
+    constexpr float e = 2.71828182846f;
+
+    // -- Set inputs
+
+    // Generate the feature set
+    Accumulator acc;
+    initializeAccumulator(acc, board);
+
+    Matrixf input1(384, 1);
+    Matrixf input2(384, 1);
+
+    uint32_t color = board.getTurn();
+    for(uint32_t k = 0; k < m_numActiveIndices[color]; k++)
+    {
+        uint32_t j = m_activeIndices[color][k];
+        input1.set(j, 0, 1.0f);
+    }
+
+    for(uint32_t k = 0; k < m_numActiveIndices[color^1]; k++)
+    {
+        uint32_t j = m_activeIndices[color][k];
+        input2.set(j, 0, 1.0f);
+    }
+
+    // -- Forward feeding
+    Matrixf accumulator1(128, 1);
+    Matrixf accumulator2(128, 1);
+    Matrixf accumulator(256, 1);
+    Matrixf hiddenOut1(32, 1);
+    Matrixf hiddenOut2(32, 1);
+    Matrixf output(1, 1);
+
+    m_floatNet.ftWeights->multiply(input1, accumulator1);
+    m_floatNet.ftWeights->multiply(input2, accumulator2);
+    accumulator1.add(*m_floatNet.ftBiases);
+    accumulator2.add(*m_floatNet.ftBiases);
+
+    // Concatinate the accumulators
+    for(uint32_t i = 0; i < 128; i++)
+    {
+        accumulator.data()[i] = accumulator1.data()[i];
+        accumulator.data()[i + 128] = accumulator2.data()[i];
+    }
+    accumulator.reluClamp();
+
+    m_floatNet.l1Weights->multiply(accumulator, hiddenOut1);
+    hiddenOut1.add(*m_floatNet.l1Biases);
+    hiddenOut1.scale(1 / 64.0f); // Scale to account for right bitshift of 6
+    hiddenOut1.reluClamp();
+
+    m_floatNet.l2Weights->multiply(hiddenOut1, hiddenOut2);
+    hiddenOut2.add(*m_floatNet.l2Biases);
+    hiddenOut2.scale(1 / 64.0f); // Scale to account for right bitshift of 6
+    hiddenOut2.reluClamp();
+
+    m_floatNet.l3Weights->multiply(hiddenOut2, output);
+    output.add(*m_floatNet.l3Bias);
+
+    float score = *output.data();
+    float sigmoid = 1.0f / (1.0f + pow(e, -score / 200.0f));
+    float error = pow(result - sigmoid, 2);
+    // Derivative of error
+    float derror = -((result - 1) * pow(e, score / 100.0f) + result * pow(e, score / 200.0f)) / (100.0f * pow(pow(e, score / 200.0f) + 1, 3));
+
+    DEBUG("Error = " << error << " DError = " << derror << " Expected = " << result << " Output = " << score)
+
+    // -- Calculation of auxillery coefficients
+
+    Matrixf delta4(1, 1);
+    Matrixf delta3(32, 1);
+    Matrixf delta2(32, 1);
+    Matrixf delta1(256, 1);
+
+    Matrixf delta1_1(128, 1);
+    Matrixf delta1_2(128, 1);
+
+    Matrixf hiddenOut2ReLuPrime     (32, 1);
+    Matrixf hiddenOut1ReLuPrime     (32, 1);
+    Matrixf accumulatorReLuPrime    (256, 1);
+
+    hiddenOut2ReLuPrime.add(hiddenOut2);
+    hiddenOut1ReLuPrime.add(hiddenOut1);
+    accumulatorReLuPrime.add(accumulator);
+
+    hiddenOut2ReLuPrime.reluPrime();
+    hiddenOut1ReLuPrime.reluPrime();
+    accumulatorReLuPrime.reluPrime();
+
+    delta4.set(0, 0, -derror); // Negaitve because we are minimizing
+
+    m_floatNet.l3Weights->transpose();
+    m_floatNet.l3Weights->multiply(delta4, delta3);
+    m_floatNet.l3Weights->transpose();
+    delta3.hadamard(hiddenOut2ReLuPrime);
+
+    m_floatNet.l2Weights->transpose();
+    m_floatNet.l2Weights->multiply(delta3, delta2);
+    m_floatNet.l2Weights->transpose();
+    delta2.hadamard(hiddenOut1ReLuPrime);
+
+    m_floatNet.l1Weights->transpose();
+    m_floatNet.l1Weights->multiply(delta2, delta1);
+    m_floatNet.l1Weights->transpose();
+    delta1.hadamard(accumulatorReLuPrime);
+
+    // Split the accumulator
+    for(uint32_t i = 0; i < 128; i++)
+    {
+        delta1_1.set(i, 0, delta1.data()[i]);
+        delta1_2.set(i, 0, delta1.data()[i + 128]);
+    }
+
+    // -- Calculation of gradient
+
+    Matrixf nablaFtWeights1 (128, 384);
+    Matrixf nablaFtWeights2 (128, 384);
+    Matrixf nablaFtBiases1  (128, 1);
+    Matrixf nablaFtBiases2  (128, 1);
+    Matrixf nablaL1Weights (32, 256);
+    Matrixf nablaL1Biases  (32, 1);
+    Matrixf nablaL2Weights (32, 32);
+    Matrixf nablaL2Biases  (32, 1);
+    Matrixf nablaL3Weights (1, 32);
+    Matrixf nablaL3Bias    (1, 1);
+
+    hiddenOut2.transpose();
+    hiddenOut1.transpose();
+    accumulator.transpose();
+
+    delta4.multiply(hiddenOut2, nablaL3Weights);
+    nablaL3Weights.scale(rate * 64.0f);
+    nablaL3Bias.add(delta4);
+    nablaL3Bias.scale(rate * 64.0f);
+
+    delta3.multiply(hiddenOut1, nablaL2Weights);
+    nablaL2Weights.scale(rate);
+    nablaL2Biases.add(delta3);
+    nablaL2Biases.scale(rate);
+
+    delta2.multiply(accumulator, nablaL1Weights);
+    nablaL1Weights.scale(rate);
+    nablaL1Biases.add(delta2);
+    nablaL1Biases.scale(rate);
+
+    input1.transpose();
+    input2.transpose();
+
+    delta1_1.multiply(input1, nablaFtWeights1);
+    nablaFtWeights1.scale(rate * 0.5f);
+    nablaFtBiases1.add(delta1_1);
+    nablaFtBiases1.scale(rate * 0.5f);
+
+    delta1_2.multiply(input2, nablaFtWeights2);
+    nablaFtWeights2.scale(rate * 0.5f);
+    nablaFtBiases2.add(delta1_2);
+    nablaFtBiases2.scale(rate * 0.5f);
+
+    m_floatNet.ftWeights->add(nablaFtWeights1);
+    m_floatNet.ftWeights->add(nablaFtWeights2);
+    m_floatNet.ftBiases->add(nablaFtBiases1);
+    m_floatNet.ftBiases->add(nablaFtBiases2);
+
+    m_floatNet.l1Weights->add(nablaL1Weights);
+    m_floatNet.l2Weights->add(nablaL2Weights);
+    m_floatNet.l3Weights->add(nablaL3Weights);
+
+    m_floatNet.l1Biases->add(nablaL1Biases);
+    m_floatNet.l2Biases->add(nablaL2Biases);
+    m_floatNet.l3Bias->add(nablaL3Bias);
 }
