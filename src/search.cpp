@@ -50,16 +50,6 @@ Searcher::~Searcher()
 
 }
 
-void Searcher::setEnableNNUE(bool enabled)
-{
-    m_evaluator.setEnableNNUE(enabled);
-}
-
-void Searcher::setHCEModelFile(std::string path)
-{
-    m_evaluator.setHCEModelFile(path);
-}
-
 void Searcher::resizeTT(uint32_t mbSize)
 {
     m_tt->resize(mbSize);
@@ -504,7 +494,7 @@ Move Searcher::search(Board board, SearchParameters parameters)
         EvalTrace alpha = EvalTrace(-INF);
         EvalTrace beta = EvalTrace(INF);
         Move bestMove = Move(0,0);
-        m_evaluator.initializeAccumulatorStack(board);
+        m_evaluator.initAccumulatorStack(board);
 
         for (int i = 0; i < numMoves; i++)  {
             const Move *move = moveSelector.getNextMove();

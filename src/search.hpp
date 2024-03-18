@@ -77,8 +77,6 @@ namespace Arcanum
             Move getBestMoveInTime(Board& board, uint32_t ms);
             Move search(Board board, SearchParameters parameters);
             void stop();
-            void setEnableNNUE(bool enabled);
-            void setHCEModelFile(std::string path);
             void resizeTT(uint32_t mbSize);
             void clearTT();
             SearchStats getStats();

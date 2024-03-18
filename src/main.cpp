@@ -4,7 +4,6 @@
 #include <test.hpp>
 #include <search.hpp>
 #include <uci.hpp>
-#include <tuning/tuning.hpp>
 #include <tuning/fenGen.hpp>
 using namespace Arcanum;
 
@@ -35,20 +34,12 @@ int main(int argc, char *argv[])
         if("--see-test"     == std::string(argv[i])) Test::see();
         if("--search-perf"  == std::string(argv[i])) Perf::search();
         if("--engine-perf"  == std::string(argv[i])) Perf::engineTest();
-
-        if("--tune" == std::string(argv[i]))
+        if("--train"        == std::string(argv[i]))
         {
-            Tuning::Tuner tuner = Tuning::Tuner();
-            if(argc < i + 3)
-            {
-                ERROR("Missing arguments for tuning '--tune input output dataset'")
-                exit(-1);
-            }
-            tuner.setInputFile(argv[i + 1]);
-            tuner.setOutputFile(argv[i + 2]);
-            tuner.setTrainingDataFilePath(argv[i + 3]);
-            tuner.start();
-            argc += 3;
+            NN::NNUE nnue = NN::NNUE();
+            nnue.load("../nnue/test768_180");
+            nnue.train(256, 128, "dataset.txt");
+            exit(-1);
         }
 
         if("--fengen" ==  std::string(argv[i]))
@@ -63,6 +54,7 @@ int main(int argc, char *argv[])
             dataCreator.start(10, argv[i + 2]);
             argc += 2;
         }
+
     }
 
     return 0;

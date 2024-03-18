@@ -7,44 +7,7 @@ namespace NN
 {
     struct Accumulator
     {
-        alignas(64) int16_t acc[2][128];
-
-        std::string toString() const
-        {
-            std::stringstream ss;
-            ss << "\nWHITE:";
-            for(uint8_t i = 0; i < 128; i++)
-            {
-                if(i % 32 == 0) ss << "\n";
-                ss << unsigned(acc[0][i]) << " ";
-            }
-
-            ss << "\n";
-
-            ss << "BLACK:";
-            for(uint8_t i = 0; i < 128; i++)
-            {
-                if(i % 32 == 0) ss << "\n";
-                ss << signed(acc[1][i]) << " ";
-            }
-
-            return ss.str();
-        }
-    };
-
-    struct Net
-    {
-        alignas(64) int16_t ftWeights[384 * 128];
-        alignas(64) int16_t ftBiases[128];
-
-        alignas(64) int8_t l1Weights[256 * 32];
-        alignas(64) int32_t l1Biases[32];
-
-        alignas(64) int8_t l2Weights[32 * 32];
-        alignas(64) int32_t l2Biases[32];
-
-        alignas(64) int8_t l3Weights[32];
-        alignas(64) int32_t l3Bias[1];
+        alignas(64) float acc[2][256];
     };
 
     struct FloatNet
@@ -59,40 +22,51 @@ namespace NN
         Matrixf* l3Bias;
     };
 
+    // Intermediate results in the net
+    struct Trace
+    {
+        Matrixf* input;         // Only used by backprop
+        Matrixf* accumulator;   // Post ReLU accumulator
+        Matrixf* hiddenOut1;
+        Matrixf* hiddenOut2;
+        Matrixf* out;           // Scalar output
+    };
+
     class NNUE
     {
         private:
-            // Intermediate results in the net
-            alignas(64) int8_t m_clampedAcc[2 * 128];
-            alignas(64) int8_t m_hiddenOut1[32];
-            alignas(64) int8_t m_hiddenOut2[32];
+            uint8_t m_numActiveIndices;
+            uint32_t m_activeIndices[32];
 
-            uint8_t m_numActiveIndices[2];
-            int32_t m_activeIndices[2][16];
-            Net* m_net;
+            Trace m_trace;
             FloatNet m_floatNet;
 
             uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
-            void m_initializeAccumulatorBias(Accumulator& acc);
-            void m_setFeature(Accumulator& acc, uint32_t findex, Arcanum::Color color);
-            void m_clearFeature(Accumulator& acc, uint32_t findex, Arcanum::Color color);
-            template<uint32_t dimIn, uint32_t dimOut>
-            void m_affineTransform(int8_t *input, int8_t *output, int32_t* biases, int8_t* weights);
-            int32_t m_affinePropagate(int8_t* input, int32_t* biases, int8_t* weights);
-
+            float m_predict(Accumulator* acc, Arcanum::Color perspective);
+            void m_calculateFeatures(const Arcanum::Board& board);
+            void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective);
+            void m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective);
+            void m_randomizeWeights();
+            void m_applyNabla(FloatNet& nabla);
+            void m_test();
+            void m_backPropagate(const Arcanum::Board& board, float result, FloatNet& nabla, float& totalError);
         public:
             NNUE();
             ~NNUE();
 
-            void randomizeFNNUE();
-            void quantize();
-            void backPropagate(Arcanum::Board& board, float result);
-            void loadQnnue(std::string filename);
-            void loadFnnue(std::string filename);
+            static void allocateFloatNet(FloatNet& net);
+            static void freeFloatNet(FloatNet& net);
+            static void allocateTrace(Trace& trace);
+            static void freeTrace(Trace& trace);
+
+            void train(uint32_t epochs, uint32_t batchSize, std::string dataset);
+            void load(std::string filename);
             void store(std::string filename);
-            void initializeAccumulator(Accumulator& acc, const Arcanum::Board& board);
-            void incrementAccumulator(Accumulator& accIn, Accumulator& accOut, Arcanum::Color color, const Arcanum::Board& board, const Arcanum::Move& move);
-            Arcanum::eval_t evaluate(Accumulator& acc, Arcanum::Color turn);
+
+            void initAccumulator(Accumulator* acc, const Arcanum::Board& board);
+            void incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum::Board& board, const Arcanum::Move& move);
+
             Arcanum::eval_t evaluateBoard(const Arcanum::Board& board);
+            Arcanum::eval_t evaluate(Accumulator* acc, Arcanum::Color turn);
     };
 }

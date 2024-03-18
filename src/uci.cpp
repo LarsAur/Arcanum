@@ -85,8 +85,6 @@ void UCI::loop()
             UCI_OUT("id author Lars Murud Aurud")
             UCI_OUT("option name Hash type spin default 32 min 0 max 8196")
             UCI_OUT("option name ClearHash type button")
-            UCI_OUT("option name UseNNUE type check default false")
-            UCI_OUT("option name HCEWeightFile type string default hceWeights.dat")
             UCI_OUT("option name SyzygyPath type string default <empty>")
             UCI_OUT("uciok")
         }
@@ -144,21 +142,6 @@ void UCI::setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, 
         uint32_t mbSize;
         is >> std::skipws >> mbSize;
         searcher.resizeTT(mbSize);
-    }
-    else if(strcmp(name.c_str(), "usennue") == 0)
-    {
-        std::string b;
-        is >> std::skipws >> b;
-        std::transform(b.begin(), b.end(), b.begin(), [](unsigned char c){ return std::tolower(c); });
-        if(strcmp(b.c_str(), "true") == 0)       {searcher.setEnableNNUE(true); evaluator.setEnableNNUE(true); }
-        else if(strcmp(b.c_str(), "false") == 0) {searcher.setEnableNNUE(false); evaluator.setEnableNNUE(false); }
-    }
-    else if(strcmp(name.c_str(), "hceweightfile") == 0)
-    {
-        std::string str;
-        is >> std::skipws >> str;
-        evaluator.setHCEModelFile(str);
-        searcher.setHCEModelFile(str);
     }
     else if(strcmp(name.c_str(), "syzygypath") == 0)
     {
@@ -336,7 +319,7 @@ void UCI::sendUciBestMove(const Arcanum::Move& move)
 // Returns the statc eval score for white
 void UCI::eval(Board& board, Evaluator& evaluator)
 {
-    evaluator.initializeAccumulatorStack(board);
+    evaluator.initAccumulatorStack(board);
     UCI_OUT(evaluator.evaluate(board, 0).total)
 }
 

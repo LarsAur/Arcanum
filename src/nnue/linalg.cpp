@@ -2,12 +2,13 @@
 #include <utils.hpp>
 #include <sstream>
 #include <iomanip>
+#include <memory.hpp>
 
 using namespace NN;
 
 Matrixf::Matrixf(uint32_t rows, uint32_t cols)
 {
-    m_data = new float[cols * rows];
+    m_data = static_cast<float*>(Memory::alignedMalloc(cols * rows * sizeof(float), 64));
     m_rows = rows;
     m_cols = cols;
 
@@ -21,7 +22,7 @@ Matrixf::Matrixf(uint32_t rows, uint32_t cols)
 
 Matrixf::~Matrixf()
 {
-    delete m_data;
+    Memory::alignedFree(m_data);
 }
 
 void Matrixf::setZero()
@@ -35,7 +36,7 @@ void Matrixf::setZero()
 void Matrixf::multiply(Matrixf& matrixIn, Matrixf& matrixOut)
 {
     // -- Verify the dimensions match
-
+    matrixOut.setZero();
     if(m_cols != matrixIn.m_rows)
     {
         ERROR("Input dimension does not match for "
@@ -71,6 +72,48 @@ void Matrixf::multiply(Matrixf& matrixIn, Matrixf& matrixOut)
     }
 }
 
+// Multiply this vector by the transpose of a sparse binary (0 or 1) vector to produce a matrix
+// The input vector should not be transposed
+// TODO: For now only for 256 x 768
+void Matrixf::vectorMultTransposedSparseVector(Matrixf& tvector, Matrixf& matrixOut)
+{
+    if(m_cols != 1)
+    {
+        ERROR("This is not a vector")
+    }
+
+    if(tvector.m_cols != 1)
+    {
+        ERROR("Input is not a vector")
+    }
+
+    if(matrixOut.m_cols != tvector.m_rows || matrixOut.m_rows != m_rows)
+    {
+        ERROR("Output matrix dimensions does not match")
+    }
+
+    for(uint32_t i = 0; i < 256; i+=32)
+    {
+
+        __m256 weights = _mm256_load_ps(m_data + i);
+
+        for(uint32_t j = 0; j < 768; j++)
+        {
+            float f = tvector.m_data[j];
+            if(f == 0)
+            {
+                _mm256_store_ps(matrixOut.m_data + matrixOut.m_rows * j + i, _mm256_setzero_ps());
+            }
+            else
+            {
+                // __m256 factor = _mm256_set1_ps(1);
+                // __m256 res = _mm256_mul_ps(weights, factor);
+                _mm256_store_ps(matrixOut.m_data + matrixOut.m_rows * j + i, weights);
+            }
+        }
+    }
+}
+
 void Matrixf::scale(float scalar)
 {
     for(uint32_t i = 0; i < m_cols * m_rows; i++)
@@ -96,7 +139,7 @@ void Matrixf::add(Matrixf& matrix)
 
 void Matrixf::transpose()
 {
-    float* transpose = new float[m_cols * m_rows];
+    float* transpose = static_cast<float*>(Memory::alignedMalloc(m_cols * m_rows * sizeof(float), 64));
 
     if(transpose == nullptr)
     {
@@ -111,7 +154,7 @@ void Matrixf::transpose()
         }
     }
 
-    delete m_data;
+    Memory::alignedFree(m_data);
     m_data = transpose;
 
     uint32_t tmp = m_rows;
@@ -143,7 +186,7 @@ void Matrixf::reluClamp()
     for(uint32_t row = 0; row < m_rows; row++)
     {
         // Clamp the values between 0 and 128 emulating int8_t
-        m_data[row] = std::max(std::min(m_data[row], 128.0f), 0.0f);
+        m_data[row] = std::max(m_data[row], 0.0f);
     }
 }
 
@@ -213,6 +256,6 @@ void Matrixf::log()
         {
             ss << std::setfill(' ') << std::setw(3) << m_data[col * m_rows + row];
         }
-        DEBUG(ss.str())
+        LOG(ss.str())
     }
 }
