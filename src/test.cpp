@@ -361,11 +361,11 @@ void Test::symmetricEvaluation()
         Evaluator eval = Evaluator();
         std::string fen = getRandomSymmetricFEN();
         Board board(fen);
-        EvalTrace score = eval.evaluate(board, 0);
-        if(score.total != 0 && abs(score.total) != 32767)
+        eval_t score = eval.evaluate(board, 0);
+        if(score != 0 && abs(score) != 32767)
         {
             success = false;
-            ERROR("Uneven evaluation for symmetric position: \n Evaluation: " << score.total << "\n" << board.getBoardString())
+            ERROR("Uneven evaluation for symmetric position: \n Evaluation: " << score << "\n" << board.getBoardString())
         }
     }
 
@@ -382,13 +382,13 @@ void Test::symmetricEvaluation()
         Board b1 = Board(fenPair.first);
         Board b2 = Board(fenPair.second);
 
-        EvalTrace score1 = eval1.evaluate(b1, 0);
-        EvalTrace score2 = eval2.evaluate(b2, 0);
+        eval_t score1 = eval1.evaluate(b1, 0);
+        eval_t score2 = eval2.evaluate(b2, 0);
 
-        if(score1.total != -score2.total)
+        if(score1 != -score2)
         {
             success = false;
-            ERROR("Uneven evaluation for equal positions: \n Evaluation: " << score1.total << " " << score2.total << "\n" << b1.getBoardString() << "\n" << b2.getBoardString())
+            ERROR("Uneven evaluation for equal positions: \n Evaluation: " << score1 << " " << score2 << "\n" << b1.getBoardString() << "\n" << b2.getBoardString())
         }
     }
 

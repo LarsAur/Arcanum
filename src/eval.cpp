@@ -4,12 +4,6 @@
 
 using namespace Arcanum;
 
-bool EvalTrace::operator==(const EvalTrace& other) const { return total == other.total; }
-bool EvalTrace::operator> (const EvalTrace& other) const { return total > other.total;  }
-bool EvalTrace::operator< (const EvalTrace& other) const { return total < other.total;  }
-bool EvalTrace::operator>=(const EvalTrace& other) const { return total >= other.total; }
-bool EvalTrace::operator<=(const EvalTrace& other) const { return total <= other.total; }
-
 Evaluator::Evaluator()
 {
     m_accumulatorStackPointer = 0;
@@ -72,20 +66,20 @@ void Evaluator::popMoveFromAccumulator()
     m_accumulatorStackPointer--;
 }
 
-bool Evaluator::isCheckMateScore(EvalTrace eval)
+bool Evaluator::isCheckMateScore(eval_t eval)
 {
-    return std::abs(eval.total) > MATE_SCORE - MAX_MATE_DISTANCE;
+    return std::abs(eval) > MATE_SCORE - MAX_MATE_DISTANCE;
 }
 
-bool Evaluator::isTbCheckMateScore(EvalTrace eval)
+bool Evaluator::isTbCheckMateScore(eval_t eval)
 {
-    return std::abs(eval.total) > (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isCheckMateScore(eval);
+    return std::abs(eval) > (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isCheckMateScore(eval);
 }
 
 // Evaluates positive value for WHITE
-EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
+eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
 {
-    EvalTrace eval = EvalTrace(0);
+    eval_t eval = 0;
 
     // If it is known from search that the position has no moves
     // Checking for legal moves can be skipped
@@ -96,7 +90,7 @@ EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
     {
         if(board.isChecked(board.m_turn))
         {
-            eval.total = board.m_turn == WHITE ? -MATE_SCORE + plyFromRoot : MATE_SCORE - plyFromRoot;
+            eval = board.m_turn == WHITE ? -MATE_SCORE + plyFromRoot : MATE_SCORE - plyFromRoot;
             return eval;
         }
 
@@ -109,7 +103,6 @@ EvalTrace Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
         m_accumulatorStack[m_accumulatorStackPointer],
         board.getTurn()
     );
-    eval.total = board.m_turn == WHITE ? score : -score;
 
-    return eval;
+    return board.m_turn == WHITE ? score : -score;
 }

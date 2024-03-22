@@ -128,7 +128,7 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
             ttEntry_t retEntry = entry;
             if(Evaluator::isCheckMateScore(entry.value) || Evaluator::isTbCheckMateScore(entry.value))
             {
-                retEntry.value.total = entry.value > 0 ? entry.value.total - plyFromRoot : entry.value.total + plyFromRoot;
+                retEntry.value = entry.value > 0 ? entry.value - plyFromRoot : entry.value + plyFromRoot;
             }
             return retEntry;
         }
@@ -147,7 +147,7 @@ inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
            + (newEntry.generation - oldEntry.generation);
 }
 
-void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, uint8_t generation, uint8_t numNonRevMovesRoot, uint8_t numNonRevMoves, hash_t hash)
+void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, uint8_t generation, uint8_t numNonRevMovesRoot, uint8_t numNonRevMoves, hash_t hash)
 {
     if(!m_table)
         return;
@@ -167,7 +167,7 @@ void TranspositionTable::add(EvalTrace score, Move bestMove, uint8_t depth, uint
 
     if(Evaluator::isCheckMateScore(entry.value) || Evaluator::isTbCheckMateScore(entry.value))
     {
-        entry.value.total = entry.value > 0 ? entry.value.total + plyFromRoot : entry.value.total - plyFromRoot;
+        entry.value = entry.value > 0 ? entry.value + plyFromRoot : entry.value - plyFromRoot;
     }
 
     #if TT_RECORD_STATS

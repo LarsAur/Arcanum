@@ -19,7 +19,7 @@ namespace Arcanum
     typedef struct ttEntry_t
     {
         ttEntryHash_t hash;
-        EvalTrace value;
+        eval_t value;
         uint8_t depth;     // Depth == UINT8_MAX is invalid
         uint8_t flags;
         uint8_t generation;
@@ -68,7 +68,7 @@ namespace Arcanum
 
             void prefetch(hash_t hash);
             std::optional<ttEntry_t>get(hash_t hash, uint8_t plyFromRoot);
-            void add(EvalTrace score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, uint8_t generation, uint8_t nonRevMovesRoot, uint8_t nonRevMoves, hash_t hash);
+            void add(eval_t score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, uint8_t flags, uint8_t generation, uint8_t nonRevMovesRoot, uint8_t nonRevMoves, hash_t hash);
             void resize(uint32_t mbSize);
             void clear();
             void clearStats();
