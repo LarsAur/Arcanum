@@ -47,7 +47,7 @@ namespace NN
             void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective);
             void m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective);
             void m_randomizeWeights();
-            void m_applyNabla(FloatNet& nabla);
+            void m_applyNabla(FloatNet& nabla, FloatNet& momentum);
             void m_test();
             void m_backPropagate(const Arcanum::Board& board, float result, FloatNet& nabla, float& totalError);
         public:

@@ -471,16 +471,36 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float target, FloatNet& 
     nabla.l3Bias->add(nablaL3Bias);
 }
 
-void NNUE::m_applyNabla(FloatNet& nabla)
+void NNUE::m_applyNabla(FloatNet& nabla, FloatNet& momentum)
 {
-    m_floatNet.ftWeights->add(*nabla.ftWeights);
-    m_floatNet.ftBiases->add(*nabla.ftBiases);
-    m_floatNet.l1Weights->add(*nabla.l1Weights);
-    m_floatNet.l2Weights->add(*nabla.l2Weights);
-    m_floatNet.l3Weights->add(*nabla.l3Weights);
-    m_floatNet.l1Biases->add(*nabla.l1Biases);
-    m_floatNet.l2Biases->add(*nabla.l2Biases);
-    m_floatNet.l3Bias->add(*nabla.l3Bias);
+    constexpr float gamma = 0.5f;
+
+    momentum.ftWeights->scale(gamma);
+    momentum.ftBiases->scale(gamma);
+    momentum.l1Weights->scale(gamma);
+    momentum.l2Weights->scale(gamma);
+    momentum.l3Weights->scale(gamma);
+    momentum.l1Biases->scale(gamma);
+    momentum.l2Biases->scale(gamma);
+    momentum.l3Bias->scale(gamma);
+
+    momentum.ftWeights->add(*nabla.ftWeights);
+    momentum.ftBiases->add(*nabla.ftBiases);
+    momentum.l1Weights->add(*nabla.l1Weights);
+    momentum.l2Weights->add(*nabla.l2Weights);
+    momentum.l3Weights->add(*nabla.l3Weights);
+    momentum.l1Biases->add(*nabla.l1Biases);
+    momentum.l2Biases->add(*nabla.l2Biases);
+    momentum.l3Bias->add(*nabla.l3Bias);
+
+    m_floatNet.ftWeights->add(*momentum.ftWeights);
+    m_floatNet.ftBiases->add(*momentum.ftBiases);
+    m_floatNet.l1Weights->add(*momentum.l1Weights);
+    m_floatNet.l2Weights->add(*momentum.l2Weights);
+    m_floatNet.l3Weights->add(*momentum.l3Weights);
+    m_floatNet.l1Biases->add(*momentum.l1Biases);
+    m_floatNet.l2Biases->add(*momentum.l2Biases);
+    m_floatNet.l3Bias->add(*momentum.l3Bias);
 }
 
 void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
@@ -489,6 +509,9 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
     // Nabla is the accumulator of the changes in a batch
     FloatNet nabla;
     allocateFloatNet(nabla);
+
+    FloatNet momentum;
+    allocateFloatNet(momentum);
 
     std::string header;
     std::string strResult;
@@ -553,7 +576,7 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             nabla.l3Weights ->scale(rate / gamesInCurrentBatch);
             nabla.l3Bias    ->scale(rate / gamesInCurrentBatch);
 
-            m_applyNabla(nabla);
+            m_applyNabla(nabla, momentum);
         }
 
         DEBUG("Avg. Error = " << (epochError / gamesInEpoch))
