@@ -37,8 +37,8 @@ int main(int argc, char *argv[])
         if("--train"        == std::string(argv[i]))
         {
             NN::NNUE nnue = NN::NNUE();
-            nnue.load("../nnue/test768_180");
-            nnue.train(256, 128, "dataset.txt");
+            nnue.load("../nnue/test768x128x16_117");
+            nnue.train(256, 16384, "dataset.txt");
             exit(-1);
         }
 

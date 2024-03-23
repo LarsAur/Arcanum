@@ -7,8 +7,7 @@ using namespace Arcanum;
 Evaluator::Evaluator()
 {
     m_accumulatorStackPointer = 0;
-    m_nnue.load("../nnue/test768_180");
-
+    m_nnue.load("../nnue/test768x128x16_117");
 }
 
 Evaluator::~Evaluator()

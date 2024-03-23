@@ -7,7 +7,7 @@ namespace NN
 {
     struct Accumulator
     {
-        alignas(64) float acc[2][256];
+        alignas(64) float acc[2][128];
     };
 
     struct FloatNet

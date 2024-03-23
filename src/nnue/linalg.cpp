@@ -74,7 +74,7 @@ void Matrixf::multiply(Matrixf& matrixIn, Matrixf& matrixOut)
 
 // Multiply this vector by the transpose of a sparse binary (0 or 1) vector to produce a matrix
 // The input vector should not be transposed
-// TODO: For now only for 256 x 768
+// TODO: For now only for 128 x 768
 void Matrixf::vectorMultTransposedSparseVector(Matrixf& tvector, Matrixf& matrixOut)
 {
     if(m_cols != 1)
@@ -92,7 +92,7 @@ void Matrixf::vectorMultTransposedSparseVector(Matrixf& tvector, Matrixf& matrix
         ERROR("Output matrix dimensions does not match")
     }
 
-    for(uint32_t i = 0; i < 256; i+=32)
+    for(uint32_t i = 0; i < 128; i+=32)
     {
 
         __m256 weights = _mm256_load_ps(m_data + i);
@@ -106,8 +106,6 @@ void Matrixf::vectorMultTransposedSparseVector(Matrixf& tvector, Matrixf& matrix
             }
             else
             {
-                // __m256 factor = _mm256_set1_ps(1);
-                // __m256 res = _mm256_mul_ps(weights, factor);
                 _mm256_store_ps(matrixOut.m_data + matrixOut.m_rows * j + i, weights);
             }
         }

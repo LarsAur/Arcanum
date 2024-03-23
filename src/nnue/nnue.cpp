@@ -11,13 +11,13 @@ using namespace Arcanum;
 
 void NNUE::allocateFloatNet(FloatNet& net)
 {
-    net.ftWeights  = new Matrixf(256, 768);
-    net.ftBiases   = new Matrixf(256, 1);
-    net.l1Weights  = new Matrixf(32, 256);
-    net.l1Biases   = new Matrixf(32, 1);
-    net.l2Weights  = new Matrixf(32, 32);
-    net.l2Biases   = new Matrixf(32, 1);
-    net.l3Weights  = new Matrixf(1, 32);
+    net.ftWeights  = new Matrixf(128, 768);
+    net.ftBiases   = new Matrixf(128, 1);
+    net.l1Weights  = new Matrixf(16, 128);
+    net.l1Biases   = new Matrixf(16, 1);
+    net.l2Weights  = new Matrixf(16, 16);
+    net.l2Biases   = new Matrixf(16, 1);
+    net.l3Weights  = new Matrixf(1, 16);
     net.l3Bias     = new Matrixf(1, 1);
 }
 
@@ -36,9 +36,9 @@ void NNUE::freeFloatNet(FloatNet& net)
 void NNUE::allocateTrace(Trace& trace)
 {
     trace.input              = new Matrixf(768, 1);
-    trace.accumulator        = new Matrixf(256, 1);
-    trace.hiddenOut1         = new Matrixf(32, 1);
-    trace.hiddenOut2         = new Matrixf(32, 1);
+    trace.accumulator        = new Matrixf(128, 1);
+    trace.hiddenOut1         = new Matrixf(16, 1);
+    trace.hiddenOut2         = new Matrixf(16, 1);
     trace.out                = new Matrixf(1, 1);
 }
 
@@ -80,13 +80,13 @@ void NNUE::load(std::string filename)
         return;
     }
 
-    is.read((char*) m_floatNet.ftWeights->data(), 768 * 256 * sizeof(float));
-    is.read((char*) m_floatNet.ftBiases->data(),        256 * sizeof(float));
-    is.read((char*) m_floatNet.l1Weights->data(), 256 *  32 * sizeof(float));
-    is.read((char*) m_floatNet.l1Biases->data(),         32 * sizeof(float));
-    is.read((char*) m_floatNet.l2Weights->data(),  32 *  32 * sizeof(float));
-    is.read((char*) m_floatNet.l2Biases->data(),         32 * sizeof(float));
-    is.read((char*) m_floatNet.l3Weights->data(),        32 * sizeof(float));
+    is.read((char*) m_floatNet.ftWeights->data(), 768 * 128 * sizeof(float));
+    is.read((char*) m_floatNet.ftBiases->data(),        128 * sizeof(float));
+    is.read((char*) m_floatNet.l1Weights->data(), 128 *  16 * sizeof(float));
+    is.read((char*) m_floatNet.l1Biases->data(),         16 * sizeof(float));
+    is.read((char*) m_floatNet.l2Weights->data(),  16 *  16 * sizeof(float));
+    is.read((char*) m_floatNet.l2Biases->data(),         16 * sizeof(float));
+    is.read((char*) m_floatNet.l3Weights->data(),        16 * sizeof(float));
     is.read((char*) m_floatNet.l3Bias->data(),            1 * sizeof(float));
 
     is.close();
@@ -109,13 +109,13 @@ void NNUE::store(std::string filename)
         return;
     }
 
-    fstream.write((char*) m_floatNet.ftWeights->data(), 768 * 256 * sizeof(float));
-    fstream.write((char*) m_floatNet.ftBiases->data(),        256 * sizeof(float));
-    fstream.write((char*) m_floatNet.l1Weights->data(), 256 *  32 * sizeof(float));
-    fstream.write((char*) m_floatNet.l1Biases->data(),         32 * sizeof(float));
-    fstream.write((char*) m_floatNet.l2Weights->data(),  32 *  32 * sizeof(float));
-    fstream.write((char*) m_floatNet.l2Biases->data(),         32 * sizeof(float));
-    fstream.write((char*) m_floatNet.l3Weights->data(),        32 * sizeof(float));
+    fstream.write((char*) m_floatNet.ftWeights->data(), 768 * 128 * sizeof(float));
+    fstream.write((char*) m_floatNet.ftBiases->data(),        128 * sizeof(float));
+    fstream.write((char*) m_floatNet.l1Weights->data(), 128 *  16 * sizeof(float));
+    fstream.write((char*) m_floatNet.l1Biases->data(),         16 * sizeof(float));
+    fstream.write((char*) m_floatNet.l2Weights->data(),  16 *  16 * sizeof(float));
+    fstream.write((char*) m_floatNet.l2Biases->data(),         16 * sizeof(float));
+    fstream.write((char*) m_floatNet.l3Weights->data(),        16 * sizeof(float));
     fstream.write((char*) m_floatNet.l3Bias->data(),            1 * sizeof(float));
 
     fstream.close();
@@ -154,7 +154,7 @@ void NNUE::m_calculateFeatures(const Arcanum::Board& board)
 void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective)
 {
     constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 256 / regSize;
+    constexpr uint32_t numRegs = 128 / regSize;
     __m256 regs[numRegs];
 
     float* biasesPtr         = m_floatNet.ftBiases->data();
@@ -254,7 +254,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
     // -- Update the accumulators
 
     constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 256 / regSize;
+    constexpr uint32_t numRegs = 128 / regSize;
     __m256 regs[numRegs];
 
     float* weightsPtr        = m_floatNet.ftWeights->data();
@@ -330,7 +330,7 @@ void NNUE::m_randomizeWeights()
 void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective)
 {
     constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 256 / regSize;
+    constexpr uint32_t numRegs = 128 / regSize;
     __m256 zero = _mm256_setzero_ps();
     float* dst = m_trace.accumulator->data();
 
@@ -348,9 +348,9 @@ void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective)
 float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
 {
     m_reluAccumulator(acc, perspective);
-    feedForwardReLu<256, 32>(m_floatNet.l1Weights, m_floatNet.l1Biases, m_trace.accumulator, m_trace.hiddenOut1);
-    feedForwardReLu<32, 32>(m_floatNet.l2Weights, m_floatNet.l2Biases, m_trace.hiddenOut1, m_trace.hiddenOut2);
-    lastLevelFeedForward<32>(m_floatNet.l3Weights, m_floatNet.l3Bias, m_trace.hiddenOut2, m_trace.out);
+    feedForwardReLu<128, 16>(m_floatNet.l1Weights, m_floatNet.l1Biases, m_trace.accumulator, m_trace.hiddenOut1);
+    feedForwardReLu<16, 16>(m_floatNet.l2Weights, m_floatNet.l2Biases, m_trace.hiddenOut1, m_trace.hiddenOut2);
+    lastLevelFeedForward<16>(m_floatNet.l3Weights, m_floatNet.l3Bias, m_trace.hiddenOut2, m_trace.out);
     return *m_trace.out->data();
 }
 
@@ -358,7 +358,7 @@ float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
 void NNUE::m_backPropagate(const Arcanum::Board& board, float target, FloatNet& nabla, float& totalError)
 {
     constexpr float e = 2.71828182846f;
-    constexpr float SIG_FACTOR = 200.0f;
+    constexpr float SIG_FACTOR = 400.0f;
 
     // -- Run prediction
     Accumulator acc;
@@ -386,13 +386,13 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float target, FloatNet& 
 
     // -- Calculation of auxillery coefficients
     Matrixf delta4(1, 1);
-    Matrixf delta3(32, 1);
-    Matrixf delta2(32, 1);
-    Matrixf delta1(256, 1);
+    Matrixf delta3(16, 1);
+    Matrixf delta2(16, 1);
+    Matrixf delta1(128, 1);
 
-    Matrixf hiddenOut2ReLuPrime     (32, 1);
-    Matrixf hiddenOut1ReLuPrime     (32, 1);
-    Matrixf accumulatorReLuPrime    (256, 1);
+    Matrixf hiddenOut2ReLuPrime     (16, 1);
+    Matrixf hiddenOut1ReLuPrime     (16, 1);
+    Matrixf accumulatorReLuPrime    (128, 1);
 
     hiddenOut2ReLuPrime.add(*m_trace.hiddenOut2);
     hiddenOut1ReLuPrime.add(*m_trace.hiddenOut1);
@@ -421,13 +421,13 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float target, FloatNet& 
 
     // -- Calculation of gradient
 
-    Matrixf nablaFtWeights (256, 768);
-    Matrixf nablaFtBiases  (256, 1);
-    Matrixf nablaL1Weights (32, 256);
-    Matrixf nablaL1Biases  (32, 1);
-    Matrixf nablaL2Weights (32, 32);
-    Matrixf nablaL2Biases  (32, 1);
-    Matrixf nablaL3Weights (1, 32);
+    Matrixf nablaFtWeights (128, 768);
+    Matrixf nablaFtBiases  (128, 1);
+    Matrixf nablaL1Weights (16, 128);
+    Matrixf nablaL1Biases  (16, 1);
+    Matrixf nablaL2Weights (16, 16);
+    Matrixf nablaL2Biases  (16, 1);
+    Matrixf nablaL3Weights (1, 16);
     Matrixf nablaL3Bias    (1, 1);
 
     m_trace.hiddenOut2->transpose();
@@ -566,7 +566,7 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             gamesInEpoch += gamesInCurrentBatch;
             DEBUG("Epoch Size = " << gamesInEpoch << " BatchSize = " << gamesInCurrentBatch << " Error = " << error / gamesInCurrentBatch)
 
-            constexpr float rate    = 0.00001f;
+            constexpr float rate    = 0.0002f;
             nabla.ftWeights ->scale(rate / gamesInCurrentBatch);
             nabla.ftBiases  ->scale(rate / gamesInCurrentBatch);
             nabla.l1Weights ->scale(rate / gamesInCurrentBatch);
@@ -588,7 +588,7 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
         ofstream.close();
 
         std::stringstream ss;
-        ss << "../nnue/test768_" << epoch;
+        ss << "../nnue/test768x128x16_" << epoch;
         store(ss.str());
         is.close();
         m_test();
