@@ -114,7 +114,7 @@ namespace NN
 
         outputPtr[0] = biases->data()[0];
 
-        float buffer[regSize];
+        alignas(64) float buffer[regSize];
         _mm256_store_ps(buffer, res);
         for (uint32_t i = 0; i < regSize; i++)
             outputPtr[0] += buffer[i];
