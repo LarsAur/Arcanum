@@ -102,7 +102,7 @@ Board::Board(const std::string fen)
     char chr = fen[fenPosition++];
     if(chr != ' ')
     {
-        ERROR("Missing space after board");
+        ERROR("Missing space after board " << fen);
         exit(-1);
     }
 
@@ -119,7 +119,7 @@ Board::Board(const std::string fen)
     chr = fen[fenPosition++];
     if(chr != ' ')
     {
-        ERROR("Missing space after turn");
+        ERROR("Missing space after turn " << fen);
         exit(-1);
     }
 
@@ -152,7 +152,7 @@ Board::Board(const std::string fen)
         chr = fen[fenPosition++];
         if(chr != ' ')
         {
-            ERROR("Missing space after castle rights");
+            ERROR("Missing space after castle rights " << fen);
             exit(-1);
         }
     }
@@ -170,7 +170,7 @@ Board::Board(const std::string fen)
 
         if(file < 0 || file > 7 || rank < 0 || rank > 7)
         {
-            ERROR("Illegal enpassant square");
+            ERROR("Illegal enpassant square " << fen);
             exit(-1);
         }
 
