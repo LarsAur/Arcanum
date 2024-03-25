@@ -355,7 +355,7 @@ float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-void NNUE::m_backPropagate(const Arcanum::Board& board, float target, FloatNet& nabla, float& totalError)
+void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet& nabla, float& totalError)
 {
     constexpr float e = 2.71828182846f;
     constexpr float SIG_FACTOR = 400.0f;
@@ -366,13 +366,13 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float target, FloatNet& 
     float out = m_predict(&acc, board.getTurn());
 
     // -- Error Calculation
+    // TODO: Use of sigmoid might not be required when target is in CP form
     float sigmoid       = 1.0f / (1.0f + pow(e, -out / SIG_FACTOR));
     float sigmoidPrime  = sigmoid * (1.0f - sigmoid) * SIG_FACTOR;
+    float sigmoidTarget = 1.0f / (1.0f + pow(e, -cpTarget / SIG_FACTOR));
 
-    // TODO: Blend with position eval
-
-    float error =       pow(target - sigmoid, 2);
-    float errorPrime =  2 * (target - sigmoid);
+    float error =       pow(sigmoidTarget - sigmoid, 2);
+    float errorPrime =  2 * (sigmoidTarget - sigmoid);
     totalError += error;
 
     // -- Create input vector
@@ -473,7 +473,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float target, FloatNet& 
 
 void NNUE::m_applyNabla(FloatNet& nabla, FloatNet& momentum)
 {
-    constexpr float gamma = 0.5f;
+    constexpr float gamma = 0.2f;
 
     momentum.ftWeights->scale(gamma);
     momentum.ftBiases->scale(gamma);
@@ -513,16 +513,21 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
     FloatNet momentum;
     allocateFloatNet(momentum);
 
-    std::string header;
-    std::string strResult;
-    std::string strGames;
+    std::string strCp;
     std::string fen;
 
-    for(uint32_t epoch = 181; epoch < epochs; epoch++)
+    for(uint32_t epoch = 186; epoch < epochs; epoch++)
     {
         uint64_t gamesInEpoch = 0LL;
         float epochError = 0;
         std::ifstream is(dataset, std::ios::in);
+
+        if(!is.is_open())
+        {
+            ERROR("Unable to open " << dataset)
+            exit(-1);
+        }
+
         while (!is.eof())
         {
             nabla.ftWeights->setZero();
@@ -538,33 +543,30 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             float error = 0;
             while (!is.eof() && gamesInCurrentBatch < batchSize)
             {
-                std::getline(is, header, ' ');
-                std::getline(is, strResult, ' ');
-                std::getline(is, strGames);
+                std::getline(is, strCp);
+                std::getline(is, fen);
+                float cp = atof(strCp.c_str());
+                Arcanum::Board board = Arcanum::Board(fen);
 
-                float result = atof(strResult.c_str());
-                uint8_t numGames = atoi(strGames.c_str());
-                gamesInCurrentBatch += numGames;
+                // The dataset contains some variants of chess
+                // where positions can have more than 32 pieces.
+                // These have to be filtered out
+                if(CNTSBITS(board.getColoredPieces(WHITE) | board.getColoredPieces(BLACK)) > 32 ||
+                CNTSBITS(board.getTypedPieces(W_PAWN, WHITE) | board.getTypedPieces(W_PAWN, BLACK)) > 16)
+                    continue;
 
-                for(uint8_t i = 0; i < numGames; i++)
-                {
-                    std::getline(is, fen);
-                    Arcanum::Board board = Arcanum::Board(fen);
+                if(board.getTurn() == BLACK)
+                    m_backPropagate(board, -cp, nabla, error);
+                else
+                    m_backPropagate(board, cp, nabla, error);
 
-                    if(board.getTurn() == BLACK)
-                    {
-                        m_backPropagate(board, 1.0f - result, nabla, error);
-                    }
-                    else
-                    {
-                        m_backPropagate(board, result, nabla, error);
-                    }
-                }
+                gamesInCurrentBatch++;
             }
 
             epochError += error;
             gamesInEpoch += gamesInCurrentBatch;
             DEBUG("Epoch Size = " << gamesInEpoch << " BatchSize = " << gamesInCurrentBatch << " Error = " << error / gamesInCurrentBatch)
+            DEBUG("Avg. Error = " << (epochError / gamesInEpoch))
 
             constexpr float rate    = 0.0002f;
             nabla.ftWeights ->scale(rate / gamesInCurrentBatch);
@@ -595,6 +597,7 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
     }
 
     freeFloatNet(nabla);
+    freeFloatNet(momentum);
 }
 
 void NNUE::m_test()
