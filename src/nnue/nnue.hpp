@@ -1,7 +1,8 @@
 #pragma once
 
+#include <types.hpp>
 #include <board.hpp>
-#include <nnue/linalg.hpp>
+#include <nnue/matrix.hpp>
 
 namespace NN
 {
@@ -12,31 +13,31 @@ namespace NN
 
     struct FloatNet
     {
-        Matrixf* ftWeights;
-        Matrixf* ftBiases;
-        Matrixf* l1Weights;
-        Matrixf* l1Biases;
-        Matrixf* l2Weights;
-        Matrixf* l2Biases;
-        Matrixf* l3Weights;
-        Matrixf* l3Bias;
+        Matrix<128, 768> ftWeights;
+        Matrix<128, 1> ftBiases;
+        Matrix<16, 128> l1Weights;
+        Matrix<16, 1> l1Biases;
+        Matrix<16, 16> l2Weights;
+        Matrix<16, 1> l2Biases;
+        Matrix<1, 16> l3Weights;
+        Matrix<1, 1> l3Bias;
     };
 
     // Intermediate results in the net
     struct Trace
     {
-        Matrixf* input;         // Only used by backprop
-        Matrixf* accumulator;   // Post ReLU accumulator
-        Matrixf* hiddenOut1;
-        Matrixf* hiddenOut2;
-        Matrixf* out;           // Scalar output
+        Matrix<768, 1>  input;         // Only used by backprop
+        Matrix<128, 1>  accumulator;   // Post ReLU accumulator
+        Matrix<16, 1>   hiddenOut1;
+        Matrix<16, 1>   hiddenOut2;
+        Matrix<1, 1>    out;           // Scalar output
     };
 
     class NNUE
     {
         private:
             Trace m_trace;
-            FloatNet m_floatNet;
+            FloatNet m_net;
 
             uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
             float m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
@@ -51,11 +52,6 @@ namespace NN
         public:
             NNUE();
             ~NNUE();
-
-            static void allocateFloatNet(FloatNet& net);
-            static void freeFloatNet(FloatNet& net);
-            static void allocateTrace(Trace& trace);
-            static void freeTrace(Trace& trace);
 
             void train(uint32_t epochs, uint32_t batchSize, std::string dataset);
             void load(std::string filename);
