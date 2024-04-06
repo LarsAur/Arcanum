@@ -35,21 +35,19 @@ namespace NN
     class NNUE
     {
         private:
-            uint8_t m_numActiveIndices;
-            uint32_t m_activeIndices[32];
-
             Trace m_trace;
             FloatNet m_floatNet;
 
             uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
+            float m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
             float m_predict(Accumulator* acc, Arcanum::Color perspective);
-            void m_calculateFeatures(const Arcanum::Board& board);
-            void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective);
-            void m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective);
+            void m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures, uint32_t* features);
+            void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features);
+            void m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
             void m_randomizeWeights();
-            void m_applyNabla(FloatNet& nabla, FloatNet& momentum);
+            void m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2);
             void m_test();
-            void m_backPropagate(const Arcanum::Board& board, float result, FloatNet& nabla, float& totalError);
+            void m_backPropagate(const Arcanum::Board& board, float result, FloatNet& nabla, float& totalError, FloatNet& net, Trace& trace);
         public:
             NNUE();
             ~NNUE();

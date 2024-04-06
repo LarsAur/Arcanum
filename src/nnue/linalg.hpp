@@ -20,7 +20,10 @@ namespace NN
             void multiply(Matrixf& matrixIn, Matrixf& matrixOut);
             void vectorMultTransposedSparseVector(Matrixf& tvector, Matrixf& matrixOut);
             void scale(float scalar);
+            void pow(float exp);
             void add(Matrixf& matrix);
+            void addScalar(float scalar);
+            void hadamardInverse(Matrixf& matrixIn);
             void hadamard(Matrixf& matrixIn);
             void hadamard(Matrixf& matrixIn, Matrixf& matrixOut);
             void transpose();

@@ -3,6 +3,7 @@
 #include <sstream>
 #include <iomanip>
 #include <memory.hpp>
+#include <cmath>
 
 using namespace NN;
 
@@ -120,6 +121,14 @@ void Matrixf::scale(float scalar)
     }
 }
 
+void Matrixf::pow(float exp)
+{
+    for(uint32_t i = 0; i < m_cols * m_rows; i++)
+    {
+        m_data[i] = std::pow(m_data[i], exp);
+    }
+}
+
 void Matrixf::add(Matrixf& matrix)
 {
     if((matrix.m_rows != m_rows) || (matrix.m_cols != m_cols))
@@ -132,6 +141,29 @@ void Matrixf::add(Matrixf& matrix)
     for(uint32_t i = 0; i < m_cols * m_rows; i++)
     {
         m_data[i] += matrix.m_data[i];
+    }
+}
+
+void Matrixf::addScalar(float scalar)
+{
+    for(uint32_t i = 0; i < m_cols * m_rows; i++)
+    {
+        m_data[i] += scalar;
+    }
+}
+
+void Matrixf::hadamardInverse(Matrixf& matrixIn)
+{
+    if((matrixIn.m_rows != m_rows) || (matrixIn.m_cols != m_cols))
+    {
+        ERROR("Cannot calculate hadamard of mismatching matrix "
+        << matrixIn.m_rows << "x" << matrixIn.m_cols << " + "
+        << m_rows << "x" << m_cols)
+    }
+
+    for(uint32_t i = 0; i < m_cols * m_rows; i++)
+    {
+        m_data[i] /= matrixIn.m_data[i];
     }
 }
 
