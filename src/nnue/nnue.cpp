@@ -276,10 +276,10 @@ Arcanum::eval_t NNUE::evaluate(Accumulator* acc, Arcanum::Color turn)
 
 void NNUE::m_randomizeWeights()
 {
-    m_net.ftWeights.randomize(-1.0f, 1.0f);
-    m_net.l1Weights.randomize(-1.0f, 1.0f);
-    m_net.l2Weights.randomize(-1.0f, 1.0f);
-    m_net.l3Weights.randomize(-1.0f, 1.0f);
+    m_net.ftWeights.heRandomize();
+    m_net.l1Weights.heRandomize();
+    m_net.l2Weights.heRandomize();
+    m_net.l3Weights.heRandomize();
 }
 
 void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
@@ -372,15 +372,12 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet
     delta4.set(0, 0, sigmoidPrime * errorPrime);
 
     multiplyTransposeA(net.l3Weights, delta4, delta3);
-    // net.l3Weights.transposeMultiply(delta4, delta3);
     delta3.hadamard(hiddenOut2ReLuPrime);
 
     multiplyTransposeA(net.l2Weights, delta3, delta2);
-    // net.l2Weights.transposeMultiply(delta3, delta2);
     delta2.hadamard(hiddenOut1ReLuPrime);
 
     multiplyTransposeA(net.l1Weights, delta2, delta1);
-    // net.l1Weights.transposeMultiply(delta2, delta1);
     delta1.hadamard(accumulatorReLuPrime);
 
     // -- Calculation of gradient
@@ -395,15 +392,12 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet
     Matrix<1, 1>    gradientL3Bias;
 
     multiplyTransposeB(delta4, trace.hiddenOut2, gradientL3Weights);
-    // delta4.transposeMultiply(trace.hiddenOut2, gradientL3Weights);
     gradientL3Bias.add(delta4);
 
     multiplyTransposeB(delta3, trace.hiddenOut1, gradientL2Weights);
-    // delta3.transposeMultiply(trace.hiddenOut1, gradientL2Weights);
     gradientL2Biases.add(delta3);
 
     multiplyTransposeB(delta2, trace.accumulator, gradientL1Weights);
-    // delta2.transposeMultiply(trace.accumulator, gradientL1Weights);
     gradientL1Biases.add(delta2);
 
     vectorMultTransposedSparseVector(delta1, trace.input, gradientFtWeights);
@@ -426,7 +420,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet
 void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2)
 {
     // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
-    constexpr float alpha   = 0.001f;
+    constexpr float alpha   = 0.01f;
     constexpr float beta1   = 0.9f;
     constexpr float beta2   = 0.999f;
     constexpr float epsilon = 1.0E-8;
@@ -585,7 +579,7 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
 
 void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
 {
-    constexpr uint8_t numThreads = 1;
+    constexpr uint8_t numThreads = 6;
     std::thread threads[numThreads];
     FloatNet gradients[numThreads];
     Trace traces[numThreads];

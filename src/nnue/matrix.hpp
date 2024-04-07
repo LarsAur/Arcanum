@@ -3,10 +3,11 @@
 #include <inttypes.h>
 #include <chessutils.hpp>
 #include <utils.hpp>
+#include <memory.hpp>
 #include <sstream>
 #include <iomanip>
 #include <cmath>
-#include <memory.hpp>
+#include <random>
 
 namespace NN
 {
@@ -116,6 +117,23 @@ namespace NN
                 {
                     float norm = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
                     m_data[i] = min + (norm * (max - min));
+                }
+            }
+
+            void heRandomize()
+            {
+                // He’s Initialization:
+                // https://medium.com/@freshtechyy/weight-initialization-for-deep-neural-network-e0302b6f5bf3
+                // https://paperswithcode.com/method/he-initialization
+                // Use normal distribution with variance of 2/N.
+                // I.e standard deviation of sqrt(2/N).
+                // N is number of inputs. I.e #Rows.
+                std::default_random_engine generator;
+                std::normal_distribution<float> distribution(0.0f, std::sqrt(2.0f / rows));
+                for(uint32_t i = 0; i < rows * cols; i++)
+                {
+                    while(m_data[i] == 0)
+                        m_data[i] = distribution(generator);
                 }
             }
 
