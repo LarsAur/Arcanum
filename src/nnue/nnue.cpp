@@ -21,6 +21,11 @@ NNUE::~NNUE()
 
 void NNUE::load(std::string filename)
 {
+    m_loadNet(filename, m_net);
+}
+
+void NNUE::m_loadNet(std::string filename, FloatNet& net)
+{
     std::string path = getWorkPath();
     std::stringstream ss;
     ss << path << filename << ".fnnue";
@@ -33,14 +38,14 @@ void NNUE::load(std::string filename)
         return;
     }
 
-    is.read((char*) m_net.ftWeights.data(), 768 * 128 * sizeof(float));
-    is.read((char*) m_net.ftBiases.data(),        128 * sizeof(float));
-    is.read((char*) m_net.l1Weights.data(), 128 *  16 * sizeof(float));
-    is.read((char*) m_net.l1Biases.data(),         16 * sizeof(float));
-    is.read((char*) m_net.l2Weights.data(),  16 *  16 * sizeof(float));
-    is.read((char*) m_net.l2Biases.data(),         16 * sizeof(float));
-    is.read((char*) m_net.l3Weights.data(),        16 * sizeof(float));
-    is.read((char*) m_net.l3Bias.data(),            1 * sizeof(float));
+    is.read((char*) net.ftWeights.data(), 768 * 128 * sizeof(float));
+    is.read((char*) net.ftBiases.data(),        128 * sizeof(float));
+    is.read((char*) net.l1Weights.data(), 128 *  16 * sizeof(float));
+    is.read((char*) net.l1Biases.data(),         16 * sizeof(float));
+    is.read((char*) net.l2Weights.data(),  16 *  16 * sizeof(float));
+    is.read((char*) net.l2Biases.data(),         16 * sizeof(float));
+    is.read((char*) net.l3Weights.data(),        16 * sizeof(float));
+    is.read((char*) net.l3Bias.data(),            1 * sizeof(float));
 
     is.close();
 
@@ -48,6 +53,11 @@ void NNUE::load(std::string filename)
 }
 
 void NNUE::store(std::string filename)
+{
+    m_storeNet(filename, m_net);
+}
+
+void NNUE::m_storeNet(std::string filename, FloatNet& net)
 {
     std::string path = getWorkPath();
 
@@ -62,14 +72,14 @@ void NNUE::store(std::string filename)
         return;
     }
 
-    fstream.write((char*) m_net.ftWeights.data(), 768 * 128 * sizeof(float));
-    fstream.write((char*) m_net.ftBiases.data(),        128 * sizeof(float));
-    fstream.write((char*) m_net.l1Weights.data(), 128 *  16 * sizeof(float));
-    fstream.write((char*) m_net.l1Biases.data(),         16 * sizeof(float));
-    fstream.write((char*) m_net.l2Weights.data(),  16 *  16 * sizeof(float));
-    fstream.write((char*) m_net.l2Biases.data(),         16 * sizeof(float));
-    fstream.write((char*) m_net.l3Weights.data(),        16 * sizeof(float));
-    fstream.write((char*) m_net.l3Bias.data(),            1 * sizeof(float));
+    fstream.write((char*) net.ftWeights.data(), 768 * 128 * sizeof(float));
+    fstream.write((char*) net.ftBiases.data(),        128 * sizeof(float));
+    fstream.write((char*) net.l1Weights.data(), 128 *  16 * sizeof(float));
+    fstream.write((char*) net.l1Biases.data(),         16 * sizeof(float));
+    fstream.write((char*) net.l2Weights.data(),  16 *  16 * sizeof(float));
+    fstream.write((char*) net.l2Biases.data(),         16 * sizeof(float));
+    fstream.write((char*) net.l3Weights.data(),        16 * sizeof(float));
+    fstream.write((char*) net.l3Bias.data(),            1 * sizeof(float));
 
     fstream.close();
 
@@ -590,7 +600,11 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
     FloatNet momentum1;
     FloatNet momentum2;
 
-    for(uint32_t epoch = 121; epoch < 256; epoch++)
+    load("../nnue/he_test255");
+    m_loadNet("../nnue/momentum1", momentum1);
+    m_loadNet("../nnue/momentum2", momentum2);
+
+    for(uint32_t epoch = 1; epoch < 512; epoch++)
     {
         std::ifstream is(dataset, std::ios::in);
 
@@ -679,14 +693,6 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             gradients[0].l3Bias    .add(gradients[i].l3Bias   );
         }
 
-        gradients[0].ftWeights .scale(1.0f / epochCount);
-        gradients[0].ftBiases  .scale(1.0f / epochCount);
-        gradients[0].l1Weights .scale(1.0f / epochCount);
-        gradients[0].l1Biases  .scale(1.0f / epochCount);
-        gradients[0].l2Weights .scale(1.0f / epochCount);
-        gradients[0].l2Biases  .scale(1.0f / epochCount);
-        gradients[0].l3Weights .scale(1.0f / epochCount);
-        gradients[0].l3Bias    .scale(1.0f / epochCount);
 
         m_applyGradient(epoch, gradients[0], momentum1, momentum2);
 
@@ -699,9 +705,13 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
         ofstream.close();
 
         std::stringstream ss;
-        ss << "../nnue/test" << epoch;
+        ss << "../nnue/he_test" << epoch;
         store(ss.str());
         is.close();
+
+        m_storeNet("../nnue/momentum1", momentum1);
+        m_storeNet("../nnue/momentum2", momentum2);
+
         m_test();
     }
 
