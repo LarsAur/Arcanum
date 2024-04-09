@@ -36,14 +36,14 @@ namespace UCI
     static std::thread searchThread;
     static bool isSearching;
 
-    void go(Arcanum::Board& board, Arcanum::Searcher& searcher, std::istringstream& is);
-    void newgame(Arcanum::Searcher& Searcher, Arcanum::Evaluator& evaluatorm, Arcanum::Board& board);
-    void setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is);
-    void position(Arcanum::Board& board, std::istringstream& is);
+    void go(Board& board, Searcher& searcher, std::istringstream& is);
+    void newgame(Searcher& Searcher, Evaluator& evaluatorm, Board& board);
+    void setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream& is);
+    void position(Board& board, Searcher& searcher, std::istringstream& is);
     int64_t allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber);
-    void ischeckmate(Arcanum::Board& board);
-    void eval(Arcanum::Board& board, Arcanum::Evaluator& evaluator);
-    void drawBoard(Arcanum::Board& board);
+    void ischeckmate(Board& board, Searcher& searcher);
+    void eval(Board& board, Evaluator& evaluator);
+    void drawBoard(Board& board);
 }
 
 // Source: https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
@@ -90,14 +90,14 @@ void UCI::loop()
         }
         else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, evaluator, is);
         else if (strcmp(token.c_str(), "go"         ) == 0) go(board, searcher, is);
-        else if (strcmp(token.c_str(), "position"   ) == 0) position(board, is);
+        else if (strcmp(token.c_str(), "position"   ) == 0) position(board, searcher, is);
         else if (strcmp(token.c_str(), "ucinewgame" ) == 0) newgame(searcher, evaluator, board);
         else if (strcmp(token.c_str(), "isready"    ) == 0) UCI_OUT("readyok")
         else if (strcmp(token.c_str(), "stop"       ) == 0) searcher.stop();
 
         // Custom
         else if (strcmp(token.c_str(), "eval") == 0) eval(board, evaluator);
-        else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board);
+        else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board, searcher);
         else if (strcmp(token.c_str(), "d") == 0) drawBoard(board);
 
     } while(strcmp(token.c_str(), "quit") != 0);
@@ -106,16 +106,17 @@ void UCI::loop()
     UCI_LOG("Exiting UCI loop")
 }
 
-void UCI::newgame(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, Arcanum::Board& board)
+void UCI::newgame(Searcher& searcher, Evaluator& evaluator, Board& board)
 {
     if(isSearching) return;
 
     searcher.clearTT();
-    board = Board(Arcanum::startFEN);
-    board.getBoardHistory()->clear();
+    searcher.clearHistory();
+    board = Board(startFEN);
+    searcher.addBoardToHistory(board);
 }
 
-void UCI::setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is)
+void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream& is)
 {
     if(isSearching) return;
 
@@ -147,7 +148,7 @@ void UCI::setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, 
     {
         std::string str;
         is >> std::skipws >> str;
-        if(!Arcanum::TBInit(str))
+        if(!TBInit(str))
         {
             UCI_ERROR("Failed to set SyzygyPath " << str)
             exit(-1);
@@ -178,10 +179,10 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
                     if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
                         parameters.searchMoves[parameters.numSearchMoves++] = moves[i];
         }
-        else if(!strcmp(token.c_str(), "wtime"))     is >> time[Arcanum::Color::WHITE];
-        else if(!strcmp(token.c_str(), "btime"))     is >> time[Arcanum::Color::BLACK];
-        else if(!strcmp(token.c_str(), "winc"))      is >> inc[Arcanum::Color::WHITE];
-        else if(!strcmp(token.c_str(), "binc"))      is >> inc[Arcanum::Color::BLACK];
+        else if(!strcmp(token.c_str(), "wtime"))     is >> time[Color::WHITE];
+        else if(!strcmp(token.c_str(), "btime"))     is >> time[Color::BLACK];
+        else if(!strcmp(token.c_str(), "winc"))      is >> inc[Color::WHITE];
+        else if(!strcmp(token.c_str(), "binc"))      is >> inc[Color::BLACK];
         else if(!strcmp(token.c_str(), "movestogo")) is >> movesToGo;
         else if(!strcmp(token.c_str(), "depth"))     is >> parameters.depth;
         else if(!strcmp(token.c_str(), "nodes"))     is >> parameters.nodes;
@@ -193,7 +194,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         else UCI_ERROR("Unknown command")
     }
 
-    Arcanum::Color turn = board.getTurn();
+    Color turn = board.getTurn();
     int64_t allocatedTime = allocateTime(time[turn], inc[turn], movesToGo, board.getFullMoves());
     if(parameters.msTime > 0 && allocatedTime > 0)
         parameters.msTime = std::min(parameters.msTime, allocatedTime);
@@ -213,7 +214,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     }
 }
 
-void UCI::position(Board& board, std::istringstream& is)
+void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
 {
     Move m;
     std::string token, fen;
@@ -231,9 +232,10 @@ void UCI::position(Board& board, std::istringstream& is)
     }
 
     UCI_LOG("Loading FEN: " << fen)
+    searcher.clearHistory();
+
     board = Board(fen);
-    board.getBoardHistory()->clear();
-    board.addBoardToHistory();
+    searcher.addBoardToHistory(board);
 
     // Parse any moves
     while (is >> token)
@@ -247,7 +249,7 @@ void UCI::position(Board& board, std::istringstream& is)
             if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
             {
                 board.performMove(moves[i]);
-                board.addBoardToHistory();
+                searcher.addBoardToHistory(board);
                 break;
             }
 
@@ -311,7 +313,7 @@ void UCI::sendUciInfo(const SearchInfo& info)
     UCI_OUT(ss.str())
 }
 
-void UCI::sendUciBestMove(const Arcanum::Move& move)
+void UCI::sendUciBestMove(const Move& move)
 {
     UCI_OUT("bestmove " << move)
 }
@@ -326,11 +328,11 @@ void UCI::eval(Board& board, Evaluator& evaluator)
 // Returns "checkmate 'winner'" if checkmate
 // Returns "stalemate" if stalemate
 // Returns "nocheckmate" if there is no checkmate
-void UCI::ischeckmate(Board& board)
+void UCI::ischeckmate(Board& board, Searcher& searcher)
 {
-    auto boardHistory = Board::getBoardHistory();
-    auto it = boardHistory->find(board.getHash());
-    if(it != boardHistory->end())
+    auto history = searcher.getHistory();
+    auto it = history.find(board.getHash());
+    if(it != history.end())
     {
         if(it->second == 3) // The check id done after the board is added to history
         {

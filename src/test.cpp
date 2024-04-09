@@ -226,30 +226,29 @@ void Test::zobrist()
 void Test::draw()
 {
     LOG("Starting draw test")
+    Searcher wsearcher = Searcher();
 
     // Test if search will find its way around 3-fold repetition checkmate
     Board repeat = Board("k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1");
-    repeat.getBoardHistory()->clear();
-    repeat.addBoardToHistory();
-    repeat.addBoardToHistory();
+    wsearcher.addBoardToHistory(repeat);
+    wsearcher.addBoardToHistory(repeat);
     Board board = Board("k7/1p1p1p2/pPpPpPp1/P1P1P1P1/R7/8/8/K7 w - - 0 1");
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
 
-    Searcher wsearcher = Searcher();
     board.performMove(wsearcher.getBestMoveInTime(board, 200));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     if(board.getHash() == repeat.getHash())
     {
         ERROR("Repeated position: k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
     }
     board.performMove(Move(56, 57, MoveInfoBit::KING_MOVE));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     board.performMove(wsearcher.getBestMoveInTime(board, 200));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     board.performMove(Move(57, 56, MoveInfoBit::KING_MOVE));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     board.performMove(wsearcher.getBestMoveInTime(board, 200));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     if(board.getHash() == repeat.getHash())
     {
         ERROR("Repeated position: k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
@@ -436,8 +435,8 @@ void Perf::search()
     Searcher whiteSearcher = Searcher();
     Searcher blackSearcher = Searcher();
     Board board = Board(Arcanum::startFEN);
-    board.getBoardHistory()->clear();
-    board.addBoardToHistory();
+    whiteSearcher.addBoardToHistory(board);
+    blackSearcher.addBoardToHistory(board);
 
     auto start = std::chrono::high_resolution_clock::now();
     for(int i = 0; i < 20; i++)
@@ -445,10 +444,12 @@ void Perf::search()
         DEBUG("PERF: " << i << "/" << 20)
         Move whiteMove = whiteSearcher.getBestMove(board, 10);
         board.performMove(whiteMove);
-        board.addBoardToHistory();
+        whiteSearcher.addBoardToHistory(board);
+        blackSearcher.addBoardToHistory(board);
         Move blackMove = blackSearcher.getBestMove(board, 10);
         board.performMove(blackMove);
-        board.addBoardToHistory();
+        whiteSearcher.addBoardToHistory(board);
+        blackSearcher.addBoardToHistory(board);
     }
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> diff = end - start;

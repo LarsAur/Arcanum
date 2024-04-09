@@ -7,6 +7,7 @@
 #include <moveSelector.hpp>
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 #define INF INT16_MAX
 #define SEARCH_RECORD_STATS 1
@@ -14,6 +15,14 @@
 
 namespace Arcanum
 {
+    class HashFunction
+    {
+        public:
+        size_t operator()(const hash_t& hash) const {
+            return hash;
+        }
+    };
+
     typedef struct pvLine_t
     {
         uint8_t count;
@@ -54,6 +63,7 @@ namespace Arcanum
     class Searcher
     {
         private:
+            std::unordered_map<hash_t, uint8_t, HashFunction> m_gameHistory;
             std::unique_ptr<TranspositionTable> m_tt;
             std::vector<hash_t> m_search_stack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
@@ -81,5 +91,8 @@ namespace Arcanum
             void clearTT();
             SearchStats getStats();
             void logStats();
+            std::unordered_map<hash_t, uint8_t, HashFunction>& getHistory();
+            void addBoardToHistory(const Board& board);
+            void clearHistory();
     };
 }

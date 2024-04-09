@@ -4,13 +4,6 @@
 
 using namespace Arcanum;
 
-static std::unordered_map<hash_t, uint8_t, HashFunction> s_boardHistory;
-
-std::unordered_map<hash_t, uint8_t, HashFunction>* Board::getBoardHistory()
-{
-    return &s_boardHistory;
-}
-
 static Zobrist s_zobrist;
 
 Board::Board(const std::string fen)
@@ -1883,19 +1876,6 @@ void Board::performNullMove()
 
     m_turn = Color(m_turn^1);
     m_rule50++;
-}
-
-void Board::addBoardToHistory()
-{
-    auto it = s_boardHistory.find(m_hash);
-    if(it == s_boardHistory.end())
-    {
-        s_boardHistory.emplace(m_hash, 1);
-    }
-    else
-    {
-        it->second += 1;
-    }
 }
 
 hash_t Board::getHash() const

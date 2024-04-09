@@ -382,9 +382,8 @@ inline bool Searcher::m_isDraw(const Board& board) const
     }
 
     // Check for repeated positions from previous searches
-    auto boardHistory = Board::getBoardHistory();
-    auto globalSearchIt = boardHistory->find(board.getHash());
-    if(globalSearchIt != boardHistory->end())
+    auto globalSearchIt = m_gameHistory.find(board.getHash());
+    if(globalSearchIt != m_gameHistory.end())
     {
         return true;
     }
@@ -645,4 +644,24 @@ void Searcher::logStats()
 
     LOG(ss.str())
     #endif
+}
+
+std::unordered_map<hash_t, uint8_t, HashFunction>& Searcher::getHistory()
+{
+    return m_gameHistory;
+}
+
+void Searcher::addBoardToHistory(const Board& board)
+{
+    hash_t hash = board.getHash();
+    auto it = m_gameHistory.find(hash);
+    if(it == m_gameHistory.end())
+        m_gameHistory.emplace(hash, 1);
+    else
+        it->second += 1;
+}
+
+void Searcher::clearHistory()
+{
+    m_gameHistory.clear();
 }

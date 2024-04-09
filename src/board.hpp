@@ -4,7 +4,6 @@
 #include <chessutils.hpp>
 #include <string>
 #include <iostream>
-#include <unordered_map>
 #include <vector>
 #include <memory>
 
@@ -117,14 +116,6 @@ namespace Arcanum
 
     } Move;
 
-    class HashFunction
-    {
-        public:
-        size_t operator()(const hash_t& hash) const {
-            return hash;
-        }
-    };
-
     class Board
     {
         private:
@@ -167,7 +158,6 @@ namespace Arcanum
             Board(const Board& board);
             Board(const std::string fen);
             void performMove(const Move move);
-            void addBoardToHistory();
             void generateCaptureInfo();
             void performNullMove();
             hash_t getHash() const;
@@ -201,7 +191,6 @@ namespace Arcanum
             std::string getFEN() const;
             bitboard_t attackersTo(square_t square) const;
             bool see(const Move& move) const;
-            static std::unordered_map<hash_t, uint8_t, HashFunction>* getBoardHistory();
     };
 
     class Zobrist
