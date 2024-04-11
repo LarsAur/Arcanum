@@ -392,45 +392,34 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet
 
     // -- Calculation of gradient
 
-    Matrix<128, 768> gradientFtWeights;
-    Matrix<128, 1>  gradientFtBiases;
-    Matrix<16, 128> gradientL1Weights;
-    Matrix<16, 1>   gradientL1Biases;
-    Matrix<16, 16>  gradientL2Weights;
-    Matrix<16, 1>   gradientL2Biases;
-    Matrix<1, 16>   gradientL3Weights;
-    Matrix<1, 1>    gradientL3Bias;
+    Matrix<128, 768> gradientFtWeights(false);
+    Matrix<16, 128> gradientL1Weights(false);
+    Matrix<16, 16>  gradientL2Weights(false);
+    Matrix<1, 16>   gradientL3Weights(false);
 
     multiplyTransposeB(delta4, trace.hiddenOut2, gradientL3Weights);
-    gradientL3Bias.add(delta4);
-
     multiplyTransposeB(delta3, trace.hiddenOut1, gradientL2Weights);
-    gradientL2Biases.add(delta3);
-
     multiplyTransposeB(delta2, trace.accumulator, gradientL1Weights);
-    gradientL1Biases.add(delta2);
-
     vectorMultTransposedSparseVector(delta1, trace.input, gradientFtWeights);
-    gradientFtBiases.add(delta1);
 
     // Accumulate the change
 
-    gradient.ftWeights.add(gradientFtWeights);
-    gradient.ftBiases.add(gradientFtBiases);
+    gradient.l3Bias.add(delta4);
+    gradient.l2Biases.add(delta3);
+    gradient.l1Biases.add(delta2);
+    gradient.ftBiases.add(delta1);
 
+    gradient.ftWeights.add(gradientFtWeights);
     gradient.l1Weights.add(gradientL1Weights);
     gradient.l2Weights.add(gradientL2Weights);
     gradient.l3Weights.add(gradientL3Weights);
 
-    gradient.l1Biases.add(gradientL1Biases);
-    gradient.l2Biases.add(gradientL2Biases);
-    gradient.l3Bias.add(gradientL3Bias);
 }
 
 void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2)
 {
     // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
-    constexpr float alpha   = 0.01f;
+    constexpr float alpha   = 0.001f;
     constexpr float beta1   = 0.9f;
     constexpr float beta2   = 0.999f;
     constexpr float epsilon = 1.0E-8;
@@ -693,6 +682,14 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             gradients[0].l3Bias    .add(gradients[i].l3Bias   );
         }
 
+        gradients[0].ftWeights .scale(10.0f / epochCount);
+        gradients[0].ftBiases  .scale(1.0f / epochCount);
+        gradients[0].l1Weights .scale(1.0f / epochCount);
+        gradients[0].l1Biases  .scale(1.0f / epochCount);
+        gradients[0].l2Weights .scale(1.0f / epochCount);
+        gradients[0].l2Biases  .scale(1.0f / epochCount);
+        gradients[0].l3Weights .scale(1.0f / epochCount);
+        gradients[0].l3Bias    .scale(1.0f / epochCount);
 
         m_applyGradient(epoch, gradients[0], momentum1, momentum2);
 

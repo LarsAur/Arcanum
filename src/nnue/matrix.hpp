@@ -20,14 +20,15 @@ namespace NN
             float* m_data;
         public:
 
-            Matrix()
+            Matrix(bool zero = true)
             {
                 m_data = static_cast<float*>(Memory::alignedMalloc(cols * rows * sizeof(float), 64));
 
                 if(m_data == nullptr)
                     ERROR("Unable to allocate matrix (" << rows << "x" << cols << ")")
 
-                setZero();
+                if(zero)
+                    setZero();
             }
 
             ~Matrix()
@@ -61,7 +62,14 @@ namespace NN
 
             void add(Matrix<rows, cols>& matrix)
             {
-                for(uint32_t i = 0; i < cols * rows; i++)
+                constexpr uint32_t regSize = 256 / 32;
+                constexpr uint32_t r = (rows * cols) % regSize;
+                constexpr uint32_t m = (rows * cols) - r;
+
+                for(uint32_t i = 0; i < m; i += regSize)
+                    _mm256_store_ps(&m_data[i], _mm256_add_ps(_mm256_load_ps(&m_data[i]), _mm256_load_ps(&matrix.m_data[i])));
+
+                for(uint32_t i = m; i < m + r; i++)
                     m_data[i] += matrix.m_data[i];
             }
 
@@ -170,25 +178,33 @@ namespace NN
     template <uint32_t rows, uint32_t cols>
     void vectorMultTransposedSparseVector(Matrix<rows, 1>& vector, Matrix<cols, 1>& tvector, Matrix<rows, cols>& matrixOut)
     {
+        constexpr uint32_t regSize = 256 / 32;
+        constexpr uint32_t numRegs = 128 / regSize;
+
         float* vData   = vector.data();
         float* tvData  = tvector.data();
         float* oData   = matrixOut.data();
 
-        for(uint32_t i = 0; i < 128; i+=32)
-        {
-            __m256 weights = _mm256_load_ps(vData + i);
+        __m256 weights[numRegs];
+        __m256 zero = _mm256_setzero_ps();
 
-            for(uint32_t j = 0; j < 768; j++)
+        // Load weights
+        for(uint32_t i = 0; i < numRegs; i++)
+        {
+            weights[i] = _mm256_load_ps(vData + i * regSize);
+        }
+
+        for(uint32_t j = 0; j < 768; j++)
+        {
+            if(tvData[j] == 0)
             {
-                float f = tvData[j];
-                if(f == 0)
-                {
-                    _mm256_store_ps(oData + rows * j + i, _mm256_setzero_ps());
-                }
-                else
-                {
-                    _mm256_store_ps(oData + rows * j + i, weights);
-                }
+                for(uint32_t i = 0; i < numRegs; i++)
+                    _mm256_store_ps(oData + rows * j + i * regSize, zero);
+            }
+            else
+            {
+                for(uint32_t i = 0; i < numRegs; i++)
+                    _mm256_store_ps(oData + rows * j + i * regSize, weights[i]);
             }
         }
     }
