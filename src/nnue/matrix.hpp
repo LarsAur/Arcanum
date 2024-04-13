@@ -151,10 +151,11 @@ namespace NN
                     m_data[i] = ptr[i];
             }
 
-            void copy(Matrix<rows, cols> matrix)
+            void copy(Matrix<rows, cols>& matrix)
             {
+                float* data = matrix.data();
                 for(uint32_t i = 0; i < cols * rows; i++)
-                    m_data[i] = matrix.data[i];
+                    m_data[i] = data[i];
             }
 
             void log()
