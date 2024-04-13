@@ -60,6 +60,11 @@ namespace Arcanum
         SearchParameters() : msTime(0), nodes(0), depth(0), mate(0), infinite(false), numSearchMoves(0) {};
     };
 
+    struct SearchResult
+    {
+        eval_t eval;
+    };
+
     class Searcher
     {
         private:
@@ -84,9 +89,9 @@ namespace Arcanum
         public:
             Searcher();
             ~Searcher();
-            Move getBestMove(Board& board, int depth);
-            Move getBestMoveInTime(Board& board, uint32_t ms);
-            Move search(Board board, SearchParameters parameters);
+            Move getBestMove(Board& board, int depth, SearchResult* searchResult = nullptr);
+            Move getBestMoveInTime(Board& board, uint32_t ms, SearchResult* searchResult = nullptr);
+            Move search(Board board, SearchParameters parameters, SearchResult* searchResult = nullptr);
             void stop();
             void resizeTT(uint32_t mbSize);
             void clearTT();

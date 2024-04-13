@@ -415,21 +415,21 @@ inline bool Searcher::m_isDraw(const Board& board) const
     return false;
 }
 
-Move Searcher::getBestMove(Board& board, int depth)
+Move Searcher::getBestMove(Board& board, int depth, SearchResult* searchResult)
 {
     SearchParameters parameters = SearchParameters();
     parameters.depth = depth;
-    return search(Board(board), parameters);
+    return search(Board(board), parameters, searchResult);
 }
 
-Move Searcher::getBestMoveInTime(Board& board, uint32_t ms)
+Move Searcher::getBestMoveInTime(Board& board, uint32_t ms, SearchResult* searchResult)
 {
     SearchParameters parameters = SearchParameters();
     parameters.msTime = ms;
-    return search(Board(board), parameters);
+    return search(Board(board), parameters, searchResult);
 }
 
-Move Searcher::search(Board board, SearchParameters parameters)
+Move Searcher::search(Board board, SearchParameters parameters, SearchResult* searchResult)
 {
     m_stopSearch = false;
     m_numNodesSearched = 0;
