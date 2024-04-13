@@ -38,14 +38,10 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
         return;
     }
 
-    is.read((char*) net.ftWeights.data(), 768 * 128 * sizeof(float));
-    is.read((char*) net.ftBiases.data(),        128 * sizeof(float));
-    is.read((char*) net.l1Weights.data(), 128 *  16 * sizeof(float));
-    is.read((char*) net.l1Biases.data(),         16 * sizeof(float));
-    is.read((char*) net.l2Weights.data(),  16 *  16 * sizeof(float));
-    is.read((char*) net.l2Biases.data(),         16 * sizeof(float));
-    is.read((char*) net.l3Weights.data(),        16 * sizeof(float));
-    is.read((char*) net.l3Bias.data(),            1 * sizeof(float));
+    is.read((char*) net.ftWeights.data(), 768 * 256 * sizeof(float));
+    is.read((char*) net.ftBiases.data(),        256 * sizeof(float));
+    is.read((char*) net.l1Weights.data(),  1 *  256 * sizeof(float));
+    is.read((char*) net.l1Biases.data(),          1 * sizeof(float));
 
     is.close();
 
@@ -72,14 +68,10 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
         return;
     }
 
-    fstream.write((char*) net.ftWeights.data(), 768 * 128 * sizeof(float));
-    fstream.write((char*) net.ftBiases.data(),        128 * sizeof(float));
-    fstream.write((char*) net.l1Weights.data(), 128 *  16 * sizeof(float));
-    fstream.write((char*) net.l1Biases.data(),         16 * sizeof(float));
-    fstream.write((char*) net.l2Weights.data(),  16 *  16 * sizeof(float));
-    fstream.write((char*) net.l2Biases.data(),         16 * sizeof(float));
-    fstream.write((char*) net.l3Weights.data(),        16 * sizeof(float));
-    fstream.write((char*) net.l3Bias.data(),            1 * sizeof(float));
+    fstream.write((char*) net.ftWeights.data(), 768 * 256 * sizeof(float));
+    fstream.write((char*) net.ftBiases.data(),        256 * sizeof(float));
+    fstream.write((char*) net.l1Weights.data(),   1 * 256 * sizeof(float));
+    fstream.write((char*) net.l1Biases.data(),          1 * sizeof(float));
 
     fstream.close();
 
@@ -117,7 +109,7 @@ void NNUE::m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures
 void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features)
 {
     constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 128 / regSize;
+    constexpr uint32_t numRegs = 256 / regSize;
     __m256 regs[numRegs];
 
     float* biasesPtr         = m_net.ftBiases.data();
@@ -219,7 +211,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
     // -- Update the accumulators
 
     constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 128 / regSize;
+    constexpr uint32_t numRegs = 256 / regSize;
     __m256 regs[numRegs];
 
     float* weightsPtr        = m_net.ftWeights.data();
@@ -288,14 +280,12 @@ void NNUE::m_randomizeWeights()
 {
     m_net.ftWeights.heRandomize();
     m_net.l1Weights.heRandomize();
-    m_net.l2Weights.heRandomize();
-    m_net.l3Weights.heRandomize();
 }
 
 void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
 {
     constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 128 / regSize;
+    constexpr uint32_t numRegs = 256 / regSize;
     __m256 zero = _mm256_setzero_ps();
     float* dst = trace.accumulator.data();
 
@@ -310,13 +300,10 @@ void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace
     }
 }
 
-
 float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
 {
     m_reluAccumulator(acc, perspective, trace);
-    feedForwardReLu<128, 16>(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.hiddenOut1);
-    feedForwardReLu<16, 16>(m_net.l2Weights, m_net.l2Biases, trace.hiddenOut1, trace.hiddenOut2);
-    lastLevelFeedForward<16>(m_net.l3Weights, m_net.l3Bias, trace.hiddenOut2, trace.out);
+    lastLevelFeedForward<256>(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.out);
     return *trace.out.data();
 }
 
@@ -353,67 +340,40 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet
     uint8_t numFeatures;
     uint32_t features[32];
     m_calculateFeatures(board, &numFeatures, features);
-    trace.input.setZero();
     for(uint32_t k = 0; k < numFeatures; k++)
     {
         // XOR to make the correct the perspective
-        uint32_t j = features[k] ^ board.getTurn();
-        trace.input.set(j, 0, 1.0f);
+        features[k] = features[k] ^ board.getTurn();
     }
 
     // -- Calculation of auxillery coefficients
-    Matrix<1, 1> delta4;
-    Matrix<16, 1> delta3;
-    Matrix<16, 1> delta2;
-    Matrix<128, 1> delta1;
+    Matrix<1, 1> delta2(false);
+    Matrix<256, 1> delta1(false);
 
-    Matrix<16, 1> hiddenOut2ReLuPrime;
-    Matrix<16, 1> hiddenOut1ReLuPrime;
-    Matrix<128, 1> accumulatorReLuPrime;
+    Matrix<256, 1> accumulatorReLuPrime(false);
 
-    hiddenOut2ReLuPrime.add(trace.hiddenOut2);
-    hiddenOut1ReLuPrime.add(trace.hiddenOut1);
-    accumulatorReLuPrime.add(trace.accumulator);
+    accumulatorReLuPrime.copy(trace.accumulator);
 
-    hiddenOut2ReLuPrime.reluPrime();
-    hiddenOut1ReLuPrime.reluPrime();
     accumulatorReLuPrime.reluPrime();
 
-    delta4.set(0, 0, sigmoidPrime * errorPrime);
-
-    multiplyTransposeA(net.l3Weights, delta4, delta3);
-    delta3.hadamard(hiddenOut2ReLuPrime);
-
-    multiplyTransposeA(net.l2Weights, delta3, delta2);
-    delta2.hadamard(hiddenOut1ReLuPrime);
+    delta2.set(0, 0, sigmoidPrime * errorPrime);
 
     multiplyTransposeA(net.l1Weights, delta2, delta1);
     delta1.hadamard(accumulatorReLuPrime);
 
     // -- Calculation of gradient
 
-    Matrix<128, 768> gradientFtWeights(false);
-    Matrix<16, 128> gradientL1Weights(false);
-    Matrix<16, 16>  gradientL2Weights(false);
-    Matrix<1, 16>   gradientL3Weights(false);
+    Matrix<1, 256>   gradientL1Weights(false);
 
-    multiplyTransposeB(delta4, trace.hiddenOut2, gradientL3Weights);
-    multiplyTransposeB(delta3, trace.hiddenOut1, gradientL2Weights);
     multiplyTransposeB(delta2, trace.accumulator, gradientL1Weights);
-    vectorMultTransposedSparseVector(delta1, trace.input, gradientFtWeights);
+
+    calcAndAccFtGradient(numFeatures, features, delta1, gradient.ftWeights);
 
     // Accumulate the change
 
-    gradient.l3Bias.add(delta4);
-    gradient.l2Biases.add(delta3);
     gradient.l1Biases.add(delta2);
     gradient.ftBiases.add(delta1);
-
-    gradient.ftWeights.add(gradientFtWeights);
     gradient.l1Weights.add(gradientL1Weights);
-    gradient.l2Weights.add(gradientL2Weights);
-    gradient.l3Weights.add(gradientL3Weights);
-
 }
 
 void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2)
@@ -432,127 +392,75 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     momentum1.ftWeights .scale(beta1 / (1.0f - beta1));
     momentum1.ftBiases  .scale(beta1 / (1.0f - beta1));
     momentum1.l1Weights .scale(beta1 / (1.0f - beta1));
-    momentum1.l2Weights .scale(beta1 / (1.0f - beta1));
-    momentum1.l3Weights .scale(beta1 / (1.0f - beta1));
     momentum1.l1Biases  .scale(beta1 / (1.0f - beta1));
-    momentum1.l2Biases  .scale(beta1 / (1.0f - beta1));
-    momentum1.l3Bias    .scale(beta1 / (1.0f - beta1));
 
     momentum1.ftWeights .add(gradient.ftWeights );
     momentum1.ftBiases  .add(gradient.ftBiases  );
     momentum1.l1Weights .add(gradient.l1Weights );
-    momentum1.l2Weights .add(gradient.l2Weights );
-    momentum1.l3Weights .add(gradient.l3Weights );
     momentum1.l1Biases  .add(gradient.l1Biases  );
-    momentum1.l2Biases  .add(gradient.l2Biases  );
-    momentum1.l3Bias    .add(gradient.l3Bias    );
 
     momentum1.ftWeights .scale((1.0f - beta1));
     momentum1.ftBiases  .scale((1.0f - beta1));
     momentum1.l1Weights .scale((1.0f - beta1));
-    momentum1.l2Weights .scale((1.0f - beta1));
-    momentum1.l3Weights .scale((1.0f - beta1));
     momentum1.l1Biases  .scale((1.0f - beta1));
-    momentum1.l2Biases  .scale((1.0f - beta1));
-    momentum1.l3Bias    .scale((1.0f - beta1));
 
     // v_t = B2 * v_t-1 + (1 - B2) * g_t^2
 
     momentum2.ftWeights .scale(beta2);
     momentum2.ftBiases  .scale(beta2);
     momentum2.l1Weights .scale(beta2);
-    momentum2.l2Weights .scale(beta2);
-    momentum2.l3Weights .scale(beta2);
     momentum2.l1Biases  .scale(beta2);
-    momentum2.l2Biases  .scale(beta2);
-    momentum2.l3Bias    .scale(beta2);
 
     gradient.ftWeights .pow(2);
     gradient.ftBiases  .pow(2);
     gradient.l1Weights .pow(2);
-    gradient.l2Weights .pow(2);
-    gradient.l3Weights .pow(2);
     gradient.l1Biases  .pow(2);
-    gradient.l2Biases  .pow(2);
-    gradient.l3Bias    .pow(2);
 
     gradient.ftWeights .scale(1.0f - beta2);
     gradient.ftBiases  .scale(1.0f - beta2);
     gradient.l1Weights .scale(1.0f - beta2);
-    gradient.l2Weights .scale(1.0f - beta2);
-    gradient.l3Weights .scale(1.0f - beta2);
     gradient.l1Biases  .scale(1.0f - beta2);
-    gradient.l2Biases  .scale(1.0f - beta2);
-    gradient.l3Bias    .scale(1.0f - beta2);
 
     momentum2.ftWeights .add(gradient.ftWeights);
     momentum2.ftBiases  .add(gradient.ftBiases );
     momentum2.l1Weights .add(gradient.l1Weights);
-    momentum2.l2Weights .add(gradient.l2Weights);
-    momentum2.l3Weights .add(gradient.l3Weights);
     momentum2.l1Biases  .add(gradient.l1Biases );
-    momentum2.l2Biases  .add(gradient.l2Biases );
-    momentum2.l3Bias    .add(gradient.l3Bias   );
 
     // M^_t = alpha * M_t / (1 - Beta1^t)
 
     m_hat.ftWeights .add(momentum1.ftWeights);
     m_hat.ftBiases  .add(momentum1.ftBiases );
     m_hat.l1Weights .add(momentum1.l1Weights);
-    m_hat.l2Weights .add(momentum1.l2Weights);
-    m_hat.l3Weights .add(momentum1.l3Weights);
     m_hat.l1Biases  .add(momentum1.l1Biases );
-    m_hat.l2Biases  .add(momentum1.l2Biases );
-    m_hat.l3Bias    .add(momentum1.l3Bias   );
 
     m_hat.ftWeights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
     m_hat.ftBiases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
     m_hat.l1Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.l2Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.l3Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
     m_hat.l1Biases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.l2Biases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.l3Bias    .scale(alpha / (1.0f - std::pow(beta1, timestep)));
 
     // v^_t = v_t / (1 - Beta2^t)
 
     v_hat.ftWeights .add(momentum2.ftWeights);
     v_hat.ftBiases  .add(momentum2.ftBiases );
     v_hat.l1Weights .add(momentum2.l1Weights);
-    v_hat.l2Weights .add(momentum2.l2Weights);
-    v_hat.l3Weights .add(momentum2.l3Weights);
     v_hat.l1Biases  .add(momentum2.l1Biases );
-    v_hat.l2Biases  .add(momentum2.l2Biases );
-    v_hat.l3Bias    .add(momentum2.l3Bias   );
 
     v_hat.ftWeights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
     v_hat.ftBiases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
     v_hat.l1Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.l2Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.l3Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
     v_hat.l1Biases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.l2Biases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.l3Bias    .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
 
     // sqrt(v^_t) + epsilon
 
     v_hat.ftWeights.pow(0.5f);
     v_hat.ftBiases .pow(0.5f);
     v_hat.l1Weights.pow(0.5f);
-    v_hat.l2Weights.pow(0.5f);
-    v_hat.l3Weights.pow(0.5f);
     v_hat.l1Biases .pow(0.5f);
-    v_hat.l2Biases .pow(0.5f);
-    v_hat.l3Bias   .pow(0.5f);
 
     v_hat.ftWeights.addScalar(epsilon);
     v_hat.ftBiases .addScalar(epsilon);
     v_hat.l1Weights.addScalar(epsilon);
-    v_hat.l2Weights.addScalar(epsilon);
-    v_hat.l3Weights.addScalar(epsilon);
     v_hat.l1Biases .addScalar(epsilon);
-    v_hat.l2Biases .addScalar(epsilon);
-    v_hat.l3Bias   .addScalar(epsilon);
 
     // Note: Addition instead of subtraction because gradient it is already negated
     // net = net + M^_t / (sqrt(v^_t) + epsilon)
@@ -560,20 +468,12 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     m_hat.ftWeights .hadamardInverse(v_hat.ftWeights);
     m_hat.ftBiases  .hadamardInverse(v_hat.ftBiases );
     m_hat.l1Weights .hadamardInverse(v_hat.l1Weights);
-    m_hat.l2Weights .hadamardInverse(v_hat.l2Weights);
-    m_hat.l3Weights .hadamardInverse(v_hat.l3Weights);
     m_hat.l1Biases  .hadamardInverse(v_hat.l1Biases );
-    m_hat.l2Biases  .hadamardInverse(v_hat.l2Biases );
-    m_hat.l3Bias    .hadamardInverse(v_hat.l3Bias   );
 
     m_net.ftWeights .add(m_hat.ftWeights);
     m_net.ftBiases  .add(m_hat.ftBiases );
     m_net.l1Weights .add(m_hat.l1Weights);
-    m_net.l2Weights .add(m_hat.l2Weights);
-    m_net.l3Weights .add(m_hat.l3Weights);
     m_net.l1Biases  .add(m_hat.l1Biases );
-    m_net.l2Biases  .add(m_hat.l2Biases );
-    m_net.l3Bias    .add(m_hat.l3Bias   );
 }
 
 void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
@@ -646,10 +546,6 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             gradients[i].ftBiases .setZero();
             gradients[i].l1Weights.setZero();
             gradients[i].l1Biases .setZero();
-            gradients[i].l2Weights.setZero();
-            gradients[i].l2Biases .setZero();
-            gradients[i].l3Weights.setZero();
-            gradients[i].l3Bias   .setZero();
 
             errors[i] = 0.0f;
             counts[i] = 0LL;
@@ -676,20 +572,12 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             gradients[0].ftBiases  .add(gradients[i].ftBiases );
             gradients[0].l1Weights .add(gradients[i].l1Weights);
             gradients[0].l1Biases  .add(gradients[i].l1Biases );
-            gradients[0].l2Weights .add(gradients[i].l2Weights);
-            gradients[0].l2Biases  .add(gradients[i].l2Biases );
-            gradients[0].l3Weights .add(gradients[i].l3Weights);
-            gradients[0].l3Bias    .add(gradients[i].l3Bias   );
         }
 
         gradients[0].ftWeights .scale(10.0f / epochCount);
         gradients[0].ftBiases  .scale(1.0f / epochCount);
         gradients[0].l1Weights .scale(1.0f / epochCount);
         gradients[0].l1Biases  .scale(1.0f / epochCount);
-        gradients[0].l2Weights .scale(1.0f / epochCount);
-        gradients[0].l2Biases  .scale(1.0f / epochCount);
-        gradients[0].l3Weights .scale(1.0f / epochCount);
-        gradients[0].l3Bias    .scale(1.0f / epochCount);
 
         m_applyGradient(epoch, gradients[0], momentum1, momentum2);
 

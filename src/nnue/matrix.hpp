@@ -175,12 +175,12 @@ namespace NN
 
     // Multiply this vector by the transpose of a sparse binary (0 or 1) vector to produce a matrix
     // The input vector should not be transposed
-    // TODO: For now only for 128 x 768
+    // TODO: For now only for 256 x 768
     template <uint32_t rows, uint32_t cols>
     void vectorMultTransposedSparseVector(Matrix<rows, 1>& vector, Matrix<cols, 1>& tvector, Matrix<rows, cols>& matrixOut)
     {
         constexpr uint32_t regSize = 256 / 32;
-        constexpr uint32_t numRegs = 128 / regSize;
+        constexpr uint32_t numRegs = 256 / regSize;
 
         float* vData   = vector.data();
         float* tvData  = tvector.data();
@@ -208,6 +208,37 @@ namespace NN
                     _mm256_store_ps(oData + rows * j + i * regSize, weights[i]);
             }
         }
+    }
+
+    template <uint32_t rows, uint32_t cols>
+    void calcAndAccFtGradient(uint8_t numFeatures, uint32_t* features, Matrix<rows, 1>& delta, Matrix<rows, cols>& gradient)
+    {
+        constexpr uint32_t regSize = 256 / 32;
+        constexpr uint32_t numRegs = rows / regSize;
+
+        float* dData   = delta.data();
+        float* gData   = gradient.data();
+
+        __m256 weights[numRegs];
+
+        // Load delta weights
+        for(uint32_t i = 0; i < numRegs; i++)
+        {
+            weights[i] = _mm256_load_ps(dData + i * regSize);
+        }
+
+        for(uint8_t k = 0; k < numFeatures; k++)
+        {
+            uint32_t feature = features[k];
+
+            for(uint32_t i = 0; i < numRegs; i++)
+            {
+                __m256 segment = _mm256_load_ps(gData + rows * feature + i * regSize);
+                segment = _mm256_add_ps(segment, weights[i]);
+                _mm256_store_ps(gData + rows * feature + i * regSize, segment);
+            }
+        }
+
     }
 
     template<class T> static inline void Log(const __m256 & value)

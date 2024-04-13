@@ -8,28 +8,22 @@ namespace NN
 {
     struct Accumulator
     {
-        alignas(64) float acc[2][128];
+        alignas(64) float acc[2][256];
     };
 
     struct FloatNet
     {
-        Matrix<128, 768> ftWeights;
-        Matrix<128, 1> ftBiases;
-        Matrix<16, 128> l1Weights;
-        Matrix<16, 1> l1Biases;
-        Matrix<16, 16> l2Weights;
-        Matrix<16, 1> l2Biases;
-        Matrix<1, 16> l3Weights;
-        Matrix<1, 1> l3Bias;
+        Matrix<256, 768> ftWeights;
+        Matrix<256, 1> ftBiases;
+        Matrix<1, 256> l1Weights;
+        Matrix<1, 1> l1Biases;
     };
 
     // Intermediate results in the net
     struct Trace
     {
         Matrix<768, 1>  input;         // Only used by backprop
-        Matrix<128, 1>  accumulator;   // Post ReLU accumulator
-        Matrix<16, 1>   hiddenOut1;
-        Matrix<16, 1>   hiddenOut2;
+        Matrix<256, 1>  accumulator;   // Post ReLU accumulator
         Matrix<1, 1>    out;           // Scalar output
     };
 
