@@ -43,11 +43,18 @@ Searcher::Searcher()
     m_knownEndgameMaterialDraws.push_back(kingsBBishop.getMaterialHash());
     m_knownEndgameMaterialDraws.push_back(kingsWKnight.getMaterialHash());
     m_knownEndgameMaterialDraws.push_back(kingsBKnight.getMaterialHash());
+
+    m_verbose = true;
 }
 
 Searcher::~Searcher()
 {
 
+}
+
+void Searcher::setVerbose(bool enable)
+{
+    m_verbose = enable;
 }
 
 void Searcher::resizeTT(uint32_t mbSize)
@@ -556,9 +563,13 @@ Move Searcher::search(Board board, SearchParameters parameters)
             if(tbwdl == TB_LOSS) info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE;
             if(tbwdl >= TB_WIN ) info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE;
         }
-        for(uint32_t i = 0; i < pvLine.count; i++)
-            info.pvLine.push_back(pvLine.moves[i]);
-        UCI::sendUciInfo(info);
+
+        if(m_verbose)
+        {
+            for(uint32_t i = 0; i < pvLine.count; i++)
+                info.pvLine.push_back(pvLine.moves[i]);
+            UCI::sendUciInfo(info);
+        }
 
         // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
         // or else it would overflow the pvline array
@@ -593,16 +604,29 @@ Move Searcher::search(Board board, SearchParameters parameters)
         if(tbwdl >= TB_WIN ) info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE;
     }
 
-    for(uint32_t i = 0; i < pvLine.count; i++)
-        info.pvLine.push_back(pvLine.moves[i]);
-    UCI::sendUciInfo(info);
-    UCI::sendUciBestMove(searchBestMove);
+    if(m_verbose)
+    {
+        for(uint32_t i = 0; i < pvLine.count; i++)
+            info.pvLine.push_back(pvLine.moves[i]);
+        UCI::sendUciInfo(info);
+        UCI::sendUciBestMove(searchBestMove);
+    }
 
     #if SEARCH_RECORD_STATS
     m_stats.evaluatedPositions += m_numNodesSearched;
     #endif
-    m_tt->logStats();
-    logStats();
+
+    if(m_verbose)
+    {
+        m_tt->logStats();
+        logStats();
+    }
+
+    // Report potential search results
+    if(searchResult != nullptr)
+    {
+        searchResult->eval = searchScore;
+    }
 
     return searchBestMove;
 }
