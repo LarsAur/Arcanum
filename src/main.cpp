@@ -5,8 +5,7 @@
 #include <search.hpp>
 #include <uci.hpp>
 #include <eval.hpp>
-#include <tuning/fenGen.hpp>
-#include <nnue/datagen.hpp>
+
 using namespace Arcanum;
 
 std::string _logFileName;
@@ -44,20 +43,6 @@ int main(int argc, char *argv[])
             nnue.train(256, 16384, "generatedPositions.txt");
             exit(-1);
         }
-
-        if("--fengen" ==  std::string(argv[i]))
-        {
-            Tuning::FenGen dataCreator = Tuning::FenGen();
-            if(argc < i + 2)
-            {
-                ERROR("Missing arguments for data creation '--fengen output pgndir'")
-                exit(-1);
-            }
-            dataCreator.setOutputFile(argv[i + 1]);
-            dataCreator.start(10, argv[i + 2]);
-            argc += 2;
-        }
-
     }
 
     return 0;

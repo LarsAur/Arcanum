@@ -7,6 +7,7 @@
 #include <fstream>
 #include <thread>
 #include <syzygy.hpp>
+#include <tuning/fengen.hpp>
 
 using namespace Arcanum;
 
@@ -44,6 +45,7 @@ namespace UCI
     void ischeckmate(Board& board, Searcher& searcher);
     void eval(Board& board, Evaluator& evaluator);
     void drawBoard(Board& board);
+    void fengen(std::istringstream& is);
 }
 
 // Source: https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
@@ -100,6 +102,7 @@ void UCI::loop()
         else if (token == "eval"       ) eval(board, evaluator);
         else if (token == "ischeckmate") ischeckmate(board, searcher);
         else if (token == "d"          ) drawBoard(board);
+        else if (token == "fengen"     ) fengen(is);
 
     } while(token != "quit");
 
@@ -376,4 +379,26 @@ void UCI::drawBoard(Board& board)
     std::cout << board.getBoardString() << std::endl;
     std::cout << "FEN: " << board.getFEN() << std::endl;
     std::cout << "Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black") << std::endl;
+}
+
+// Parse parameters and call Tuning::fengen
+// It is strongly recomended that syzygy is used when generating FENS
+// This reduces wrongly played endgames and improves the data quality
+void UCI::fengen(std::istringstream& is)
+{
+    std::string startPosPath;   // Start position epd file path
+    std::string outputPath;     // Output path
+    std::string numFens;        // Number of fens to generate
+    std::string numThreads;     // Number of threads
+    std::string depth;          // Search depth
+
+    is >> std::skipws >> startPosPath;
+    is >> std::skipws >> outputPath;
+    is >> std::skipws >> numFens;
+    is >> std::skipws >> numThreads;
+    is >> std::skipws >> depth;
+
+    //TODO: Sanitize input. E.g validate int values
+
+    Tuning::fengen(startPosPath, outputPath, atoi(numFens.c_str()), atoi(numThreads.c_str()), atoi(depth.c_str()));
 }
