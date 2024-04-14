@@ -419,6 +419,7 @@ Move Searcher::getBestMove(Board& board, int depth, SearchResult* searchResult)
 {
     SearchParameters parameters = SearchParameters();
     parameters.depth = depth;
+    parameters.threaded = false;
     return search(Board(board), parameters, searchResult);
 }
 
@@ -441,29 +442,33 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_generation = (uint8_t) std::min(board.getFullMoves(), uint16_t(0x00ff));
     m_nonRevMovesRoot = board.getNumNonReversableMovesPerformed();
 
-    // Start a thread which will stop the search if the limit is reached
-    std::thread trd = std::thread([&] {
-        while (!m_stopSearch)
-        {
-            if(parameters.msTime > 0)
+    std::thread trd;
+    if(parameters.threaded)
+    {
+        // Start a thread which will stop the search if the limit is reached
+        trd = std::thread([&] {
+            while (!m_stopSearch)
             {
-                auto t = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> diff = t - start;
-                auto millisecs = std::chrono::duration_cast<std::chrono::milliseconds>(diff);
+                if(parameters.msTime > 0)
+                {
+                    auto t = std::chrono::high_resolution_clock::now();
+                    std::chrono::duration<double> diff = t - start;
+                    auto millisecs = std::chrono::duration_cast<std::chrono::milliseconds>(diff);
 
-                if(millisecs.count() >= parameters.msTime)
+                    if(millisecs.count() >= parameters.msTime)
+                        stop();
+                }
+
+                // The number of nodes is checked in the thread, which makes it less precise.
+                // Usually this results is searching about 30k more nodes.
+                // This is however not a problem as the node limit is ambiguous to begin with: https://www.chessprogramming.org/Nodes_per_Second
+                if(parameters.nodes > 0 && parameters.nodes <= m_numNodesSearched)
                     stop();
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-
-            // The number of nodes is checked in the thread, which makes it less precise.
-            // Usually this results is searching about 30k more nodes.
-            // This is however not a problem as the node limit is ambiguous to begin with: https://www.chessprogramming.org/Nodes_per_Second
-            if(parameters.nodes > 0 && parameters.nodes <= m_numNodesSearched)
-                stop();
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    });
+        });
+    }
 
     // Check if only a select set of moves should be searched
     // This set can be set by the search parameters or the table base
@@ -580,8 +585,11 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     // If the search is not already stopped, stop the stopping thread before joining
     stop();
-    if(trd.joinable())
-        trd.join();
+    if(parameters.threaded)
+    {
+        if(trd.joinable())
+            trd.join();
+    }
 
     // Send UCI info
     UCI::SearchInfo info = UCI::SearchInfo();

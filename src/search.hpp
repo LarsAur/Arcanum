@@ -57,7 +57,11 @@ namespace Arcanum
         uint32_t numSearchMoves;
         Move searchMoves[218];
 
-        SearchParameters() : msTime(0), nodes(0), depth(0), mate(0), infinite(false), numSearchMoves(0) {};
+        // If the stop command is not required, and only depth is used as the search parameter
+        // This parameter can be set to avoid creating an additional thread in search
+        bool threaded;
+
+        SearchParameters() : msTime(0), nodes(0), depth(0), mate(0), infinite(false), numSearchMoves(0), threaded(true) {};
     };
 
     struct SearchResult
