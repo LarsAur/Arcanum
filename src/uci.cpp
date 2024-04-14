@@ -79,7 +79,7 @@ void UCI::loop()
         is >> std::skipws >> token;
         std::transform(token.begin(), token.end(), token.begin(), [](unsigned char c){ return std::tolower(c); });
 
-        if(strcmp(token.c_str(), "uci") == 0)
+        if(token == "uci")
         {
             UCI_OUT(std::string("id name Arcanum ").append(TOSTRING(ARCANUM_VERSION)))
             UCI_OUT("id author Lars Murud Aurud")
@@ -89,19 +89,19 @@ void UCI::loop()
             UCI_OUT("option name NNUEPath type string default " << Evaluator::nnuePathDefault)
             UCI_OUT("uciok")
         }
-        else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, evaluator, is);
-        else if (strcmp(token.c_str(), "go"         ) == 0) go(board, searcher, is);
-        else if (strcmp(token.c_str(), "position"   ) == 0) position(board, searcher, is);
-        else if (strcmp(token.c_str(), "ucinewgame" ) == 0) newgame(searcher, evaluator, board);
-        else if (strcmp(token.c_str(), "isready"    ) == 0) UCI_OUT("readyok")
-        else if (strcmp(token.c_str(), "stop"       ) == 0) searcher.stop();
+        else if (token == "setoption" ) setoption(searcher, evaluator, is);
+        else if (token == "go"        ) go(board, searcher, is);
+        else if (token == "position"  ) position(board, searcher, is);
+        else if (token == "ucinewgame") newgame(searcher, evaluator, board);
+        else if (token == "isready"   ) UCI_OUT("readyok")
+        else if (token == "stop"      ) searcher.stop();
 
         // Custom
-        else if (strcmp(token.c_str(), "eval") == 0) eval(board, evaluator);
-        else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board, searcher);
-        else if (strcmp(token.c_str(), "d") == 0) drawBoard(board);
+        else if (token == "eval"       ) eval(board, evaluator);
+        else if (token == "ischeckmate") ischeckmate(board, searcher);
+        else if (token == "d"          ) drawBoard(board);
 
-    } while(strcmp(token.c_str(), "quit") != 0);
+    } while(token != "quit");
 
     TBFree();
     UCI_LOG("Exiting UCI loop")
@@ -119,33 +119,35 @@ void UCI::newgame(Searcher& searcher, Evaluator& evaluator, Board& board)
 
 void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream& is)
 {
+    #define SET_LOWER_CASE(_str) std::transform((_str).begin(), (_str).end(), (_str).begin(), [](unsigned char c){ return std::tolower(c); });
+
     if(isSearching) return;
 
     std::string name, valueToken, nameToken;
     is >> std::skipws >> nameToken; // 'name'
-    std::transform(nameToken.begin(), nameToken.end(), nameToken.begin(), [](unsigned char c){ return std::tolower(c); });
+    SET_LOWER_CASE(nameToken)
 
-    if(strcmp(nameToken.c_str(), "name") != 0) return;
+    if(nameToken != "name") return;
 
     is >> std::skipws >> name;      // name of the option
-    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c){ return std::tolower(c); });
+    SET_LOWER_CASE(name)
 
     // Process button options
-    if(strcmp(name.c_str(), "clearhash") == 0) searcher.clearTT();
+    if(name == "clearhash") searcher.clearTT();
 
     is >> std::skipws >> valueToken; // 'value'
-    std::transform(valueToken.begin(), valueToken.end(), valueToken.begin(), [](unsigned char c){ return std::tolower(c); });
+    SET_LOWER_CASE(valueToken)
 
-    if(strcmp(valueToken.c_str(), "value") != 0) return;
+    if(valueToken != "value") return;
 
     // Process non-button options
-    if(strcmp(name.c_str(), "hash") == 0)
+    if(name == "hash")
     {
         uint32_t mbSize;
         is >> std::skipws >> mbSize;
         searcher.resizeTT(mbSize);
     }
-    else if(strcmp(name.c_str(), "syzygypath") == 0)
+    else if(name == "syzygypath")
     {
         std::string str;
         is >> std::skipws >> str;
@@ -155,7 +157,7 @@ void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream
             exit(-1);
         }
     }
-    else if(strcmp(name.c_str(), "nnuepath") == 0)
+    else if(name == "nnuepath")
     {
         std::string path;
         is >> std::skipws >> path;
@@ -175,7 +177,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
 
     while(is >> token)
     {
-        if(!strcmp(token.c_str(), "searchmoves"))
+        if(token == "searchmoves")
         {
             // TODO: This can be improved to make the move based on only the uci
             Move* moves = board.getLegalMoves();
@@ -183,21 +185,21 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
             board.generateCaptureInfo();
             while (is >> token)
                 for(int i = 0; i < numLegalMoves; i++)
-                    if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
+                    if(token == moves[i].toString())
                         parameters.searchMoves[parameters.numSearchMoves++] = moves[i];
         }
-        else if(!strcmp(token.c_str(), "wtime"))     is >> time[Color::WHITE];
-        else if(!strcmp(token.c_str(), "btime"))     is >> time[Color::BLACK];
-        else if(!strcmp(token.c_str(), "winc"))      is >> inc[Color::WHITE];
-        else if(!strcmp(token.c_str(), "binc"))      is >> inc[Color::BLACK];
-        else if(!strcmp(token.c_str(), "movestogo")) is >> movesToGo;
-        else if(!strcmp(token.c_str(), "depth"))     is >> parameters.depth;
-        else if(!strcmp(token.c_str(), "nodes"))     is >> parameters.nodes;
-        else if(!strcmp(token.c_str(), "movetime"))  is >> parameters.msTime;
-        else if(!strcmp(token.c_str(), "perft"))     UCI_WARNING("perft")
-        else if(!strcmp(token.c_str(), "infinite"))  parameters.infinite = true;
-        else if(!strcmp(token.c_str(), "ponder"))    UCI_WARNING("ponder")
-        else if(!strcmp(token.c_str(), "mate"))      UCI_WARNING("mate")
+        else if(token == "wtime"     ) is >> time[Color::WHITE];
+        else if(token == "btime"     ) is >> time[Color::BLACK];
+        else if(token == "winc"      ) is >> inc[Color::WHITE];
+        else if(token == "binc"      ) is >> inc[Color::BLACK];
+        else if(token == "movestogo" ) is >> movesToGo;
+        else if(token == "depth"     ) is >> parameters.depth;
+        else if(token == "nodes"     ) is >> parameters.nodes;
+        else if(token == "movetime"  ) is >> parameters.msTime;
+        else if(token == "perft"     ) UCI_WARNING("perft")
+        else if(token == "infinite"  ) parameters.infinite = true;
+        else if(token == "ponder"    ) UCI_WARNING("ponder")
+        else if(token == "mate"      ) UCI_WARNING("mate")
         else UCI_ERROR("Unknown command")
     }
 
@@ -227,14 +229,14 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
     std::string token, fen;
     is >> token;
 
-    if(strcmp(token.c_str(), "startpos") == 0)
+    if(token == "startpos")
     {
         fen = startFEN;
         is >> token;
     }
     else if(token == "fen")
     {
-        while (is >> token && strcmp(token.c_str(), "moves") != 0)
+        while (is >> token && token != "moves")
             fen += token + " ";
     }
 
@@ -253,7 +255,7 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
         board.generateCaptureInfo();
         for(int i = 0; i < numLegalMoves; i++)
         {
-            if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
+            if(token == moves[i].toString())
             {
                 board.performMove(moves[i]);
                 searcher.addBoardToHistory(board);
