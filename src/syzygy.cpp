@@ -60,7 +60,7 @@ bool Arcanum::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& 
             {
                 if(matchesPyrrhicMove(legalMoves[j], results[i]))
                 {
-                    moves[numMoves] = legalMoves[j];
+                    moves[numMoves++] = legalMoves[j];
                     break;
                 }
             }
