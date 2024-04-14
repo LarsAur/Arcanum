@@ -14,13 +14,14 @@ namespace Arcanum
     class Evaluator
     {
         private:
-            NN::NNUE m_nnue;
             uint32_t m_accumulatorStackPointer;
             std::vector<NN::Accumulator*> m_accumulatorStack;
 
         public:
             static bool isCheckMateScore(eval_t eval);
             static bool isTbCheckMateScore(eval_t eval);
+            static NN::NNUE nnue;
+            static const char* nnuePathDefault;
 
             Evaluator();
             ~Evaluator();

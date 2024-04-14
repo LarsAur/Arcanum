@@ -28,7 +28,7 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
 {
     std::string path = getWorkPath();
     std::stringstream ss;
-    ss << path << filename << ".fnnue";
+    ss << path << filename;
     std::ifstream is(ss.str(), std::ios::in | std::ios::binary);
 
     LOG("Loading NNUE " << ss.str())
@@ -58,7 +58,7 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     std::string path = getWorkPath();
 
     std::stringstream ss;
-    ss << path << filename << ".fnnue";
+    ss << path << filename;
     LOG("Storing nnue in " << ss.str())
     std::ofstream fstream(ss.str(), std::ios::out | std::ios::binary);
 
@@ -489,9 +489,9 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
     FloatNet momentum1;
     FloatNet momentum2;
 
-    load("../nnue/he_test255");
-    m_loadNet("../nnue/momentum1", momentum1);
-    m_loadNet("../nnue/momentum2", momentum2);
+    load("../nnue/gen2201");
+    m_loadNet("../nnue/momentum1.fnnue", momentum1);
+    m_loadNet("../nnue/momentum2.fnnue", momentum2);
 
     for(uint32_t epoch = 1; epoch < 512; epoch++)
     {
@@ -590,12 +590,13 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
         ofstream.close();
 
         std::stringstream ss;
-        ss << "../nnue/he_test" << epoch;
+        ss << "../nnue/gen2" << epoch;
         store(ss.str());
         is.close();
 
-        m_storeNet("../nnue/momentum1", momentum1);
-        m_storeNet("../nnue/momentum2", momentum2);
+        m_storeNet("../nnue/momentum1.fnnue", momentum1);
+        m_storeNet("../nnue/momentum2.fnnue", momentum2);
+        m_storeNet("../nnue/gradient.fnnue", gradients[0]);
 
         m_test();
     }

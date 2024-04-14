@@ -4,10 +4,12 @@
 
 using namespace Arcanum;
 
+const char* Evaluator::nnuePathDefault = "arcanum0.fnnue";
+NN::NNUE Evaluator::nnue = NN::NNUE();
+
 Evaluator::Evaluator()
 {
     m_accumulatorStackPointer = 0;
-    m_nnue.load("../nnue/test768x128x16_117");
 }
 
 Evaluator::~Evaluator()
@@ -18,14 +20,13 @@ Evaluator::~Evaluator()
     }
 }
 
-
 void Evaluator::initAccumulatorStack(const Board& board)
 {
     if(m_accumulatorStack.empty())
         m_accumulatorStack.push_back(new NN::Accumulator);
 
     m_accumulatorStackPointer = 0;
-    m_nnue.initAccumulator(m_accumulatorStack[0], board);
+    nnue.initAccumulator(m_accumulatorStack[0], board);
 }
 
 void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
@@ -35,7 +36,7 @@ void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
         m_accumulatorStack.push_back(new NN::Accumulator);
     }
 
-    m_nnue.incAccumulator(
+    nnue.incAccumulator(
         m_accumulatorStack[m_accumulatorStackPointer],
         m_accumulatorStack[m_accumulatorStackPointer+1],
         board,
@@ -98,7 +99,7 @@ eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
 
     // eval_t score = m_nnue.evaluateBoard(board);
 
-    eval_t score = m_nnue.evaluate(
+    eval_t score = nnue.evaluate(
         m_accumulatorStack[m_accumulatorStackPointer],
         board.getTurn()
     );

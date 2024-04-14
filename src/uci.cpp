@@ -86,6 +86,7 @@ void UCI::loop()
             UCI_OUT("option name Hash type spin default 32 min 0 max 8196")
             UCI_OUT("option name ClearHash type button")
             UCI_OUT("option name SyzygyPath type string default <empty>")
+            UCI_OUT("option name NNUEPath type string default " << Evaluator::nnuePathDefault)
             UCI_OUT("uciok")
         }
         else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, evaluator, is);
@@ -153,6 +154,12 @@ void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream
             UCI_ERROR("Failed to set SyzygyPath " << str)
             exit(-1);
         }
+    }
+    else if(strcmp(name.c_str(), "nnuepath") == 0)
+    {
+        std::string path;
+        is >> std::skipws >> path;
+        Evaluator::nnue.load(path);
     }
 }
 

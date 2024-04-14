@@ -4,6 +4,7 @@
 #include <test.hpp>
 #include <search.hpp>
 #include <uci.hpp>
+#include <eval.hpp>
 #include <tuning/fenGen.hpp>
 using namespace Arcanum;
 
@@ -17,6 +18,8 @@ int main(int argc, char *argv[])
     Arcanum::initGenerateRookMoves();
     Arcanum::initGenerateBishopMoves();
     Arcanum::initGenerateBetweens();
+
+    Evaluator::nnue.load(Evaluator::nnuePathDefault);
 
     if(argc == 1)
     {
