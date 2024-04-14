@@ -313,10 +313,17 @@ float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet& gradient, float& totalError, FloatNet& net, Trace& trace)
+void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalError, FloatNet& net, Trace& trace)
 {
+    constexpr float lambda = 0.5f; // Weighting between wdlTarget and cpTarget
     constexpr float e = 2.71828182846f;
     constexpr float SIG_FACTOR = 400.0f;
+
+    #define SIGMOID(_v) (1.0f / (1.0f + pow(e, -(_v) / SIG_FACTOR)))
+
+    // Calculate derivative of sigmoid based on the sigmoid value
+    // f'(x) = f(x) * (1 - f(x)) * SIG_FACTOR
+    #define SIGMOID_PRIME(_sigmoid) ((_sigmoid) * (1.0f - (_sigmoid)) * SIG_FACTOR)
 
     // -- Run prediction
     Accumulator acc;
@@ -325,16 +332,24 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet
 
     // Correct target perspective
     if(board.getTurn() == BLACK)
+    {
         cpTarget = -cpTarget;
+        wdlTarget = -wdlTarget;
+    }
 
     // -- Error Calculation
-    float sigmoid       = 1.0f / (1.0f + pow(e, -out / SIG_FACTOR));
-    float sigmoidPrime  = sigmoid * (1.0f - sigmoid) * SIG_FACTOR;
+    float wdlOutput       = SIGMOID(out);
+    float wdlTargetCp     = SIGMOID(cpTarget);
+    float target          = wdlTargetCp * lambda + wdlTarget * (1.0f - lambda);
+
+    float sigmoidPrime  = SIGMOID_PRIME(wdlOutput);
     float sigmoidTarget = 1.0f / (1.0f + pow(e, -cpTarget / SIG_FACTOR));
 
-    float error =       pow(sigmoidTarget - sigmoid, 2);
-    float errorPrime =  2 * (sigmoidTarget - sigmoid);
-    totalError += error;
+    float loss = pow(target - wdlOutput, 2);
+    float lossPrime =  2 * (sigmoidTarget - wdlOutput);
+
+    // float error = std::abs(target - sigmoidTarget);
+    totalError += loss;
 
     // -- Create input vector
     uint8_t numFeatures;
@@ -356,7 +371,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet
 
     accumulatorReLuPrime.reluPrime();
 
-    delta2.set(0, 0, sigmoidPrime * errorPrime);
+    delta2.set(0, 0, sigmoidPrime * lossPrime);
 
     multiplyTransposeA(net.l1Weights, delta2, delta1);
     delta1.hadamard(accumulatorReLuPrime);
@@ -379,7 +394,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, FloatNet
 void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2)
 {
     // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
-    constexpr float alpha   = 0.001f;
+    constexpr float alpha   = 0.01f;
     constexpr float beta1   = 0.9f;
     constexpr float beta2   = 0.999f;
     constexpr float epsilon = 1.0E-8;
@@ -505,34 +520,35 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
 
         auto loop = [&](uint8_t id)
         {
+            std::string strWdl;
+            std::string strCp;
+            std::string fen;
+
             while (true)
             {
-                // Acc mutex
+                // Acc mutex to read the training data from file
                 mtx.lock();
+
                 if(is.eof())
                 {
                     mtx.unlock();
                     break;
                 }
 
-                std::string strCp;
-                std::string fen;
+                std::getline(is, strWdl);
                 std::getline(is, strCp);
                 std::getline(is, fen);
+
                 mtx.unlock();
 
+                // Convert strings to floats and board
+                // Normalize the result from [-1, 1] to [0, 1]
+                float wdl = (atof(strWdl.c_str()) + 1) / 2.0f;
                 float cp = atof(strCp.c_str());
                 Arcanum::Board board = Arcanum::Board(fen);
 
-                // The dataset contains some variants of chess
-                // where positions can have more than 32 pieces.
-                // These have to be filtered out
-                if(CNTSBITS(board.getColoredPieces(WHITE) | board.getColoredPieces(BLACK)) > 32 ||
-                CNTSBITS(board.getTypedPieces(W_PAWN, WHITE) | board.getTypedPieces(W_PAWN, BLACK)) > 16)
-                    continue;
-
-                m_backPropagate(board, cp, gradients[id], errors[id], m_net, traces[id]);
-
+                // Run back propagation
+                m_backPropagate(board, cp, wdl, gradients[id], errors[id], m_net, traces[id]);
                 counts[id] += 1;
 
                 if((id == 0) && (counts[id] % batchSize == 0))
@@ -554,14 +570,12 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             threads[i] = std::thread(loop, i);
         }
 
-
         uint64_t epochCount = 0LL;
         float epochError = 0;
         for(uint8_t i = 0; i < numThreads; i++)
         {
             threads[i].join();
             DEBUG("Join" << unsigned(i))
-
             epochCount += counts[i];
             epochError += errors[i];
         }

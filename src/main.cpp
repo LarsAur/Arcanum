@@ -6,6 +6,7 @@
 #include <uci.hpp>
 #include <eval.hpp>
 #include <tuning/fenGen.hpp>
+#include <nnue/datagen.hpp>
 using namespace Arcanum;
 
 std::string _logFileName;
@@ -40,8 +41,7 @@ int main(int argc, char *argv[])
         if("--train"        == std::string(argv[i]))
         {
             NN::NNUE nnue = NN::NNUE();
-            nnue.load("../nnue/test768x128x16_117");
-            nnue.train(256, 16384, "dataset.txt");
+            nnue.train(256, 16384, "generatedPositions.txt");
             exit(-1);
         }
 
