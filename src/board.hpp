@@ -9,7 +9,6 @@
 
 namespace Arcanum
 {
-    static const std::string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     typedef enum Color
     {
@@ -146,6 +145,7 @@ namespace Arcanum
 
             friend class Zobrist;
             friend class Evaluator;
+            friend class FEN;
 
             // Tests if the king will be checked before adding the move
             bool m_attemptAddPseudoLegalEnpassant(Move move, square_t kingIdx);
@@ -187,25 +187,7 @@ namespace Arcanum
             uint8_t getNumLegalMoves() const;
             uint8_t getNumPiecesLeft() const;
             uint8_t getNumColoredPieces(Color color) const;
-            std::string getBoardString() const;
-            std::string getFEN() const;
             bitboard_t attackersTo(square_t square) const;
             bool see(const Move& move) const;
-    };
-
-    class Zobrist
-    {
-        private:
-            hash_t m_tables[6][2][64];
-            hash_t m_enPassantTable[65]; // Only 16 is actually used, index 64 is used to not read out of bounds
-            hash_t m_blackToMove;
-
-            void m_addAllPieces(hash_t &hash, hash_t &materialHash, bitboard_t bitboard, uint8_t pieceType, Color pieceColor);
-        public:
-            Zobrist();
-            ~Zobrist();
-
-            void getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
-            void getUpdatedHashs(const Board &board, Move move, square_t oldEnPassentSquare, square_t newEnPassentSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
     };
 }

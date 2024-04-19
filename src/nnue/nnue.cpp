@@ -1,6 +1,7 @@
 #include <nnue/nnue.hpp>
 #include <memory.hpp>
 #include <utils.hpp>
+#include <fen.hpp>
 #include <math.h>
 #include <eval.hpp>
 #include <thread>
@@ -619,12 +620,12 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
 
 void NNUE::m_test()
 {
-    Board b = Board(Arcanum::startFEN);
+    Board b = Board(FEN::startpos);
     eval_t score = evaluateBoard(b);
     Board b1 = Board("1nb1kbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1");
     eval_t score1 = evaluateBoard(b1);
     Board b2 = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NB1KBN1 w kq - 0 1");
     eval_t score2 = evaluateBoard(b2);
 
-    LOG("Score (=) = " << score << "Score (+) = " << score1 << "Score (-) = " << score2)
+    LOG("Score (=) = " << score << " Score (+) = " << score1 << " Score (-) = " << score2)
 }

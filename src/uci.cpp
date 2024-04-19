@@ -8,6 +8,7 @@
 #include <thread>
 #include <syzygy.hpp>
 #include <tuning/fengen.hpp>
+#include <fen.hpp>
 
 using namespace Arcanum;
 
@@ -60,7 +61,7 @@ void UCI::loop()
     fileStream.close();
     #endif
 
-    Board board = Board(startFEN);
+    Board board = Board(FEN::startpos);
     Searcher searcher = Searcher();
     Evaluator evaluator = Evaluator();
     std::string token, cmd;
@@ -116,7 +117,7 @@ void UCI::newgame(Searcher& searcher, Evaluator& evaluator, Board& board)
 
     searcher.clearTT();
     searcher.clearHistory();
-    board = Board(startFEN);
+    board = Board(FEN::startpos);
     searcher.addBoardToHistory(board);
 }
 
@@ -234,7 +235,7 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
 
     if(token == "startpos")
     {
-        fen = startFEN;
+        fen = FEN::startpos;
         is >> token;
     }
     else if(token == "fen")
@@ -376,8 +377,8 @@ void UCI::ischeckmate(Board& board, Searcher& searcher)
 
 void UCI::drawBoard(Board& board)
 {
-    std::cout << board.getBoardString() << std::endl;
-    std::cout << "FEN: " << board.getFEN() << std::endl;
+    std::cout << FEN::toString(board) << std::endl;
+    std::cout << "FEN: " << FEN::getFEN(board) << std::endl;
     std::cout << "Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black") << std::endl;
 }
 

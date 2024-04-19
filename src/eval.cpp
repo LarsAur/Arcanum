@@ -1,6 +1,7 @@
 #include <eval.hpp>
 #include <algorithm>
 #include <memory.hpp>
+#include <fen.hpp>
 
 using namespace Arcanum;
 
@@ -55,7 +56,7 @@ void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
     {
         DEBUG(e1 << "  " << e2)
         LOG(unsigned(move.from) << " " << unsigned(move.to) << " Type: " << MOVED_PIECE(move.moveInfo) << " Capture: " << CAPTURED_PIECE(move.moveInfo) << " Castle: " << CASTLE_SIDE(move.moveInfo) << " Enpassant " << (move.moveInfo & MoveInfoBit::ENPASSANT))
-        DEBUG(board.getBoardString())
+        DEBUG(FEN::toString(board))
         exit(-1);
     }
     #endif

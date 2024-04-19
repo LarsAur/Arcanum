@@ -3,6 +3,7 @@
 #include <search.hpp>
 #include <cstdint>
 #include <chrono>
+#include <fen.hpp>
 
 using namespace Arcanum;
 
@@ -302,7 +303,7 @@ void Perf::search()
 
     Searcher whiteSearcher = Searcher();
     Searcher blackSearcher = Searcher();
-    Board board = Board(Arcanum::startFEN);
+    Board board = Board(Arcanum::FEN::startpos);
     whiteSearcher.addBoardToHistory(board);
     blackSearcher.addBoardToHistory(board);
 
