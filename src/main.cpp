@@ -33,7 +33,6 @@ int main(int argc, char *argv[])
         if("--capture-test" == std::string(argv[i])) Test::captureMoves();
         if("--zobrist-test" == std::string(argv[i])) Test::zobrist();
         if("--draw-test"    == std::string(argv[i])) Test::draw();
-        if("--symeval-test" == std::string(argv[i])) Test::symmetricEvaluation();
         if("--see-test"     == std::string(argv[i])) Test::see();
         if("--search-perf"  == std::string(argv[i])) Perf::search();
         if("--engine-perf"  == std::string(argv[i])) Perf::engineTest();
