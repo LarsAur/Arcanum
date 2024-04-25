@@ -316,7 +316,7 @@ float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
 // http://neuralnetworksanddeeplearning.com/chap2.html
 void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalError, FloatNet& net, Trace& trace)
 {
-    constexpr float lambda = 0.5f; // Weighting between wdlTarget and cpTarget
+    constexpr float lambda = 0.95f; // Weighting between wdlTarget and cpTarget
     constexpr float e = 2.71828182846f;
     constexpr float SIG_FACTOR = 400.0f;
 
@@ -324,7 +324,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 
     // Calculate derivative of sigmoid based on the sigmoid value
     // f'(x) = f(x) * (1 - f(x)) * SIG_FACTOR
-    #define SIGMOID_PRIME(_sigmoid) ((_sigmoid) * (1.0f - (_sigmoid)) * SIG_FACTOR)
+    #define SIGMOID_PRIME(_sigmoid) ((_sigmoid) * (1.0f - (_sigmoid)))
 
     // -- Run prediction
     Accumulator acc;
@@ -343,13 +343,10 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
     float wdlTargetCp     = SIGMOID(cpTarget);
     float target          = wdlTargetCp * lambda + wdlTarget * (1.0f - lambda);
 
-    float sigmoidPrime  = SIGMOID_PRIME(wdlOutput);
-    float sigmoidTarget = 1.0f / (1.0f + pow(e, -cpTarget / SIG_FACTOR));
+    float sigmoidPrime     = SIGMOID_PRIME(wdlOutput);
 
     float loss = pow(target - wdlOutput, 2);
-    float lossPrime =  2 * (sigmoidTarget - wdlOutput);
-
-    // float error = std::abs(target - sigmoidTarget);
+    float lossPrime =  2 * (target - wdlOutput);
     totalError += loss;
 
     // -- Create input vector
@@ -395,7 +392,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2)
 {
     // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
-    constexpr float alpha   = 0.01f;
+    constexpr float alpha   = 0.05f;
     constexpr float beta1   = 0.9f;
     constexpr float beta2   = 0.999f;
     constexpr float epsilon = 1.0E-8;
@@ -444,10 +441,10 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
 
     // M^_t = alpha * M_t / (1 - Beta1^t)
 
-    m_hat.ftWeights .add(momentum1.ftWeights);
-    m_hat.ftBiases  .add(momentum1.ftBiases );
-    m_hat.l1Weights .add(momentum1.l1Weights);
-    m_hat.l1Biases  .add(momentum1.l1Biases );
+    m_hat.ftWeights .copy(momentum1.ftWeights);
+    m_hat.ftBiases  .copy(momentum1.ftBiases );
+    m_hat.l1Weights .copy(momentum1.l1Weights);
+    m_hat.l1Biases  .copy(momentum1.l1Biases );
 
     m_hat.ftWeights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
     m_hat.ftBiases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
@@ -456,10 +453,10 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
 
     // v^_t = v_t / (1 - Beta2^t)
 
-    v_hat.ftWeights .add(momentum2.ftWeights);
-    v_hat.ftBiases  .add(momentum2.ftBiases );
-    v_hat.l1Weights .add(momentum2.l1Weights);
-    v_hat.l1Biases  .add(momentum2.l1Biases );
+    v_hat.ftWeights .copy(momentum2.ftWeights);
+    v_hat.ftBiases  .copy(momentum2.ftBiases );
+    v_hat.l1Weights .copy(momentum2.l1Weights);
+    v_hat.l1Biases  .copy(momentum2.l1Biases );
 
     v_hat.ftWeights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
     v_hat.ftBiases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
@@ -492,24 +489,22 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     m_net.l1Biases  .add(m_hat.l1Biases );
 }
 
-void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
+void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch)
 {
-    constexpr uint8_t numThreads = 6;
-    std::thread threads[numThreads];
-    FloatNet gradients[numThreads];
-    Trace traces[numThreads];
-    float errors[numThreads];
-    uint64_t counts[numThreads];
-    std::mutex mtx = std::mutex();
+    FloatNet gradient;
+    Trace trace;
 
     FloatNet momentum1;
     FloatNet momentum2;
 
-    load("../nnue/gen2201");
-    m_loadNet("../nnue/momentum1.fnnue", momentum1);
-    m_loadNet("../nnue/momentum2.fnnue", momentum2);
+    std::string strWdl;
+    std::string strCp;
+    std::string fen;
 
-    for(uint32_t epoch = 1; epoch < 512; epoch++)
+    // Log an empty line which will be deleted by the batch logging
+    LOG("")
+
+    for(uint32_t epoch = startEpoch; epoch < endEpoch; epoch++)
     {
         std::ifstream is(dataset, std::ios::in);
 
@@ -519,99 +514,60 @@ void NNUE::train(uint32_t epochs, uint32_t batchSize, std::string dataset)
             exit(-1);
         }
 
-        auto loop = [&](uint8_t id)
-        {
-            std::string strWdl;
-            std::string strCp;
-            std::string fen;
-
-            while (true)
-            {
-                // Acc mutex to read the training data from file
-                mtx.lock();
-
-                if(is.eof())
-                {
-                    mtx.unlock();
-                    break;
-                }
-
-                std::getline(is, strWdl);
-                std::getline(is, strCp);
-                std::getline(is, fen);
-
-                mtx.unlock();
-
-                // Convert strings to floats and board
-                // Normalize the result from [-1, 1] to [0, 1]
-                float wdl = (atof(strWdl.c_str()) + 1) / 2.0f;
-                float cp = atof(strCp.c_str());
-                Arcanum::Board board = Arcanum::Board(fen);
-
-                // Run back propagation
-                m_backPropagate(board, cp, wdl, gradients[id], errors[id], m_net, traces[id]);
-                counts[id] += 1;
-
-                if((id == 0) && (counts[id] % batchSize == 0))
-                    DEBUG("Epoch Size = " << counts[id] << " Avg. Error = " << errors[id] / counts[id])
-            }
-        };
-
-        for(uint8_t i = 0; i < numThreads; i++)
-        {
-            gradients[i].ftWeights.setZero();
-            gradients[i].ftBiases .setZero();
-            gradients[i].l1Weights.setZero();
-            gradients[i].l1Biases .setZero();
-
-            errors[i] = 0.0f;
-            counts[i] = 0LL;
-
-            DEBUG("Start" << unsigned(i))
-            threads[i] = std::thread(loop, i);
-        }
-
         uint64_t epochCount = 0LL;
-        float epochError = 0;
-        for(uint8_t i = 0; i < numThreads; i++)
+        float epochError    = 0;
+        uint64_t count      = 0LL;
+        float error         = 0.0f;
+
+        gradient.ftWeights.setZero();
+        gradient.ftBiases .setZero();
+        gradient.l1Weights.setZero();
+        gradient.l1Biases .setZero();
+
+        while (!is.eof())
         {
-            threads[i].join();
-            DEBUG("Join" << unsigned(i))
-            epochCount += counts[i];
-            epochError += errors[i];
+
+            std::getline(is, strWdl);
+            std::getline(is, strCp);
+            std::getline(is, fen);
+
+            // Convert strings to floats and board
+            // Normalize the result from [-1, 1] to [0, 1]
+            float wdl = (atof(strWdl.c_str()) + 1) / 2.0f;
+            float cp = atof(strCp.c_str());
+            Arcanum::Board board = Arcanum::Board(fen);
+
+            // Run back propagation
+            m_backPropagate(board, cp, wdl, gradient, error, m_net, trace);
+
+            count++;
+
+            if((count % batchSize == 0) || is.eof())
+            {
+                gradient.ftWeights .scale(1.0f / count);
+                gradient.ftBiases  .scale(1.0f / count);
+                gradient.l1Weights .scale(1.0f / count);
+                gradient.l1Biases  .scale(1.0f / count);
+
+                m_applyGradient(epoch, gradient, momentum1, momentum2);
+
+                epochCount += count;
+                epochError += error;
+
+                LOG("Batch Avg. Loss = " << (error / count)
+                << " Epoch Avg. Loss = " << (epochError / epochCount)
+                << " #Positions = " << epochCount)
+
+                count = 0;
+                error = 0.0f;
+            }
+
         }
-
-        for(uint8_t i = 1; i < numThreads; i++)
-        {
-            gradients[0].ftWeights .add(gradients[i].ftWeights);
-            gradients[0].ftBiases  .add(gradients[i].ftBiases );
-            gradients[0].l1Weights .add(gradients[i].l1Weights);
-            gradients[0].l1Biases  .add(gradients[i].l1Biases );
-        }
-
-        gradients[0].ftWeights .scale(10.0f / epochCount);
-        gradients[0].ftBiases  .scale(1.0f / epochCount);
-        gradients[0].l1Weights .scale(1.0f / epochCount);
-        gradients[0].l1Biases  .scale(1.0f / epochCount);
-
-        m_applyGradient(epoch, gradients[0], momentum1, momentum2);
-
-        DEBUG("Avg. Error = " << (epochError / epochCount))
-
-        std::ofstream ofstream("nnue_error.log", std::ios::app);
-        std::stringstream filess;
-        filess << (epochError / epochCount) << "\n";
-        ofstream.write(filess.str().data(), filess.str().length());
-        ofstream.close();
 
         std::stringstream ss;
-        ss << "../nnue/gen2" << epoch;
+        ss << outputPath << epoch << ".fnnue";
         store(ss.str());
         is.close();
-
-        m_storeNet("../nnue/momentum1.fnnue", momentum1);
-        m_storeNet("../nnue/momentum2.fnnue", momentum2);
-        m_storeNet("../nnue/gradient.fnnue", gradients[0]);
 
         m_test();
     }

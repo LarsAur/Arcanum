@@ -47,6 +47,7 @@ namespace UCI
     void eval(Board& board, Evaluator& evaluator);
     void drawBoard(Board& board);
     void fengen(std::istringstream& is);
+    void train(std::istringstream& is);
 }
 
 // Source: https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
@@ -104,6 +105,7 @@ void UCI::loop()
         else if (token == "ischeckmate") ischeckmate(board, searcher);
         else if (token == "d"          ) drawBoard(board);
         else if (token == "fengen"     ) fengen(is);
+        else if (token == "train"      ) train(is);
 
     } while(token != "quit");
 
@@ -344,6 +346,7 @@ void UCI::eval(Board& board, Evaluator& evaluator)
 void UCI::ischeckmate(Board& board, Searcher& searcher)
 {
     auto history = searcher.getHistory();
+
     auto it = history.find(board.getHash());
     if(it != history.end())
     {
@@ -402,4 +405,31 @@ void UCI::fengen(std::istringstream& is)
     //TODO: Sanitize input. E.g validate int values
 
     Tuning::fengen(startPosPath, outputPath, atoi(numFens.c_str()), atoi(numThreads.c_str()), atoi(depth.c_str()));
+}
+
+void UCI::train(std::istringstream& is)
+{
+    std::string dataset;        // Dataset created by fengen
+    std::string outputPath;     // Output path (_epoch.fnnue will be added as a suffix)
+    std::string batchSizeStr;   // Batch size
+    std::string startEpochStr;  // Epoch to start at (used for naming output and ADAM time variable)
+    std::string endEpochStr;    // Epoch to end at
+
+    is >> std::skipws >> dataset;
+    is >> std::skipws >> outputPath;
+    is >> std::skipws >> batchSizeStr;
+    is >> std::skipws >> startEpochStr;
+    is >> std::skipws >> endEpochStr;
+
+    uint64_t batchSize  = atoi(batchSizeStr.c_str());
+    uint32_t startEpoch = atoi(startEpochStr.c_str());
+    uint32_t endEpoch   = atoi(endEpochStr.c_str());
+
+    if(startEpoch < 1)
+    {
+        ERROR("Start epoch must be at least 1")
+        return;
+    }
+
+    Evaluator::nnue.train(dataset, outputPath, batchSize, startEpoch, endEpoch);
 }

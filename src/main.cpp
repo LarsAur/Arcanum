@@ -36,12 +36,6 @@ int main(int argc, char *argv[])
         if("--see-test"     == std::string(argv[i])) Test::see();
         if("--search-perf"  == std::string(argv[i])) Perf::search();
         if("--engine-perf"  == std::string(argv[i])) Perf::engineTest();
-        if("--train"        == std::string(argv[i]))
-        {
-            NN::NNUE nnue = NN::NNUE();
-            nnue.train(256, 16384, "generatedPositions.txt");
-            exit(-1);
-        }
     }
 
     return 0;

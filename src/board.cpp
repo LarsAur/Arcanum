@@ -8,7 +8,11 @@ using namespace Arcanum;
 
 Board::Board(const std::string fen)
 {
-    FEN::setFEN(*this, fen);
+    if(!FEN::setFEN(*this, fen))
+    {
+        ERROR("Exit due to FEN error")
+        exit(EXIT_FAILURE);
+    }
 }
 
 Board::Board(const Board& board)
