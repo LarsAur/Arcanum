@@ -6,6 +6,7 @@
 #include <eval.hpp>
 #include <thread>
 #include <mutex>
+#include <ctime>
 
 using namespace NN;
 using namespace Arcanum;
@@ -39,6 +40,31 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
         return;
     }
 
+    // Reading header
+
+    std::string magic;
+    std::string metadata;
+    uint32_t size;
+
+    magic.resize(strlen(NNUE_MAGIC));
+    is.read(magic.data(), strlen(NNUE_MAGIC));
+
+    if(magic != NNUE_MAGIC)
+    {
+        ERROR("Mismatching NNUE magic" << magic << " != " << NNUE_MAGIC);
+        return;
+    }
+
+    is.read((char*) &size, sizeof(uint32_t));
+
+    metadata.resize(size);
+    is.read(metadata.data(), size);
+
+    DEBUG("Magic:" << magic)
+    DEBUG("Metadata:\n" << metadata)
+
+    // Read Net data
+
     is.read((char*) net.ftWeights.data(), 768 * 256 * sizeof(float));
     is.read((char*) net.ftBiases.data(),        256 * sizeof(float));
     is.read((char*) net.l1Weights.data(),  1 *  256 * sizeof(float));
@@ -69,6 +95,20 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
         return;
     }
 
+    // Write header
+    time_t now = time(0);
+    tm *gmt = gmtime(&now);
+    std::string utcstr = asctime(gmt);
+    std::string arch = "768->256->1";
+
+    std::string metadata = utcstr + arch;
+    uint32_t size = metadata.size();
+
+    fstream.write(NNUE_MAGIC, strlen(NNUE_MAGIC));
+    fstream.write((char*) &size, sizeof(uint32_t));
+    fstream.write(metadata.c_str(), size);
+
+    // Write Net data
     fstream.write((char*) net.ftWeights.data(), 768 * 256 * sizeof(float));
     fstream.write((char*) net.ftBiases.data(),        256 * sizeof(float));
     fstream.write((char*) net.l1Weights.data(),   1 * 256 * sizeof(float));
