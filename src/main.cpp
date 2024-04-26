@@ -4,8 +4,8 @@
 #include <test.hpp>
 #include <search.hpp>
 #include <uci.hpp>
-#include <tuning/tuning.hpp>
-#include <tuning/fenGen.hpp>
+#include <eval.hpp>
+
 using namespace Arcanum;
 
 std::string _logFileName;
@@ -19,6 +19,8 @@ int main(int argc, char *argv[])
     Arcanum::initGenerateBishopMoves();
     Arcanum::initGenerateBetweens();
 
+    Evaluator::nnue.load(Evaluator::nnuePathDefault);
+
     if(argc == 1)
     {
         UCI::loop();
@@ -31,38 +33,9 @@ int main(int argc, char *argv[])
         if("--capture-test" == std::string(argv[i])) Test::captureMoves();
         if("--zobrist-test" == std::string(argv[i])) Test::zobrist();
         if("--draw-test"    == std::string(argv[i])) Test::draw();
-        if("--symeval-test" == std::string(argv[i])) Test::symmetricEvaluation();
         if("--see-test"     == std::string(argv[i])) Test::see();
         if("--search-perf"  == std::string(argv[i])) Perf::search();
         if("--engine-perf"  == std::string(argv[i])) Perf::engineTest();
-
-        if("--tune" == std::string(argv[i]))
-        {
-            Tuning::Tuner tuner = Tuning::Tuner();
-            if(argc < i + 3)
-            {
-                ERROR("Missing arguments for tuning '--tune input output dataset'")
-                exit(-1);
-            }
-            tuner.setInputFile(argv[i + 1]);
-            tuner.setOutputFile(argv[i + 2]);
-            tuner.setTrainingDataFilePath(argv[i + 3]);
-            tuner.start();
-            argc += 3;
-        }
-
-        if("--fengen" ==  std::string(argv[i]))
-        {
-            Tuning::FenGen dataCreator = Tuning::FenGen();
-            if(argc < i + 2)
-            {
-                ERROR("Missing arguments for data creation '--fengen output pgndir'")
-                exit(-1);
-            }
-            dataCreator.setOutputFile(argv[i + 1]);
-            dataCreator.start(10, argv[i + 2]);
-            argc += 2;
-        }
     }
 
     return 0;

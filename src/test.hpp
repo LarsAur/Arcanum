@@ -7,7 +7,6 @@ namespace Test
     void captureMoves();
     void zobrist();
     void draw();
-    void symmetricEvaluation();
     void see();
 }
 

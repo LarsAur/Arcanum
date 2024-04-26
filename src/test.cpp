@@ -3,6 +3,7 @@
 #include <search.hpp>
 #include <cstdint>
 #include <chrono>
+#include <fen.hpp>
 
 using namespace Arcanum;
 
@@ -226,30 +227,29 @@ void Test::zobrist()
 void Test::draw()
 {
     LOG("Starting draw test")
+    Searcher wsearcher = Searcher();
 
     // Test if search will find its way around 3-fold repetition checkmate
     Board repeat = Board("k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1");
-    repeat.getBoardHistory()->clear();
-    repeat.addBoardToHistory();
-    repeat.addBoardToHistory();
+    wsearcher.addBoardToHistory(repeat);
+    wsearcher.addBoardToHistory(repeat);
     Board board = Board("k7/1p1p1p2/pPpPpPp1/P1P1P1P1/R7/8/8/K7 w - - 0 1");
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
 
-    Searcher wsearcher = Searcher();
     board.performMove(wsearcher.getBestMoveInTime(board, 200));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     if(board.getHash() == repeat.getHash())
     {
         ERROR("Repeated position: k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
     }
     board.performMove(Move(56, 57, MoveInfoBit::KING_MOVE));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     board.performMove(wsearcher.getBestMoveInTime(board, 200));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     board.performMove(Move(57, 56, MoveInfoBit::KING_MOVE));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     board.performMove(wsearcher.getBestMoveInTime(board, 200));
-    board.addBoardToHistory();
+    wsearcher.addBoardToHistory(board);
     if(board.getHash() == repeat.getHash())
     {
         ERROR("Repeated position: k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
@@ -265,137 +265,6 @@ void Test::draw()
     }
 }
 
-std::string getRandomSymmetricFEN()
-{
-    std::string fenPosition = "11111111/11111111/11111111/11111111/11111111/11111111/11111111/11111111";
-
-    // Generate a random set of pieces
-    std::vector<char> piecesToPlace;
-    piecesToPlace.push_back('k');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('r');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('n');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('b');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('q');
-    for(int i = 0; i < rand() % 8; i++) piecesToPlace.push_back('p');
-
-    // Place each piece
-    for(size_t i = 0; i < piecesToPlace.size(); i++)
-    {
-        random_square:
-        int rank = rand() % 8;
-        int file = rand() % 8;
-        int index1 = 70 - file - rank * 9;
-        int index2 = 70 - file - (7 - rank) * 9;
-
-        if(fenPosition[index1] != '1') goto random_square;
-
-        char piece = piecesToPlace.at(i);
-        fenPosition[index1] = piece;
-        fenPosition[index2] = piece - 0x20;
-    }
-
-    // TODO: Randomize castle oppertunities
-
-    return fenPosition + " w KQkq - 0 1";
-}
-
-// Returns a pair of positions which are rotations of eachother
-// The position is supposed to have the property Eval(p1) = -Eval(p2)
-std::pair<std::string, std::string> getRandomEqualFENPairs()
-{
-    std::string fenPosition1 = "11111111/11111111/11111111/11111111/11111111/11111111/11111111/11111111";
-    std::string fenPosition2 = "11111111/11111111/11111111/11111111/11111111/11111111/11111111/11111111";
-
-    // Generate a 2 random sets of pieces
-    std::vector<char> piecesToPlace;
-    piecesToPlace.push_back('k');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('r');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('n');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('b');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('q');
-    for(int i = 0; i < rand() % 8; i++) piecesToPlace.push_back('p');
-    piecesToPlace.push_back('K');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('R');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('N');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('B');
-    for(int i = 0; i < rand() % 2; i++) piecesToPlace.push_back('Q');
-    for(int i = 0; i < rand() % 8; i++) piecesToPlace.push_back('P');
-
-    // Place each piece
-    for(size_t i = 0; i < piecesToPlace.size(); i++)
-    {
-        random_square:
-        int rank = rand() % 8;
-        int file = rand() % 8;
-        int index1 = 70 - file - rank * 9;
-        int index2 = 70 - file - (7 - rank) * 9;
-        if(fenPosition1[index1] != '1') goto random_square;
-
-        char piece = piecesToPlace.at(i);
-        fenPosition1[index1] = piece;
-
-        // Toggle the color of the piece
-        if(isupper(piece))
-            piece += 0x20;
-        else
-            piece -= 0x20;
-
-        fenPosition2[index2] = piece;
-    }
-
-    // TODO: Randomize castle oppertunities
-
-    std::pair<std::string, std::string> positions = std::pair(
-        fenPosition1 + " w KQkq - 0 1",
-        fenPosition2 + " b KQkq - 0 1"
-    );
-    return positions;
-}
-
-void Test::symmetricEvaluation()
-{
-    bool success = true;
-    srand(0);
-    for(int i = 0; i < 10000; i++)
-    {
-        Evaluator eval = Evaluator();
-        std::string fen = getRandomSymmetricFEN();
-        Board board(fen);
-        EvalTrace score = eval.evaluate(board, 0);
-        if(score.total != 0 && abs(score.total) != 32767)
-        {
-            success = false;
-            ERROR("Uneven evaluation for symmetric position: \n Evaluation: " << score.total << "\n" << board.getBoardString())
-        }
-    }
-
-    if(success)
-        SUCCESS("Equal evaluation for all 10k symmetric positions")
-
-    success = true;
-    for(int i = 0; i < 10000; i++)
-    {
-        Evaluator eval1 = Evaluator();
-        Evaluator eval2 = Evaluator();
-        std::pair fenPair = getRandomEqualFENPairs();
-
-        Board b1 = Board(fenPair.first);
-        Board b2 = Board(fenPair.second);
-
-        EvalTrace score1 = eval1.evaluate(b1, 0);
-        EvalTrace score2 = eval2.evaluate(b2, 0);
-
-        if(score1.total != -score2.total)
-        {
-            success = false;
-            ERROR("Uneven evaluation for equal positions: \n Evaluation: " << score1.total << " " << score2.total << "\n" << b1.getBoardString() << "\n" << b2.getBoardString())
-        }
-    }
-
-    if(success)
-        SUCCESS("Equal evaluation for all 10k equal positions")
-}
-
 static bool s_seeTestPosition(std::string fen, Move move, bool expected)
 {
     Board board = Board(fen);
@@ -406,7 +275,6 @@ static bool s_seeTestPosition(std::string fen, Move move, bool expected)
         ERROR("SEE test failed for " << fen << " got: " << seeScore << " expected: " << expected)
 
     return seeScore == expected;
-
 }
 
 void Test::see()
@@ -435,9 +303,9 @@ void Perf::search()
 
     Searcher whiteSearcher = Searcher();
     Searcher blackSearcher = Searcher();
-    Board board = Board(Arcanum::startFEN);
-    board.getBoardHistory()->clear();
-    board.addBoardToHistory();
+    Board board = Board(Arcanum::FEN::startpos);
+    whiteSearcher.addBoardToHistory(board);
+    blackSearcher.addBoardToHistory(board);
 
     auto start = std::chrono::high_resolution_clock::now();
     for(int i = 0; i < 20; i++)
@@ -445,10 +313,12 @@ void Perf::search()
         DEBUG("PERF: " << i << "/" << 20)
         Move whiteMove = whiteSearcher.getBestMove(board, 10);
         board.performMove(whiteMove);
-        board.addBoardToHistory();
+        whiteSearcher.addBoardToHistory(board);
+        blackSearcher.addBoardToHistory(board);
         Move blackMove = blackSearcher.getBestMove(board, 10);
         board.performMove(blackMove);
-        board.addBoardToHistory();
+        whiteSearcher.addBoardToHistory(board);
+        blackSearcher.addBoardToHistory(board);
     }
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> diff = end - start;

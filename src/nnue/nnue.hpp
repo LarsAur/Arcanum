@@ -1,101 +1,65 @@
 #pragma once
 
+#include <types.hpp>
 #include <board.hpp>
-#include <string>
-#include <array>
-
-/**
- * The code related to NNUE is an adaptation of the NNUE-probe library created by dshawul on Github.
- * https://github.com/dshawul/nnue-probe
-**/
+#include <nnue/matrix.hpp>
 
 namespace NN
 {
-    typedef int16_t AccData;
-    typedef int16_t FTWeight;
-    typedef int16_t FTBias;
-    typedef int8_t Weight;
-    typedef int32_t Bias;
-    typedef int8_t Clipped;
-    typedef uint32_t Mask;
-    typedef uint64_t Mask2;
-
-    constexpr uint32_t ftIns = 41024;
-    constexpr uint32_t ftOuts = 256;
-    constexpr uint32_t l1outs = 32;
-    constexpr uint32_t l2outs = 32;
-    constexpr uint32_t lastouts = 1;
-    constexpr uint32_t shift = 6;
-    constexpr int32_t fv_scale = 16;
-
     struct Accumulator
     {
-        alignas(64) AccData acc[2][ftOuts];
+        alignas(64) float acc[2][256];
+    };
+
+    struct FloatNet
+    {
+        Matrix<256, 768> ftWeights;
+        Matrix<256, 1> ftBiases;
+        Matrix<1, 256> l1Weights;
+        Matrix<1, 1> l1Biases;
+    };
+
+    // Intermediate results in the net
+    struct Trace
+    {
+        Matrix<768, 1>  input;         // Only used by backprop
+        Matrix<256, 1>  accumulator;   // Post ReLU accumulator
+        Matrix<1, 1>    out;           // Scalar output
     };
 
     class NNUE
     {
         private:
-            struct NetData {
-                alignas(64) Clipped input[2*ftOuts];
-                Clipped hiddenOut1[32];
-                Clipped hiddenOut2[32];
-            };
+            Trace m_trace;
+            FloatNet m_net;
 
-            template <int In, int Out>
-            struct LinearLayer
-            {
-                alignas(64) Weight weights[In * Out];
-                alignas(64) Bias   biases[Out];
-            };
+            uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
+            float m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
+            float m_predict(Accumulator* acc, Arcanum::Color perspective);
+            void m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures, uint32_t* features);
+            void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features);
+            void m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
+            void m_randomizeWeights();
+            void m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2);
+            void m_test();
+            void m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalError, FloatNet& net, Trace& trace);
 
-            struct FeatureTransformer
-            {
-                FTWeight *weights;
-                FTBias   *biases;
-            };
-
-            FeatureTransformer m_featureTransformer;
-            LinearLayer<2*ftOuts, 32> m_hiddenLayer1;
-            LinearLayer<32, 32> m_hiddenLayer2;
-            LinearLayer<32, 1> m_outputLayer;
-            bool m_loaded;
-            void m_affineTransform(
-                Clipped *input,
-                void *output,
-                uint32_t inDim,
-                uint32_t outDim,
-                const Bias* biases,
-                const Weight* weights,
-                const Mask *inMask,
-                Mask *outMask,
-                const bool pack8Mask
-            );
-            int32_t m_affinePropagate(Clipped* input, Bias* biases, Weight* weights);
-            void m_permuteBiases(Bias* biases);
-            uint32_t m_calculateActiveIndices(std::array<uint32_t, 30>& indicies, const Arcanum::Color perspective, const Arcanum::Board& board);
-            uint32_t m_calculateChangedIndices(uint32_t& activated, std::array<uint32_t, 2>& deactivated, const Arcanum::Color perspective, const Arcanum::Move& move, const Arcanum::Board board);
-            void m_initializeAccumulatorPerspective(Accumulator& accumulator, const Arcanum::Color perspective, const Arcanum::Board& board);
-            void m_loadHeader(std::ifstream& stream);
-            void m_loadWeights(std::ifstream& stream);
+            void m_storeNet(std::string filename, FloatNet& net);
+            void m_loadNet(std::string filename, FloatNet& net);
         public:
+            static const char* NNUE_MAGIC;
+
             NNUE();
             ~NNUE();
 
-            // Loads a .nnue file given a full path
-            bool loadFullPath(std::string fullPath);
-            // Loads a .nnue file in a position relative to the executable
-            bool loadRelative(std::string filename);
-            void initializeAccumulator(Accumulator& accumulator, const Arcanum::Board& board);
-            void incrementAccumulator(
-                const Accumulator& prevAccumulator,
-                Accumulator& newAccumulator,
-                const Arcanum::Color perspective,
-                const Arcanum::Board& board,
-                const Arcanum::Move& move
-            );
-            int evaluateBoard(const Arcanum::Board& board);
-            int evaluate(const Accumulator& accumulator, Arcanum::Color turn);
-            bool isLoaded();
+            void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch);
+            void load(std::string filename);
+            void store(std::string filename);
+
+            void initAccumulator(Accumulator* acc, const Arcanum::Board& board);
+            void incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum::Board& board, const Arcanum::Move& move);
+
+            Arcanum::eval_t evaluateBoard(const Arcanum::Board& board);
+            Arcanum::eval_t evaluate(Accumulator* acc, Arcanum::Color turn);
     };
 }

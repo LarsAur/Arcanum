@@ -10,4 +10,5 @@ __pycache__
 *.pgn
 *.zst
 *.uci_options
+*.fnnue
 notes.txt

@@ -7,6 +7,8 @@
 #include <fstream>
 #include <thread>
 #include <syzygy.hpp>
+#include <tuning/fengen.hpp>
+#include <fen.hpp>
 
 using namespace Arcanum;
 
@@ -36,14 +38,16 @@ namespace UCI
     static std::thread searchThread;
     static bool isSearching;
 
-    void go(Arcanum::Board& board, Arcanum::Searcher& searcher, std::istringstream& is);
-    void newgame(Arcanum::Searcher& Searcher, Arcanum::Evaluator& evaluatorm, Arcanum::Board& board);
-    void setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is);
-    void position(Arcanum::Board& board, std::istringstream& is);
+    void go(Board& board, Searcher& searcher, std::istringstream& is);
+    void newgame(Searcher& Searcher, Evaluator& evaluatorm, Board& board);
+    void setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream& is);
+    void position(Board& board, Searcher& searcher, std::istringstream& is);
     int64_t allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber);
-    void ischeckmate(Arcanum::Board& board);
-    void eval(Arcanum::Board& board, Arcanum::Evaluator& evaluator);
-    void drawBoard(Arcanum::Board& board);
+    void ischeckmate(Board& board, Searcher& searcher);
+    void eval(Board& board, Evaluator& evaluator);
+    void drawBoard(Board& board);
+    void fengen(std::istringstream& is);
+    void train(std::istringstream& is);
 }
 
 // Source: https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
@@ -58,7 +62,7 @@ void UCI::loop()
     fileStream.close();
     #endif
 
-    Board board = Board(startFEN);
+    Board board = Board(FEN::startpos);
     Searcher searcher = Searcher();
     Evaluator evaluator = Evaluator();
     std::string token, cmd;
@@ -79,96 +83,91 @@ void UCI::loop()
         is >> std::skipws >> token;
         std::transform(token.begin(), token.end(), token.begin(), [](unsigned char c){ return std::tolower(c); });
 
-        if(strcmp(token.c_str(), "uci") == 0)
+        if(token == "uci")
         {
             UCI_OUT(std::string("id name Arcanum ").append(TOSTRING(ARCANUM_VERSION)))
             UCI_OUT("id author Lars Murud Aurud")
             UCI_OUT("option name Hash type spin default 32 min 0 max 8196")
             UCI_OUT("option name ClearHash type button")
-            UCI_OUT("option name UseNNUE type check default false")
-            UCI_OUT("option name HCEWeightFile type string default hceWeights.dat")
             UCI_OUT("option name SyzygyPath type string default <empty>")
+            UCI_OUT("option name NNUEPath type string default " << Evaluator::nnuePathDefault)
             UCI_OUT("uciok")
         }
-        else if (strcmp(token.c_str(), "setoption"  ) == 0) setoption(searcher, evaluator, is);
-        else if (strcmp(token.c_str(), "go"         ) == 0) go(board, searcher, is);
-        else if (strcmp(token.c_str(), "position"   ) == 0) position(board, is);
-        else if (strcmp(token.c_str(), "ucinewgame" ) == 0) newgame(searcher, evaluator, board);
-        else if (strcmp(token.c_str(), "isready"    ) == 0) UCI_OUT("readyok")
-        else if (strcmp(token.c_str(), "stop"       ) == 0) searcher.stop();
+        else if (token == "setoption" ) setoption(searcher, evaluator, is);
+        else if (token == "go"        ) go(board, searcher, is);
+        else if (token == "position"  ) position(board, searcher, is);
+        else if (token == "ucinewgame") newgame(searcher, evaluator, board);
+        else if (token == "isready"   ) UCI_OUT("readyok")
+        else if (token == "stop"      ) searcher.stop();
 
         // Custom
-        else if (strcmp(token.c_str(), "eval") == 0) eval(board, evaluator);
-        else if (strcmp(token.c_str(), "ischeckmate") == 0) ischeckmate(board);
-        else if (strcmp(token.c_str(), "d") == 0) drawBoard(board);
+        else if (token == "eval"       ) eval(board, evaluator);
+        else if (token == "ischeckmate") ischeckmate(board, searcher);
+        else if (token == "d"          ) drawBoard(board);
+        else if (token == "fengen"     ) fengen(is);
+        else if (token == "train"      ) train(is);
 
-    } while(strcmp(token.c_str(), "quit") != 0);
+    } while(token != "quit");
 
     TBFree();
     UCI_LOG("Exiting UCI loop")
 }
 
-void UCI::newgame(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, Arcanum::Board& board)
+void UCI::newgame(Searcher& searcher, Evaluator& evaluator, Board& board)
 {
     if(isSearching) return;
 
     searcher.clearTT();
-    board = Board(Arcanum::startFEN);
-    board.getBoardHistory()->clear();
+    searcher.clearHistory();
+    board = Board(FEN::startpos);
+    searcher.addBoardToHistory(board);
 }
 
-void UCI::setoption(Arcanum::Searcher& searcher, Arcanum::Evaluator& evaluator, std::istringstream& is)
+void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream& is)
 {
+    #define SET_LOWER_CASE(_str) std::transform((_str).begin(), (_str).end(), (_str).begin(), [](unsigned char c){ return std::tolower(c); });
+
     if(isSearching) return;
 
     std::string name, valueToken, nameToken;
     is >> std::skipws >> nameToken; // 'name'
-    std::transform(nameToken.begin(), nameToken.end(), nameToken.begin(), [](unsigned char c){ return std::tolower(c); });
+    SET_LOWER_CASE(nameToken)
 
-    if(strcmp(nameToken.c_str(), "name") != 0) return;
+    if(nameToken != "name") return;
 
     is >> std::skipws >> name;      // name of the option
-    std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c){ return std::tolower(c); });
+    SET_LOWER_CASE(name)
 
     // Process button options
-    if(strcmp(name.c_str(), "clearhash") == 0) searcher.clearTT();
+    if(name == "clearhash") searcher.clearTT();
 
     is >> std::skipws >> valueToken; // 'value'
-    std::transform(valueToken.begin(), valueToken.end(), valueToken.begin(), [](unsigned char c){ return std::tolower(c); });
+    SET_LOWER_CASE(valueToken)
 
-    if(strcmp(valueToken.c_str(), "value") != 0) return;
+    if(valueToken != "value") return;
 
     // Process non-button options
-    if(strcmp(name.c_str(), "hash") == 0)
+    if(name == "hash")
     {
         uint32_t mbSize;
         is >> std::skipws >> mbSize;
         searcher.resizeTT(mbSize);
     }
-    else if(strcmp(name.c_str(), "usennue") == 0)
-    {
-        std::string b;
-        is >> std::skipws >> b;
-        std::transform(b.begin(), b.end(), b.begin(), [](unsigned char c){ return std::tolower(c); });
-        if(strcmp(b.c_str(), "true") == 0)       {searcher.setEnableNNUE(true); evaluator.setEnableNNUE(true); }
-        else if(strcmp(b.c_str(), "false") == 0) {searcher.setEnableNNUE(false); evaluator.setEnableNNUE(false); }
-    }
-    else if(strcmp(name.c_str(), "hceweightfile") == 0)
+    else if(name == "syzygypath")
     {
         std::string str;
         is >> std::skipws >> str;
-        evaluator.setHCEModelFile(str);
-        searcher.setHCEModelFile(str);
-    }
-    else if(strcmp(name.c_str(), "syzygypath") == 0)
-    {
-        std::string str;
-        is >> std::skipws >> str;
-        if(!Arcanum::TBInit(str))
+        if(!TBInit(str))
         {
             UCI_ERROR("Failed to set SyzygyPath " << str)
             exit(-1);
         }
+    }
+    else if(name == "nnuepath")
+    {
+        std::string path;
+        is >> std::skipws >> path;
+        Evaluator::nnue.load(path);
     }
 }
 
@@ -184,7 +183,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
 
     while(is >> token)
     {
-        if(!strcmp(token.c_str(), "searchmoves"))
+        if(token == "searchmoves")
         {
             // TODO: This can be improved to make the move based on only the uci
             Move* moves = board.getLegalMoves();
@@ -192,25 +191,25 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
             board.generateCaptureInfo();
             while (is >> token)
                 for(int i = 0; i < numLegalMoves; i++)
-                    if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
+                    if(token == moves[i].toString())
                         parameters.searchMoves[parameters.numSearchMoves++] = moves[i];
         }
-        else if(!strcmp(token.c_str(), "wtime"))     is >> time[Arcanum::Color::WHITE];
-        else if(!strcmp(token.c_str(), "btime"))     is >> time[Arcanum::Color::BLACK];
-        else if(!strcmp(token.c_str(), "winc"))      is >> inc[Arcanum::Color::WHITE];
-        else if(!strcmp(token.c_str(), "binc"))      is >> inc[Arcanum::Color::BLACK];
-        else if(!strcmp(token.c_str(), "movestogo")) is >> movesToGo;
-        else if(!strcmp(token.c_str(), "depth"))     is >> parameters.depth;
-        else if(!strcmp(token.c_str(), "nodes"))     is >> parameters.nodes;
-        else if(!strcmp(token.c_str(), "movetime"))  is >> parameters.msTime;
-        else if(!strcmp(token.c_str(), "perft"))     UCI_WARNING("perft")
-        else if(!strcmp(token.c_str(), "infinite"))  parameters.infinite = true;
-        else if(!strcmp(token.c_str(), "ponder"))    UCI_WARNING("ponder")
-        else if(!strcmp(token.c_str(), "mate"))      UCI_WARNING("mate")
+        else if(token == "wtime"     ) is >> time[Color::WHITE];
+        else if(token == "btime"     ) is >> time[Color::BLACK];
+        else if(token == "winc"      ) is >> inc[Color::WHITE];
+        else if(token == "binc"      ) is >> inc[Color::BLACK];
+        else if(token == "movestogo" ) is >> movesToGo;
+        else if(token == "depth"     ) is >> parameters.depth;
+        else if(token == "nodes"     ) is >> parameters.nodes;
+        else if(token == "movetime"  ) is >> parameters.msTime;
+        else if(token == "perft"     ) UCI_WARNING("perft")
+        else if(token == "infinite"  ) parameters.infinite = true;
+        else if(token == "ponder"    ) UCI_WARNING("ponder")
+        else if(token == "mate"      ) UCI_WARNING("mate")
         else UCI_ERROR("Unknown command")
     }
 
-    Arcanum::Color turn = board.getTurn();
+    Color turn = board.getTurn();
     int64_t allocatedTime = allocateTime(time[turn], inc[turn], movesToGo, board.getFullMoves());
     if(parameters.msTime > 0 && allocatedTime > 0)
         parameters.msTime = std::min(parameters.msTime, allocatedTime);
@@ -230,27 +229,28 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     }
 }
 
-void UCI::position(Board& board, std::istringstream& is)
+void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
 {
     Move m;
     std::string token, fen;
     is >> token;
 
-    if(strcmp(token.c_str(), "startpos") == 0)
+    if(token == "startpos")
     {
-        fen = startFEN;
+        fen = FEN::startpos;
         is >> token;
     }
     else if(token == "fen")
     {
-        while (is >> token && strcmp(token.c_str(), "moves") != 0)
+        while (is >> token && token != "moves")
             fen += token + " ";
     }
 
     UCI_LOG("Loading FEN: " << fen)
+    searcher.clearHistory();
+
     board = Board(fen);
-    board.getBoardHistory()->clear();
-    board.addBoardToHistory();
+    searcher.addBoardToHistory(board);
 
     // Parse any moves
     while (is >> token)
@@ -261,10 +261,10 @@ void UCI::position(Board& board, std::istringstream& is)
         board.generateCaptureInfo();
         for(int i = 0; i < numLegalMoves; i++)
         {
-            if(strcmp(token.c_str(), moves[i].toString().c_str()) == 0)
+            if(token == moves[i].toString())
             {
                 board.performMove(moves[i]);
-                board.addBoardToHistory();
+                searcher.addBoardToHistory(board);
                 break;
             }
 
@@ -328,7 +328,7 @@ void UCI::sendUciInfo(const SearchInfo& info)
     UCI_OUT(ss.str())
 }
 
-void UCI::sendUciBestMove(const Arcanum::Move& move)
+void UCI::sendUciBestMove(const Move& move)
 {
     UCI_OUT("bestmove " << move)
 }
@@ -336,18 +336,19 @@ void UCI::sendUciBestMove(const Arcanum::Move& move)
 // Returns the statc eval score for white
 void UCI::eval(Board& board, Evaluator& evaluator)
 {
-    evaluator.initializeAccumulatorStack(board);
-    UCI_OUT(evaluator.evaluate(board, 0).total)
+    evaluator.initAccumulatorStack(board);
+    UCI_OUT(evaluator.evaluate(board, 0))
 }
 
 // Returns "checkmate 'winner'" if checkmate
 // Returns "stalemate" if stalemate
 // Returns "nocheckmate" if there is no checkmate
-void UCI::ischeckmate(Board& board)
+void UCI::ischeckmate(Board& board, Searcher& searcher)
 {
-    auto boardHistory = Board::getBoardHistory();
-    auto it = boardHistory->find(board.getHash());
-    if(it != boardHistory->end())
+    auto history = searcher.getHistory();
+
+    auto it = history.find(board.getHash());
+    if(it != history.end())
     {
         if(it->second == 3) // The check id done after the board is added to history
         {
@@ -379,7 +380,56 @@ void UCI::ischeckmate(Board& board)
 
 void UCI::drawBoard(Board& board)
 {
-    std::cout << board.getBoardString() << std::endl;
-    std::cout << "FEN: " << board.getFEN() << std::endl;
+    std::cout << FEN::toString(board) << std::endl;
+    std::cout << "FEN: " << FEN::getFEN(board) << std::endl;
     std::cout << "Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black") << std::endl;
+}
+
+// Parse parameters and call Tuning::fengen
+// It is strongly recomended that syzygy is used when generating FENS
+// This reduces wrongly played endgames and improves the data quality
+void UCI::fengen(std::istringstream& is)
+{
+    std::string startPosPath;   // Start position epd file path
+    std::string outputPath;     // Output path
+    std::string numFens;        // Number of fens to generate
+    std::string numThreads;     // Number of threads
+    std::string depth;          // Search depth
+
+    is >> std::skipws >> startPosPath;
+    is >> std::skipws >> outputPath;
+    is >> std::skipws >> numFens;
+    is >> std::skipws >> numThreads;
+    is >> std::skipws >> depth;
+
+    //TODO: Sanitize input. E.g validate int values
+
+    Tuning::fengen(startPosPath, outputPath, atoi(numFens.c_str()), atoi(numThreads.c_str()), atoi(depth.c_str()));
+}
+
+void UCI::train(std::istringstream& is)
+{
+    std::string dataset;        // Dataset created by fengen
+    std::string outputPath;     // Output path (_epoch.fnnue will be added as a suffix)
+    std::string batchSizeStr;   // Batch size
+    std::string startEpochStr;  // Epoch to start at (used for naming output and ADAM time variable)
+    std::string endEpochStr;    // Epoch to end at
+
+    is >> std::skipws >> dataset;
+    is >> std::skipws >> outputPath;
+    is >> std::skipws >> batchSizeStr;
+    is >> std::skipws >> startEpochStr;
+    is >> std::skipws >> endEpochStr;
+
+    uint64_t batchSize  = atoi(batchSizeStr.c_str());
+    uint32_t startEpoch = atoi(startEpochStr.c_str());
+    uint32_t endEpoch   = atoi(endEpochStr.c_str());
+
+    if(startEpoch < 1)
+    {
+        ERROR("Start epoch must be at least 1")
+        return;
+    }
+
+    Evaluator::nnue.train(dataset, outputPath, batchSize, startEpoch, endEpoch);
 }

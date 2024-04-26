@@ -1,8 +1,12 @@
+#include <zobrist.hpp>
 #include <board.hpp>
 #include <random>
 #include <utils.hpp>
+#include <fen.hpp>
 
 using namespace Arcanum;
+
+Zobrist Arcanum::s_zobrist;
 
 Zobrist::Zobrist()
 {
@@ -168,7 +172,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     getHashs(b, h, ph, mh);
     if(h != hash || ph != pawnHash || mh != materialHash)
     {
-        DEBUG(board.getBoardString())
+        DEBUG(FEN::toString(board))
         DEBUG(move << " " << move.moveInfo)
         if(hash != h)
         ERROR("Hash: " << hash << " != " << h << " (Correct)")
