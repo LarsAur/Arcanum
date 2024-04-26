@@ -11,6 +11,8 @@
 using namespace NN;
 using namespace Arcanum;
 
+const char* NNUE::NNUE_MAGIC = "Arcanum FNNUE";
+
 NNUE::NNUE()
 {
     m_randomizeWeights();

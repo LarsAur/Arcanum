@@ -47,7 +47,7 @@ namespace NN
             void m_storeNet(std::string filename, FloatNet& net);
             void m_loadNet(std::string filename, FloatNet& net);
         public:
-            const char* NNUE_MAGIC = "Arcanum FNNUE";
+            static const char* NNUE_MAGIC;
 
             NNUE();
             ~NNUE();
