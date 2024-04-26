@@ -3,7 +3,7 @@ PROJECT ?= Arcanum
 SOURCEDIR = src
 HEADERDIR = src
 BUILDDIR = build
-NNUE = arcanum0.fnnue
+NNUE = arcanum1.fnnue
 
 DEFINES += -DIS_64BIT
 DEFINES += -DUSE_AVX2 -mavx2 -mfma
