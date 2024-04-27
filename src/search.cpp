@@ -72,7 +72,7 @@ void Searcher::clearTT()
 
 eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot)
 {
-    if(m_stopSearch)
+    if(m_shouldStop())
         return 0;
 
     if(m_isDraw(board))
@@ -146,7 +146,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     //       is used in a memcpy and might corrupt the memory if it is undefined
     pvLine->count = 0;
 
-    if(m_stopSearch)
+    if(m_shouldStop())
         return 0;
 
     if(m_isDraw(board))
@@ -419,7 +419,6 @@ Move Searcher::getBestMove(Board& board, int depth, SearchResult* searchResult)
 {
     SearchParameters parameters = SearchParameters();
     parameters.depth = depth;
-    parameters.threaded = false;
     return search(Board(board), parameters, searchResult);
 }
 
@@ -437,46 +436,19 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     eval_t searchScore = 0;
     Move searchBestMove = Move(0,0);
     pvline_t pvLine, pvLineTmp, _pvLineTmp;
-    auto start = std::chrono::high_resolution_clock::now();
+    m_searchParameters = parameters;
 
     m_generation = (uint8_t) std::min(board.getFullMoves(), uint16_t(0x00ff));
     m_nonRevMovesRoot = board.getNumNonReversableMovesPerformed();
-
-    std::thread trd;
-    if(parameters.threaded)
-    {
-        // Start a thread which will stop the search if the limit is reached
-        trd = std::thread([&] {
-            while (!m_stopSearch)
-            {
-                if(parameters.msTime > 0)
-                {
-                    auto t = std::chrono::high_resolution_clock::now();
-                    std::chrono::duration<double> diff = t - start;
-                    auto millisecs = std::chrono::duration_cast<std::chrono::milliseconds>(diff);
-
-                    if(millisecs.count() >= parameters.msTime)
-                        stop();
-                }
-
-                // The number of nodes is checked in the thread, which makes it less precise.
-                // Usually this results is searching about 30k more nodes.
-                // This is however not a problem as the node limit is ambiguous to begin with: https://www.chessprogramming.org/Nodes_per_Second
-                if(parameters.nodes > 0 && parameters.nodes <= m_numNodesSearched)
-                    stop();
-
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-        });
-    }
+    m_timer.start();
 
     // Check if only a select set of moves should be searched
     // This set can be set by the search parameters or the table base
-    Move* moves = parameters.searchMoves;
-    uint8_t numMoves = parameters.numSearchMoves;
+    Move* moves = m_searchParameters.searchMoves;
+    uint8_t numMoves = m_searchParameters.numSearchMoves;
     bool forceTBScore = false;
     uint8_t tbwdl = 0xff;
-    if(parameters.numSearchMoves == 0)
+    if(m_searchParameters.numSearchMoves == 0)
     {
         if(TBProbeDTZ(board, moves, numMoves, tbwdl))
         {
@@ -491,7 +463,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     }
 
     uint32_t depth = 0;
-    while(parameters.depth == 0 || parameters.depth > depth)
+    while(m_searchParameters.depth == 0 || m_searchParameters.depth > depth)
     {
         depth++;
 
@@ -514,7 +486,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             eval_t score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
             m_evaluator.popMoveFromAccumulator();
 
-            if(m_stopSearch)
+            if(m_shouldStop())
                 break;
 
             if(score > alpha)
@@ -551,7 +523,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // Send UCI info
         UCI::SearchInfo info = UCI::SearchInfo();
         info.depth = depth;
-        info.msTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
+        info.msTime = m_timer.getMs();
         info.nodes = m_numNodesSearched;
         info.score = alpha;
         info.hashfull = m_tt->permills();
@@ -583,18 +555,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             break;
     }
 
-    // If the search is not already stopped, stop the stopping thread before joining
-    stop();
-    if(parameters.threaded)
-    {
-        if(trd.joinable())
-            trd.join();
-    }
-
     // Send UCI info
     UCI::SearchInfo info = UCI::SearchInfo();
     info.depth = depth;
-    info.msTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - start).count();
+    info.msTime = m_timer.getMs();
     info.nodes = m_numNodesSearched;
     info.score = searchScore;
     info.hashfull = m_tt->permills();
@@ -642,6 +606,25 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 void Searcher::stop()
 {
     m_stopSearch = true;
+}
+
+bool Searcher::m_shouldStop()
+{
+    if(m_stopSearch) return true;
+
+    if(m_searchParameters.msTime > 0 && m_timer.getMs() >= m_searchParameters.msTime )
+    {
+        m_stopSearch = true;
+        return true;
+    }
+
+    if(m_searchParameters.nodes > 0 && m_numNodesSearched >= m_searchParameters.nodes)
+    {
+        m_stopSearch = true;
+        return true;
+    }
+
+    return false;
 }
 
 SearchStats Searcher::getStats()
