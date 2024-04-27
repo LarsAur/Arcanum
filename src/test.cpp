@@ -4,48 +4,13 @@
 #include <cstdint>
 #include <chrono>
 #include <fen.hpp>
+#include <perft.hpp>
 
 using namespace Arcanum;
 
-static void s_findNumMovesAtDepth(int depth, Arcanum::Board& board, uint64_t *count, bool top = true);
 static bool s_engineTest(uint32_t ms, std::string fen, Move bestMove, std::string id = "");
 static uint64_t s_perftCaptures(std::string fen, uint64_t expected);
 static uint64_t s_perftPosition(std::string fen, uint8_t ply, uint64_t expected);
-
-static void s_findNumMovesAtDepth(int depth, Arcanum::Board& board, uint64_t *count, bool top)
-{
-    Move* legalMoves = board.getLegalMoves();
-    uint8_t numLegalMoves = board.getNumLegalMoves();
-
-    if(numLegalMoves == 0)
-    {
-        return;
-    }
-
-    if(depth == 1)
-    {
-        *count += numLegalMoves;
-        return;
-    }
-
-    board.generateCaptureInfo();
-    for(int i = 0; i < numLegalMoves; i++)
-    {
-        Board newBoard = Board(board);
-        newBoard.performMove(legalMoves[i]);
-
-        if(top)
-        {
-            uint64_t _count = 0;
-            s_findNumMovesAtDepth(depth - 1, newBoard, &_count, false);
-            *count += _count;
-        }
-        else
-        {
-            s_findNumMovesAtDepth(depth - 1, newBoard, count, false);
-        }
-    }
-}
 
 static bool s_engineTest(uint32_t ms, std::string fen, Move bestMove, std::string id)
 {
@@ -68,7 +33,7 @@ static uint64_t s_perftPosition(std::string fen, uint8_t ply, uint64_t expected)
     uint64_t count = 0;
     Board board = Board(fen);
 
-    s_findNumMovesAtDepth(ply, board, &count);
+    Test::findNumMovesAtDepth(board, ply, &count, true);
 
     if(count != expected)
     {

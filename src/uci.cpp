@@ -9,6 +9,7 @@
 #include <syzygy.hpp>
 #include <tuning/fengen.hpp>
 #include <fen.hpp>
+#include <perft.hpp>
 
 using namespace Arcanum;
 
@@ -179,6 +180,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     uint32_t time[2] = {0, 0};
     uint32_t inc[2] = {0, 0};
     uint32_t movesToGo = 0;
+    uint32_t perftDepth = 0;
     ssInfo << "info ";
 
     while(is >> token)
@@ -202,11 +204,18 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         else if(token == "depth"     ) is >> parameters.depth;
         else if(token == "nodes"     ) is >> parameters.nodes;
         else if(token == "movetime"  ) is >> parameters.msTime;
-        else if(token == "perft"     ) UCI_WARNING("perft")
+        else if(token == "perft"     ) is >> perftDepth;
         else if(token == "infinite"  ) parameters.infinite = true;
         else if(token == "ponder"    ) UCI_WARNING("ponder")
         else if(token == "mate"      ) UCI_WARNING("mate")
         else UCI_ERROR("Unknown command")
+    }
+
+    // If perft is used, search will not be performed
+    if(perftDepth > 0)
+    {
+        Test::perft(board, perftDepth);
+        return;
     }
 
     Color turn = board.getTurn();
