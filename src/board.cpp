@@ -1495,6 +1495,15 @@ bool Board::hasLegalMoveFromCheck()
     return false;
 }
 
+uint8_t Board::numOfficers(Color turn) const
+{
+    uint8_t numPawns  = CNTSBITS(m_bbTypedPieces[W_PAWN][turn]);
+    uint8_t numPieces = CNTSBITS(m_bbColoredPieces[m_turn]);
+
+    // Number of total pieces, subtract pawns and king
+    return numPieces - numPawns - 1;
+}
+
 bool Board::hasOfficers(Color turn) const
 {
     uint8_t numPawns  = CNTSBITS(m_bbTypedPieces[W_PAWN][turn]);
