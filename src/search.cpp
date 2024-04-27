@@ -204,7 +204,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
     if(depth == 0)
     {
-        return m_alphaBetaQuiet(board, alpha, beta, plyFromRoot + 1);
+        return m_alphaBetaQuiet(board, alpha, beta, plyFromRoot);
     }
 
     eval_t bestScore = -INF;
@@ -531,7 +531,9 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         if(Evaluator::isCheckMateScore(alpha))
         {
             info.mate = true;
-            uint16_t distance = (MATE_SCORE - std::abs(alpha)) / 2; // Divide by 2 to get moves and not plys.
+            // Divide by 2 to get moves and not plys.
+            // Round away from zero, as the last ply in odd plys has to be counted as a move
+            uint16_t distance = std::ceil((MATE_SCORE - std::abs(alpha)) / 2.0f);
             info.mateDistance = alpha > 0 ? distance : -distance;
         }
         else if(forceTBScore)
@@ -566,7 +568,9 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     if(Evaluator::isCheckMateScore(searchScore))
     {
         info.mate = true;
-        uint16_t distance = (MATE_SCORE - std::abs(searchScore)) / 2; // Divide by 2 to get moves and not plys.
+        // Divide by 2 to get moves and not plys.
+        // Round away from zero, as the last ply in odd plys has to be counted as a move
+        uint16_t distance = std::ceil((MATE_SCORE - std::abs(searchScore)) / 2.0f);
         info.mateDistance = searchScore > 0 ? distance : -distance;
     }
     else if(forceTBScore)
