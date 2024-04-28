@@ -2,6 +2,8 @@
 
 #include <inttypes.h>
 
+#define CACHE_LINE_SIZE 64
+
 namespace Arcanum
 {
     typedef uint64_t hash_t;

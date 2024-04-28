@@ -1,5 +1,6 @@
 #pragma once
 
+#include <types.hpp>
 #include <inttypes.h>
 #include <chessutils.hpp>
 #include <utils.hpp>
@@ -143,6 +144,16 @@ namespace NN
                     while(m_data[i] == 0)
                         m_data[i] = distribution(generator);
                 }
+            }
+
+            void prefetchCol(uint32_t col)
+            {
+                constexpr uint32_t elementsPerCacheLine = CACHE_LINE_SIZE / sizeof(float);
+                float* colStart = m_data + col*rows;
+
+                #pragma GCC unroll 16
+                for(uint32_t i = 0; i < rows; i+=elementsPerCacheLine)
+                    _mm_prefetch(colStart + i, _MM_HINT_T2);
             }
 
             void copy(float* ptr)

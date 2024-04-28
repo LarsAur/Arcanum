@@ -251,6 +251,31 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
         }
     }
 
+    // -- Prefetch the weigths
+    #pragma GCC unroll 2
+    for(uint32_t perspective = 0; perspective < 2; perspective++)
+    {
+        for(uint32_t i = 0; i < 2; i++)
+        {
+            int32_t findex = addedFeatures[i];
+            // Break in case only one index is added
+            if(findex == -1) break;
+            // XOR to the the correct index for the perspective
+            findex ^= perspective;
+            m_net.ftWeights.prefetchCol(findex);
+        }
+
+        for(uint32_t i = 0; i < 2; i++)
+        {
+            int32_t findex = removedFeatures[i];
+            // Break in case only one index is added
+            if(findex == -1) break;
+            // XOR to the the correct index for the perspective
+            findex ^= perspective;
+            m_net.ftWeights.prefetchCol(findex);
+        }
+    }
+
     // -- Update the accumulators
 
     constexpr uint32_t regSize = 256 / 32;
@@ -259,9 +284,11 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
 
     float* weightsPtr        = m_net.ftWeights.data();
 
+    #pragma GCC unroll 2
     for(uint32_t perspective = 0; perspective < 2; perspective++)
     {
         // -- Load the accumulator into the registers
+        #pragma GCC unroll 32
         for(uint32_t i = 0; i < numRegs; i++)
         {
             regs[i] = _mm256_load_ps(accIn->acc[perspective] + regSize*i);
@@ -300,6 +327,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
         }
 
         // -- Store the output in the new accumulator
+        #pragma GCC unroll 32
         for(uint32_t i = 0; i < numRegs; i++)
         {
             _mm256_store_ps(accOut->acc[perspective] + regSize*i, regs[i]);

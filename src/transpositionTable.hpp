@@ -13,8 +13,6 @@ namespace Arcanum
     #define TT_FLAG_UPPERBOUND 3
     #define TT_FLAG_MASK 3
 
-    #define CACHE_LINE_SIZE 64
-
     typedef hash_t ttEntryHash_t; // Use this to edit the size of the stored hash
     typedef struct ttEntry_t
     {
