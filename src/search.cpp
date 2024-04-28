@@ -294,12 +294,14 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         // * Move is a capture move
         // * The previous board was a check
         // * The move is a checking move
-        if(i >= 3 && depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking)
+        if(i >= 2 && depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking)
         {
-            eval_t nullWindowBeta = -alpha - 1;
-            score = -m_alphaBeta(newBoard, &_pvLine, nullWindowBeta, -alpha, depth - 2, plyFromRoot + 1, false, totalExtensions);
+            // Perform a reduced search with null-window
+            score = -m_alphaBeta(newBoard, &_pvLine, -alpha - 1, -alpha, depth - 2, plyFromRoot + 1, false, totalExtensions);
+
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
+
             #if SEARCH_RECORD_STATS
             m_stats.researchesRequired += requireFullSearch;
             m_stats.nullWindowSearches += 1;
