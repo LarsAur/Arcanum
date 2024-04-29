@@ -78,7 +78,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     if(m_isDraw(board))
         return DRAW_VALUE;
 
-    bool isChecked = board.isChecked(board.getTurn());
+    bool isChecked = board.isChecked();
 
     if(!isChecked)
     {
@@ -221,7 +221,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot, true) : -m_evaluator.evaluate(board, plyFromRoot, true);
     }
     board.generateCaptureInfo();
-    bool isChecked = board.isChecked(board.getTurn());
+    bool isChecked = board.isChecked();
     bool nullMoveAllowed = board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5 && !isNullMoveSearch && !isChecked && depth > 2;
     // TODO: Test R value for NMP, currently using R=3
     // Perform potential null move search
@@ -273,7 +273,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         m_tt->prefetch(newBoard.getHash());
         eval_t score;
         bool requireFullSearch = true;
-        bool checkOrChecking = isChecked || newBoard.isChecked(board.getTurn());
+        bool checkOrChecking = isChecked || newBoard.isChecked();
 
         // Futility pruning
         if(depth > 0 && depth < 4 && !checkOrChecking && !(PROMOTED_PIECE(move->moveInfo) | CAPTURED_PIECE(move->moveInfo)))
@@ -313,7 +313,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             // Extend search for checking moves or check avoiding moves
             // This is to avoid horizon effect occuring by starting with a forced line
             uint8_t extension = (
-                checkOrChecking ||
+                isChecked ||
                 ((move->moveInfo & MoveInfoBit::PAWN_MOVE) && (RANK(move->to) == 6 || RANK(move->to) == 1)) || // Pawn moved to the 7th rank
                 (numMoves == 1)
             ) ? 1 : 0;

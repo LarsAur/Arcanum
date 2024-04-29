@@ -376,7 +376,7 @@ void UCI::ischeckmate(Board& board, Searcher& searcher)
     board.getLegalMoves();
     if(board.getNumLegalMoves() == 0)
     {
-        if(board.isChecked(board.getTurn()))
+        if(board.isChecked())
         {
             std::cout << "checkmate " << (board.getTurn() == WHITE ? "black" : "white") << std::endl;
             return;

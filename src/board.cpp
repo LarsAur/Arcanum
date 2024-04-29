@@ -48,6 +48,8 @@ Board::Board(const Board& board)
     m_bbTypedPieces[W_BISHOP][BLACK]    = board.m_bbTypedPieces[W_BISHOP][BLACK];
     m_bbTypedPieces[W_QUEEN][BLACK]     = board.m_bbTypedPieces[W_QUEEN][BLACK];
     m_bbTypedPieces[W_KING][BLACK]      = board.m_bbTypedPieces[W_KING][BLACK];
+
+    m_isCheckedCache = board.m_isCheckedCache;
 }
 
 // Calulate slider blockers and pinners
@@ -477,7 +479,7 @@ Move* Board::getLegalMovesFromCheck()
 
 Move* Board::getLegalMoves()
 {
-    if(isChecked(m_turn))
+    if(isChecked())
     {
         return getLegalMovesFromCheck();
     }
@@ -720,7 +722,7 @@ Move* Board::getLegalMoves()
 Move* Board::getLegalCaptureAndCheckMoves()
 {
     // If in check, the existing function for generating legal moves will be used
-    if(isChecked(m_turn))
+    if(isChecked())
     {
         return getLegalMovesFromCheck();
     }
@@ -923,7 +925,7 @@ Move* Board::getLegalCaptureAndCheckMoves()
 Move* Board::getLegalCaptureMoves()
 {
     // If in check, the existing function for generating legal moves will be used
-    if(isChecked(m_turn))
+    if(isChecked())
     {
         return getLegalMovesFromCheck();
     }
@@ -1085,7 +1087,7 @@ bool Board::hasLegalMove()
     if(m_numLegalMoves > 0)
         return true;
 
-    if(isChecked(m_turn))
+    if(isChecked())
     {
         return hasLegalMoveFromCheck();
     }
@@ -1652,6 +1654,7 @@ void Board::performMove(const Move move)
 
     s_zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, m_hash, m_pawnHash, m_materialHash);
 
+    m_isCheckedCache = -1; // it is now unknown if in check
     m_turn = opponent;
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
     if(CAPTURED_PIECE(move.moveInfo) || (move.moveInfo & MoveInfoBit::PAWN_MOVE))
@@ -1775,65 +1778,56 @@ square_t Board::getEnpassantSquare() const
     return m_enPassantSquare;
 }
 
-bool Board::isChecked(Color color)
+bool Board::isChecked()
 {
-    square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][color]);
-    Color opponent = Color(color ^ 1);
+    // Return cached value is available
+    if(m_isCheckedCache != -1)
+        return m_isCheckedCache;
+
+    bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];
+    square_t kingIdx = LS1B(bbKing);
+    Color opponent = Color(m_turn ^ 1);
 
     // Pawns
     // Get the position of potentially attacking pawns
-    bitboard_t pawnAttackPositions = color == WHITE ? getWhitePawnAttacks(m_bbTypedPieces[W_KING][color]) : getBlackPawnAttacks(m_bbTypedPieces[W_KING][color]);
+    bitboard_t pawnAttackPositions = m_turn == WHITE ? getWhitePawnAttacks(bbKing) : getBlackPawnAttacks(bbKing);
     if(pawnAttackPositions & m_bbTypedPieces[W_PAWN][opponent])
+    {
+        m_isCheckedCache = 1;
         return true;
+    }
 
     // Knights
     bitboard_t knightAttackPositions = getKnightAttacks(kingIdx);
     if(knightAttackPositions & m_bbTypedPieces[W_KNIGHT][opponent])
+    {
+        m_isCheckedCache = 1;
         return true;
+    }
 
-    return isSlidingChecked(color);
-}
-
-inline bool Board::isSlidingChecked(Color color)
-{
-    square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][color]);
-    Color opponent = Color(color ^ 1);
-
+    // Bishop or Queen
     bitboard_t queenAndBishops = m_bbTypedPieces[W_QUEEN][opponent] | m_bbTypedPieces[W_BISHOP][opponent];
     bitboard_t diagonalAttacks = getBishopMoves(m_bbAllPieces, kingIdx);
 
     if(diagonalAttacks & queenAndBishops)
+    {
+        m_isCheckedCache = 1;
         return true;
+    }
 
+    // Rook or Queen
     bitboard_t queenAndRooks   = m_bbTypedPieces[W_QUEEN][opponent] | m_bbTypedPieces[W_ROOK][opponent];
     bitboard_t straightAttacks = getRookMoves(m_bbAllPieces, kingIdx);
     if(straightAttacks & queenAndRooks)
+    {
+        m_isCheckedCache = 1;
         return true;
+    }
 
+    m_isCheckedCache = 0;
     return false;
 }
 
-inline bool Board::isDiagonalChecked(Color color)
-{
-    square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][color]);
-    Color opponent = Color(color ^ 1);
-
-    bitboard_t queenAndBishops = m_bbTypedPieces[W_QUEEN][opponent] | m_bbTypedPieces[W_BISHOP][opponent];
-    bitboard_t diagonalAttacks = getBishopMoves(m_bbAllPieces, kingIdx);
-
-    return (diagonalAttacks & queenAndBishops) != 0;
-}
-
-inline bool Board::isStraightChecked(Color color)
-{
-    square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][color]);
-    Color opponent = Color(color ^ 1);
-
-    bitboard_t queenAndRooks   = m_bbTypedPieces[W_QUEEN][opponent] | m_bbTypedPieces[W_ROOK][opponent];
-    bitboard_t straightAttacks = getRookMoves(m_bbAllPieces, kingIdx);
-
-    return (straightAttacks & queenAndRooks) != 0;
-}
 
 Color Board::getTurn() const
 {

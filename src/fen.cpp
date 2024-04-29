@@ -218,6 +218,9 @@ bool FEN::setFEN(Board& board, const std::string fen)
 
     board.m_numNonReversableMovesPerformed = 0;
 
+    // Set cache to unknown
+    board.m_isCheckedCache = -1;
+
     return true;
 }
 

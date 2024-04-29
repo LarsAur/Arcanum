@@ -220,7 +220,7 @@ void Test::draw()
         ERROR("Repeated position: k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
     }
     board.getLegalMoves();
-    if(board.getNumLegalMoves() == 0 && board.isChecked(Color::BLACK))
+    if(board.getNumLegalMoves() == 0 && board.isChecked())
     {
         SUCCESS("Found checkmate to avoid stalemate from  k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
     }

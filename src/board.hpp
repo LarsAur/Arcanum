@@ -123,6 +123,7 @@ namespace Arcanum
             uint8_t m_rule50;
             uint8_t m_castleRights;
             uint8_t m_numNonReversableMovesPerformed; // Number of non-reversable moves performed (captures and pawn moves, castle not included)
+            int8_t m_isCheckedCache; // -1=Unknown, 0=False, 1=True
             // set to 64 for invalid enpassant
             square_t m_enPassantSquare; // Square moved to when capturing
             square_t m_enPassantTarget; // Square of the captured piece
@@ -167,10 +168,7 @@ namespace Arcanum
             uint16_t getHalfMoves() const;
             uint8_t getNumNonReversableMovesPerformed() const;
             uint8_t getCastleRights() const;
-            bool isChecked(Color color);
-            bool isSlidingChecked(Color color);
-            bool isDiagonalChecked(Color color);
-            bool isStraightChecked(Color color);
+            bool isChecked();
             bool hasLegalMove();
             bool hasLegalMoveFromCheck();
             Color getTurn() const;

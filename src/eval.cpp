@@ -89,7 +89,7 @@ eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
     // Check for stalemate and checkmate
     if(noMoves)
     {
-        if(board.isChecked(board.m_turn))
+        if(board.isChecked())
         {
             eval = board.m_turn == WHITE ? -MATE_SCORE + plyFromRoot : MATE_SCORE - plyFromRoot;
             return eval;

@@ -58,7 +58,7 @@ bool m_isFinished(Board& board, Searcher& searcher, Result& result)
     board.getLegalMoves();
     if(board.getNumLegalMoves() == 0)
     {
-        if(board.isChecked(board.getTurn()))
+        if(board.isChecked())
         {
             result = (board.getTurn() == WHITE) ? BLACK_WIN : WHITE_WIN;
         }
