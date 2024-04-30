@@ -15,20 +15,7 @@ using namespace Arcanum;
 
 namespace UCI
 {
-    #ifdef ENABLE_UCI_PRINT
-    const static std::string logFileName = "uci.log";
-    #define _UCI_PRINT(_str) {std::ofstream fileStream(logFileName, std::ofstream::out | std::ifstream::app); \
-    fileStream << _str << std::endl; \
-    fileStream.close();}
-    #else
-    #define _UCI_PRINT(_str) ;
-    #endif
-
-    #define UCI_ERROR(_str)   _UCI_PRINT("[ERROR]  " << _str)
-    #define UCI_WARNING(_str) _UCI_PRINT("[WARNING]" << _str)
-    #define UCI_LOG(_str)     _UCI_PRINT("[LOG]    " << _str)
-    #define UCI_DEBUG(_str)   _UCI_PRINT("[DEBUG]  " << _str)
-    #define UCI_OUT(_str) {std::cout << _str << std::endl; UCI_LOG("To stdout: " << _str)}
+    #define UCI_OUT(_str) std::cout << _str << std::endl;
 
     #ifndef ARCANUM_VERSION
     #define ARCANUM_VERSION dev_build
@@ -55,20 +42,12 @@ namespace UCI
 void UCI::loop()
 {
     isSearching = false;
-
-    // Create Log file
-    #ifdef ENABLE_UCI_PRINT
-    std::ofstream fileStream(logFileName, std::ofstream::trunc);
-    fileStream << "Created log file: " << logFileName << std::endl;
-    fileStream.close();
-    #endif
-
     Board board = Board(FEN::startpos);
     Searcher searcher = Searcher();
     Evaluator evaluator = Evaluator();
     std::string token, cmd;
 
-    UCI_LOG("Entering UCI loop")
+    LOG("Entering UCI loop")
     do
     {
         if(!getline(std::cin, cmd))
@@ -77,7 +56,7 @@ void UCI::loop()
         if(searchThread.joinable() && !isSearching)
             searchThread.join();
 
-        UCI_LOG("From stdin: " << cmd)
+        LOG("From stdin: " << cmd)
 
         token.clear();
         std::istringstream is(cmd);
@@ -111,7 +90,7 @@ void UCI::loop()
     } while(token != "quit");
 
     TBFree();
-    UCI_LOG("Exiting UCI loop")
+    LOG("Exiting UCI loop")
 }
 
 void UCI::newgame(Searcher& searcher, Evaluator& evaluator, Board& board)
@@ -160,7 +139,7 @@ void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream
         is >> std::skipws >> str;
         if(!TBInit(str))
         {
-            UCI_ERROR("Failed to set SyzygyPath " << str)
+            ERROR("Failed to set SyzygyPath " << str)
             exit(-1);
         }
     }
@@ -206,9 +185,9 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         else if(token == "movetime"  ) is >> parameters.msTime;
         else if(token == "perft"     ) is >> perftDepth;
         else if(token == "infinite"  ) parameters.infinite = true;
-        else if(token == "ponder"    ) UCI_WARNING("ponder")
-        else if(token == "mate"      ) UCI_WARNING("mate")
-        else UCI_ERROR("Unknown command")
+        else if(token == "ponder"    ) WARNING("Missing implementation: ponder")
+        else if(token == "mate"      ) WARNING("Missing implementation: mate")
+        else ERROR("Unknown command: " << token)
     }
 
     // If perft is used, search will not be performed
@@ -255,7 +234,7 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
             fen += token + " ";
     }
 
-    UCI_LOG("Loading FEN: " << fen)
+    LOG("Loading FEN: " << fen)
     searcher.clearHistory();
 
     board = Board(fen);
@@ -280,7 +259,7 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
             // If none of the moves match the input, it is not legal
             if(i == numLegalMoves - 1)
             {
-                UCI_ERROR(token << " is not legal in the position")
+                ERROR(token << " is not legal in the position")
             }
         }
     }
@@ -361,7 +340,7 @@ void UCI::ischeckmate(Board& board, Searcher& searcher)
     {
         if(it->second == 3) // The check id done after the board is added to history
         {
-            std::cout << "stalemate" << std::endl;
+            UCI_OUT("stalemate")
             return;
         }
     }
@@ -369,7 +348,7 @@ void UCI::ischeckmate(Board& board, Searcher& searcher)
     // Check for 50 move rule
     if(board.getHalfMoves() >= 100)
     {
-        std::cout << "stalemate" << std::endl;
+        UCI_OUT("stalemate")
         return;
     }
 
@@ -378,20 +357,20 @@ void UCI::ischeckmate(Board& board, Searcher& searcher)
     {
         if(board.isChecked())
         {
-            std::cout << "checkmate " << (board.getTurn() == WHITE ? "black" : "white") << std::endl;
+            UCI_OUT("checkmate " << (board.getTurn() == WHITE ? "black" : "white"))
             return;
         }
-        std::cout << "stalemate" << std::endl;
+        UCI_OUT("stalemate")
         return;
     }
-    std::cout << "nocheckmate" << std::endl;
+    UCI_OUT("nocheckmate")
 }
 
 void UCI::drawBoard(Board& board)
 {
-    std::cout << FEN::toString(board) << std::endl;
-    std::cout << "FEN: " << FEN::getFEN(board) << std::endl;
-    std::cout << "Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black") << std::endl;
+    UCI_OUT(FEN::toString(board))
+    UCI_OUT("FEN: " << FEN::getFEN(board))
+    UCI_OUT("Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black"))
 }
 
 // Parse parameters and call Tuning::fengen
