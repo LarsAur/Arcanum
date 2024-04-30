@@ -33,7 +33,7 @@ static uint64_t s_perftPosition(std::string fen, uint8_t ply, uint64_t expected)
     uint64_t count = 0;
     Board board = Board(fen);
 
-    Test::findNumMovesAtDepth(board, ply, &count, true);
+    Test::findNumMovesAtDepth(board, ply, &count);
 
     if(count != expected)
     {
