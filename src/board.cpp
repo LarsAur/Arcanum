@@ -50,6 +50,7 @@ Board::Board(const Board& board)
     m_bbTypedPieces[W_KING][BLACK]      = board.m_bbTypedPieces[W_KING][BLACK];
 
     m_isCheckedCache = board.m_isCheckedCache;
+    m_moveset = MoveSet::NOT_GENERATED; // Moves are not copied over
 }
 
 // Calulate slider blockers and pinners
@@ -479,6 +480,13 @@ Move* Board::getLegalMovesFromCheck()
 
 Move* Board::getLegalMoves()
 {
+    // Safeguard against repeated calls to generate moves
+    if(m_moveset == MoveSet::ALL)
+    {
+        return m_legalMoves;
+    }
+    m_moveset = MoveSet::ALL;
+
     if(isChecked())
     {
         return getLegalMovesFromCheck();
@@ -721,6 +729,13 @@ Move* Board::getLegalMoves()
 // Note: Does not include castle
 Move* Board::getLegalCaptureAndCheckMoves()
 {
+    // Safeguard against repeated calls to generate moves
+    if(m_moveset == MoveSet::CAPTURES_AND_CHECKS)
+    {
+        return m_legalMoves;
+    }
+    m_moveset = MoveSet::CAPTURES_AND_CHECKS;
+
     // If in check, the existing function for generating legal moves will be used
     if(isChecked())
     {
@@ -924,6 +939,13 @@ Move* Board::getLegalCaptureAndCheckMoves()
 
 Move* Board::getLegalCaptureMoves()
 {
+    // Safeguard against repeated calls to generate moves
+    if(m_moveset == MoveSet::CAPTURES)
+    {
+        return m_legalMoves;
+    }
+    m_moveset = MoveSet::CAPTURES;
+
     // If in check, the existing function for generating legal moves will be used
     if(isChecked())
     {
@@ -1655,6 +1677,7 @@ void Board::performMove(const Move move)
     s_zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, m_hash, m_pawnHash, m_materialHash);
 
     m_isCheckedCache = -1; // it is now unknown if in check
+    m_moveset = MoveSet::NOT_GENERATED;
     m_turn = opponent;
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
     if(CAPTURED_PIECE(move.moveInfo) || (move.moveInfo & MoveInfoBit::PAWN_MOVE))

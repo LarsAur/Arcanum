@@ -144,6 +144,15 @@ namespace Arcanum
             hash_t m_materialHash;
             hash_t m_pawnHash;
 
+            enum MoveSet
+            {
+                NOT_GENERATED,
+                CAPTURES,
+                CAPTURES_AND_CHECKS,
+                ALL,
+            };
+            MoveSet m_moveset = MoveSet::NOT_GENERATED; // Which set moves are generated
+
             friend class Zobrist;
             friend class Evaluator;
             friend class FEN;

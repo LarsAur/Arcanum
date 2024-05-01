@@ -220,6 +220,7 @@ bool FEN::setFEN(Board& board, const std::string fen)
 
     // Set cache to unknown
     board.m_isCheckedCache = -1;
+    board.m_moveset = Board::MoveSet::NOT_GENERATED;
 
     return true;
 }
