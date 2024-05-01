@@ -49,7 +49,7 @@ Board::Board(const Board& board)
     m_bbTypedPieces[W_QUEEN][BLACK]     = board.m_bbTypedPieces[W_QUEEN][BLACK];
     m_bbTypedPieces[W_KING][BLACK]      = board.m_bbTypedPieces[W_KING][BLACK];
 
-    m_isCheckedCache = board.m_isCheckedCache;
+    m_checkedCache = board.m_checkedCache;
     m_moveset = MoveSet::NOT_GENERATED; // Moves are not copied over
 }
 
@@ -1676,7 +1676,7 @@ void Board::performMove(const Move move)
 
     s_zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, m_hash, m_pawnHash, m_materialHash);
 
-    m_isCheckedCache = -1; // it is now unknown if in check
+    m_checkedCache = CheckedCacheState::UNKNOWN;
     m_moveset = MoveSet::NOT_GENERATED;
     m_turn = opponent;
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
@@ -1804,8 +1804,8 @@ square_t Board::getEnpassantSquare() const
 bool Board::isChecked()
 {
     // Return cached value is available
-    if(m_isCheckedCache != -1)
-        return m_isCheckedCache;
+    if(m_checkedCache != CheckedCacheState::UNKNOWN)
+        return m_checkedCache;
 
     bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];
     square_t kingIdx = LS1B(bbKing);
@@ -1816,7 +1816,7 @@ bool Board::isChecked()
     bitboard_t pawnAttackPositions = m_turn == WHITE ? getWhitePawnAttacks(bbKing) : getBlackPawnAttacks(bbKing);
     if(pawnAttackPositions & m_bbTypedPieces[W_PAWN][opponent])
     {
-        m_isCheckedCache = 1;
+        m_checkedCache = CheckedCacheState::CHECKED;
         return true;
     }
 
@@ -1824,7 +1824,7 @@ bool Board::isChecked()
     bitboard_t knightAttackPositions = getKnightAttacks(kingIdx);
     if(knightAttackPositions & m_bbTypedPieces[W_KNIGHT][opponent])
     {
-        m_isCheckedCache = 1;
+        m_checkedCache = CheckedCacheState::CHECKED;
         return true;
     }
 
@@ -1834,7 +1834,7 @@ bool Board::isChecked()
 
     if(diagonalAttacks & queenAndBishops)
     {
-        m_isCheckedCache = 1;
+        m_checkedCache = CheckedCacheState::CHECKED;
         return true;
     }
 
@@ -1843,11 +1843,11 @@ bool Board::isChecked()
     bitboard_t straightAttacks = getRookMoves(m_bbAllPieces, kingIdx);
     if(straightAttacks & queenAndRooks)
     {
-        m_isCheckedCache = 1;
+        m_checkedCache = CheckedCacheState::CHECKED;
         return true;
     }
 
-    m_isCheckedCache = 0;
+    m_checkedCache = CheckedCacheState::NOT_CHECKED;
     return false;
 }
 

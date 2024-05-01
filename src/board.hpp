@@ -123,7 +123,6 @@ namespace Arcanum
             uint8_t m_rule50;
             uint8_t m_castleRights;
             uint8_t m_numNonReversableMovesPerformed; // Number of non-reversable moves performed (captures and pawn moves, castle not included)
-            int8_t m_isCheckedCache; // -1=Unknown, 0=False, 1=True
             // set to 64 for invalid enpassant
             square_t m_enPassantSquare; // Square moved to when capturing
             square_t m_enPassantTarget; // Square of the captured piece
@@ -152,6 +151,15 @@ namespace Arcanum
                 ALL,
             };
             MoveSet m_moveset = MoveSet::NOT_GENERATED; // Which set moves are generated
+
+            // Values are assigned so that checked = true and not_checked = false
+            enum CheckedCacheState
+            {
+                UNKNOWN=-1,
+                NOT_CHECKED=0,
+                CHECKED=1,
+            };
+            CheckedCacheState m_checkedCache;
 
             friend class Zobrist;
             friend class Evaluator;
