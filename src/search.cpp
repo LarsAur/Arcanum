@@ -223,7 +223,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     board.generateCaptureInfo();
     bool isChecked = board.isChecked();
     bool nullMoveAllowed = board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5 && !isNullMoveSearch && !isChecked && depth > 2;
-    // TODO: Test R value for NMP, currently using R=3
     // Perform potential null move search
     if(nullMoveAllowed)
     {
