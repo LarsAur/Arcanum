@@ -267,6 +267,9 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
 
 int64_t UCI::allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber)
 {
+    // Ensure there is some margin
+    time = std::max(1U, time - 10U);
+
     // I pulled these numbers and formulas out of a hat :^)
     if(time == 0)
         return 0;
@@ -277,7 +280,7 @@ int64_t UCI::allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t m
     if(inc > 0)
     {
         if(moveNumber >= 40)
-            return std::max(1U, (time + inc) / 2U);
+            return std::max(1U, std::min(time, (time / 8U) + inc));
         return std::max(1U, std::min(time, (time + inc * (40 - moveNumber)) / (45U - moveNumber)));
     }
 
