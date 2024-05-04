@@ -8,12 +8,6 @@
 #elif defined(__linux__)
     #include <unistd.h>
 #else
-    LOG("Else")
-#endif
-
-#define ASSUMED_PAGE_SIZE 4096
-
-#if !defined(_WIN64) && !defined(__linux__)
     struct UnalignedPointerInfo
     {
         void *unalignedPtr;
@@ -22,6 +16,8 @@
 
     std::list<UnalignedPointerInfo> unalignedPointerInfos;
 #endif
+
+#define ASSUMED_PAGE_SIZE 4096
 
 void* Memory::alignedMalloc(const size_t bytes, const size_t alignment)
 {
@@ -33,7 +29,7 @@ void* Memory::alignedMalloc(const size_t bytes, const size_t alignment)
     #elif defined(__linux__)
     ptr = aligned_alloc(alignment, allocSize);
     #else
-
+        #error Missing implementation of aligned malloc
     // Create an aligned pointer from the potential unaligned malloc
     // Add it to a list of artificial aligned pointers
     // This is required to free them properly later
