@@ -37,7 +37,11 @@ perf: $(BUILDDIR)/$(PROJECT).exe
 	./$^ --search-perf --engine-perf
 
 clean:
+ifeq ($(OS),Windows_NT)
 	-rmdir $(BUILDDIR) /s /q
+else
+	-rm -rf $(BUILDDIR)
+endif
 
 clean-logs:
 	del *.log
