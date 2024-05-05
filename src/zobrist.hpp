@@ -19,6 +19,7 @@ namespace Arcanum
 
             void getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
             void getUpdatedHashs(const Board &board, Move move, square_t oldEnPassentSquare, square_t newEnPassentSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash);
+            void updateHashsAfterNullMove(hash_t& hash, hash_t& pawnHash, square_t oldEnPassantSquare);
     };
 
     extern Zobrist s_zobrist;

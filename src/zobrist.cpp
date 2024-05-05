@@ -184,3 +184,11 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     }
     #endif
 }
+
+void Zobrist::updateHashsAfterNullMove(hash_t& hash, hash_t& pawnHash, square_t oldEnPassantSquare)
+{
+    hash_t enPassantHash = m_enPassantTable[oldEnPassantSquare] * (oldEnPassantSquare != 64);
+    pawnHash ^= enPassantHash;
+    hash ^= enPassantHash;
+    hash ^= m_blackToMove;
+}
