@@ -25,7 +25,7 @@ namespace Arcanum
 
             Evaluator();
             ~Evaluator();
-            eval_t evaluate(Board& board, uint8_t plyFromRoot, bool noMoves = false);
+            eval_t evaluate(Board& board, uint8_t plyFromRoot);
 
             void initAccumulatorStack(const Board& board);
             void pushMoveToAccumulator(const Board& board, const Move& move);

@@ -78,16 +78,12 @@ bool Evaluator::isTbCheckMateScore(eval_t eval)
 }
 
 // Evaluates positive value for WHITE
-eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot, bool noMoves)
+eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
 {
     eval_t eval = 0;
 
-    // If it is known from search that the position has no moves
-    // Checking for legal moves can be skipped
-    if(!noMoves) noMoves = !board.hasLegalMove();
-
     // Check for stalemate and checkmate
-    if(noMoves)
+    if(!board.hasLegalMove())
     {
         if(board.isChecked())
         {

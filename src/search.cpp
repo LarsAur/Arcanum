@@ -218,7 +218,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     if(numMoves == 0)
     {
         m_numNodesSearched++;
-        return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot, true) : -m_evaluator.evaluate(board, plyFromRoot, true);
+        return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
     }
     board.generateCaptureInfo();
     bool isChecked = board.isChecked();

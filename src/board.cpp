@@ -1106,13 +1106,11 @@ Move* Board::getLegalCaptureMoves()
 // checkmate and stalemate at evaluation
 bool Board::hasLegalMove()
 {
-    if(m_numLegalMoves > 0)
-        return true;
+    if((m_moveset == Board::MoveSet::ALL) || (m_numLegalMoves > 0))
+        return m_numLegalMoves > 0;
 
     if(isChecked())
-    {
         return hasLegalMoveFromCheck();
-    }
 
     m_findPinnedPieces();
 
