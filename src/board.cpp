@@ -1697,7 +1697,7 @@ void Board::performNullMove()
     m_bbEnPassantSquare = 0LL;
     m_bbEnPassantTarget = 0LL;
 
-    s_zobrist.getUpdatedHashs(*this, Move(0,0), oldEnPassantSquare, 64, m_hash, m_pawnHash, m_materialHash);
+    s_zobrist.updateHashsAfterNullMove(m_hash, m_pawnHash, oldEnPassantSquare);
 
     m_turn = Color(m_turn^1);
     m_rule50++;

@@ -16,7 +16,7 @@ namespace UCI
         std::vector<Arcanum::Move> pvLine;   // PV-line
         uint32_t hashfull;                   // Permills of hashtable filled
 
-        SearchInfo() : depth(0), msTime(0), nodes(0), score(0), mateDistance(0), bestMove(Arcanum::Move(0,0)), hashfull(0) {}
+        SearchInfo() : depth(0), msTime(0), nodes(0), score(0), mate(0), mateDistance(0), bestMove(Arcanum::Move(0,0)), hashfull(0) {}
     };
 
     void loop();
