@@ -8,7 +8,6 @@
 
 using namespace Arcanum;
 
-std::string _logFileName;
 int main(int argc, char *argv[])
 {
     CREATE_LOG_FILE(argv[0]);

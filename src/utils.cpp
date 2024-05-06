@@ -6,6 +6,9 @@
 #include <filesystem>
 #endif
 
+// Name of the log file used when PRINT_TO_FILE is defined
+std::string _logFileName;
+
 // Gets the path to the folder which the executable is in
 std::string getWorkPath()
 {
