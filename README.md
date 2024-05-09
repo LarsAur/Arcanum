@@ -1,4 +1,8 @@
-# Arcanum
+<p align="center">
+  <img src="Arcanum-Logo.svg" />
+</p>
+
+## Overview
 Arcanum is a free [UCI][uci-protocol] chess engine under the GPL-3.0 license.
 The engine (v1.12) (w. nnue) has a rating of 2450 - 2550 in bullet and blitz on [lichess][lichess]. Without nnue, it has a rating of ~2200 in blitz on [CCRL][ccrl].
 
