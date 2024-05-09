@@ -17,12 +17,12 @@ override CFLAGS += -std=c++17 -O3 -Wall $(DEFINES)
 LDFLAGS = -lpthread -lm -lstdc++ --static
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
-SOURCES := $(call rwildcard, $(SOURCEDIR)/, %.cpp)								# Recursive search all files in source directory
-SOURCES := $(filter-out %/LICENSE, $(SOURCES))									# LICENSE
-HEADERS := $(filter %.hpp, $(SOURCES))											# Find all headers
-SOURCES := $(filter-out %.hpp, $(SOURCES))										# Filter out header files
-SOURCES := $(filter-out %/, $(SOURCES))											# Filter out folder
-OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))						# Create list of all object files
+SOURCES := $(call rwildcard, $(SOURCEDIR)/, %.cpp)          # Recursive search all files in source directory
+SOURCES := $(filter-out %/LICENSE, $(SOURCES))              # LICENSE
+HEADERS := $(filter %.hpp, $(SOURCES))                      # Find all headers
+SOURCES := $(filter-out %.hpp, $(SOURCES))                  # Filter out header files
+SOURCES := $(filter-out %/, $(SOURCES))                     # Filter out folder
+OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))   # Create list of all object files
 
 all: $(BUILDDIR)/$(PROJECT).exe
 
