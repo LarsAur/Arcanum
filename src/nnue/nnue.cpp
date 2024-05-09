@@ -405,7 +405,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
     if(board.getTurn() == BLACK)
     {
         cpTarget = -cpTarget;
-        wdlTarget = -wdlTarget;
+        wdlTarget = 1.0f - wdlTarget;
     }
 
     // -- Error Calculation
