@@ -5,7 +5,7 @@
 
 using namespace Arcanum;
 
-const char* Evaluator::nnuePathDefault = "arcanum1.fnnue";
+const char* Evaluator::nnuePathDefault = "arcanum-net-v2.fnnue";
 NN::NNUE Evaluator::nnue = NN::NNUE();
 
 Evaluator::Evaluator()

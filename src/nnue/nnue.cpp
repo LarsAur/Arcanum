@@ -101,7 +101,7 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     time_t now = time(0);
     tm *gmt = gmtime(&now);
     std::string utcstr = asctime(gmt);
-    std::string arch = "768->256->1";
+    std::string arch = "768->256->1 vertically mirrored perspective";
 
     std::string metadata = utcstr + arch;
     uint32_t size = metadata.size();
@@ -126,7 +126,7 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
 inline uint32_t NNUE::m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece)
 {
     if(color == BLACK)
-        square ^= 0x3F;
+        square = ((7 - RANK(square)) << 3) | FILE(square);
 
     return (((uint32_t(piece) << 6) | uint32_t(square)) << 1) | color;
 }
