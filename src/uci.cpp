@@ -329,6 +329,7 @@ void UCI::eval(Board& board, Evaluator& evaluator)
 {
     evaluator.initAccumulatorStack(board);
     UCI_OUT(evaluator.evaluate(board, 0))
+    Evaluator::nnue.logEvalBreakdown(board);
 }
 
 // Returns "checkmate 'winner'" if checkmate

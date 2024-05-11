@@ -664,3 +664,62 @@ void NNUE::m_test()
 
     LOG("Score (=) = " << score << " Score (+) = " << score1 << " Score (-) = " << score2)
 }
+
+Arcanum::eval_t NNUE::m_getSquareValue(const Arcanum::Board& board, Arcanum::square_t square)
+{
+    Piece piece = board.getPieceAt(square);
+    if(piece == Piece::NO_PIECE)
+        return 0;
+
+    Color color = Color(piece >= B_PAWN);
+    piece = Piece(piece % B_PAWN);
+    uint32_t findex = m_getFeatureIndex(square, color, piece) ^ board.getTurn();
+    float* colData = m_net.ftWeights.data() + 256 * findex;
+    float* l1Data = m_net.l1Weights.data();
+    float value = 0;
+    for(uint32_t i = 0; i < 256; i++)
+    {
+        if(m_trace.accumulator.data()[i] > 0)
+        {
+            value += colData[i] * l1Data[i];
+        }
+    }
+
+    return value;
+}
+
+void NNUE::logEvalBreakdown(const Arcanum::Board& board)
+{
+    evaluateBoard(board);
+
+    std::cout << "\nPiece Values:\n\n";
+    for(int8_t rank = 7; rank >= 0; rank--)
+    {
+        std::cout << "+-------+-------+-------+-------+-------+-------+-------+-------+\n";
+        std::stringstream ss;
+        ss << "|";
+        for(int8_t file = 0; file < 8; file++)
+        {
+            Arcanum::square_t square = (rank << 3) | file;
+            eval_t value = m_getSquareValue(board, square);
+
+            ss << " " << std::setw(5)  << value << " " << "|";
+        }
+        std::cout << ss.str() << " " << rank + 1 << "\n";
+    }
+    std::cout << "+-------+-------+-------+-------+-------+-------+-------+-------+\n";
+    std::cout << "    A       B       C       D       E       F       G       H    \n";
+
+    // Log the Accumulator
+    std::cout << "\nAccumulator:\n\n";
+    for(uint32_t i = 0; i < 8; i++)
+    {
+        std::cout << std::setw(5) << i*32 << ":";
+        for(uint32_t j = 0; j < 32; j++)
+        {
+            std::cout << " " << std::setw(3) << uint32_t(m_trace.accumulator.data()[i*8 + j]);
+        }
+        std::cout << "\n";
+    }
+    std::cout << std::flush;
+}
