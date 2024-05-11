@@ -422,5 +422,7 @@ void UCI::train(std::istringstream& is)
         return;
     }
 
+    // TODO: Add condition for creating a new randomized net
+
     Evaluator::nnue.train(dataset, outputPath, batchSize, startEpoch, endEpoch);
 }

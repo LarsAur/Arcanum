@@ -384,9 +384,9 @@ float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalError, FloatNet& net, Trace& trace)
+void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
 {
-    constexpr float lambda = 0.95f; // Weighting between wdlTarget and cpTarget
+    constexpr float lambda = 0.80f; // Weighting between wdlTarget and cpTarget
     constexpr float e = 2.71828182846f;
     constexpr float SIG_FACTOR = 400.0f;
 
@@ -408,16 +408,19 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
         wdlTarget = 1.0f - wdlTarget;
     }
 
-    // -- Error Calculation
+
+    // Calculate target
     float wdlOutput       = SIGMOID(out);
     float wdlTargetCp     = SIGMOID(cpTarget);
     float target          = wdlTargetCp * lambda + wdlTarget * (1.0f - lambda);
 
-    float sigmoidPrime     = SIGMOID_PRIME(wdlOutput);
+    // Calculate loss
+    float loss            = pow(target - wdlOutput, 2);
+    totalLoss             += loss;
 
-    float loss = pow(target - wdlOutput, 2);
-    float lossPrime =  2 * (target - wdlOutput);
-    totalError += loss;
+    // Calculate loss gradients
+    float sigmoidPrime    = SIGMOID_PRIME(wdlOutput);
+    float lossPrime       = 2 * (target - wdlOutput);
 
     // -- Create input vector
     uint8_t numFeatures;
@@ -462,7 +465,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2)
 {
     // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
-    constexpr float alpha   = 0.05f;
+    constexpr float alpha   = 0.01f;
     constexpr float beta1   = 0.9f;
     constexpr float beta2   = 0.999f;
     constexpr float epsilon = 1.0E-8;
@@ -571,9 +574,6 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
     std::string strCp;
     std::string fen;
 
-    // Log an empty line which will be deleted by the batch logging
-    LOG("")
-
     for(uint32_t epoch = startEpoch; epoch < endEpoch; epoch++)
     {
         std::ifstream is(dataset, std::ios::in);
@@ -584,10 +584,10 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
             exit(-1);
         }
 
-        uint64_t epochCount = 0LL;
-        float epochError    = 0;
-        uint64_t count      = 0LL;
-        float error         = 0.0f;
+        uint64_t epochPosCount = 0LL;
+        uint64_t batchPosCount = 0LL;
+        float epochLoss = 0.0f;
+        float batchLoss = 0.0f;
 
         gradient.ftWeights.setZero();
         gradient.ftBiases .setZero();
@@ -608,35 +608,44 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
             Arcanum::Board board = Arcanum::Board(fen);
 
             // Run back propagation
-            m_backPropagate(board, cp, wdl, gradient, error, m_net, trace);
+            m_backPropagate(board, cp, wdl, gradient, batchLoss, m_net, trace);
 
-            count++;
+            batchPosCount++;
 
-            if((count % batchSize == 0) || is.eof())
+            if((batchPosCount % batchSize == 0) || is.eof())
             {
-                gradient.ftWeights .scale(1.0f / count);
-                gradient.ftBiases  .scale(1.0f / count);
-                gradient.l1Weights .scale(1.0f / count);
-                gradient.l1Biases  .scale(1.0f / count);
+                gradient.ftWeights .scale(1.0f / batchPosCount);
+                gradient.ftBiases  .scale(1.0f / batchPosCount);
+                gradient.l1Weights .scale(1.0f / batchPosCount);
+                gradient.l1Biases  .scale(1.0f / batchPosCount);
 
                 m_applyGradient(epoch, gradient, momentum1, momentum2);
 
-                epochCount += count;
-                epochError += error;
+                // Aggregate the loss and position count
+                epochPosCount += batchPosCount;
+                epochLoss     += batchLoss;
 
-                LOG("Batch Avg. Loss = " << (error / count)
-                << " Epoch Avg. Loss = " << (epochError / epochCount)
-                << " #Positions = " << epochCount)
+                LOG("Avg. Batch Loss = " << std::fixed << std::setprecision(6) << (batchLoss / batchPosCount)
+                << " Avg. Epoch Loss = " << std::setprecision(6)               << (epochLoss / epochPosCount)
+                << " #Positions = " << epochPosCount)
 
-                count = 0;
-                error = 0.0f;
+                batchPosCount = 0;
+                batchLoss = 0.0f;
             }
 
         }
 
-        std::stringstream ss;
-        ss << outputPath << epoch << ".fnnue";
-        store(ss.str());
+        // Write the epoch loss to a file
+        std::ofstream os("loss.log", std::ios::app | std::ios::out);
+        std::stringstream ssLoss;
+        ssLoss << std::fixed << std::setprecision(6) << (epochLoss / float(epochPosCount)) << "\n";
+        os.write(ssLoss.str().c_str(), ssLoss.str().length());
+        os.close();
+
+        // Store the net for each epoch
+        std::stringstream ssNnueName;
+        ssNnueName << outputPath << epoch << ".fnnue";
+        store(ssNnueName.str());
         is.close();
 
         m_test();
