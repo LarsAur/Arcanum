@@ -1794,6 +1794,11 @@ bitboard_t Board::getColoredPieces(Color color) const
     return m_bbColoredPieces[color];
 }
 
+Piece Board::getPieceAt(square_t square) const
+{
+    return m_pieces[square];
+}
+
 square_t Board::getEnpassantSquare() const
 {
     return m_enPassantSquare;
