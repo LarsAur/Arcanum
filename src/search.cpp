@@ -420,6 +420,7 @@ Move Searcher::getBestMove(Board& board, int depth, SearchResult* searchResult)
 {
     SearchParameters parameters = SearchParameters();
     parameters.depth = depth;
+    parameters.useDepth = true;
     return search(Board(board), parameters, searchResult);
 }
 
@@ -427,6 +428,7 @@ Move Searcher::getBestMoveInTime(Board& board, uint32_t ms, SearchResult* search
 {
     SearchParameters parameters = SearchParameters();
     parameters.msTime = ms;
+    parameters.useTime = ms;
     return search(Board(board), parameters, searchResult);
 }
 
@@ -464,7 +466,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     }
 
     uint32_t depth = 0;
-    while(m_searchParameters.depth == 0 || m_searchParameters.depth > depth)
+    while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
     {
         depth++;
 
@@ -617,13 +619,13 @@ bool Searcher::m_shouldStop()
 {
     if(m_stopSearch) return true;
 
-    if(m_searchParameters.msTime > 0 && m_timer.getMs() >= m_searchParameters.msTime )
+    if(m_searchParameters.useTime && m_timer.getMs() >= m_searchParameters.msTime )
     {
         m_stopSearch = true;
         return true;
     }
 
-    if(m_searchParameters.nodes > 0 && m_numNodesSearched >= m_searchParameters.nodes)
+    if(m_searchParameters.useNodes && m_numNodesSearched >= m_searchParameters.nodes)
     {
         m_stopSearch = true;
         return true;
