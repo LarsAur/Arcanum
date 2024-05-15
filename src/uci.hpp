@@ -7,6 +7,7 @@ namespace UCI
     struct SearchInfo
     {
         uint32_t depth;                      // Current depth in iterative deepening
+        uint32_t seldepth;                   // Maximum plys from root in current depth interation
         uint64_t msTime;                     // Time searched
         uint64_t nodes;                      // Number of nodes searched
         Arcanum::eval_t score;               // Current best score in cp
@@ -16,7 +17,17 @@ namespace UCI
         std::vector<Arcanum::Move> pvLine;   // PV-line
         uint32_t hashfull;                   // Permills of hashtable filled
 
-        SearchInfo() : depth(0), msTime(0), nodes(0), score(0), mate(0), mateDistance(0), bestMove(Arcanum::Move(0,0)), hashfull(0) {}
+        SearchInfo() :
+            depth(0),
+            seldepth(0),
+            msTime(0),
+            nodes(0),
+            score(0),
+            mate(0),
+            mateDistance(0),
+            bestMove(Arcanum::Move(0,0)),
+            hashfull(0)
+            {}
     };
 
     void loop();

@@ -39,7 +39,6 @@ namespace Arcanum
         uint64_t lowerTTValuesUsed;
         uint64_t upperTTValuesUsed;
         uint64_t tbHits;
-        uint8_t quietSearchDepth;
         uint64_t researchesRequired;
         uint64_t nullWindowSearches;
         uint64_t nullMoveCutoffs;
@@ -95,8 +94,9 @@ namespace Arcanum
             uint8_t m_generation = 0; // Can only use the 6 upper bits of the generation
             uint8_t m_nonRevMovesRoot; // Number of non-reversable moves performed on the board in the root position.
             SearchStats m_stats;
-            bool m_verbose; // Print use output and stats while searching
             uint64_t m_numNodesSearched; // Number of nodes searched in a search call. Used to terminate search based on number of nodes.
+            uint8_t m_seldepth;
+            bool m_verbose; // Print use output and stats while searching
             volatile bool m_stopSearch;
 
             eval_t m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions);

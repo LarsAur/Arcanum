@@ -313,6 +313,8 @@ void UCI::sendUciInfo(const SearchInfo& info)
     ss << "info";
     if(info.depth > 0)
         ss << " depth " << info.depth;
+    if(info.seldepth > 0)
+        ss << " seldepth " << info.seldepth;
     if(info.msTime > 0)
         ss << " time " << info.msTime;
     if(info.nodes > 0)

@@ -75,6 +75,8 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     if(m_shouldStop())
         return 0;
 
+    m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
+
     if(m_isDraw(board))
         return DRAW_VALUE;
 
@@ -148,6 +150,8 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
     if(m_shouldStop())
         return 0;
+
+    m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
 
     if(m_isDraw(board))
         return DRAW_VALUE;
@@ -469,7 +473,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
     {
         depth++;
-
+        // Reset seldepth for each depth interation
+        m_seldepth = 0;
         // The local variable for the best move from the previous iteration is used by the move selector.
         // This is in case the move from the transposition is not 'correct' due to a miss.
         // Misses can happen if the position cannot replace another position
@@ -539,6 +544,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // Send UCI info
         UCI::SearchInfo info = UCI::SearchInfo();
         info.depth = depth;
+        info.seldepth = m_seldepth;
         info.msTime = m_timer.getMs();
         info.nodes = m_numNodesSearched;
         info.score = alpha;
@@ -576,6 +582,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     // Send UCI info
     UCI::SearchInfo info = UCI::SearchInfo();
     info.depth = depth;
+    info.seldepth = m_seldepth;
     info.msTime = m_timer.getMs();
     info.nodes = m_numNodesSearched;
     info.score = searchScore;
