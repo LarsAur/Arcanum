@@ -20,7 +20,7 @@ bool matchesPyrrhicMove(Move move, unsigned pyrrhicMove) {
 
 bool Arcanum::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& wdl)
 {
-    if(board.getNumPiecesLeft() > TB_LARGEST && !board.getCastleRights())
+    if(board.getNumPiecesLeft() > TB_LARGEST || board.getCastleRights())
     {
         return false;
     }
