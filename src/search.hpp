@@ -50,6 +50,10 @@ namespace Arcanum
 
     struct SearchParameters
     {
+        bool useTime;
+        bool useNodes;
+        bool useDepth;
+
         int64_t msTime;
         uint64_t nodes;
         uint32_t depth;
@@ -58,7 +62,17 @@ namespace Arcanum
         uint32_t numSearchMoves;
         Move searchMoves[218];
 
-        SearchParameters() : msTime(0), nodes(0), depth(0), mate(0), infinite(false), numSearchMoves(0) {};
+        SearchParameters() :
+            useTime(false),
+            useNodes(false),
+            useDepth(false),
+            msTime(0),
+            nodes(0),
+            depth(0),
+            mate(0),
+            infinite(false),
+            numSearchMoves(0)
+        {};
     };
 
     struct SearchResult

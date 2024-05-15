@@ -420,6 +420,7 @@ Move Searcher::getBestMove(Board& board, int depth, SearchResult* searchResult)
 {
     SearchParameters parameters = SearchParameters();
     parameters.depth = depth;
+    parameters.useDepth = true;
     return search(Board(board), parameters, searchResult);
 }
 
@@ -427,6 +428,7 @@ Move Searcher::getBestMoveInTime(Board& board, uint32_t ms, SearchResult* search
 {
     SearchParameters parameters = SearchParameters();
     parameters.msTime = ms;
+    parameters.useTime = ms;
     return search(Board(board), parameters, searchResult);
 }
 
@@ -464,7 +466,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     }
 
     uint32_t depth = 0;
-    while(m_searchParameters.depth == 0 || m_searchParameters.depth > depth)
+    while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
     {
         depth++;
 
@@ -501,7 +503,9 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // The move found can be used even if search is canceled, if we search the previously best move first
-        // If a better move is found, is is guaranteed to be better than the best move at the previous depth
+        // If a better move is found, it is guaranteed to be better than the best move at the previous depth
+        // If the search is so short that the first iteration does not finish, this will still assign a searchBestMove.
+        // As long as bestMove is not a null move.
         if(!(bestMove == Move(0, 0)))
         {
             searchScore = alpha;
@@ -514,6 +518,17 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // If search is stopped, corrigate depth to the depth from the previous iterations
         if(m_stopSearch)
         {
+            if(depth == 1) WARNING("Not enough time to finish first iteration of search")
+
+            // If the search is so short that no score is calculated for any moves.
+            // The first available move is returned to avoid returning a null move
+            if(searchBestMove == Move(0, 0))
+            {
+                WARNING("Not enough time to find the value of any moves. Returning the first move with score 0")
+                searchBestMove = moves[0];
+                searchScore = 0;
+            }
+
             depth--;
             break;
         }
@@ -617,13 +632,13 @@ bool Searcher::m_shouldStop()
 {
     if(m_stopSearch) return true;
 
-    if(m_searchParameters.msTime > 0 && m_timer.getMs() >= m_searchParameters.msTime )
+    if(m_searchParameters.useTime && m_timer.getMs() >= m_searchParameters.msTime )
     {
         m_stopSearch = true;
         return true;
     }
 
-    if(m_searchParameters.nodes > 0 && m_numNodesSearched >= m_searchParameters.nodes)
+    if(m_searchParameters.useNodes && m_numNodesSearched >= m_searchParameters.nodes)
     {
         m_stopSearch = true;
         return true;

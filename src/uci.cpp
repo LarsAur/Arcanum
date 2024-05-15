@@ -25,12 +25,13 @@ namespace UCI
 
     static std::thread searchThread;
     static bool isSearching;
+    static int64_t moveOverhead;
 
     void go(Board& board, Searcher& searcher, std::istringstream& is);
     void newgame(Searcher& Searcher, Evaluator& evaluatorm, Board& board);
     void setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream& is);
     void position(Board& board, Searcher& searcher, std::istringstream& is);
-    int64_t allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber);
+    int64_t getAllocatedTime(int64_t time, int64_t inc, int64_t movesToGo, int64_t moveTime);
     void ischeckmate(Board& board, Searcher& searcher);
     void eval(Board& board, Evaluator& evaluator);
     void drawBoard(Board& board);
@@ -42,6 +43,7 @@ namespace UCI
 void UCI::loop()
 {
     isSearching = false;
+    moveOverhead = 10;
     Board board = Board(FEN::startpos);
     Searcher searcher = Searcher();
     Evaluator evaluator = Evaluator();
@@ -71,6 +73,7 @@ void UCI::loop()
             UCI_OUT("option name ClearHash type button")
             UCI_OUT("option name SyzygyPath type string default <empty>")
             UCI_OUT("option name NNUEPath type string default " << Evaluator::nnuePathDefault)
+            UCI_OUT("option name MoveOverhead type spin default " << moveOverhead << " min 0 max 5000")
             UCI_OUT("uciok")
         }
         else if (token == "setoption" ) setoption(searcher, evaluator, is);
@@ -149,18 +152,22 @@ void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream
         is >> std::skipws >> path;
         Evaluator::nnue.load(path);
     }
+    else if(name == "moveoverhead")
+    {
+        is >> std::skipws >> moveOverhead;
+        moveOverhead = std::max(0LL, moveOverhead);
+    }
 }
 
 void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
 {
     std::string token;
-    std::stringstream ssInfo;
     SearchParameters parameters = SearchParameters();
-    uint32_t time[2] = {0, 0};
-    uint32_t inc[2] = {0, 0};
-    uint32_t movesToGo = 0;
-    uint32_t perftDepth = 0;
-    ssInfo << "info ";
+    int64_t time[2] = {0, 0};
+    int64_t inc[2] = {0, 0};
+    int64_t movesToGo = -1;
+    int32_t perftDepth = 0;
+    bool requireTimeAlloc[2] = {false, false};
 
     while(is >> token)
     {
@@ -175,18 +182,18 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
                     if(token == moves[i].toString())
                         parameters.searchMoves[parameters.numSearchMoves++] = moves[i];
         }
-        else if(token == "wtime"     ) is >> time[Color::WHITE];
-        else if(token == "btime"     ) is >> time[Color::BLACK];
-        else if(token == "winc"      ) is >> inc[Color::WHITE];
-        else if(token == "binc"      ) is >> inc[Color::BLACK];
-        else if(token == "movestogo" ) is >> movesToGo;
-        else if(token == "depth"     ) is >> parameters.depth;
-        else if(token == "nodes"     ) is >> parameters.nodes;
-        else if(token == "movetime"  ) is >> parameters.msTime;
-        else if(token == "perft"     ) is >> perftDepth;
-        else if(token == "infinite"  ) parameters.infinite = true;
-        else if(token == "ponder"    ) WARNING("Missing implementation: ponder")
-        else if(token == "mate"      ) WARNING("Missing implementation: mate")
+        else if(token == "wtime"     ) { is >> time[Color::WHITE]; requireTimeAlloc[Color::WHITE] = true; }
+        else if(token == "btime"     ) { is >> time[Color::BLACK]; requireTimeAlloc[Color::BLACK] = true; }
+        else if(token == "winc"      ) { is >> inc[Color::WHITE]; }
+        else if(token == "binc"      ) { is >> inc[Color::BLACK]; }
+        else if(token == "depth"     ) { is >> parameters.depth;  parameters.useDepth = true; }
+        else if(token == "nodes"     ) { is >> parameters.nodes;  parameters.useNodes = true; }
+        else if(token == "movetime"  ) { is >> parameters.msTime; parameters.useTime  = true; }
+        else if(token == "movestogo" ) { is >> movesToGo;            }
+        else if(token == "perft"     ) { is >> perftDepth;           }
+        else if(token == "infinite"  ) { parameters.infinite = true; }
+        else if(token == "ponder"    ) { WARNING("Missing implementation: ponder")  }
+        else if(token == "mate"      ) { WARNING("Missing implementation: mate")    }
         else ERROR("Unknown command: " << token)
     }
 
@@ -197,12 +204,13 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         return;
     }
 
+    // Allocate time
     Color turn = board.getTurn();
-    int64_t allocatedTime = allocateTime(time[turn], inc[turn], movesToGo, board.getFullMoves());
-    if(parameters.msTime > 0 && allocatedTime > 0)
-        parameters.msTime = std::min(parameters.msTime, allocatedTime);
-    else if(allocatedTime > 0)
-        parameters.msTime = allocatedTime;
+    if(requireTimeAlloc[turn])
+    {
+        parameters.useTime = true;
+        parameters.msTime = getAllocatedTime(time[turn], inc[turn], movesToGo, parameters.msTime);
+    }
 
     if(!isSearching)
     {
@@ -265,29 +273,37 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
     }
 }
 
-int64_t UCI::allocateTime(uint32_t time, uint32_t inc, uint32_t toGo, uint32_t moveNumber)
+int64_t UCI::getAllocatedTime(int64_t time, int64_t inc, int64_t movesToGo, int64_t moveTime)
 {
-    // Ensure there is some margin
-    time = std::max(1U, time - 10U);
+    constexpr int64_t T1 = 30;
+    constexpr int64_t T2 = 2;
 
-    // I pulled these numbers and formulas out of a hat :^)
-    if(time == 0)
-        return 0;
+    // Add some margin to the time limit
+    // In actuality, the search will likely use a bit more time than allocated
+    // This will depend of OS activity, and delays in terminating the search.
+    // Thus, we have to ensure it does not surpass the remaining time minus the moveOverhead.
+    int64_t timeLimit = time - moveOverhead;
+    int64_t allocatedTime = 0LL;
 
-    if(toGo > 0)
-        return std::max(1U, (time / (toGo + 1)) + inc);
-
-    if(inc > 0)
+    if(movesToGo > 0)
     {
-        if(moveNumber >= 40)
-            return std::max(1U, std::min(time, (time / 8U) + inc));
-        return std::max(1U, std::min(time, (time + inc * (40 - moveNumber)) / (45U - moveNumber)));
+        // Note: This can exceed the time limit,
+        //       but it is resolved at the bottom
+        allocatedTime = (timeLimit / movesToGo) + inc;
+    }
+    else
+    {
+        allocatedTime = std::min((timeLimit / T1) + inc, timeLimit / T2);
     }
 
-    if(moveNumber >= 40 || time < 10000)
-        return std::max(1U, time / 20U);
+    // If a movetime is specified, it is also an upper bound on the allocated time
+    // This has to be done after time allocation, because we want the allocation to depend on the remaining time.
+    if(moveTime > 0)
+        timeLimit = std::min(timeLimit, moveTime);
 
-    return std::max(1U, time / (50U - moveNumber));
+    // Ensure that the allocated time does not surpass the time limit
+    // Note: timeLimit can be negative, due to subtracting the moveOverhead. Thus, a lower bound of 1ms is used.
+    return std::max(std::min(timeLimit, allocatedTime), 1LL);
 }
 
 void UCI::sendUciInfo(const SearchInfo& info)
@@ -321,6 +337,9 @@ void UCI::sendUciInfo(const SearchInfo& info)
 
 void UCI::sendUciBestMove(const Move& move)
 {
+    if(move == Move(0, 0))
+        ERROR("Illegal Null-Move was reported as the best move")
+
     UCI_OUT("bestmove " << move)
 }
 
