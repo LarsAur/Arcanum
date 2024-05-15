@@ -503,7 +503,9 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // The move found can be used even if search is canceled, if we search the previously best move first
-        // If a better move is found, is is guaranteed to be better than the best move at the previous depth
+        // If a better move is found, it is guaranteed to be better than the best move at the previous depth
+        // If the search is so short that the first iteration does not finish, this will still assign a searchBestMove.
+        // As long as bestMove is not a null move.
         if(!(bestMove == Move(0, 0)))
         {
             searchScore = alpha;
@@ -516,6 +518,17 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // If search is stopped, corrigate depth to the depth from the previous iterations
         if(m_stopSearch)
         {
+            if(depth == 1) WARNING("Not enough time to finish first iteration of search")
+
+            // If the search is so short that no score is calculated for any moves.
+            // The first available move is returned to avoid returning a null move
+            if(searchBestMove == Move(0, 0))
+            {
+                WARNING("Not enough time to find the value of any moves. Returning the first move with score 0")
+                searchBestMove = moves[0];
+                searchScore = 0;
+            }
+
             depth--;
             break;
         }
