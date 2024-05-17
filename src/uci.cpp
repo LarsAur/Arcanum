@@ -204,6 +204,9 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
         return;
     }
 
+    // Subtract moveOverhead from moveTime
+    if(parameters.msTime != 0) parameters.msTime = std::max(parameters.msTime - moveOverhead, 1LL);
+
     // Allocate time
     Color turn = board.getTurn();
     if(requireTimeAlloc[turn])
@@ -298,6 +301,7 @@ int64_t UCI::getAllocatedTime(int64_t time, int64_t inc, int64_t movesToGo, int6
 
     // If a movetime is specified, it is also an upper bound on the allocated time
     // This has to be done after time allocation, because we want the allocation to depend on the remaining time.
+    // Note that moveOverhead is already subtracted from moveTime.
     if(moveTime > 0)
         timeLimit = std::min(timeLimit, moveTime);
 
