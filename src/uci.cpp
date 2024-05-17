@@ -155,7 +155,7 @@ void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream
     else if(name == "moveoverhead")
     {
         is >> std::skipws >> moveOverhead;
-        moveOverhead = std::max(0LL, moveOverhead);
+        moveOverhead = std::max(int64_t(0), moveOverhead);
     }
 }
 
@@ -205,7 +205,7 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     }
 
     // Subtract moveOverhead from moveTime
-    if(parameters.msTime != 0) parameters.msTime = std::max(parameters.msTime - moveOverhead, 1LL);
+    if(parameters.msTime != 0) parameters.msTime = std::max(parameters.msTime - moveOverhead, int64_t(1));
 
     // Allocate time
     Color turn = board.getTurn();
@@ -307,7 +307,7 @@ int64_t UCI::getAllocatedTime(int64_t time, int64_t inc, int64_t movesToGo, int6
 
     // Ensure that the allocated time does not surpass the time limit
     // Note: timeLimit can be negative, due to subtracting the moveOverhead. Thus, a lower bound of 1ms is used.
-    return std::max(std::min(timeLimit, allocatedTime), 1LL);
+    return std::max(std::min(timeLimit, allocatedTime), int64_t(1));
 }
 
 void UCI::sendUciInfo(const SearchInfo& info)
