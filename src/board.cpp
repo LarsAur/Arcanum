@@ -51,6 +51,7 @@ Board::Board(const Board& board)
 
     m_checkedCache = board.m_checkedCache;
     m_moveset = MoveSet::NOT_GENERATED; // Moves are not copied over
+    m_captureInfoGenerated = MoveSet::NOT_GENERATED;
 }
 
 // Calulate slider blockers and pinners
@@ -1543,6 +1544,12 @@ uint8_t Board::getNumLegalMoves() const
 
 void Board::generateCaptureInfo()
 {
+    // Return early if the capture info is already generated
+    // This can happen if a position is re-searched with a different window
+    if(m_captureInfoGenerated == m_moveset)
+        return;
+
+    m_captureInfoGenerated = m_moveset;
     for(uint8_t i = 0; i < m_numLegalMoves; i++)
     {
         // Set the corresponding capture flag. We do not have to worry about enpassant, as it is already included in the moveInfo

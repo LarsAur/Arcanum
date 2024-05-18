@@ -150,7 +150,8 @@ namespace Arcanum
                 CAPTURES_AND_CHECKS,
                 ALL,
             };
-            MoveSet m_moveset = MoveSet::NOT_GENERATED; // Which set moves are generated
+            MoveSet m_moveset; // Which set moves are generated
+            MoveSet m_captureInfoGenerated;
 
             // Values are assigned so that checked = true and not_checked = false
             enum CheckedCacheState
