@@ -173,14 +173,11 @@ void UCI::go(Board& board, Searcher& searcher, std::istringstream& is)
     {
         if(token == "searchmoves")
         {
-            // TODO: This can be improved to make the move based on only the uci
-            Move* moves = board.getLegalMoves();
-            int numLegalMoves = board.getNumLegalMoves();
-            board.generateCaptureInfo();
             while (is >> token)
-                for(int i = 0; i < numLegalMoves; i++)
-                    if(token == moves[i].toString())
-                        parameters.searchMoves[parameters.numSearchMoves++] = moves[i];
+            {
+                Move move = board.getMoveFromArithmetic(token);
+                parameters.searchMoves[parameters.numSearchMoves++] = move;
+            }
         }
         else if(token == "wtime"     ) { is >> time[Color::WHITE]; requireTimeAlloc[Color::WHITE] = true; }
         else if(token == "btime"     ) { is >> time[Color::BLACK]; requireTimeAlloc[Color::BLACK] = true; }
@@ -254,24 +251,15 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
     // Parse any moves
     while (is >> token)
     {
-        // TODO: This can be improved to make the move based on only the uci
-        Move* moves = board.getLegalMoves();
-        uint8_t numLegalMoves = board.getNumLegalMoves();
-        board.generateCaptureInfo();
-        for(int i = 0; i < numLegalMoves; i++)
+        Move move = board.getMoveFromArithmetic(token);
+        if(move == Move(0,0))
         {
-            if(token == moves[i].toString())
-            {
-                board.performMove(moves[i]);
-                searcher.addBoardToHistory(board);
-                break;
-            }
-
-            // If none of the moves match the input, it is not legal
-            if(i == numLegalMoves - 1)
-            {
-                ERROR(token << " is not legal in the position")
-            }
+            ERROR(token << " is not legal in the position")
+        }
+        else
+        {
+            board.performMove(move);
+            searcher.addBoardToHistory(board);
         }
     }
 }

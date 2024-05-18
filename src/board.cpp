@@ -1877,6 +1877,21 @@ uint8_t Board::getNumColoredPieces(Color color) const
     return CNTSBITS(m_bbColoredPieces[color]);
 }
 
+Move Board::getMoveFromArithmetic(std::string& arighemetic)
+{
+    Move* moves = getLegalMoves();
+    generateCaptureInfo();
+
+    for(uint8_t i = 0; i < m_numLegalMoves; i++)
+    {
+        if(moves[i].toString() == arighemetic)
+            return moves[i];
+    }
+
+    WARNING("Found no matching move for " << arighemetic << " in " << FEN::getFEN(*this))
+    return Move(0,0);
+}
+
 bitboard_t Board::attackersTo(const square_t square) const
 {
     bitboard_t attackers = 0LL;
