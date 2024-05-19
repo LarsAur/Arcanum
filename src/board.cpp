@@ -1683,6 +1683,7 @@ void Board::performMove(const Move move)
 
     m_checkedCache = CheckedCacheState::UNKNOWN;
     m_moveset = MoveSet::NOT_GENERATED;
+    m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_turn = opponent;
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
     if(CAPTURED_PIECE(move.moveInfo) || (move.moveInfo & MoveInfoBit::PAWN_MOVE))
