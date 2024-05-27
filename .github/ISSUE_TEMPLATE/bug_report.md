@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 If relevant, please include a description of how to reproduce the issue.
-This could for example be the set of UCI commands used.
+This could for example be the set of UCI commands and/or options used.
 It can also be relevant to include if the issue arises every time these steps are taken, or just sometimes.
 
 **Expected behaviour**
