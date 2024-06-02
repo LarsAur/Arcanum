@@ -116,9 +116,7 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
     ttCluster_t* clusterPtr = static_cast<ttCluster_t*>(__builtin_assume_aligned(m_table + m_getClusterIndex(hash), CACHE_LINE_SIZE));
     ttCluster_t cluster = *clusterPtr;
 
-    #if TT_RECORD_STATS == 1
     m_stats.lookups++;
-    #endif
 
     for(size_t i = 0; i < clusterSize; i++)
     {
@@ -134,9 +132,7 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
         }
     }
 
-    #if TT_RECORD_STATS == 1
-        m_stats.lookupMisses++;
-    #endif
+    m_stats.lookupMisses++;
 
     return {}; // Return empty optional
 }
@@ -170,9 +166,7 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
         entry.value = entry.value > 0 ? entry.value + plyFromRoot : entry.value - plyFromRoot;
     }
 
-    #if TT_RECORD_STATS
-        m_stats.entriesAdded++;
-    #endif
+    m_stats.entriesAdded++;
 
     // Check if the entry is already in the cluster
     // If so, replace it
@@ -181,9 +175,7 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
         ttEntry_t _entry = cluster->entries[i];
         if(_entry.hash == entry.hash && _entry.depth < entry.depth)
         {
-            #if TT_RECORD_STATS
-                m_stats.updates++;
-            #endif
+            m_stats.updates++;
             cluster->entries[i] = entry;
             return;
         }
@@ -196,10 +188,7 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
         ttEntry_t _entry = cluster->entries[i];
         if((_entry.depth == UINT8_MAX) || (_entry.numNonRevMoves < numNonRevMovesRoot))
         {
-            #if TT_RECORD_STATS
             m_stats.replacements += (_entry.depth != UINT8_MAX);
-            #endif
-
             cluster->entries[i] = entry;
             return;
         }
@@ -223,17 +212,12 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
     if(replace)
     {
         *replace = entry;
-
-        #if TT_RECORD_STATS
-            m_stats.replacements++;
-        #endif
+        m_stats.replacements++;
     }
-    #if TT_RECORD_STATS
     else
     {
         m_stats.blockedReplacements++;
     }
-    #endif
 
 }
 

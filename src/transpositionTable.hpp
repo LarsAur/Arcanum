@@ -7,8 +7,6 @@
 
 namespace Arcanum
 {
-    #define TT_RECORD_STATS 1
-
     enum class TTFlag : uint8_t
     {
         EXACT = 0,
