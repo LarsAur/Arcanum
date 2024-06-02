@@ -14,22 +14,7 @@ using namespace Arcanum;
 Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(32));
-
-    #if SEARCH_RECORD_STATS
-    m_stats = {
-        .evaluatedPositions = 0LL,
-        .exactTTValuesUsed  = 0LL,
-        .lowerTTValuesUsed  = 0LL,
-        .upperTTValuesUsed  = 0LL,
-        .tbHits             = 0LL,
-        .researchesRequired = 0LL,
-        .nullWindowSearches = 0LL,
-        .nullMoveCutoffs    = 0LL,
-        .failedNullMoveCutoffs = 0LL,
-        .futilityPrunedMoves = 0LL,
-        .reverseFutilityCutoffs = 0LL,
-    };
-    #endif
+    m_stats = SearchStats();
 
     // Setup a table of known endgame draws based on material
     // This is based on: https://www.chess.com/terms/draw-chess
@@ -163,16 +148,12 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         switch (entry->flags)
         {
         case TTFlag::EXACT:
-            #if SEARCH_RECORD_STATS
             m_stats.exactTTValuesUsed++;
-            #endif
             return entry->value;
         case TTFlag::LOWER_BOUND:
             if(entry->value >= beta)
             {
-                #if SEARCH_RECORD_STATS
                 m_stats.lowerTTValuesUsed++;
-                #endif
                 return beta;
             }
             alpha = std::max(alpha, entry->value);
@@ -180,9 +161,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         case TTFlag::UPPER_BOUND:
             if(entry->value <= alpha)
             {
-                #if SEARCH_RECORD_STATS
                 m_stats.upperTTValuesUsed++;
-                #endif
                 return alpha;
             }
             beta = std::min(beta, entry->value);
@@ -194,12 +173,8 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     {
         uint32_t tbResult = TBProbeWDL(board);
 
-        #if SEARCH_RECORD_STATS
         if(tbResult != TB_RESULT_FAILED)
-        {
             m_stats.tbHits++;
-        }
-        #endif
 
         if(tbResult == TB_DRAW) return 0;
         if(tbResult == TB_WIN) return TB_MATE_SCORE - plyFromRoot;
@@ -236,14 +211,10 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
         if(score >= beta)
         {
-            #if SEARCH_RECORD_STATS
             m_stats.nullMoveCutoffs++;
-            #endif
             return beta;
         }
-        #if SEARCH_RECORD_STATS
-            m_stats.failedNullMoveCutoffs++;
-        #endif
+        m_stats.failedNullMoveCutoffs++;
     }
 
     eval_t staticEvaluation = 0;
@@ -256,9 +227,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         // Reverse futility pruning
         if(staticEvaluation - futilityMargins[depth - 1] >= beta)
         {
-            #if SEARCH_RECORD_STATS
             m_stats.reverseFutilityCutoffs++;
-            #endif
             return beta;
         }
     }
@@ -283,9 +252,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         {
             if(staticEvaluation + futilityMargins[depth - 1] < alpha && alpha < 900)
             {
-                #if SEARCH_RECORD_STATS
                 m_stats.futilityPrunedMoves++;
-                #endif
                 continue;
             }
         }
@@ -305,10 +272,8 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             // Perform full search if the move is better than expected
             requireFullSearch = score > alpha;
 
-            #if SEARCH_RECORD_STATS
             m_stats.researchesRequired += requireFullSearch;
             m_stats.nullWindowSearches += 1;
-            #endif
         }
 
         if(requireFullSearch)
@@ -610,9 +575,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         UCI::sendUciBestMove(searchBestMove);
     }
 
-    #if SEARCH_RECORD_STATS
     m_stats.evaluatedPositions += m_numNodesSearched;
-    #endif
 
     if(m_verbose)
     {
@@ -660,7 +623,6 @@ SearchStats Searcher::getStats()
 
 void Searcher::logStats()
 {
-    #if SEARCH_RECORD_STATS == 1
     std::stringstream ss;
     ss << "\n----------------------------------";
     ss << "\nSearcher Stats:";
@@ -684,7 +646,6 @@ void Searcher::logStats()
     ss << "\n----------------------------------";
 
     LOG(ss.str())
-    #endif
 }
 
 std::unordered_map<hash_t, uint8_t, HashFunction>& Searcher::getHistory()

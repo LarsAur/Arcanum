@@ -11,7 +11,6 @@
 #include <unordered_map>
 
 #define INF INT16_MAX
-#define SEARCH_RECORD_STATS 1
 #define SEARCH_MAX_PV_LENGTH 64
 
 namespace Arcanum
@@ -45,6 +44,21 @@ namespace Arcanum
         uint64_t failedNullMoveCutoffs;
         uint64_t futilityPrunedMoves;
         uint64_t reverseFutilityCutoffs;
+
+        SearchStats() :
+            evaluatedPositions(0),
+            exactTTValuesUsed(0),
+            lowerTTValuesUsed(0),
+            upperTTValuesUsed(0),
+            tbHits(0),
+            researchesRequired(0),
+            nullWindowSearches(0),
+            nullMoveCutoffs(0),
+            failedNullMoveCutoffs(0),
+            futilityPrunedMoves(0),
+            reverseFutilityCutoffs(0)
+        {};
+
     } SearchStats;
 
     struct SearchParameters
