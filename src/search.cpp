@@ -162,12 +162,12 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     {
         switch (entry->flags)
         {
-        case TT_FLAG_EXACT:
+        case TTFlag::EXACT:
             #if SEARCH_RECORD_STATS
             m_stats.exactTTValuesUsed++;
             #endif
             return entry->value;
-        case TT_FLAG_LOWERBOUND:
+        case TTFlag::LOWER_BOUND:
             if(entry->value >= beta)
             {
                 #if SEARCH_RECORD_STATS
@@ -177,7 +177,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             }
             alpha = std::max(alpha, entry->value);
             break;
-        case TT_FLAG_UPPERBOUND:
+        case TTFlag::UPPER_BOUND:
             if(entry->value <= alpha)
             {
                 #if SEARCH_RECORD_STATS
@@ -372,12 +372,11 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         return 0;
     }
 
-    uint8_t flags;
-    if(bestScore <= originalAlpha) flags = TT_FLAG_UPPERBOUND;
-    else if(bestScore >= beta)     flags = TT_FLAG_LOWERBOUND;
-    else                           flags = TT_FLAG_EXACT;
+    TTFlag flag = TTFlag::EXACT;
+    if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
+    else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
-    m_tt->add(bestScore, bestMove, depth, plyFromRoot, flags, m_generation, m_nonRevMovesRoot, board.getNumNonReversableMovesPerformed(), board.getHash());
+    m_tt->add(bestScore, bestMove, depth, plyFromRoot, flag, m_generation, m_nonRevMovesRoot, board.getNumNonReversableMovesPerformed(), board.getHash());
 
     return alpha;
 }
@@ -539,7 +538,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt->add(alpha, bestMove, depth, 0, TT_FLAG_EXACT, m_generation, m_nonRevMovesRoot, m_nonRevMovesRoot, board.getHash());
+        m_tt->add(alpha, bestMove, depth, 0, TTFlag::EXACT, m_generation, m_nonRevMovesRoot, m_nonRevMovesRoot, board.getHash());
 
         // Send UCI info
         UCI::SearchInfo info = UCI::SearchInfo();
