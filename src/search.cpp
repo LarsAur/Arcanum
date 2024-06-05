@@ -60,16 +60,54 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     if(m_shouldStop())
         return 0;
 
+    m_numNodesSearched++;
     m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
 
     if(m_isDraw(board))
         return DRAW_VALUE;
 
+    // Table base probe
+    if(board.getNumPiecesLeft() <= TB_LARGEST && board.getHalfMoves() == 0)
+    {
+        uint32_t tbResult = TBProbeWDL(board);
+
+        if(tbResult != TB_RESULT_FAILED)
+            m_stats.tbHits++;
+
+        if(tbResult == TB_DRAW) return 0;
+        if(tbResult == TB_WIN) return TB_MATE_SCORE - plyFromRoot;
+        if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
+    }
+
+    std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
+    if(entry.has_value())
+    {
+        switch (entry->flags)
+        {
+        case TTFlag::EXACT:
+            m_stats.exactTTValuesUsed++;
+            return entry->value;
+        case TTFlag::LOWER_BOUND:
+            if(entry->value >= beta)
+            {
+                m_stats.lowerTTValuesUsed++;
+                return beta;
+            }
+            break;
+        case TTFlag::UPPER_BOUND:
+            if(entry->value <= alpha)
+            {
+                m_stats.upperTTValuesUsed++;
+                return alpha;
+            }
+        }
+    }
+
     bool isChecked = board.isChecked();
 
     if(!isChecked)
     {
-        m_numNodesSearched++;
+        m_stats.evaluations++;
         eval_t standPat = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
         if(standPat >= beta)
         {
@@ -86,9 +124,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     uint8_t numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
-        m_numNodesSearched++;
-        // Note: The noMoves parameter for evaluate cannot be used here, as numMoves only check for captures.
-        //       Thus there may be other legal quiet moves
+        m_stats.evaluations++;
         return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
     }
 
@@ -96,8 +132,10 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     m_search_stack.push_back(board.getHash());
 
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
     eval_t bestScore = -INF;
+    TTFlag ttFlag = TTFlag::UPPER_BOUND;
+    Move bestMove = Move(0,0);
     for (int i = 0; i < numMoves; i++)  {
         const Move *move = moveSelector.getNextMove();
 
@@ -109,10 +147,22 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
         eval_t score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, plyFromRoot + 1);
         m_evaluator.popMoveFromAccumulator();
-        bestScore = std::max(bestScore, score);
-        alpha = std::max(alpha, bestScore);
+
+        if(score > bestScore)
+        {
+            bestScore = score;
+            bestMove = *move;
+        }
+
+        if(bestScore > alpha)
+        {
+            alpha = bestScore;
+            ttFlag = TTFlag::EXACT;
+        }
+
         if(alpha >= beta)
         {
+            ttFlag = TTFlag::LOWER_BOUND;
             if(!(CAPTURED_PIECE(move->moveInfo) | PROMOTED_PIECE(move->moveInfo)))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
@@ -120,6 +170,8 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
             break;
         }
     }
+
+    m_tt->add(bestScore, bestMove, 0, plyFromRoot, ttFlag, m_generation, m_nonRevMovesRoot, board.getNumNonReversableMovesPerformed(), board.getHash());
 
     // Pop the board off the search stack
     m_search_stack.pop_back();
@@ -136,6 +188,10 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     if(m_shouldStop())
         return 0;
 
+    if(depth == 0)
+        return m_alphaBetaQuiet(board, alpha, beta, plyFromRoot);
+
+    m_numNodesSearched++;
     m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
 
     if(m_isDraw(board))
@@ -181,11 +237,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
     }
 
-    if(depth == 0)
-    {
-        return m_alphaBetaQuiet(board, alpha, beta, plyFromRoot);
-    }
-
     eval_t bestScore = -INF;
     Move bestMove = Move(0, 0);
     Move* moves = nullptr;
@@ -196,9 +247,10 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     numMoves = board.getNumLegalMoves();
     if(numMoves == 0)
     {
-        m_numNodesSearched++;
+        m_stats.evaluations++;
         return board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
     }
+
     board.generateCaptureInfo();
     bool isChecked = board.isChecked();
     bool nullMoveAllowed = board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5 && !isNullMoveSearch && !isChecked && depth > 2;
@@ -221,6 +273,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
     if(depth > 0 && depth < 4 && !isChecked)
     {
+        m_stats.evaluations++;
         staticEvaluation = m_evaluator.evaluate(board, plyFromRoot);
         if(board.getTurn() == Color::BLACK) staticEvaluation *= -1;
 
@@ -575,7 +628,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         UCI::sendUciBestMove(searchBestMove);
     }
 
-    m_stats.evaluatedPositions += m_numNodesSearched;
+    m_stats.nodes += m_numNodesSearched;
 
     if(m_verbose)
     {
@@ -627,7 +680,8 @@ void Searcher::logStats()
     ss << "\n----------------------------------";
     ss << "\nSearcher Stats:";
     ss << "\n----------------------------------";
-    ss << "\nEvaluated Positions:       " << m_stats.evaluatedPositions;
+    ss << "\nNodes                      " << m_stats.nodes;
+    ss << "\nEvaluated Positions:       " << m_stats.evaluations;
     ss << "\nExact TT Values used:      " << m_stats.exactTTValuesUsed;
     ss << "\nLower TT Values used:      " << m_stats.lowerTTValuesUsed;
     ss << "\nUpper TT Values used:      " << m_stats.upperTTValuesUsed;

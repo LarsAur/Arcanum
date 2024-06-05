@@ -33,8 +33,9 @@ namespace Arcanum
 
     typedef struct SearchStats
     {
-        uint64_t evaluatedPositions; // Number of calls to board.evaulate()
-        uint64_t exactTTValuesUsed; // Number of boards where all branches are pruned by getting the exact value from TT
+        uint64_t nodes;       // Number of nodes visited
+        uint64_t evaluations; // Number of calls to board.evaulate()
+        uint64_t exactTTValuesUsed;
         uint64_t lowerTTValuesUsed;
         uint64_t upperTTValuesUsed;
         uint64_t tbHits;
@@ -46,7 +47,8 @@ namespace Arcanum
         uint64_t reverseFutilityCutoffs;
 
         SearchStats() :
-            evaluatedPositions(0),
+            nodes(0),
+            evaluations(0),
             exactTTValuesUsed(0),
             lowerTTValuesUsed(0),
             upperTTValuesUsed(0),
