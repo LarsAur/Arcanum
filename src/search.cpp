@@ -402,12 +402,14 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 inline bool Searcher::m_isDraw(const Board& board) const
 {
     // Check for repeated positions in the current search
-    for(auto it = m_search_stack.begin(); it != m_search_stack.end(); it++)
+    // * Only check for boards backwards until captures occur (halfMoves)
+    // * Only check every other board, as the turn has to be correct
+    const size_t stackSize = m_search_stack.size();
+    const size_t limit = std::min(stackSize, size_t(board.getHalfMoves()));
+    for(size_t i = 2; i <= limit; i += 2)
     {
-        if(*it == board.getHash())
-        {
+        if(m_search_stack[stackSize - i] == board.getHash())
             return true;
-        }
     }
 
     // Check for repeated positions from previous searches
