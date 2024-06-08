@@ -143,7 +143,7 @@ inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
            + (newEntry.generation - oldEntry.generation);
 }
 
-void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, TTFlag flag, uint8_t generation, uint8_t numNonRevMovesRoot, uint8_t numNonRevMoves, hash_t hash)
+void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, bool hasStaticEval, TTFlag flag, uint8_t generation, uint8_t numNonRevMovesRoot, uint8_t numNonRevMoves, hash_t hash)
 {
     if(!m_table)
         return;
@@ -153,6 +153,8 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
     {
         .hash = (ttEntryHash_t)hash,
         .value = score,
+        .staticEval = staticEval,
+        .hasStaticEval = hasStaticEval,
         .depth = depth,
         .flags = flag,
         .generation = generation,
@@ -176,6 +178,14 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
         if(_entry.hash == entry.hash && _entry.depth < entry.depth)
         {
             m_stats.updates++;
+            // Keep potential static evaluations
+            // This avoid overwriting the static eval if the new version does not have a static eval
+            if(cluster->entries[i].hasStaticEval)
+            {
+                entry.staticEval = cluster->entries[i].staticEval;
+                entry.hasStaticEval = true;
+            }
+
             cluster->entries[i] = entry;
             return;
         }
