@@ -267,21 +267,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
     board.generateCaptureInfo();
     bool isChecked = board.isChecked();
-    bool nullMoveAllowed = board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5 && !isNullMoveSearch && !isChecked && depth > 2;
-    // Perform potential null move search
-    if(nullMoveAllowed)
-    {
-        Board newBoard = Board(board);
-        newBoard.performNullMove();
-        eval_t score = -m_alphaBeta(newBoard, &_pvLine, -beta, -beta + 1, depth - 3, plyFromRoot + 1, true, totalExtensions);
-
-        if(score >= beta)
-        {
-            m_stats.nullMoveCutoffs++;
-            return beta;
-        }
-        m_stats.failedNullMoveCutoffs++;
-    }
 
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
     if(depth > 0 && depth < 4 && !isChecked)
@@ -297,6 +282,31 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         {
             m_stats.reverseFutilityCutoffs++;
             return beta;
+        }
+    }
+
+    // Perform potential null move search
+    bool nullMoveAllowed = board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5 && !isNullMoveSearch && !isChecked && depth > 2;
+    if(nullMoveAllowed)
+    {
+        if(!staticEval.has_value())
+        {
+            m_stats.evaluations++;
+            staticEval = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
+        }
+
+        if(staticEval.value() >= beta)
+        {
+            Board newBoard = Board(board);
+            newBoard.performNullMove();
+            eval_t score = -m_alphaBeta(newBoard, &_pvLine, -beta, -beta + 1, depth - 3, plyFromRoot + 1, true, totalExtensions);
+
+            if(score >= beta)
+            {
+                m_stats.nullMoveCutoffs++;
+                return beta;
+            }
+            m_stats.failedNullMoveCutoffs++;
         }
     }
 
