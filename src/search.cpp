@@ -285,6 +285,26 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         }
     }
 
+    if(!isChecked && std::abs(beta) < 900)
+    {
+        if(!staticEval.has_value())
+        {
+            m_stats.evaluations++;
+            staticEval = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
+        }
+
+        if(staticEval.value() + 200 * depth < alpha)
+        {
+            eval_t razorEval = m_alphaBetaQuiet(board, alpha, beta, plyFromRoot);
+            if(razorEval <= alpha)
+            {
+                m_stats.razorCutoffs++;
+                return alpha;
+            }
+            m_stats.failedRazorCutoffs++;
+        }
+    }
+
     // Perform potential null move search
     bool nullMoveAllowed = board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5 && !isNullMoveSearch && !isChecked && depth > 2;
     if(nullMoveAllowed)
@@ -328,6 +348,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         // Futility pruning
         if(depth > 0 && depth < 4 && !checkOrChecking && !(PROMOTED_PIECE(move->moveInfo) | CAPTURED_PIECE(move->moveInfo)))
         {
+            // Note: static eval is already calculated due to using stricter requirements than RFP
             if(staticEval.value() + futilityMargins[depth - 1] < alpha && alpha < 900)
             {
                 m_stats.futilityPrunedMoves++;
@@ -718,12 +739,15 @@ void Searcher::logStats()
     ss << "\nNull-Move Cutoffs:         " << m_stats.nullMoveCutoffs;
     ss << "\nFailed Null-Move Cutoffs:  " << m_stats.failedNullMoveCutoffs;
     ss << "\nFutilityPrunedMoves:       " << m_stats.futilityPrunedMoves;
+    ss << "\nRazor Cutoffs:             " << m_stats.razorCutoffs;
+    ss << "\nFailed Razor Cutoffs:      " << m_stats.failedRazorCutoffs;
     ss << "\nReverseFutilityCutoffs:    " << m_stats.reverseFutilityCutoffs;
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";
     ss << "\nRe-Searches:          " << (float) (100 * m_stats.researchesRequired) / m_stats.nullWindowSearches << "%";
     ss << "\nNull-Move Cutoffs:    " << (float) (100 * m_stats.nullMoveCutoffs) / (m_stats.nullMoveCutoffs + m_stats.failedNullMoveCutoffs) << "%";
+    ss << "\nRazor Cutoffs:        " << (float) (100 * m_stats.razorCutoffs) / (m_stats.razorCutoffs + m_stats.failedRazorCutoffs) << "%";
     ss << "\n----------------------------------";
 
     LOG(ss.str())

@@ -44,6 +44,8 @@ namespace Arcanum
         uint64_t nullMoveCutoffs;
         uint64_t failedNullMoveCutoffs;
         uint64_t futilityPrunedMoves;
+        uint64_t razorCutoffs;
+        uint64_t failedRazorCutoffs;
         uint64_t reverseFutilityCutoffs;
 
         SearchStats() :
@@ -58,6 +60,8 @@ namespace Arcanum
             nullMoveCutoffs(0),
             failedNullMoveCutoffs(0),
             futilityPrunedMoves(0),
+            razorCutoffs(0),
+            failedRazorCutoffs(0),
             reverseFutilityCutoffs(0)
         {};
 
