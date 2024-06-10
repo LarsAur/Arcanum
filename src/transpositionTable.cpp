@@ -175,18 +175,26 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
     for(size_t i = 0; i < clusterSize; i++)
     {
         ttEntry_t _entry = cluster->entries[i];
-        if(_entry.hash == entry.hash && _entry.depth < entry.depth)
+        if(_entry.hash == entry.hash)
         {
-            m_stats.updates++;
-            // Keep potential static evaluations
-            // This avoid overwriting the static eval if the new version does not have a static eval
-            if(cluster->entries[i].hasStaticEval)
+            if(_entry.depth < entry.depth)
             {
-                entry.staticEval = cluster->entries[i].staticEval;
-                entry.hasStaticEval = true;
+                m_stats.updates++;
+                // Keep potential static evaluations
+                // This avoid overwriting the static eval if the new version does not have a static eval
+                if(cluster->entries[i].hasStaticEval)
+                {
+                    entry.staticEval = cluster->entries[i].staticEval;
+                    entry.hasStaticEval = true;
+                }
+
+                cluster->entries[i] = entry;
+            }
+            else
+            {
+                m_stats.blockedUpdates++;
             }
 
-            cluster->entries[i] = entry;
             return;
         }
     }
@@ -239,7 +247,7 @@ ttStats_t TranspositionTable::getStats()
 
 void TranspositionTable::logStats()
 {
-    uint64_t entriesInTable = m_stats.entriesAdded - m_stats.replacements - m_stats.blockedReplacements - m_stats.updates;
+    uint64_t entriesInTable = m_stats.entriesAdded - m_stats.replacements - m_stats.blockedReplacements - m_stats.updates - m_stats.blockedUpdates;
     uint64_t lookupHits = m_stats.lookups - m_stats.lookupMisses;
 
     std::stringstream ss;
@@ -251,6 +259,7 @@ void TranspositionTable::logStats()
     ss << "\nReplaced Entries:     " << m_stats.replacements;
     ss << "\nBlocked Replacements: " << m_stats.blockedReplacements;
     ss << "\nUpdated Entries:      " << m_stats.updates;
+    ss << "\nBlocked Updates:      " << m_stats.blockedUpdates;
     ss << "\nLookups:              " << m_stats.lookups;
     ss << "\nLookup Hits:          " << lookupHits;
     ss << "\nLookup Misses:        " << m_stats.lookupMisses;
@@ -268,6 +277,6 @@ void TranspositionTable::logStats()
 
 uint32_t TranspositionTable::permills()
 {
-    uint64_t entriesInTable = m_stats.entriesAdded - m_stats.replacements - m_stats.blockedReplacements - m_stats.updates;
+    uint64_t entriesInTable = m_stats.entriesAdded - m_stats.replacements - m_stats.blockedReplacements - m_stats.updates - m_stats.blockedUpdates;
     return m_stats.maxEntries > 0 ? (1000 * entriesInTable / m_stats.maxEntries) : 1000;
 }

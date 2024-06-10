@@ -37,6 +37,7 @@ namespace Arcanum
         uint64_t entriesAdded;
         uint64_t replacements;
         uint64_t updates;
+        uint64_t blockedUpdates;
         uint64_t lookups;
         uint64_t lookupMisses;
         uint64_t blockedReplacements;
