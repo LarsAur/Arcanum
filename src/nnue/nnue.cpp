@@ -386,7 +386,7 @@ float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
 // http://neuralnetworksanddeeplearning.com/chap2.html
 void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
 {
-    constexpr float lambda = 0.80f; // Weighting between wdlTarget and cpTarget
+    constexpr float lambda = 0.50f; // Weighting between wdlTarget and cpTarget
     constexpr float e = 2.71828182846f;
     constexpr float SIG_FACTOR = 400.0f;
 
