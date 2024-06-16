@@ -91,14 +91,14 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
             if(entry->value >= beta)
             {
                 m_stats.lowerTTValuesUsed++;
-                return beta;
+                return entry->value;
             }
             break;
         case TTFlag::UPPER_BOUND:
             if(entry->value <= alpha)
             {
                 m_stats.upperTTValuesUsed++;
-                return alpha;
+                return entry->value;
             }
         }
     }
@@ -106,6 +106,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     std::optional<eval_t> staticEval = {};
     if(entry.has_value() && entry->hasStaticEval) staticEval = entry->staticEval;
 
+    eval_t bestScore = -INF;
     bool isChecked = board.isChecked();
 
     if(!isChecked)
@@ -118,13 +119,15 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
         if(staticEval.value() >= beta)
         {
-            return beta;
+            return staticEval.value();
         }
 
         if(staticEval.value() > alpha)
         {
             alpha = staticEval.value();
         }
+
+        bestScore = staticEval.value();
     }
 
     // Genereate only capture moves if not in check, else generate all moves
@@ -144,7 +147,6 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
     board.generateCaptureInfo();
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
-    eval_t bestScore = -INF;
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = Move(0,0);
     for (int i = 0; i < numMoves; i++)  {
@@ -165,7 +167,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
             bestMove = *move;
         }
 
-        if(bestScore > alpha)
+        if(bestScore >= alpha)
         {
             alpha = bestScore;
             ttFlag = TTFlag::EXACT;
@@ -186,7 +188,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
     // Pop the board off the search stack
     m_search_stack.pop_back();
-    return alpha;
+    return bestScore;
 }
 
 eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions)
@@ -221,7 +223,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             if(entry->value >= beta)
             {
                 m_stats.lowerTTValuesUsed++;
-                return beta;
+                return entry->value;
             }
             alpha = std::max(alpha, entry->value);
             break;
@@ -229,7 +231,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             if(entry->value <= alpha)
             {
                 m_stats.upperTTValuesUsed++;
-                return alpha;
+                return entry->value;
             }
             beta = std::min(beta, entry->value);
         }
@@ -281,7 +283,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         if(staticEval.value() - futilityMargins[depth - 1] >= beta)
         {
             m_stats.reverseFutilityCutoffs++;
-            return beta;
+            return staticEval.value();
         }
     }
 
@@ -299,7 +301,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             if(razorEval <= alpha)
             {
                 m_stats.razorCutoffs++;
-                return alpha;
+                return razorEval;
             }
             m_stats.failedRazorCutoffs++;
         }
@@ -319,12 +321,12 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         {
             Board newBoard = Board(board);
             newBoard.performNullMove();
-            eval_t score = -m_alphaBeta(newBoard, &_pvLine, -beta, -beta + 1, depth - 3, plyFromRoot + 1, true, totalExtensions);
+            eval_t nullMoveScore = -m_alphaBeta(newBoard, &_pvLine, -beta, -beta + 1, depth - 3, plyFromRoot + 1, true, totalExtensions);
 
-            if(score >= beta)
+            if(nullMoveScore >= beta)
             {
                 m_stats.nullMoveCutoffs++;
-                return beta;
+                return nullMoveScore;
             }
             m_stats.failedNullMoveCutoffs++;
         }
@@ -442,7 +444,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
     m_tt->add(bestScore, bestMove, depth, plyFromRoot, staticEval.value_or(0), staticEval.has_value(), flag, m_generation, m_nonRevMovesRoot, board.getNumNonReversableMovesPerformed(), board.getHash());
 
-    return alpha;
+    return bestScore;
 }
 
 inline bool Searcher::m_isDraw(const Board& board) const
