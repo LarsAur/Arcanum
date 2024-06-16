@@ -351,7 +351,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         if(depth > 0 && depth < 4 && !checkOrChecking && !(PROMOTED_PIECE(move->moveInfo) | CAPTURED_PIECE(move->moveInfo)))
         {
             // Note: static eval is already calculated due to using stricter requirements than RFP
-            if(staticEval.value() + futilityMargins[depth - 1] < alpha && alpha < 900)
+            if(staticEval.value() + futilityMargins[depth - 1] < alpha && std::abs(alpha) < 900 && std::abs(beta) < 900)
             {
                 m_stats.futilityPrunedMoves++;
                 continue;
