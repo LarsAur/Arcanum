@@ -225,7 +225,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
                 m_stats.lowerTTValuesUsed++;
                 return entry->value;
             }
-            alpha = std::max(alpha, entry->value);
             break;
         case TTFlag::UPPER_BOUND:
             if(entry->value <= alpha)
@@ -233,7 +232,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
                 m_stats.upperTTValuesUsed++;
                 return entry->value;
             }
-            beta = std::min(beta, entry->value);
         }
     }
 
