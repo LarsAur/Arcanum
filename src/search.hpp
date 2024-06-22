@@ -29,6 +29,12 @@ namespace Arcanum
         Move moves[SEARCH_MAX_PV_LENGTH];
     } pvline_t;
 
+    typedef struct SearchStackElement
+    {
+        hash_t hash;
+        eval_t staticEval;
+    } SearchStackElement;
+
     // https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
 
     typedef struct SearchStats
@@ -104,7 +110,7 @@ namespace Arcanum
         private:
             std::unordered_map<hash_t, uint8_t, HashFunction> m_gameHistory;
             std::unique_ptr<TranspositionTable> m_tt;
-            std::vector<hash_t> m_search_stack;
+            std::vector<SearchStackElement> m_searchStack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
             Timer m_timer;
             Evaluator m_evaluator;
