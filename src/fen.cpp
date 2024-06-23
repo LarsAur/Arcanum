@@ -276,7 +276,7 @@ std::string FEN::getFEN(const Board& board)
     if(board.m_castleRights == 0) ss << "-";
 
     // Enpassant
-    if(board.m_enPassantSquare != 64) ss << " " << getArithmeticNotation(board.m_enPassantSquare) << " ";
+    if(board.m_enPassantSquare != 64) ss << " " << squareToString(board.m_enPassantSquare) << " ";
     else ss << " - ";
 
     // Half moves

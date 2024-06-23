@@ -1,8 +1,9 @@
 #pragma once
 
 #include <iostream>
-#include <string.h>
+#include <string>
 #include <fstream>
+#include <cstring>
 
 #define COLOR_BLACK "\e[0;30m"
 #define COLOR_RED "\e[0;31m"

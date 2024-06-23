@@ -1,11 +1,8 @@
 #include <search.hpp>
-#include <moveSelector.hpp>
 #include <uci.hpp>
-#include <chrono>
-#include <algorithm>
 #include <utils.hpp>
-#include <thread>
 #include <syzygy.hpp>
+#include <algorithm>
 
 using namespace Arcanum;
 
@@ -114,7 +111,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         staticEval = m_evaluator.evaluate(board, plyFromRoot);
     }
 
-    eval_t bestScore = -INF;
+    eval_t bestScore = -MATE_SCORE;
     bool isChecked = board.isChecked();
 
     if(!isChecked)
@@ -246,7 +243,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
     }
 
-    eval_t bestScore = -INF;
+    eval_t bestScore = -MATE_SCORE;
     Move bestMove = Move(0, 0);
     Move* moves = nullptr;
     uint8_t numMoves = 0;
@@ -565,8 +562,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // This is required to allow using results of incomplete searches
         MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, searchBestMove);
 
-        eval_t alpha = -INF;
-        eval_t beta = INF;
+        eval_t alpha = -MATE_SCORE;
+        eval_t beta = MATE_SCORE;
         Move bestMove = Move(0,0);
 
         for (int i = 0; i < numMoves; i++)  {

@@ -1,8 +1,8 @@
 #include <zobrist.hpp>
 #include <board.hpp>
-#include <random>
 #include <utils.hpp>
 #include <fen.hpp>
+#include <random>
 
 using namespace Arcanum;
 

@@ -1,10 +1,7 @@
-#include <chessutils.hpp>
-#include <board.hpp>
-#include <iostream>
-#include <test.hpp>
-#include <search.hpp>
 #include <uci.hpp>
+#include <test.hpp>
 #include <eval.hpp>
+#include <bitboardLookups.hpp>
 
 using namespace Arcanum;
 
@@ -12,11 +9,7 @@ int main(int argc, char *argv[])
 {
     CREATE_LOG_FILE(argv[0]);
 
-    Arcanum::initGenerateKnightAttacks();
-    Arcanum::initGenerateKingMoves();
-    Arcanum::initGenerateRookMoves();
-    Arcanum::initGenerateBishopMoves();
-    Arcanum::initGenerateBetweens();
+    BitboardLookups::generateBitboardLookups();
 
     Evaluator::nnue.load(Evaluator::nnuePathDefault);
 

@@ -4,9 +4,6 @@
 #include <fen.hpp>
 #include <math.h>
 #include <eval.hpp>
-#include <thread>
-#include <mutex>
-#include <ctime>
 
 using namespace NN;
 using namespace Arcanum;

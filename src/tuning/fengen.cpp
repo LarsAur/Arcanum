@@ -162,7 +162,7 @@ void Tuning::fengen(std::string startPosPath, std::string outputPath, size_t num
                         break;
                     }
                     // If no mate is found and there are few enough pieces, it must be a draw
-                    else if(TB_LARGEST >= CNTSBITS(board.getColoredPieces(WHITE) | board.getColoredPieces(BLACK)))
+                    else if(TB_LARGEST >= (int) CNTSBITS(board.getColoredPieces(WHITE) | board.getColoredPieces(BLACK)))
                     {
                         result = DRAW;
                         break;

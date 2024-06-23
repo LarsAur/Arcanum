@@ -1,6 +1,6 @@
 #pragma once
+
 #include <board.hpp>
-#include <eval.hpp>
 
 namespace UCI
 {

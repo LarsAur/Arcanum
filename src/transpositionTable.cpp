@@ -91,8 +91,6 @@ void TranspositionTable::clear()
     clearStats();
 
     // Set all table enties to be invalid
-    // TODO: This can be done using memset
-    //       Without any optimizations, this is slow
     for(size_t i = 0; i < m_clusterCount; i++)
         for(size_t j = 0; j < clusterSize; j++)
             m_table[i].entries[j].depth = UINT8_MAX;

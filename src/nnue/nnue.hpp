@@ -1,6 +1,5 @@
 #pragma once
 
-#include <types.hpp>
 #include <board.hpp>
 #include <nnue/matrix.hpp>
 

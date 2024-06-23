@@ -39,7 +39,7 @@
  */
 
 #include <eval.hpp>
-#include <chessutils.hpp>
+#include <bitboard.hpp>
 
 #define PYRRHIC_POPCOUNT(x)              (Arcanum::CNTSBITS(x))
 #define PYRRHIC_LSB(x)                   (Arcanum::LS1B(x))

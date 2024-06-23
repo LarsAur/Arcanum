@@ -1,7 +1,7 @@
 #include <board.hpp>
+#include <bitboard.hpp>
 #include <zobrist.hpp>
 #include <utils.hpp>
-#include <sstream>
 #include <fen.hpp>
 
 using namespace Arcanum;

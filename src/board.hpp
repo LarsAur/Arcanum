@@ -1,15 +1,12 @@
 #pragma once
 
-#include <types.hpp>
-#include <chessutils.hpp>
+#include <bitboard.hpp>
+#include <sstream>
 #include <string>
-#include <iostream>
 #include <vector>
-#include <memory>
 
 namespace Arcanum
 {
-
     typedef enum Color
     {
         WHITE,
@@ -90,8 +87,8 @@ namespace Arcanum
         std::string toString() const
         {
             std::stringstream ss;
-            ss << getArithmeticNotation(from);
-            ss << getArithmeticNotation(to);
+            ss << squareToString(from);
+            ss << squareToString(to);
 
             if(moveInfo & PROMOTE_QUEEN)       ss << "q";
             else if(moveInfo & PROMOTE_ROOK)   ss << "r";
@@ -102,8 +99,8 @@ namespace Arcanum
 
         friend inline std::ostream& operator<<(std::ostream& os, const Move& move)
         {
-            os << getArithmeticNotation(move.from);
-            os << getArithmeticNotation(move.to);
+            os << squareToString(move.from);
+            os << squareToString(move.to);
 
             if(move.moveInfo & PROMOTE_QUEEN)       os << "q";
             else if(move.moveInfo & PROMOTE_ROOK)   os << "r";

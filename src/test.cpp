@@ -1,10 +1,10 @@
 #include <test.hpp>
 #include <utils.hpp>
 #include <search.hpp>
-#include <cstdint>
-#include <chrono>
 #include <fen.hpp>
 #include <perft.hpp>
+#include <cstdint>
+#include <chrono>
 
 using namespace Arcanum;
 

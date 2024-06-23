@@ -1,7 +1,7 @@
 #include <eval.hpp>
-#include <algorithm>
 #include <memory.hpp>
 #include <fen.hpp>
+#include <algorithm>
 
 using namespace Arcanum;
 

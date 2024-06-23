@@ -1,8 +1,6 @@
 #pragma once
 
 #include <types.hpp>
-#include <inttypes.h>
-#include <chessutils.hpp>
 #include <utils.hpp>
 #include <memory.hpp>
 #include <sstream>

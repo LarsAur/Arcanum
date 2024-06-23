@@ -1,15 +1,14 @@
 #include <uci.hpp>
 #include <search.hpp>
-#include <iostream>
+#include <syzygy.hpp>
+#include <tuning/fengen.hpp>
+#include <fen.hpp>
+#include <perft.hpp>
 #include <ctime>
 #include <algorithm>
 #include <string>
 #include <fstream>
 #include <thread>
-#include <syzygy.hpp>
-#include <tuning/fengen.hpp>
-#include <fen.hpp>
-#include <perft.hpp>
 
 using namespace Arcanum;
 

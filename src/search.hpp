@@ -6,11 +6,10 @@
 #include <transpositionTable.hpp>
 #include <moveSelector.hpp>
 #include <timer.hpp>
-#include <memory>
 #include <vector>
 #include <unordered_map>
+#include <memory>
 
-#define INF INT16_MAX
 #define SEARCH_MAX_PV_LENGTH 64
 
 namespace Arcanum
