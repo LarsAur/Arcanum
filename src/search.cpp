@@ -500,6 +500,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_stopSearch = false;
     m_numNodesSearched = 0;
     eval_t searchScore = 0;
+    eval_t staticEval = 0;
     Move searchBestMove = Move(0,0);
     pvline_t pvLine, pvLineTmp, _pvLineTmp;
     m_searchParameters = parameters;
@@ -536,6 +537,22 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         m_searchParameters.useDepth = true;
     }
 
+    m_evaluator.initAccumulatorStack(board);
+
+    std::optional<ttEntry_t> ttEntry = m_tt->get(board.getHash(), 0);
+
+    if(ttEntry.has_value())
+    {
+        searchBestMove = ttEntry->bestMove;
+        staticEval = ttEntry->staticEval;
+    }
+    else
+    {
+        searchBestMove = Move(0,0);
+        staticEval = board.getTurn() == WHITE ? m_evaluator.evaluate(board, 0) : -m_evaluator.evaluate(board, 0);
+    }
+
+
     uint32_t depth = 0;
     while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
     {
@@ -551,7 +568,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         eval_t alpha = -INF;
         eval_t beta = INF;
         Move bestMove = Move(0,0);
-        m_evaluator.initAccumulatorStack(board);
 
         for (int i = 0; i < numMoves; i++)  {
             const Move *move = moveSelector.getNextMove();
@@ -606,7 +622,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // If search is not canceled, save the best move found in this iteration
-        //m_tt->add(alpha, bestMove, depth, 0, 0, false, TTFlag::EXACT, m_generation, m_nonRevMovesRoot, m_nonRevMovesRoot, board.getHash());
+        m_tt->add(alpha, bestMove, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_nonRevMovesRoot, m_nonRevMovesRoot, board.getHash());
 
         // Send UCI info
         UCI::SearchInfo info = UCI::SearchInfo();
