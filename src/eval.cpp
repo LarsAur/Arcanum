@@ -77,29 +77,19 @@ bool Evaluator::isTbCheckMateScore(eval_t eval)
     return std::abs(eval) > (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isCheckMateScore(eval);
 }
 
-// Evaluates positive value for WHITE
+// Positive values represents advantage for current player
 eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
 {
-    eval_t eval = 0;
-
     // Check for stalemate and checkmate
     if(!board.hasLegalMove())
     {
+        // Checkmate
         if(board.isChecked())
-        {
-            eval = board.m_turn == WHITE ? -MATE_SCORE + plyFromRoot : MATE_SCORE - plyFromRoot;
-            return eval;
-        }
+            return -MATE_SCORE + plyFromRoot;
 
-        return eval;
+        // Stalemate
+        return 0;
     };
 
-    // eval_t score = m_nnue.evaluateBoard(board);
-
-    eval_t score = nnue.evaluate(
-        m_accumulatorStack[m_accumulatorStackPointer],
-        board.getTurn()
-    );
-
-    return board.m_turn == WHITE ? score : -score;
+    return nnue.evaluate(m_accumulatorStack[m_accumulatorStackPointer], board.getTurn());
 }

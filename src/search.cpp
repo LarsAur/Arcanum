@@ -111,7 +111,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     else
     {
         m_stats.evaluations++;
-        staticEval = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
+        staticEval = m_evaluator.evaluate(board, plyFromRoot);
     }
 
     eval_t bestScore = -INF;
@@ -264,7 +264,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     else
     {
         m_stats.evaluations++;
-        staticEval = board.getTurn() == WHITE ? m_evaluator.evaluate(board, plyFromRoot) : -m_evaluator.evaluate(board, plyFromRoot);
+        staticEval = m_evaluator.evaluate(board, plyFromRoot);
     }
 
     if(numMoves == 0)
@@ -549,7 +549,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     else
     {
         searchBestMove = Move(0,0);
-        staticEval = board.getTurn() == WHITE ? m_evaluator.evaluate(board, 0) : -m_evaluator.evaluate(board, 0);
+        staticEval = m_evaluator.evaluate(board, 0);
     }
 
 

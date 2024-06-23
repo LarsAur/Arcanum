@@ -337,7 +337,7 @@ void UCI::sendUciBestMove(const Move& move)
     UCI_OUT("bestmove " << move)
 }
 
-// Returns the statc eval score for white
+// Prints the static evaluation for the current player
 void UCI::eval(Board& board, Evaluator& evaluator)
 {
     evaluator.initAccumulatorStack(board);
