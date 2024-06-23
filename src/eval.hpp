@@ -8,7 +8,7 @@ namespace Arcanum
 {
     #define MATE_SCORE (INT16_MAX)
     #define MAX_MATE_DISTANCE (256)
-    #define TB_MATE_SCORE (INT16_MAX - MAX_MATE_DISTANCE)
+    #define TB_MATE_SCORE (MATE_SCORE - MAX_MATE_DISTANCE)
     #define TB_MAX_MATE_DISTANCE (256)
 
     class Evaluator
