@@ -99,7 +99,7 @@ void UCI::newgame(Searcher& searcher, Evaluator& evaluator, Board& board)
 {
     if(isSearching) return;
 
-    searcher.clearTT();
+    searcher.clear();
     searcher.clearHistory();
     board = Board(FEN::startpos);
     searcher.addBoardToHistory(board);
@@ -121,7 +121,7 @@ void UCI::setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream
     SET_LOWER_CASE(name)
 
     // Process button options
-    if(name == "clearhash") searcher.clearTT();
+    if(name == "clearhash") searcher.clear();
 
     is >> std::skipws >> valueToken; // 'value'
     SET_LOWER_CASE(valueToken)

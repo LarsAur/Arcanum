@@ -197,7 +197,7 @@ void Tuning::fengen(std::string startPosPath, std::string outputPath, size_t num
                 writeLock.unlock();
 
                 searcher.clearHistory();
-                searcher.clearTT();
+                searcher.clear();
                 fens.clear();
                 evals.clear();
             }

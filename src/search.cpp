@@ -12,6 +12,7 @@ Searcher::Searcher()
 {
     m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(32));
     m_stats = SearchStats();
+    m_generation = 0;
 
     // Setup a table of known endgame draws based on material
     // This is based on: https://www.chess.com/terms/draw-chess
@@ -44,7 +45,7 @@ void Searcher::resizeTT(uint32_t mbSize)
     m_tt->resize(mbSize);
 }
 
-void Searcher::clearTT()
+void Searcher::clear()
 {
     m_generation = 0;
     m_tt->clear();

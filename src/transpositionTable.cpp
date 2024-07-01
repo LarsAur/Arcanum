@@ -92,8 +92,14 @@ void TranspositionTable::clear()
 
     // Set all table enties to be invalid
     for(size_t i = 0; i < m_clusterCount; i++)
+    {
         for(size_t j = 0; j < clusterSize; j++)
+        {
             m_table[i].entries[j].depth = UINT8_MAX;
+            m_table[i].entries[j].numNonRevMoves = 0;
+            m_table[i].entries[j].hash = 0LL;
+        }
+    }
 }
 
 inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
