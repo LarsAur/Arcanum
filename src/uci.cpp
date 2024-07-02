@@ -27,7 +27,7 @@ namespace UCI
     static int64_t moveOverhead;
 
     void go(Board& board, Searcher& searcher, std::istringstream& is);
-    void newgame(Searcher& Searcher, Evaluator& evaluatorm, Board& board);
+    void newgame(Searcher& Searcher, Board& board);
     void setoption(Searcher& searcher, Evaluator& evaluator, std::istringstream& is);
     void position(Board& board, Searcher& searcher, std::istringstream& is);
     int64_t getAllocatedTime(int64_t time, int64_t inc, int64_t movesToGo, int64_t moveTime);
@@ -47,6 +47,8 @@ void UCI::loop()
     Searcher searcher = Searcher();
     Evaluator evaluator = Evaluator();
     std::string token, cmd;
+
+    newgame(searcher, board);
 
     LOG("Entering UCI loop")
     do
@@ -78,7 +80,7 @@ void UCI::loop()
         else if (token == "setoption" ) setoption(searcher, evaluator, is);
         else if (token == "go"        ) go(board, searcher, is);
         else if (token == "position"  ) position(board, searcher, is);
-        else if (token == "ucinewgame") newgame(searcher, evaluator, board);
+        else if (token == "ucinewgame") newgame(searcher, board);
         else if (token == "isready"   ) UCI_OUT("readyok")
         else if (token == "stop"      ) searcher.stop();
 
@@ -95,7 +97,7 @@ void UCI::loop()
     LOG("Exiting UCI loop")
 }
 
-void UCI::newgame(Searcher& searcher, Evaluator& evaluator, Board& board)
+void UCI::newgame(Searcher& searcher, Board& board)
 {
     if(isSearching) return;
 
