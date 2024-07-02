@@ -65,7 +65,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         return DRAW_VALUE;
 
     // Table base probe
-    if(board.getNumPiecesLeft() <= TB_LARGEST && board.getHalfMoves() == 0)
+    if(board.getNumPieces() <= TB_LARGEST && board.getHalfMoves() == 0)
     {
         uint32_t tbResult = TBProbeWDL(board);
 
@@ -180,7 +180,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
-    m_tt->add(bestScore, bestMove, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPiecesLeft(), board.getHash());
+    m_tt->add(bestScore, bestMove, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
     // Pop the board off the search stack
     m_searchStack.pop_back();
@@ -232,7 +232,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     }
 
     // Table base probe
-    if(board.getNumPiecesLeft() <= TB_LARGEST && board.getHalfMoves() == 0)
+    if(board.getNumPieces() <= TB_LARGEST && board.getHalfMoves() == 0)
     {
         uint32_t tbResult = TBProbeWDL(board);
 
@@ -432,7 +432,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
     else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
-    m_tt->add(bestScore, bestMove, depth, plyFromRoot, staticEval, flag, m_generation, m_numPiecesRoot, board.getNumPiecesLeft(), board.getHash());
+    m_tt->add(bestScore, bestMove, depth, plyFromRoot, staticEval, flag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
     return bestScore;
 }
@@ -457,7 +457,7 @@ inline bool Searcher::m_isDraw(const Board& board) const
         return true;
     }
 
-    if(board.getNumPiecesLeft() <= 3)
+    if(board.getNumPieces() <= 3)
     {
         for(auto it = m_knownEndgameMaterialDraws.begin(); it != m_knownEndgameMaterialDraws.end(); it++)
         {
@@ -504,7 +504,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_searchParameters = parameters;
 
     m_generation = (uint8_t) std::min(board.getFullMoves(), uint16_t(0x00ff));
-    m_numPiecesRoot = board.getNumPiecesLeft();
+    m_numPiecesRoot = board.getNumPieces();
     m_timer.start();
 
     // Check if only a select set of moves should be searched

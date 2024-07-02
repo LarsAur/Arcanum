@@ -43,7 +43,7 @@ bool m_isFinished(Board& board, Searcher& searcher, Result& result)
         return true;
     }
 
-    if(board.getNumPiecesLeft() <= 3)
+    if(board.getNumPieces() <= 3)
     {
         for(auto it = s_materialDraws.begin(); it != s_materialDraws.end(); it++)
         {

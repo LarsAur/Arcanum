@@ -198,7 +198,7 @@ namespace Arcanum
             uint8_t numOfficers(Color turn) const;
             bool hasOfficers(Color turn) const;
             uint8_t getNumLegalMoves() const;
-            uint8_t getNumPiecesLeft() const;
+            uint8_t getNumPieces() const;
             uint8_t getNumColoredPieces(Color color) const;
             Move getMoveFromArithmetic(std::string& arithmetic);
             bitboard_t attackersTo(square_t square) const;

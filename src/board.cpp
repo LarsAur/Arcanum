@@ -1859,7 +1859,7 @@ Color Board::getTurn() const
     return m_turn;
 }
 
-uint8_t Board::getNumPiecesLeft() const
+uint8_t Board::getNumPieces() const
 {
     return CNTSBITS(m_bbAllPieces);
 }
