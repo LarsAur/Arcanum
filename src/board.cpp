@@ -28,7 +28,6 @@ Board::Board(const Board& board)
     m_enPassantTarget = board.m_enPassantTarget;
     m_bbEnPassantSquare = board.m_bbEnPassantSquare;
     m_bbEnPassantTarget = board.m_bbEnPassantTarget;
-    m_numNonReversableMovesPerformed = board.m_numNonReversableMovesPerformed;
 
     memcpy(m_pieces, board.m_pieces, sizeof(Piece) * 64);
     m_bbAllPieces = board.m_bbAllPieces;
@@ -1686,15 +1685,12 @@ void Board::performMove(const Move move)
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_turn = opponent;
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
+
+    // Update halfmoves / 50 move rule
     if(CAPTURED_PIECE(move.moveInfo) || (move.moveInfo & MoveInfoBit::PAWN_MOVE))
-    {
-        m_numNonReversableMovesPerformed++;
         m_rule50 = 0;
-    }
     else
-    {
         m_rule50++;
-    }
 }
 
 void Board::performNullMove()
@@ -1734,11 +1730,6 @@ uint16_t Board::getFullMoves() const
 uint16_t Board::getHalfMoves() const
 {
     return m_rule50;
-}
-
-uint8_t Board::getNumNonReversableMovesPerformed() const
-{
-    return m_numNonReversableMovesPerformed;
 }
 
 uint8_t Board::getCastleRights() const

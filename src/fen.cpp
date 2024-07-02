@@ -216,8 +216,6 @@ bool FEN::setFEN(Board& board, const std::string fen)
 
     s_zobrist.getHashs(board, board.m_hash, board.m_pawnHash, board.m_materialHash);
 
-    board.m_numNonReversableMovesPerformed = 0;
-
     // Set cache to unknown
     board.m_checkedCache = Board::CheckedCacheState::UNKNOWN;
     board.m_moveset = Board::MoveSet::NOT_GENERATED;
