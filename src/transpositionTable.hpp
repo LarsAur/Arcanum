@@ -23,10 +23,9 @@ namespace Arcanum
         uint8_t depth;     // Depth == UINT8_MAX is invalid
         TTFlag flags;
         uint8_t generation;
-        // Number of non-reversable moves performed in the position.
-        // If the root has more non-reversable moves performed, this position can never be reached.
-        // In that case it can safely be replaced.
-        uint8_t numNonRevMoves;
+        // Number of pieces on the board
+        // If the root has less pieces, this position can never be reached, and can safely be replaced.
+        uint8_t numPieces;
         Move bestMove;     // It would also be possible to pack this data into 6 bytes. For now it is 8
         int16_t _padding; // These bytes are free and can be used for something later
     } ttEntry_t;

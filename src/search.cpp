@@ -180,7 +180,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
-    m_tt->add(bestScore, bestMove, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_nonRevMovesRoot, board.getNumNonReversableMovesPerformed(), board.getHash());
+    m_tt->add(bestScore, bestMove, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPiecesLeft(), board.getHash());
 
     // Pop the board off the search stack
     m_searchStack.pop_back();
@@ -432,7 +432,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
     else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
-    m_tt->add(bestScore, bestMove, depth, plyFromRoot, staticEval, flag, m_generation, m_nonRevMovesRoot, board.getNumNonReversableMovesPerformed(), board.getHash());
+    m_tt->add(bestScore, bestMove, depth, plyFromRoot, staticEval, flag, m_generation, m_numPiecesRoot, board.getNumPiecesLeft(), board.getHash());
 
     return bestScore;
 }
@@ -504,7 +504,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_searchParameters = parameters;
 
     m_generation = (uint8_t) std::min(board.getFullMoves(), uint16_t(0x00ff));
-    m_nonRevMovesRoot = board.getNumNonReversableMovesPerformed();
+    m_numPiecesRoot = board.getNumPiecesLeft();
     m_timer.start();
 
     // Check if only a select set of moves should be searched
@@ -620,7 +620,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt->add(alpha, bestMove, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_nonRevMovesRoot, m_nonRevMovesRoot, board.getHash());
+        m_tt->add(alpha, bestMove, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
         UCI::SearchInfo info = UCI::SearchInfo();

@@ -117,7 +117,7 @@ namespace Arcanum
             RelativeHistory m_relativeHistory;
             SearchParameters m_searchParameters;
             uint8_t m_generation;
-            uint8_t m_nonRevMovesRoot; // Number of non-reversable moves performed on the board in the root position.
+            uint8_t m_numPiecesRoot; // Number of pieces in the root of the search
             SearchStats m_stats;
             uint64_t m_numNodesSearched; // Number of nodes searched in a search call. Used to terminate search based on number of nodes.
             uint8_t m_seldepth;
