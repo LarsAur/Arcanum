@@ -653,6 +653,12 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             UCI::sendUciInfo(info);
         }
 
+        // End early if checkmate is found
+        if(Evaluator::isCheckMateScore(searchScore))
+        {
+            break;
+        }
+
         // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
         // or else it would overflow the pvline array
         // This is set to a high number, but this failsafe is added just in case
