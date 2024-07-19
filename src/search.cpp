@@ -148,7 +148,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     for (int i = 0; i < numMoves; i++)  {
         const Move *move = moveSelector.getNextMove();
 
-        if(!board.see(*move) && !isChecked)
+        if(!isChecked && !board.see(*move))
             continue;
 
         Board newBoard = Board(board);
