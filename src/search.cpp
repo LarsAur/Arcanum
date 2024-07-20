@@ -555,8 +555,14 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
     {
         depth++;
+
+        eval_t aspirationWindowAlpha = 25;
+        eval_t aspirationWindowBeta  = 25;
+
+        searchStart:
         // Reset seldepth for each depth interation
         m_seldepth = 0;
+
         // The local variable for the best move from the previous iteration is used by the move selector.
         // This is in case the move from the transposition is not 'correct' due to a miss.
         // Misses can happen if the position cannot replace another position
@@ -566,6 +572,15 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         eval_t alpha = -MATE_SCORE;
         eval_t beta = MATE_SCORE;
         Move bestMove = Move(0,0);
+
+        // Aspiration window
+        bool useAspiration = depth > 5 && searchScore < 900;
+        if(useAspiration)
+        {
+            // If the window becomes too large, continue using mate score as alpha/beta
+            if(aspirationWindowAlpha < 600) alpha = searchScore - aspirationWindowAlpha;
+            if(aspirationWindowBeta < 600)  beta  = searchScore + aspirationWindowBeta;
+        }
 
         for (int i = 0; i < numMoves; i++)  {
             const Move *move = moveSelector.getNextMove();
@@ -578,6 +593,16 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             if(m_shouldStop())
                 break;
 
+            // Check if the score was outside the aspiration window
+            // 1. Alpha exceeded beta
+            // It is important to break before the best move is assigned,
+            // to avoid returning a move which is outside the window when search is stopped
+            if(useAspiration && (score > beta))
+            {
+                alpha = score; // Alpha is updated to correctly detect being outside the window
+                break;
+            }
+
             if(score > alpha)
             {
                 alpha = score;
@@ -585,6 +610,25 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
                 pvLineTmp.moves[0] = bestMove;
                 memcpy(pvLineTmp.moves + 1, _pvLineTmp.moves, _pvLineTmp.count * sizeof(Move));
                 pvLineTmp.count = _pvLineTmp.count + 1;
+            }
+        }
+
+        if(!m_stopSearch)
+        {
+            // Check if the score was outside the aspiration window
+            // 1. Alpha exceeded beta
+            if(useAspiration && (alpha > beta))
+            {
+                aspirationWindowBeta += aspirationWindowBeta;
+                goto searchStart;
+            }
+
+            // Check if the score was outside the aspiration window
+            // 2. Alpha did not improve
+            if(useAspiration && (alpha == searchScore - aspirationWindowAlpha))
+            {
+                aspirationWindowAlpha += aspirationWindowAlpha;
+                goto searchStart;
             }
         }
 
