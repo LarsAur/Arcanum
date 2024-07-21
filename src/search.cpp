@@ -768,10 +768,15 @@ bool Searcher::m_shouldStop()
 {
     if(m_stopSearch) return true;
 
-    if(m_searchParameters.useTime && m_timer.getMs() >= m_searchParameters.msTime )
+    // Limit the number of calls to getMs which is slow
+    if((m_numNodesSearched & 0xff) == 0)
     {
-        m_stopSearch = true;
-        return true;
+        // Check for timeout
+        if(m_searchParameters.useTime && m_timer.getMs() >= m_searchParameters.msTime )
+        {
+            m_stopSearch = true;
+            return true;
+        }
     }
 
     if(m_searchParameters.useNodes && m_numNodesSearched >= m_searchParameters.nodes)
