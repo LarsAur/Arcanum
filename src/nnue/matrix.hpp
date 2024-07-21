@@ -151,7 +151,7 @@ namespace NN
 
                 #pragma GCC unroll 16
                 for(uint32_t i = 0; i < rows; i+=elementsPerCacheLine)
-                    _mm_prefetch(colStart + i, _MM_HINT_T2);
+                    _mm_prefetch(colStart + i, _MM_HINT_T0);
             }
 
             void copy(float* ptr)
