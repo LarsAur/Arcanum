@@ -348,6 +348,8 @@ void NNUE::m_randomizeWeights()
 {
     m_net.ftWeights.heRandomize();
     m_net.l1Weights.heRandomize();
+    m_net.ftBiases.setZero();
+    m_net.l1Biases.setZero();
 }
 
 void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
