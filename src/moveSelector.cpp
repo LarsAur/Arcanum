@@ -149,7 +149,7 @@ void KillerMoveManager::add(Move move, uint8_t plyFromRoot)
 
 bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
 {
-    if(move == Move(0,0))
+    if(move == NULL_MOVE)
     {
         WARNING("Cannot check for killer move Move(0,0)")
         return false;
@@ -175,7 +175,7 @@ void KillerMoveManager::clear()
     {
         for(int j = 0; j < 2; j++)
         {
-            m_killerMoves[i][j] = Move(0,0);
+            m_killerMoves[i][j] = NULL_MOVE;
         }
     }
 }

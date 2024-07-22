@@ -142,9 +142,9 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
 
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
-    Move bestMove = Move(0,0);
+    Move bestMove = NULL_MOVE;
     for (int i = 0; i < numMoves; i++)  {
         const Move *move = moveSelector.getNextMove();
 
@@ -245,7 +245,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     }
 
     eval_t bestScore = -MATE_SCORE;
-    Move bestMove = Move(0, 0);
+    Move bestMove = NULL_MOVE;
     Move* moves = nullptr;
     uint8_t numMoves = 0;
     pvLine_t _pvLine;
@@ -325,7 +325,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     // Push the board on the search stack
     m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
 
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : Move(0,0));
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
@@ -499,7 +499,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_numNodesSearched = 0;
     eval_t searchScore = 0;
     eval_t staticEval = 0;
-    Move searchBestMove = Move(0,0);
+    Move searchBestMove = NULL_MOVE;
     pvline_t pvLine, pvLineTmp, _pvLineTmp;
     m_searchParameters = parameters;
 
@@ -546,7 +546,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     }
     else
     {
-        searchBestMove = Move(0,0);
+        searchBestMove = NULL_MOVE;
         staticEval = m_evaluator.evaluate(board, 0);
     }
 
@@ -571,7 +571,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
         eval_t alpha = -MATE_SCORE;
         eval_t beta = MATE_SCORE;
-        Move bestMove = Move(0,0);
+        Move bestMove = NULL_MOVE;
 
         // Aspiration window
         bool useAspiration = depth > 5 && searchScore < 900;
@@ -636,7 +636,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // If a better move is found, it is guaranteed to be better than the best move at the previous depth
         // If the search is so short that the first iteration does not finish, this will still assign a searchBestMove.
         // As long as bestMove is not a null move.
-        if(!(bestMove == Move(0, 0)))
+        if(bestMove != NULL_MOVE)
         {
             searchScore = alpha;
             searchBestMove = bestMove;
@@ -652,7 +652,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
             // If the search is so short that no score is calculated for any moves.
             // The first available move is returned to avoid returning a null move
-            if(searchBestMove == Move(0, 0))
+            if(searchBestMove == NULL_MOVE)
             {
                 WARNING("Not enough time to find the value of any moves. Returning the first move with score 0")
                 searchBestMove = moves[0];

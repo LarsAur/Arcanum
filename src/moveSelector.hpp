@@ -55,7 +55,7 @@ namespace Arcanum
             int32_t m_getMoveScore(const Move& move);
             void m_scoreMoves();
         public:
-            MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, RelativeHistory* relativeHistory, Board *board, const Move ttMove = Move(0,0));
+            MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, RelativeHistory* relativeHistory, Board *board, const Move ttMove = NULL_MOVE);
             const Move* getNextMove();
     };
 }

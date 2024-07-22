@@ -253,7 +253,7 @@ void UCI::position(Board& board, Searcher& searcher, std::istringstream& is)
     while (is >> token)
     {
         Move move = board.getMoveFromArithmetic(token);
-        if(move == Move(0,0))
+        if(move == NULL_MOVE)
         {
             ERROR(token << " is not legal in the position")
         }
@@ -332,7 +332,7 @@ void UCI::sendUciInfo(const SearchInfo& info)
 
 void UCI::sendUciBestMove(const Move& move)
 {
-    if(move == Move(0, 0))
+    if(move == NULL_MOVE)
         ERROR("Illegal Null-Move was reported as the best move")
 
     UCI_OUT("bestmove " << move)

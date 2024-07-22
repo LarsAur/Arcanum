@@ -25,7 +25,7 @@ namespace UCI
             score(0),
             mate(0),
             mateDistance(0),
-            bestMove(Arcanum::Move(0,0)),
+            bestMove(Arcanum::NULL_MOVE),
             hashfull(0)
             {}
     };

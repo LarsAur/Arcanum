@@ -1881,7 +1881,7 @@ Move Board::getMoveFromArithmetic(std::string& arighemetic)
     }
 
     WARNING("Found no matching move for " << arighemetic << " in " << FEN::getFEN(*this))
-    return Move(0,0);
+    return NULL_MOVE;
 }
 
 bitboard_t Board::attackersTo(const square_t square) const
