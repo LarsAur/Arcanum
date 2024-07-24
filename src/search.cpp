@@ -267,7 +267,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
     if(numMoves == 0)
     {
-        m_stats.evaluations++;
         return staticEval;
     }
 
