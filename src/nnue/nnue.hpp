@@ -5,25 +5,28 @@
 
 namespace NN
 {
+    static constexpr uint32_t FTSize  = 768;
+    static constexpr uint32_t L1Size  = 256;
+    static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
     struct Accumulator
     {
-        alignas(64) float acc[2][256];
+        alignas(64) float acc[2][L1Size];
     };
 
     struct FloatNet
     {
-        Matrix<256, 768> ftWeights;
-        Matrix<256, 1> ftBiases;
-        Matrix<1, 256> l1Weights;
-        Matrix<1, 1> l1Biases;
+        Matrix<L1Size, FTSize>  ftWeights;
+        Matrix<L1Size, 1>       ftBiases;
+        Matrix<1, L1Size>       l1Weights;
+        Matrix<1, 1>            l1Biases;
     };
 
     // Intermediate results in the net
     struct Trace
     {
-        Matrix<768, 1>  input;         // Only used by backprop
-        Matrix<256, 1>  accumulator;   // Post ReLU accumulator
-        Matrix<1, 1>    out;           // Scalar output
+        Matrix<FTSize, 1>  input;         // Only used by backprop
+        Matrix<L1Size, 1>  accumulator;   // Post ReLU accumulator
+        Matrix<1, 1>       out;           // Scalar output
     };
 
     class NNUE

@@ -64,10 +64,10 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
 
     // Read Net data
 
-    is.read((char*) net.ftWeights.data(), 768 * 256 * sizeof(float));
-    is.read((char*) net.ftBiases.data(),        256 * sizeof(float));
-    is.read((char*) net.l1Weights.data(),  1 *  256 * sizeof(float));
-    is.read((char*) net.l1Biases.data(),          1 * sizeof(float));
+    is.read((char*) net.ftWeights.data(), FTSize * L1Size * sizeof(float));
+    is.read((char*) net.ftBiases.data(),           L1Size * sizeof(float));
+    is.read((char*) net.l1Weights.data(),      1 * L1Size * sizeof(float));
+    is.read((char*) net.l1Biases.data(),                1 * sizeof(float));
 
     is.close();
 
@@ -108,10 +108,10 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     fstream.write(metadata.c_str(), size);
 
     // Write Net data
-    fstream.write((char*) net.ftWeights.data(), 768 * 256 * sizeof(float));
-    fstream.write((char*) net.ftBiases.data(),        256 * sizeof(float));
-    fstream.write((char*) net.l1Weights.data(),   1 * 256 * sizeof(float));
-    fstream.write((char*) net.l1Biases.data(),          1 * sizeof(float));
+    fstream.write((char*) net.ftWeights.data(), FTSize * L1Size * sizeof(float));
+    fstream.write((char*) net.ftBiases.data(),           L1Size * sizeof(float));
+    fstream.write((char*) net.l1Weights.data(),      1 * L1Size * sizeof(float));
+    fstream.write((char*) net.l1Biases.data(),                1 * sizeof(float));
 
     fstream.close();
 
@@ -148,8 +148,7 @@ void NNUE::m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures
 
 void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features)
 {
-    constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 256 / regSize;
+    constexpr uint32_t numRegs = L1Size / RegSize;
     __m256 regs[numRegs];
 
     float* biasesPtr         = m_net.ftBiases.data();
@@ -157,7 +156,7 @@ void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspec
 
     for(uint32_t i = 0; i < numRegs; i++)
     {
-        regs[i] = _mm256_load_ps(biasesPtr + regSize*i);
+        regs[i] = _mm256_load_ps(biasesPtr + RegSize*i);
     }
 
     for(uint32_t i = 0; i < numFeatures; i++)
@@ -167,14 +166,14 @@ void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspec
 
         for(uint32_t j = 0; j < numRegs; j++)
         {
-            __m256 weights = _mm256_load_ps(weightsPtr + regSize*j + findex*regSize*numRegs);
+            __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
             regs[j] = _mm256_add_ps(regs[j], weights);
         }
     }
 
     for(uint32_t i = 0; i < numRegs; i++)
     {
-        _mm256_store_ps(acc->acc[perspective] + regSize*i, regs[i]);
+        _mm256_store_ps(acc->acc[perspective] + RegSize*i, regs[i]);
     }
 }
 
@@ -275,8 +274,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
 
     // -- Update the accumulators
 
-    constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 256 / regSize;
+    constexpr uint32_t numRegs = L1Size / RegSize;
     __m256 regs[numRegs];
 
     float* weightsPtr        = m_net.ftWeights.data();
@@ -288,7 +286,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
         #pragma GCC unroll 32
         for(uint32_t i = 0; i < numRegs; i++)
         {
-            regs[i] = _mm256_load_ps(accIn->acc[perspective] + regSize*i);
+            regs[i] = _mm256_load_ps(accIn->acc[perspective] + RegSize*i);
         }
 
         // -- Added features
@@ -302,7 +300,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
 
             for(uint32_t j = 0; j < numRegs; j++)
             {
-                __m256 weights = _mm256_load_ps(weightsPtr + regSize*j + findex*regSize*numRegs);
+                __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
                 regs[j] = _mm256_add_ps(regs[j], weights);
             }
         }
@@ -318,7 +316,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
 
             for(uint32_t j = 0; j < numRegs; j++)
             {
-                __m256 weights = _mm256_load_ps(weightsPtr + regSize*j + findex*regSize*numRegs);
+                __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
                 regs[j] = _mm256_sub_ps(regs[j], weights);
             }
         }
@@ -327,7 +325,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
         #pragma GCC unroll 32
         for(uint32_t i = 0; i < numRegs; i++)
         {
-            _mm256_store_ps(accOut->acc[perspective] + regSize*i, regs[i]);
+            _mm256_store_ps(accOut->acc[perspective] + RegSize*i, regs[i]);
         }
     }
 }
@@ -354,26 +352,25 @@ void NNUE::m_randomizeWeights()
 
 void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
 {
-    constexpr uint32_t regSize = 256 / 32;
-    constexpr uint32_t numRegs = 256 / regSize;
+    constexpr uint32_t numRegs = L1Size / RegSize;
     __m256 zero = _mm256_setzero_ps();
     float* dst = trace.accumulator.data();
 
     for(uint32_t i = 0; i < numRegs; i++)
     {
         // Load accumulator
-        __m256 a = _mm256_load_ps(acc->acc[perspective] + regSize*i);
+        __m256 a = _mm256_load_ps(acc->acc[perspective] + RegSize*i);
         // ReLu
         a = _mm256_max_ps(zero, a);
         // Score accumulator in the trace
-        _mm256_store_ps(dst + regSize*i, a);
+        _mm256_store_ps(dst + RegSize*i, a);
     }
 }
 
 float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
 {
     m_reluAccumulator(acc, perspective, trace);
-    lastLevelFeedForward<256>(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.out);
+    lastLevelFeedForward<L1Size>(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.out);
     return *trace.out.data();
 }
 
@@ -433,9 +430,9 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 
     // -- Calculation of auxillery coefficients
     Matrix<1, 1> delta2(false);
-    Matrix<256, 1> delta1(false);
+    Matrix<L1Size, 1> delta1(false);
 
-    Matrix<256, 1> accumulatorReLuPrime(false);
+    Matrix<L1Size, 1> accumulatorReLuPrime(false);
 
     accumulatorReLuPrime.copy(trace.accumulator);
 
@@ -448,7 +445,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 
     // -- Calculation of gradient
 
-    Matrix<1, 256>   gradientL1Weights(false);
+    Matrix<1, L1Size>   gradientL1Weights(false);
 
     multiplyTransposeB(delta2, trace.accumulator, gradientL1Weights);
 
@@ -673,10 +670,10 @@ Arcanum::eval_t NNUE::m_getSquareValue(const Arcanum::Board& board, Arcanum::squ
     Color color = Color(piece >= B_PAWN);
     piece = Piece(piece % B_PAWN);
     uint32_t findex = m_getFeatureIndex(square, color, piece) ^ board.getTurn();
-    float* colData = m_net.ftWeights.data() + 256 * findex;
+    float* colData = m_net.ftWeights.data() + L1Size * findex;
     float* l1Data = m_net.l1Weights.data();
     float value = 0;
-    for(uint32_t i = 0; i < 256; i++)
+    for(uint32_t i = 0; i < L1Size; i++)
     {
         if(m_trace.accumulator.data()[i] > 0)
         {

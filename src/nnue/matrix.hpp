@@ -182,43 +182,6 @@ namespace NN
             }
     };
 
-    // Multiply this vector by the transpose of a sparse binary (0 or 1) vector to produce a matrix
-    // The input vector should not be transposed
-    // TODO: For now only for 256 x 768
-    template <uint32_t rows, uint32_t cols>
-    void vectorMultTransposedSparseVector(Matrix<rows, 1>& vector, Matrix<cols, 1>& tvector, Matrix<rows, cols>& matrixOut)
-    {
-        constexpr uint32_t regSize = 256 / 32;
-        constexpr uint32_t numRegs = 256 / regSize;
-
-        float* vData   = vector.data();
-        float* tvData  = tvector.data();
-        float* oData   = matrixOut.data();
-
-        __m256 weights[numRegs];
-        __m256 zero = _mm256_setzero_ps();
-
-        // Load weights
-        for(uint32_t i = 0; i < numRegs; i++)
-        {
-            weights[i] = _mm256_load_ps(vData + i * regSize);
-        }
-
-        for(uint32_t j = 0; j < 768; j++)
-        {
-            if(tvData[j] == 0)
-            {
-                for(uint32_t i = 0; i < numRegs; i++)
-                    _mm256_store_ps(oData + rows * j + i * regSize, zero);
-            }
-            else
-            {
-                for(uint32_t i = 0; i < numRegs; i++)
-                    _mm256_store_ps(oData + rows * j + i * regSize, weights[i]);
-            }
-        }
-    }
-
     template <uint32_t rows, uint32_t cols>
     void calcAndAccFtGradient(uint8_t numFeatures, uint32_t* features, Matrix<rows, 1>& delta, Matrix<rows, cols>& gradient)
     {
