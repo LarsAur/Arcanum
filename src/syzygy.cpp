@@ -25,7 +25,7 @@ bool Arcanum::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& 
         return false;
     }
 
-    unsigned results[218];
+    unsigned results[MAX_MOVE_COUNT];
 
     Move* legalMoves = board.getLegalMoves();
     uint8_t numLegalMoves = board.getNumLegalMoves();
@@ -52,7 +52,7 @@ bool Arcanum::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& 
 
     // Find a move with the
     numMoves = 0;
-    for (int i = 0; i < 218 && results[i] != TB_RESULT_FAILED; i++)
+    for (int i = 0; i < MAX_MOVE_COUNT && results[i] != TB_RESULT_FAILED; i++)
     {
         if (TB_GET_WDL(results[i]) == TB_GET_WDL(result))
         {

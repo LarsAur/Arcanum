@@ -29,7 +29,7 @@ Searcher::Searcher()
 
     // Initialize the LMR reduction lookup table
     for(uint8_t d = 0; d < SEARCH_MAX_PV_LENGTH; d++)
-        for(uint8_t m = 0; m < 218; m++)
+        for(uint8_t m = 0; m < MAX_MOVE_COUNT; m++)
             m_lmrReductions[d][m] = static_cast<uint8_t>(1 + (std::log2(m) * std::log2(d) / 4));
 
     m_verbose = true;

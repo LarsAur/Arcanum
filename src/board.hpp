@@ -8,6 +8,8 @@
 
 namespace Arcanum
 {
+    constexpr uint8_t MAX_MOVE_COUNT = 218;
+
     typedef enum Color
     {
         WHITE,
@@ -52,7 +54,7 @@ namespace Arcanum
 
             Piece m_pieces[64];
             uint8_t m_numLegalMoves = 0;
-            Move m_legalMoves[218];
+            Move m_legalMoves[MAX_MOVE_COUNT];
             hash_t m_hash;
             hash_t m_materialHash;
             hash_t m_pawnHash;

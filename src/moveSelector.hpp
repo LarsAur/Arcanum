@@ -50,8 +50,8 @@ namespace Arcanum
             Move m_ttMove;
             bitboard_t m_bbOpponentPawnAttacks;
             bitboard_t m_bbOpponentAttacks;
-            ScoreIndex m_highScoreIdxPairs[218];
-            ScoreIndex m_lowScoreIdxPairs[218];
+            ScoreIndex m_highScoreIdxPairs[MAX_MOVE_COUNT];
+            ScoreIndex m_lowScoreIdxPairs[MAX_MOVE_COUNT];
             int32_t m_getMoveScore(const Move& move);
             void m_scoreMoves();
         public:
