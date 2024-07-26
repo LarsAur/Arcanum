@@ -27,6 +27,11 @@ Searcher::Searcher()
     m_knownEndgameMaterialDraws.push_back(kingsWKnight.getMaterialHash());
     m_knownEndgameMaterialDraws.push_back(kingsBKnight.getMaterialHash());
 
+    // Initialize the LMR reduction lookup table
+    for(uint8_t d = 0; d < SEARCH_MAX_PV_LENGTH; d++)
+        for(uint8_t m = 0; m < 218; m++)
+            m_lmrReductions[d][m] = static_cast<uint8_t>(1 + (std::log2(m) * std::log2(d) / 4));
+
     m_verbose = true;
 }
 
@@ -353,10 +358,11 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         // * Move is a capture move
         // * The previous board was a check
         // * The move is a checking move
-        if(i >= 2 && depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking)
+        if(i >= 2 && depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking && !Evaluator::isTbCheckMateScore(bestScore) && !Evaluator::isCheckMateScore(bestScore))
         {
             // Perform a reduced search with null-window
-            uint8_t R = 2 + isWorsening;
+            int8_t R = m_lmrReductions[depth][i] + isWorsening - m_killerMoveManager.contains(*move, plyFromRoot);
+            R = std::max(int8_t(1), R);
             score = -m_alphaBeta(newBoard, &_pvLine, -alpha - 1, -alpha, depth - R, plyFromRoot + 1, false, totalExtensions);
 
             // Perform full search if the move is better than expected

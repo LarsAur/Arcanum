@@ -111,6 +111,7 @@ namespace Arcanum
             std::unique_ptr<TranspositionTable> m_tt;
             std::vector<SearchStackElement> m_searchStack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
+            uint8_t m_lmrReductions[SEARCH_MAX_PV_LENGTH][218];
             Timer m_timer;
             Evaluator m_evaluator;
             KillerMoveManager m_killerMoveManager;
