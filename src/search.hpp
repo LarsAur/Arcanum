@@ -40,6 +40,8 @@ namespace Arcanum
     {
         uint64_t nodes;       // Number of nodes visited
         uint64_t evaluations; // Number of calls to board.evaulate()
+        uint64_t pvNodes;
+        uint64_t nonPvNodes;
         uint64_t exactTTValuesUsed;
         uint64_t lowerTTValuesUsed;
         uint64_t upperTTValuesUsed;
@@ -56,6 +58,8 @@ namespace Arcanum
         SearchStats() :
             nodes(0),
             evaluations(0),
+            pvNodes(0),
+            nonPvNodes(0),
             exactTTValuesUsed(0),
             lowerTTValuesUsed(0),
             upperTTValuesUsed(0),
@@ -125,10 +129,13 @@ namespace Arcanum
             bool m_verbose; // Print use output and stats while searching
             volatile bool m_stopSearch;
 
-            eval_t m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions);
-            eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot);
             bool m_isDraw(const Board& board) const;
             bool m_shouldStop();
+
+            template <bool isPv>
+            eval_t m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions);
+            template <bool isPv>
+            eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot);
         public:
             Searcher();
             ~Searcher();

@@ -58,6 +58,7 @@ void Searcher::clear()
     m_killerMoveManager.clear();
 }
 
+template <bool isPv>
 eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot)
 {
     if(m_shouldStop())
@@ -65,6 +66,8 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
     m_numNodesSearched++;
     m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
+    m_stats.pvNodes += isPv;
+    m_stats.nonPvNodes += !isPv;
 
     if(m_isDraw(board))
         return DRAW_VALUE;
@@ -83,7 +86,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     }
 
     std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
-    if(entry.has_value())
+    if(!isPv && entry.has_value())
     {
         switch (entry->flags)
         {
@@ -159,7 +162,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         Board newBoard = Board(board);
         newBoard.performMove(*move);
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
-        eval_t score = -m_alphaBetaQuiet(newBoard, -beta, -alpha, plyFromRoot + 1);
+        eval_t score = -m_alphaBetaQuiet<isPv>(newBoard, -beta, -alpha, plyFromRoot + 1);
         m_evaluator.popMoveFromAccumulator();
 
         if(score > bestScore)
@@ -192,6 +195,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     return bestScore;
 }
 
+template <bool isPv>
 eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions)
 {
     // NOTE: It is important that the size of the pv line is set to zero
@@ -203,17 +207,20 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         return 0;
 
     if(depth <= 0)
-        return m_alphaBetaQuiet(board, alpha, beta, plyFromRoot);
+        return m_alphaBetaQuiet<isPv>(board, alpha, beta, plyFromRoot);
 
     m_numNodesSearched++;
     m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
+
+    m_stats.pvNodes += isPv;
+    m_stats.nonPvNodes += !isPv;
 
     if(m_isDraw(board))
         return DRAW_VALUE;
 
     eval_t originalAlpha = alpha;
     std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
-    if(entry.has_value() && (entry->depth >= depth))
+    if(!isPv && entry.has_value() && (entry->depth >= depth))
     {
         switch (entry->flags)
         {
@@ -295,7 +302,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     {
         if(staticEval + 200 * depth < alpha)
         {
-            eval_t razorEval = m_alphaBetaQuiet(board, alpha, beta, plyFromRoot);
+            eval_t razorEval = m_alphaBetaQuiet<isPv>(board, alpha, beta, plyFromRoot);
             if(razorEval <= alpha)
             {
                 m_stats.razorCutoffs++;
@@ -315,7 +322,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             // int R = 3 + depth / 3;
             int R = 3 + isImproving;
             newBoard.performNullMove();
-            eval_t nullMoveScore = -m_alphaBeta(newBoard, &_pvLine, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
+            eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, &_pvLine, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
 
             if(nullMoveScore >= beta)
             {
@@ -338,7 +345,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         newBoard.performMove(*move);
         m_tt->prefetch(newBoard.getHash());
         eval_t score;
-        bool requireFullSearch = true;
         bool checkOrChecking = isChecked || newBoard.isChecked();
 
         // Futility pruning
@@ -353,39 +359,49 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
 
-        // Check for late move reduction
-        // Conditions for not doing LMR
-        // * Move is a capture move
-        // * The previous board was a check
-        // * The move is a checking move
-        if(i >= 2 && depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking && !Evaluator::isTbCheckMateScore(bestScore) && !Evaluator::isCheckMateScore(bestScore))
+        // Extend search for checking moves or check avoiding moves
+        // This is to avoid horizon effect occuring by starting with a forced line
+        uint8_t extension = (
+            isChecked ||
+            ((move->moveInfo & MoveInfoBit::PAWN_MOVE) && (RANK(move->to) == 6 || RANK(move->to) == 1)) || // Pawn moved to the 7th rank
+            (numMoves == 1)
+        ) ? 1 : 0;
+
+        // Limit the number of extensions
+        if(totalExtensions > 32)
+            extension = 0;
+
+        if(i == 0)
         {
-            // Perform a reduced search with null-window
-            int8_t R = m_lmrReductions[depth][i] + isWorsening - m_killerMoveManager.contains(*move, plyFromRoot);
-            R = std::max(int8_t(1), R);
-            score = -m_alphaBeta(newBoard, &_pvLine, -alpha - 1, -alpha, depth - R, plyFromRoot + 1, false, totalExtensions);
-
-            // Perform full search if the move is better than expected
-            requireFullSearch = score > alpha;
-
-            m_stats.researchesRequired += requireFullSearch;
-            m_stats.nullWindowSearches += 1;
+            score = -m_alphaBeta<isPv>(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
         }
-
-        if(requireFullSearch)
+        else
         {
-            // Extend search for checking moves or check avoiding moves
-            // This is to avoid horizon effect occuring by starting with a forced line
-            uint8_t extension = (
-                isChecked ||
-                ((move->moveInfo & MoveInfoBit::PAWN_MOVE) && (RANK(move->to) == 6 || RANK(move->to) == 1)) || // Pawn moved to the 7th rank
-                (numMoves == 1)
-            ) ? 1 : 0;
-            // Limit the number of extensions
-            if(totalExtensions > 32)
-                extension = 0;
+            // Late move reduction (LMR)
+            int8_t R = 1;
+            if(depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking && !Evaluator::isTbCheckMateScore(bestScore) && !Evaluator::isCheckMateScore(bestScore))
+            {
+                // Perform a reduced search with null-window
+                R = m_lmrReductions[depth][i] + isWorsening - m_killerMoveManager.contains(*move, plyFromRoot);
+                R = std::max(int8_t(1), R);
+            }
 
-            score = -m_alphaBeta(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
+            score = -m_alphaBeta<false>(newBoard, &_pvLine, -alpha - 1, -alpha, depth + extension - R, plyFromRoot + 1, false, totalExtensions + extension);
+            m_stats.researchesRequired += score > alpha && (isPv || R > 1);
+            m_stats.nullWindowSearches += 1;
+
+            // Potential research of LMR returns a score > alpha
+            if(score > alpha && R > 1)
+            {
+                score = -m_alphaBeta<false>(newBoard, &_pvLine, -alpha - 1, -alpha, depth + extension - 1 , plyFromRoot + 1, false, totalExtensions + extension);
+                m_stats.researchesRequired += score > alpha && isPv;
+                m_stats.nullWindowSearches += 1;
+            }
+
+            if(score > alpha && isPv)
+            {
+                score = -m_alphaBeta<isPv>(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
+            }
         }
 
         m_evaluator.popMoveFromAccumulator();
@@ -401,8 +417,10 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
         alpha = std::max(alpha, bestScore);
 
-        if(alpha >= beta) // Beta-cutoff
+        // Beta-Cutoff
+        if(alpha >= beta)
         {
+            // Update move history and killers for quiet moves
             if(!(CAPTURED_PIECE(move->moveInfo) | PROMOTED_PIECE(move->moveInfo)))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
@@ -592,7 +610,27 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             Board newBoard = Board(board);
             newBoard.performMove(*move);
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
-            eval_t score = -m_alphaBeta(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
+
+            eval_t score;
+            if(i == 0)
+            {
+                score = -m_alphaBeta<true>(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
+
+                // If aspiration window is used, restart and widen the window if the first move scores outside the window
+                if(score <= alpha)
+                {
+                    m_evaluator.popMoveFromAccumulator();
+                    break;
+                }
+            }
+            else
+            {
+                score = -m_alphaBeta<false>(newBoard, &_pvLineTmp, -alpha - 1, -alpha, depth - 1, 1, false, 0);
+
+                if(score > alpha)
+                    score = -m_alphaBeta<true>(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
+            }
+
             m_evaluator.popMoveFromAccumulator();
 
             if(m_shouldStop())
@@ -806,6 +844,8 @@ void Searcher::logStats()
     ss << "\n----------------------------------";
     ss << "\nNodes                      " << m_stats.nodes;
     ss << "\nEvaluated Positions:       " << m_stats.evaluations;
+    ss << "\nPV-Nodes:                  " << m_stats.pvNodes;
+    ss << "\nNon-PV-Nodes:              " << m_stats.nonPvNodes;
     ss << "\nExact TT Values used:      " << m_stats.exactTTValuesUsed;
     ss << "\nLower TT Values used:      " << m_stats.lowerTTValuesUsed;
     ss << "\nUpper TT Values used:      " << m_stats.upperTTValuesUsed;
