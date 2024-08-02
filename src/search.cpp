@@ -319,8 +319,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         if(staticEval >= beta)
         {
             Board newBoard = Board(board);
-            // int R = 3 + depth / 3;
-            int R = 3 + isImproving;
+            int R = 2 + isImproving + depth / 4;
             newBoard.performNullMove();
             eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, &_pvLine, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
 
