@@ -321,6 +321,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             Board newBoard = Board(board);
             int R = 2 + isImproving + depth / 4;
             newBoard.performNullMove();
+            m_tt->prefetch(newBoard.getHash());
             eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, &_pvLine, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
 
             if(nullMoveScore >= beta)
