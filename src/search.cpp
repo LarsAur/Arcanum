@@ -380,8 +380,9 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             int8_t R = 1;
             if(depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking && !Evaluator::isTbCheckMateScore(bestScore) && !Evaluator::isCheckMateScore(bestScore))
             {
-                // Perform a reduced search with null-window
-                R = m_lmrReductions[depth][i] + isWorsening - m_killerMoveManager.contains(*move, plyFromRoot);
+                R =  m_lmrReductions[depth][i];
+                R += isWorsening;
+                R -= m_killerMoveManager.contains(*move, plyFromRoot);
                 R = std::max(int8_t(1), R);
             }
 
