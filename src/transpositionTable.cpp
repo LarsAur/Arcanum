@@ -127,11 +127,11 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
         if(entry.depth != UINT8_MAX && entry.hash == (ttEntryHash_t)hash)
         {
             ttEntry_t retEntry = entry;
-            if(Evaluator::isCheckMateScore(entry.value) || Evaluator::isTbCheckMateScore(entry.value))
+            if(Evaluator::isMateScore(entry.value))
             {
                 retEntry.value = entry.value > 0 ? entry.value - plyFromRoot : entry.value + plyFromRoot;
             }
-            if(Evaluator::isCheckMateScore(entry.staticEval) || Evaluator::isTbCheckMateScore(entry.staticEval))
+            if(Evaluator::isMateScore(entry.staticEval))
             {
                 retEntry.staticEval = entry.staticEval > 0 ? entry.staticEval - plyFromRoot : entry.staticEval + plyFromRoot;
             }
@@ -169,12 +169,12 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
         // Padding is not set
     };
 
-    if(Evaluator::isCheckMateScore(entry.value) || Evaluator::isTbCheckMateScore(entry.value))
+    if(Evaluator::isMateScore(entry.value))
     {
         entry.value = entry.value > 0 ? entry.value + plyFromRoot : entry.value - plyFromRoot;
     }
 
-    if(Evaluator::isCheckMateScore(entry.staticEval) || Evaluator::isTbCheckMateScore(entry.staticEval))
+    if(Evaluator::isMateScore(entry.staticEval))
     {
         entry.staticEval = entry.staticEval > 0 ? entry.staticEval + plyFromRoot : entry.staticEval - plyFromRoot;
     }

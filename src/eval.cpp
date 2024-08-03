@@ -67,14 +67,19 @@ void Evaluator::popMoveFromAccumulator()
     m_accumulatorStackPointer--;
 }
 
-bool Evaluator::isCheckMateScore(eval_t eval)
+bool Evaluator::isRealMateScore(eval_t eval)
 {
     return std::abs(eval) > MATE_SCORE - MAX_MATE_DISTANCE;
 }
 
-bool Evaluator::isTbCheckMateScore(eval_t eval)
+bool Evaluator::isTbMateScore(eval_t eval)
 {
-    return std::abs(eval) > (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isCheckMateScore(eval);
+    return std::abs(eval) > (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isRealMateScore(eval);
+}
+
+bool Evaluator::isMateScore(eval_t eval)
+{
+    return std::abs(eval) > TB_MATE_SCORE - TB_MAX_MATE_DISTANCE;
 }
 
 // Positive values represents advantage for current player

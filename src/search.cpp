@@ -378,7 +378,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         {
             // Late move reduction (LMR)
             int8_t R = 1;
-            if(depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking && !Evaluator::isTbCheckMateScore(bestScore) && !Evaluator::isCheckMateScore(bestScore))
+            if(depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking && !Evaluator::isMateScore(bestScore))
             {
                 R =  m_lmrReductions[depth][i];
                 R += isWorsening;
@@ -718,7 +718,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         info.score = alpha;
         info.hashfull = m_tt->permills();
         info.bestMove = bestMove;
-        if(Evaluator::isCheckMateScore(alpha))
+        if(Evaluator::isRealMateScore(alpha))
         {
             info.mate = true;
             // Divide by 2 to get moves and not plys.
@@ -741,7 +741,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // End early if checkmate is found
-        if(Evaluator::isCheckMateScore(searchScore))
+        if(Evaluator::isRealMateScore(searchScore))
         {
             break;
         }
@@ -762,7 +762,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     info.score = searchScore;
     info.hashfull = m_tt->permills();
     info.bestMove = searchBestMove;
-    if(Evaluator::isCheckMateScore(searchScore))
+    if(Evaluator::isRealMateScore(searchScore))
     {
         info.mate = true;
         // Divide by 2 to get moves and not plys.

@@ -156,7 +156,7 @@ void Tuning::fengen(std::string startPosPath, std::string outputPath, size_t num
                     searcher.addBoardToHistory(board);
                     fens.push_back(FEN::getFEN(board));
 
-                    if(Evaluator::isTbCheckMateScore(searchResult.eval) || Evaluator::isCheckMateScore(searchResult.eval))
+                    if(Evaluator::isMateScore(searchResult.eval))
                     {
                         result = searchResult.eval > 0 ? (board.getTurn() == WHITE ? BLACK_WIN : WHITE_WIN) : (board.getTurn() == WHITE ? WHITE_WIN : BLACK_WIN);
                         break;

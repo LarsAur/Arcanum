@@ -18,8 +18,13 @@ namespace Arcanum
             std::vector<NN::Accumulator*> m_accumulatorStack;
 
         public:
-            static bool isCheckMateScore(eval_t eval);
-            static bool isTbCheckMateScore(eval_t eval);
+            // Returns true if the score is a mate score not from the TB
+            static bool isRealMateScore(eval_t eval);
+            // Returns true if the score is a mate score from the TB
+            static bool isTbMateScore(eval_t eval);
+            // Returns true if the score is a mate score
+            static bool isMateScore(eval_t eval);
+
             static NN::NNUE nnue;
             static const char* nnuePathDefault;
 
