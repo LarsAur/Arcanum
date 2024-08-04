@@ -25,10 +25,11 @@ Zobrist::Zobrist()
         }
     }
 
-    for(int i = 0; i < 65; i++)
+    for(int i = 0; i < 64; i++)
     {
         m_enPassantTable[i] = distribution(generator);
     }
+    m_enPassantTable[64] = 0LL;
 
     m_blackToMove = distribution(generator);
 }
@@ -159,7 +160,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
         }
     }
 
-    hash_t enPassantHash = (m_enPassantTable[oldEnPassantSquare] * (oldEnPassantSquare != 64)) ^ (m_enPassantTable[newEnPassantSquare] * (newEnPassantSquare != 64));
+    hash_t enPassantHash = m_enPassantTable[oldEnPassantSquare] ^ m_enPassantTable[newEnPassantSquare];
     pawnHash ^= enPassantHash;
     hash ^= enPassantHash;
     hash ^= m_blackToMove;
@@ -187,7 +188,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
 
 void Zobrist::updateHashsAfterNullMove(hash_t& hash, hash_t& pawnHash, square_t oldEnPassantSquare)
 {
-    hash_t enPassantHash = m_enPassantTable[oldEnPassantSquare] * (oldEnPassantSquare != 64);
+    hash_t enPassantHash = m_enPassantTable[oldEnPassantSquare];
     pawnHash ^= enPassantHash;
     hash ^= enPassantHash;
     hash ^= m_blackToMove;
