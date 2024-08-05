@@ -312,6 +312,9 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         }
     }
 
+    // Push the board on the search stack before performing any moves (Including null moves)
+    m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
+
     // Perform potential null move search
     bool nullMoveAllowed = board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5 && !isNullMoveSearch && !isChecked && depth > 2;
     if(nullMoveAllowed)
@@ -326,15 +329,14 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
             if(nullMoveScore >= beta)
             {
+                // Pop the board off the search stack before returning
+                m_searchStack.pop_back();
                 m_stats.nullMoveCutoffs++;
                 return nullMoveScore;
             }
             m_stats.failedNullMoveCutoffs++;
         }
     }
-
-    // Push the board on the search stack
-    m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
 
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
     for (int i = 0; i < numMoves; i++)  {
@@ -443,7 +445,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         }
     }
 
-    // Pop the board off the search stack
+    // Pop the board off the search stack before returning
     m_searchStack.pop_back();
 
     // Stop the thread from writing to the TT when search is stopped
@@ -574,6 +576,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         staticEval = m_evaluator.evaluate(board, 0);
     }
 
+    m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
 
     uint32_t depth = 0;
     while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
@@ -753,6 +756,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         if(depth >= SEARCH_MAX_PV_LENGTH - 1)
             break;
     }
+
+    m_searchStack.pop_back();
 
     // Send UCI info
     UCI::SearchInfo info = UCI::SearchInfo();
