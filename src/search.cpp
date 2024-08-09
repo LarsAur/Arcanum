@@ -68,6 +68,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
     m_stats.pvNodes += isPv;
     m_stats.nonPvNodes += !isPv;
+    m_stats.qSearchNodes++;
 
     if(m_isDraw(board))
         return DRAW_VALUE;
@@ -852,6 +853,7 @@ void Searcher::logStats()
     ss << "\nEvaluated Positions:       " << m_stats.evaluations;
     ss << "\nPV-Nodes:                  " << m_stats.pvNodes;
     ss << "\nNon-PV-Nodes:              " << m_stats.nonPvNodes;
+    ss << "\nQsearch-Nodes              " << m_stats.qSearchNodes;
     ss << "\nExact TT Values used:      " << m_stats.exactTTValuesUsed;
     ss << "\nLower TT Values used:      " << m_stats.lowerTTValuesUsed;
     ss << "\nUpper TT Values used:      " << m_stats.upperTTValuesUsed;

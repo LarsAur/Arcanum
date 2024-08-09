@@ -42,6 +42,7 @@ namespace Arcanum
         uint64_t evaluations; // Number of calls to board.evaulate()
         uint64_t pvNodes;
         uint64_t nonPvNodes;
+        uint64_t qSearchNodes;
         uint64_t exactTTValuesUsed;
         uint64_t lowerTTValuesUsed;
         uint64_t upperTTValuesUsed;
@@ -60,6 +61,7 @@ namespace Arcanum
             evaluations(0),
             pvNodes(0),
             nonPvNodes(0),
+            qSearchNodes(0),
             exactTTValuesUsed(0),
             lowerTTValuesUsed(0),
             upperTTValuesUsed(0),
