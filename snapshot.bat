@@ -20,5 +20,5 @@ if NOT "%2"=="" (
 make clean
 make -j CFLAGS="!FLAGS!"
 copy ".\build\%PROJECT%.exe" /b ".\snapshots\%PROJECT%.exe" /b
-copy "arcanum-net-v2.2.fnnue" /b ".\snapshots\arcanum-net-v2.2.fnnue" /b
+copy "arcanum-net-v3.0.fnnue" /b ".\snapshots\arcanum-net-v3.0.fnnue" /b
 make clean
