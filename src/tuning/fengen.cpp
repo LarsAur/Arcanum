@@ -6,6 +6,7 @@
 #include <search.hpp>
 #include <syzygy.hpp>
 #include <fen.hpp>
+#include <timer.hpp>
 
 using namespace Arcanum;
 
@@ -86,6 +87,9 @@ void Tuning::fengen(std::string startPosPath, std::string outputPath, size_t num
     std::mutex readLock;
     std::mutex writeLock;
     size_t fenCount = 0LL;
+    Timer msTimer = Timer();
+
+    msTimer.start();
 
     std::ifstream posStream = std::ifstream(startPosPath);
 
@@ -128,79 +132,71 @@ void Tuning::fengen(std::string startPosPath, std::string outputPath, size_t num
 
             startPostion.insert(startPostion.size() - 1, "0 1");
 
-            Board startboard = Board(startPostion);
-            Move* moves = startboard.getLegalMoves();
-            uint8_t numMoves = startboard.getNumLegalMoves();
-            startboard.generateCaptureInfo();
+            Board board = Board(startPostion);
+            searcher.addBoardToHistory(board);
 
-            for(uint8_t i = 0; i < numMoves; i++)
+            Result result;
+            while (!m_isFinished(board, searcher, result))
             {
-                Board board = Board(startboard);
-                board.performMove(moves[i]);
+                SearchResult searchResult;
+                Move move = searcher.getBestMove(board, depth, &searchResult);
+
+                // Output the evaluation from the white perspective
+                if(board.getTurn() == WHITE)
+                    evals.push_back(searchResult.eval);
+                else
+                    evals.push_back(-searchResult.eval);
+
+
+                board.performMove(move);
                 searcher.addBoardToHistory(board);
+                fens.push_back(FEN::getFEN(board));
 
-                Result result;
-                while (!m_isFinished(board, searcher, result))
+                if(Evaluator::isMateScore(searchResult.eval))
                 {
-                    SearchResult searchResult;
-                    Move move = searcher.getBestMove(board, depth, &searchResult);
-
-                    // Output the evaluation from the white perspective
-                    if(board.getTurn() == WHITE)
-                        evals.push_back(searchResult.eval);
-                    else
-                        evals.push_back(-searchResult.eval);
-
-
-                    board.performMove(move);
-                    searcher.addBoardToHistory(board);
-                    fens.push_back(FEN::getFEN(board));
-
-                    if(Evaluator::isMateScore(searchResult.eval))
-                    {
-                        result = searchResult.eval > 0 ? (board.getTurn() == WHITE ? BLACK_WIN : WHITE_WIN) : (board.getTurn() == WHITE ? WHITE_WIN : BLACK_WIN);
-                        break;
-                    }
-                    // If no mate is found and there are few enough pieces, it must be a draw
-                    else if(TB_LARGEST >= (int) CNTSBITS(board.getColoredPieces(WHITE) | board.getColoredPieces(BLACK)))
-                    {
-                        result = DRAW;
-                        break;
-                    }
+                    result = searchResult.eval > 0 ? (board.getTurn() == WHITE ? BLACK_WIN : WHITE_WIN) : (board.getTurn() == WHITE ? WHITE_WIN : BLACK_WIN);
+                    break;
                 }
-
-                writeLock.lock();
-
-                std::string strRes = std::to_string(result);
-
-                for(size_t i = 0; i < fens.size(); i++)
+                // If no mate is found and there are few enough pieces, it must be a draw
+                else if(TB_LARGEST >= (int) CNTSBITS(board.getColoredPieces(WHITE) | board.getColoredPieces(BLACK)))
                 {
-                    // Write result
-                    outStream.write(strRes.c_str(), strRes.size());
-                    outStream.write("\n", 1);
-                    // Write eval
-                    std::string strEval = std::to_string(evals.at(i));
-                    outStream.write(strEval.c_str(), strEval.size());
-                    outStream.write("\n", 1);
-                    // Write FEN
-                    outStream.write(fens.at(i).c_str(), fens.at(i).size());
-                    outStream.write("\n", 1);
+                    result = DRAW;
+                    break;
                 }
-
-                outStream.flush();
-
-                fenCount += fens.size();
-                if(fenCount % 100 == 0)
-                {
-                    DEBUG(fenCount)
-                }
-                writeLock.unlock();
-
-                searcher.clearHistory();
-                searcher.clear();
-                fens.clear();
-                evals.clear();
             }
+
+            writeLock.lock();
+
+            std::string strRes = std::to_string(result);
+
+            for(size_t i = 0; i < fens.size(); i++)
+            {
+                // Write result
+                outStream.write(strRes.c_str(), strRes.size());
+                outStream.write("\n", 1);
+                // Write eval
+                std::string strEval = std::to_string(evals.at(i));
+                outStream.write(strEval.c_str(), strEval.size());
+                outStream.write("\n", 1);
+                // Write FEN
+                outStream.write(fens.at(i).c_str(), fens.at(i).size());
+                outStream.write("\n", 1);
+            }
+
+            outStream.flush();
+
+            fenCount += fens.size();
+            if((fenCount % 1000) < ((fenCount - fens.size()) % 1000)  )
+            {
+                LOG(fenCount << " fens\t" << 1000000.0f / msTimer.getMs() << " fens/sec\t" << 100 * fenCount / numFens << "%")
+                msTimer.start();
+            }
+            writeLock.unlock();
+
+            searcher.clearHistory();
+            searcher.clear();
+            fens.clear();
+            evals.clear();
         }
     };
 
