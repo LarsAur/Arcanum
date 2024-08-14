@@ -384,7 +384,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 {
     constexpr float lambda = 0.50f; // Weighting between wdlTarget and cpTarget
     constexpr float e = 2.71828182846f;
-    constexpr float SIG_FACTOR = 400.0f;
+    constexpr float SIG_FACTOR = 200.0f;
 
     #define SIGMOID(_v) (1.0f / (1.0f + pow(e, -(_v) / SIG_FACTOR)))
 
