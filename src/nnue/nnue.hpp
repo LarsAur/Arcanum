@@ -6,7 +6,7 @@
 namespace NN
 {
     static constexpr uint32_t FTSize  = 768;
-    static constexpr uint32_t L1Size  = 256;
+    static constexpr uint32_t L1Size  = 1024;
     static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
     struct Accumulator
     {

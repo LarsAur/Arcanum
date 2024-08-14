@@ -98,7 +98,7 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     time_t now = time(0);
     tm *gmt = gmtime(&now);
     std::string utcstr = asctime(gmt);
-    std::string arch = "768->256->1 vertically mirrored perspective";
+    std::string arch = "768->1024->1 vertical mirror";
 
     std::string metadata = utcstr + arch;
     uint32_t size = metadata.size();
