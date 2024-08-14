@@ -288,18 +288,18 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     bool isImproving = (plyFromRoot > 1) && (staticEval > m_searchStack[plyFromRoot - 2].staticEval);
     bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStack[plyFromRoot - 2].staticEval);
 
-    static constexpr eval_t futilityMargins[] = {300, 500, 900};
-    if(depth > 0 && depth < 4 && !isChecked)
+    // Reverse futility pruning
+    if(!isChecked && !Evaluator::isMateScore(beta) && depth < 9)
     {
-        // Reverse futility pruning
-        if(staticEval - futilityMargins[depth - 1] >= beta)
+        if(staticEval - 300 * depth >= beta)
         {
             m_stats.reverseFutilityCutoffs++;
             return staticEval;
         }
     }
 
-    if(!isChecked && std::abs(beta) < 900)
+    // Razoring
+    if(!isChecked && !Evaluator::isMateScore(alpha))
     {
         if(staticEval + 200 * depth < alpha)
         {
@@ -339,6 +339,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         }
     }
 
+    static constexpr eval_t futilityMargins[] = {300, 500, 900};
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
