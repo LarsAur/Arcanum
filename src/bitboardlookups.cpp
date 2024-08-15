@@ -1,4 +1,4 @@
-#include <bitboardLookups.hpp>
+#include <bitboardlookups.hpp>
 #include <intrinsics.hpp>
 #include <algorithm>
 

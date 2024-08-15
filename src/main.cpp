@@ -1,7 +1,7 @@
 #include <uci.hpp>
 #include <test.hpp>
 #include <eval.hpp>
-#include <bitboardLookups.hpp>
+#include <bitboardlookups.hpp>
 
 using namespace Arcanum;
 

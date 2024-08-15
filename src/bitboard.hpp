@@ -1,7 +1,7 @@
 #pragma once
 
 #include <intrinsics.hpp>
-#include <bitboardLookups.hpp>
+#include <bitboardlookups.hpp>
 #include <string>
 
 namespace Arcanum
