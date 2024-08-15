@@ -29,7 +29,7 @@ Searcher::Searcher()
     m_knownEndgameMaterialDraws.push_back(kingsBKnight.getMaterialHash());
 
     // Initialize the LMR reduction lookup table
-    for(uint8_t d = 0; d < SEARCH_MAX_PV_LENGTH; d++)
+    for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
         for(uint8_t m = 0; m < MAX_MOVE_COUNT; m++)
             m_lmrReductions[d][m] = static_cast<uint8_t>(1 + (std::log2(m) * std::log2(d) / 4));
 
@@ -70,6 +70,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     m_stats.pvNodes += isPv;
     m_stats.nonPvNodes += !isPv;
     m_stats.qSearchNodes++;
+    if constexpr (isPv) m_pvTable.updatePvLength(plyFromRoot);
 
     if(m_isDraw(board))
         return DRAW_VALUE;
@@ -175,6 +176,10 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
         if(bestScore >= alpha)
         {
+            if constexpr(isPv)
+            {
+                m_pvTable.updatePv(*move, plyFromRoot);
+            }
             alpha = bestScore;
             ttFlag = TTFlag::EXACT;
         }
@@ -198,13 +203,8 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 }
 
 template <bool isPv>
-eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions)
+eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions)
 {
-    // NOTE: It is important that the size of the pv line is set to zero
-    //       before returning due to searchStop, this is because the size
-    //       is used in a memcpy and might corrupt the memory if it is undefined
-    pvLine->count = 0;
-
     if(m_shouldStop())
         return 0;
 
@@ -213,7 +213,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
     m_numNodesSearched++;
     m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
-
+    if constexpr (isPv) m_pvTable.updatePvLength(plyFromRoot);
     m_stats.pvNodes += isPv;
     m_stats.nonPvNodes += !isPv;
 
@@ -262,7 +262,6 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     Move bestMove = NULL_MOVE;
     Move* moves = nullptr;
     uint8_t numMoves = 0;
-    pvLine_t _pvLine;
 
 
     moves = board.getLegalMoves();
@@ -327,7 +326,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             int R = 2 + isImproving + depth / 4;
             newBoard.performNullMove();
             m_tt.prefetch(newBoard.getHash());
-            eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, &_pvLine, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
+            eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
 
             if(nullMoveScore >= beta)
             {
@@ -378,7 +377,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
         if(i == 0)
         {
-            score = -m_alphaBeta<isPv>(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
+            score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
         }
         else
         {
@@ -392,21 +391,21 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
                 R = std::max(int8_t(1), R);
             }
 
-            score = -m_alphaBeta<false>(newBoard, &_pvLine, -alpha - 1, -alpha, depth + extension - R, plyFromRoot + 1, false, totalExtensions + extension);
+            score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth + extension - R, plyFromRoot + 1, false, totalExtensions + extension);
             m_stats.researchesRequired += score > alpha && (isPv || R > 1);
             m_stats.nullWindowSearches += 1;
 
             // Potential research of LMR returns a score > alpha
             if(score > alpha && R > 1)
             {
-                score = -m_alphaBeta<false>(newBoard, &_pvLine, -alpha - 1, -alpha, depth + extension - 1 , plyFromRoot + 1, false, totalExtensions + extension);
+                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth + extension - 1 , plyFromRoot + 1, false, totalExtensions + extension);
                 m_stats.researchesRequired += score > alpha && isPv;
                 m_stats.nullWindowSearches += 1;
             }
 
             if(score > alpha && isPv)
             {
-                score = -m_alphaBeta<isPv>(newBoard, &_pvLine, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
+                score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
             }
         }
 
@@ -414,11 +413,13 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
 
         if(score > bestScore)
         {
+            if constexpr(isPv)
+            {
+                m_pvTable.updatePv(*move, plyFromRoot);
+            }
+
             bestScore = score;
             bestMove = *move;
-            pvLine->moves[0] = *move;
-            memcpy(pvLine->moves + 1, _pvLine.moves, _pvLine.count * sizeof(Move));
-            pvLine->count = _pvLine.count + 1;
         }
 
         alpha = std::max(alpha, bestScore);
@@ -529,8 +530,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     eval_t searchScore = 0;
     eval_t staticEval = 0;
     Move searchBestMove = NULL_MOVE;
-    pvline_t pvLine, pvLineTmp, _pvLineTmp;
     m_searchParameters = parameters;
+    m_pvTable = PvTable();
 
     m_generation = (uint8_t) std::min(board.getFullMoves(), uint16_t(0x00ff));
     m_numPiecesRoot = board.getNumPieces();
@@ -621,7 +622,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             eval_t score;
             if(i == 0)
             {
-                score = -m_alphaBeta<true>(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
+                score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
 
                 // If aspiration window is used, restart and widen the window if the first move scores outside the window
                 if(score <= alpha)
@@ -632,10 +633,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             }
             else
             {
-                score = -m_alphaBeta<false>(newBoard, &_pvLineTmp, -alpha - 1, -alpha, depth - 1, 1, false, 0);
+                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth - 1, 1, false, 0);
 
                 if(score > alpha)
-                    score = -m_alphaBeta<true>(newBoard, &_pvLineTmp, -beta, -alpha, depth - 1, 1, false, 0);
+                    score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
             }
 
             m_evaluator.popMoveFromAccumulator();
@@ -655,11 +656,9 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
             if(score > alpha)
             {
+                m_pvTable.updatePv(*move, 0);
                 alpha = score;
                 bestMove = *move;
-                pvLineTmp.moves[0] = bestMove;
-                memcpy(pvLineTmp.moves + 1, _pvLineTmp.moves, _pvLineTmp.count * sizeof(Move));
-                pvLineTmp.count = _pvLineTmp.count + 1;
             }
         }
 
@@ -690,8 +689,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         {
             searchScore = alpha;
             searchBestMove = bestMove;
-            memcpy(pvLine.moves, pvLineTmp.moves, pvLineTmp.count * sizeof(Move));
-            pvLine.count = pvLineTmp.count;
         }
 
         // Stop search from writing to TT
@@ -725,6 +722,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         info.score = alpha;
         info.hashfull = m_tt.permills();
         info.bestMove = bestMove;
+        info.pvTable = &m_pvTable;
         if(Evaluator::isRealMateScore(alpha))
         {
             info.mate = true;
@@ -742,8 +740,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
         if(m_verbose)
         {
-            for(uint32_t i = 0; i < pvLine.count; i++)
-                info.pvLine.push_back(pvLine.moves[i]);
             UCI::sendUciInfo(info);
         }
 
@@ -753,10 +749,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             break;
         }
 
-        // The search cannot go deeper than SEARCH_MAX_PV_LENGTH
-        // or else it would overflow the pvline array
-        // This is set to a high number, but this failsafe is added just in case
-        if(depth >= SEARCH_MAX_PV_LENGTH - 1)
+        if(depth >= MAX_SEARCH_DEPTH - 1)
             break;
     }
 
@@ -771,6 +764,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     info.score = searchScore;
     info.hashfull = m_tt.permills();
     info.bestMove = searchBestMove;
+    info.pvTable = &m_pvTable;
     if(Evaluator::isRealMateScore(searchScore))
     {
         info.mate = true;
@@ -788,8 +782,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     if(m_verbose)
     {
-        for(uint32_t i = 0; i < pvLine.count; i++)
-            info.pvLine.push_back(pvLine.moves[i]);
         UCI::sendUciInfo(info);
         UCI::sendUciBestMove(searchBestMove);
     }

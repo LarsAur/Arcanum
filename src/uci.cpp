@@ -320,12 +320,8 @@ void UCI::sendUciInfo(const SearchInfo& info)
         ss << " hashfull " << info.hashfull;
     if(info.nodes > 0 && info.msTime > 0)
         ss << " nps " << ((1000 * info.nodes) / info.msTime);
-    if(info.pvLine.size() > 0)
-    {
-        ss << " pv";
-        for(Move move : info.pvLine)
-            ss << " " << move;
-    }
+    if(info.pvTable)
+        ss << " pv " << info.pvTable->getPvLine();
 
     UCI_OUT(ss.str())
 }

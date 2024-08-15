@@ -5,12 +5,13 @@
 #include <eval.hpp>
 #include <transpositiontable.hpp>
 #include <moveordering.hpp>
+#include <pvtable.hpp>
 #include <timer.hpp>
 #include <vector>
 #include <unordered_map>
 #include <memory>
 
-#define SEARCH_MAX_PV_LENGTH 64
+#define MAX_SEARCH_DEPTH 64
 
 namespace Arcanum
 {
@@ -21,12 +22,6 @@ namespace Arcanum
             return hash;
         }
     };
-
-    typedef struct pvLine_t
-    {
-        uint8_t count;
-        Move moves[SEARCH_MAX_PV_LENGTH];
-    } pvline_t;
 
     typedef struct SearchStackElement
     {
@@ -117,11 +112,12 @@ namespace Arcanum
             TranspositionTable m_tt;
             std::vector<SearchStackElement> m_searchStack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
-            uint8_t m_lmrReductions[SEARCH_MAX_PV_LENGTH][MAX_MOVE_COUNT];
+            uint8_t m_lmrReductions[MAX_SEARCH_DEPTH][MAX_MOVE_COUNT];
             Timer m_timer;
             Evaluator m_evaluator;
             KillerMoveManager m_killerMoveManager;
             RelativeHistory m_relativeHistory;
+            PvTable m_pvTable;
             SearchParameters m_searchParameters;
             uint8_t m_generation;
             uint8_t m_numPiecesRoot; // Number of pieces in the root of the search
@@ -135,7 +131,7 @@ namespace Arcanum
             bool m_shouldStop();
 
             template <bool isPv>
-            eval_t m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions);
+            eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions);
             template <bool isPv>
             eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot);
         public:

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <board.hpp>
+#include <pvtable.hpp>
 
 namespace UCI
 {
@@ -14,7 +15,7 @@ namespace UCI
         bool mate;                           // If mate is found
         int32_t mateDistance;                // Mate distance in moves (not plies.) Negative if engine is being mated.
         Arcanum::Move bestMove;              // Current best move
-        std::vector<Arcanum::Move> pvLine;   // PV-line
+        Arcanum::PvTable* pvTable;           // PV-line
         uint32_t hashfull;                   // Permills of hashtable filled
 
         SearchInfo() :
@@ -26,6 +27,7 @@ namespace UCI
             mate(0),
             mateDistance(0),
             bestMove(Arcanum::NULL_MOVE),
+            pvTable(nullptr),
             hashfull(0)
             {}
     };
