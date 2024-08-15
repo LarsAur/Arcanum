@@ -57,11 +57,6 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
         score += PROMOTE_BIAS + s_pieceValues[promotePiece];
     }
 
-    if(score == 0)
-    {
-        score = m_relativeHistory->get(move, m_board->getTurn());
-    }
-
     return score;
 }
 
@@ -72,10 +67,14 @@ inline void MoveSelector::m_scoreMoves()
     for(uint8_t i = 0; i < m_numMoves; i++)
     {
         int32_t score = m_getMoveScore(m_moves[i]);
-        if(score > MILLION)
+        if(score > 0)
             m_highScoreIdxPairs[m_numHighScoreMoves++] = {.score = score, .index = i};
         else
+        {
+            score = m_relativeHistory->get(m_moves[i], m_board->getTurn());
             m_lowScoreIdxPairs[m_numLowScoreMoves++] = {.score = score, .index = i};
+        }
+
     }
 }
 
@@ -203,7 +202,8 @@ void RelativeHistory::addButterfly(const Move& move, uint8_t depth, Color turn)
 uint32_t RelativeHistory::get(const Move& move, Color turn)
 {
     // Bitshift the history score, to avoid rounding down
-    return (m_hhScores[turn][move.from][move.to] << 16) / m_bfScores[turn][move.from][move.to];
+    uint64_t relativeScore = (m_hhScores[turn][move.from][move.to] << 16) / m_bfScores[turn][move.from][move.to];
+    return uint32_t(relativeScore);
 }
 
 void RelativeHistory::clear()
