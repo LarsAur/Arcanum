@@ -718,6 +718,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         info.depth = depth;
         info.seldepth = m_seldepth;
         info.msTime = m_timer.getMs();
+        info.nsTime = m_timer.getNs();
         info.nodes = m_numNodesSearched;
         info.score = alpha;
         info.hashfull = m_tt.permills();
@@ -760,6 +761,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     info.depth = depth;
     info.seldepth = m_seldepth;
     info.msTime = m_timer.getMs();
+    info.nsTime = m_timer.getNs();
     info.nodes = m_numNodesSearched;
     info.score = searchScore;
     info.hashfull = m_tt.permills();

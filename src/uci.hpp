@@ -10,6 +10,7 @@ namespace UCI
         uint32_t depth;                      // Current depth in iterative deepening
         uint32_t seldepth;                   // Maximum plys from root in current depth interation
         uint64_t msTime;                     // Time searched
+        uint64_t nsTime;                     // Time searched (nano-seconds)
         uint64_t nodes;                      // Number of nodes searched
         Arcanum::eval_t score;               // Current best score in cp
         bool mate;                           // If mate is found

@@ -305,21 +305,27 @@ void UCI::sendUciInfo(const SearchInfo& info)
 
     ss << "info";
     if(info.depth > 0)
-        ss << " depth " << info.depth;
+        ss << " depth " << std::setfill(' ') << std::setw(2) << info.depth;
     if(info.seldepth > 0)
-        ss << " seldepth " << info.seldepth;
+        ss << " seldepth " << std::setfill(' ') << std::setw(2) << info.seldepth;
     if(info.msTime > 0)
-        ss << " time " << info.msTime;
+        ss << " time " << std::setfill(' ') << std::setw(5) << info.msTime;
+    else
+        ss << " time " << std::setfill(' ') << std::setw(5) << 0;
     if(info.nodes > 0)
-        ss << " nodes " << info.nodes;
+        ss << " nodes " << std::setfill(' ') << std::setw(9) << info.nodes;
     if(info.mate)
         ss << " score mate " << info.mateDistance;
     else
-        ss << " score cp " << info.score;
+        ss << " score cp " << std::setfill(' ') << std::setw(5) << info.score;
     if(info.hashfull > 0)
-        ss << " hashfull " << info.hashfull;
+        ss << " hashfull " << std::setfill(' ') << std::setw(3) << info.hashfull;
+    else
+        ss << " hashfull " << std::setfill(' ') << std::setw(3) << 0;
     if(info.nodes > 0 && info.msTime > 0)
-        ss << " nps " << ((1000 * info.nodes) / info.msTime);
+        ss << " nps " << std::setfill(' ') << std::setw(7) << ((1000 * info.nodes) / info.msTime);
+    else if(info.nodes > 0 && info.nsTime > 0)
+        ss << " nps " << std::setfill(' ') << std::setw(7) << ((1000000000 * info.nodes) / info.nsTime);
     if(info.pvTable)
         ss << " pv " << info.pvTable->getPvLine();
 
