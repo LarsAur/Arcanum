@@ -3,7 +3,7 @@
 #include <types.hpp>
 #include <board.hpp>
 #include <eval.hpp>
-#include <transpositionTable.hpp>
+#include <transpositiontable.hpp>
 #include <moveSelector.hpp>
 #include <timer.hpp>
 #include <vector>

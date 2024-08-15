@@ -1,4 +1,4 @@
-#include <transpositionTable.hpp>
+#include <transpositiontable.hpp>
 #include <board.hpp>
 #include <utils.hpp>
 #include <cmath>
