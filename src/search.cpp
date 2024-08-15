@@ -10,7 +10,8 @@ using namespace Arcanum;
 
 Searcher::Searcher()
 {
-    m_tt = std::unique_ptr<TranspositionTable>(new TranspositionTable(32));
+    m_tt = TranspositionTable();
+    m_tt.resize(32);
     m_stats = SearchStats();
     m_generation = 0;
 
@@ -47,13 +48,13 @@ void Searcher::setVerbose(bool enable)
 
 void Searcher::resizeTT(uint32_t mbSize)
 {
-    m_tt->resize(mbSize);
+    m_tt.resize(mbSize);
 }
 
 void Searcher::clear()
 {
     m_generation = 0;
-    m_tt->clear();
+    m_tt.clear();
     m_relativeHistory.clear();
     m_killerMoveManager.clear();
 }
@@ -86,7 +87,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
     }
 
-    std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
+    std::optional<ttEntry_t> entry = m_tt.get(board.getHash(), plyFromRoot);
     if(!isPv && entry.has_value())
     {
         switch (entry->flags)
@@ -189,7 +190,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
-    m_tt->add(bestScore, bestMove, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+    m_tt.add(bestScore, bestMove, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
     // Pop the board off the search stack
     m_searchStack.pop_back();
@@ -220,7 +221,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         return DRAW_VALUE;
 
     eval_t originalAlpha = alpha;
-    std::optional<ttEntry_t> entry = m_tt->get(board.getHash(), plyFromRoot);
+    std::optional<ttEntry_t> entry = m_tt.get(board.getHash(), plyFromRoot);
     if(!isPv && entry.has_value() && (entry->depth >= depth))
     {
         switch (entry->flags)
@@ -325,7 +326,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
             Board newBoard = Board(board);
             int R = 2 + isImproving + depth / 4;
             newBoard.performNullMove();
-            m_tt->prefetch(newBoard.getHash());
+            m_tt.prefetch(newBoard.getHash());
             eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, &_pvLine, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
 
             if(nullMoveScore >= beta)
@@ -347,7 +348,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
         // Generate new board and make the move
         Board newBoard = Board(board);
         newBoard.performMove(*move);
-        m_tt->prefetch(newBoard.getHash());
+        m_tt.prefetch(newBoard.getHash());
         eval_t score;
         bool checkOrChecking = isChecked || newBoard.isChecked();
 
@@ -460,7 +461,7 @@ eval_t Searcher::m_alphaBeta(Board& board, pvLine_t* pvLine, eval_t alpha, eval_
     if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
     else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
-    m_tt->add(bestScore, bestMove, depth, plyFromRoot, staticEval, flag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+    m_tt.add(bestScore, bestMove, depth, plyFromRoot, staticEval, flag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
     return bestScore;
 }
@@ -565,7 +566,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     m_evaluator.initAccumulatorStack(board);
 
-    std::optional<ttEntry_t> ttEntry = m_tt->get(board.getHash(), 0);
+    std::optional<ttEntry_t> ttEntry = m_tt.get(board.getHash(), 0);
 
     if(ttEntry.has_value())
     {
@@ -713,7 +714,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt->add(alpha, bestMove, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
+        m_tt.add(alpha, bestMove, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
         UCI::SearchInfo info = UCI::SearchInfo();
@@ -722,7 +723,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         info.msTime = m_timer.getMs();
         info.nodes = m_numNodesSearched;
         info.score = alpha;
-        info.hashfull = m_tt->permills();
+        info.hashfull = m_tt.permills();
         info.bestMove = bestMove;
         if(Evaluator::isRealMateScore(alpha))
         {
@@ -768,7 +769,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     info.msTime = m_timer.getMs();
     info.nodes = m_numNodesSearched;
     info.score = searchScore;
-    info.hashfull = m_tt->permills();
+    info.hashfull = m_tt.permills();
     info.bestMove = searchBestMove;
     if(Evaluator::isRealMateScore(searchScore))
     {
@@ -797,7 +798,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     if(m_verbose)
     {
-        m_tt->logStats();
+        m_tt.logStats();
         logStats();
     }
 

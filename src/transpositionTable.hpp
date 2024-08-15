@@ -62,8 +62,7 @@ namespace Arcanum
             ttStats_t m_stats;
             size_t m_getClusterIndex(hash_t hash);
         public:
-
-            TranspositionTable(uint32_t mbSize);
+            TranspositionTable();
             ~TranspositionTable();
 
             void prefetch(hash_t hash);

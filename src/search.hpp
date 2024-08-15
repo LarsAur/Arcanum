@@ -114,7 +114,7 @@ namespace Arcanum
     {
         private:
             std::unordered_map<hash_t, uint8_t, HashFunction> m_gameHistory;
-            std::unique_ptr<TranspositionTable> m_tt;
+            TranspositionTable m_tt;
             std::vector<SearchStackElement> m_searchStack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
             uint8_t m_lmrReductions[SEARCH_MAX_PV_LENGTH][MAX_MOVE_COUNT];

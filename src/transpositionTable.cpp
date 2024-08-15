@@ -10,23 +10,12 @@
 
 using namespace Arcanum;
 
-TranspositionTable::TranspositionTable(uint32_t mbSize)
-{
-    m_mbSize = mbSize;
-    m_clusterCount = (mbSize * 1024 * 1024) / sizeof(ttCluster_t);
-    m_entryCount = clusterSize * m_clusterCount;
-    m_table = static_cast<ttCluster_t*>(Memory::pageAlignedMalloc(m_clusterCount * sizeof(ttCluster_t)));
-
-    if(m_table == nullptr)
-    {
-        ERROR("Unable to allocate transposition table")
-        exit(EXIT_FAILURE);
-    }
-
-    clear();
-
-    LOG("Created Transposition Table of " << m_clusterCount << " clusters and " << m_entryCount << " entries using " << unsigned(mbSize) << " MB")
-}
+TranspositionTable::TranspositionTable() :
+    m_mbSize(0),
+    m_table(nullptr),
+    m_clusterCount(0),
+    m_entryCount(0)
+{}
 
 TranspositionTable::~TranspositionTable()
 {
@@ -50,27 +39,21 @@ void TranspositionTable::resize(uint32_t mbSize)
             WARNING("Failed to allocate new transposition table of size " << mbSize << "MB")
             return;
         }
-
-        // Copy the previous entries.
-        // If the new table is smaller, copy as many entries as possible.
-        // Because it just copies the data, the low indices are prioritized over high indices
-        size_t minClusterCount = std::min(m_clusterCount, clusterCount);
-        memcpy(newTable, m_table, minClusterCount * sizeof(ttCluster_t));
-
-        // If the new table is larger, initialize the remaining 'uncopied' entries
-        for(size_t i = minClusterCount; i < clusterCount; i++)
-            for(size_t j = 0; j < clusterSize; j++)
-                newTable[i].entries[j].depth = UINT8_MAX;
     }
 
     // Free the old table and set the new configuration
-    Memory::alignedFree(m_table);
+    if(m_table != nullptr)
+        Memory::alignedFree(m_table);
+
     m_table = newTable;
     m_clusterCount = clusterCount;
     m_entryCount = entryCount;
     m_stats.maxEntries = entryCount;
-    LOG("Successfully resized the transpostition table from " << m_mbSize << "MB to " << mbSize << "MB")
     m_mbSize = mbSize;
+
+    LOG("Resized the transpostition table to " << m_mbSize << "MB (" << m_clusterCount << " Clusters, " << m_entryCount << " Entries)")
+
+    clear();
 }
 
 void TranspositionTable::clearStats()
