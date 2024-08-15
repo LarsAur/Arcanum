@@ -15,6 +15,7 @@ namespace Arcanum
 
         void start();
         int64_t getMs();
+        int64_t getNs();
     };
 
 }
