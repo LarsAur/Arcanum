@@ -708,7 +708,7 @@ void NNUE::logEvalBreakdown(const Arcanum::Board& board)
 
     // Log the Accumulator
     std::cout << "\nAccumulator:\n\n";
-    for(uint32_t i = 0; i < 8; i++)
+    for(uint32_t i = 0; i < 32; i++)
     {
         std::cout << std::setw(5) << i*32 << ":";
         for(uint32_t j = 0; j < 32; j++)
