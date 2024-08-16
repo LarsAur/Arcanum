@@ -316,27 +316,23 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     // Push the board on the search stack before performing any moves (Including null moves)
     m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
 
-    // Perform potential null move search
-    bool nullMoveAllowed = board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5 && !isNullMoveSearch && !isChecked && depth > 2;
-    if(nullMoveAllowed)
+    // Null move search
+    if(depth > 2 && !isChecked && !isNullMoveSearch && staticEval >= beta && board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5)
     {
-        if(staticEval >= beta)
-        {
-            Board newBoard = Board(board);
-            int R = 2 + isImproving + depth / 4;
-            newBoard.performNullMove();
-            m_tt.prefetch(newBoard.getHash());
-            eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
+        Board newBoard = Board(board);
+        int R = 2 + isImproving + depth / 4;
+        newBoard.performNullMove();
+        m_tt.prefetch(newBoard.getHash());
+        eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
 
-            if(nullMoveScore >= beta)
-            {
-                // Pop the board off the search stack before returning
-                m_searchStack.pop_back();
-                m_stats.nullMoveCutoffs++;
-                return nullMoveScore;
-            }
-            m_stats.failedNullMoveCutoffs++;
+        if(nullMoveScore >= beta)
+        {
+            // Pop the board off the search stack before returning
+            m_searchStack.pop_back();
+            m_stats.nullMoveCutoffs++;
+            return nullMoveScore;
         }
+        m_stats.failedNullMoveCutoffs++;
     }
 
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
