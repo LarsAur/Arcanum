@@ -118,7 +118,6 @@ namespace Arcanum
             Move* getLegalMovesFromCheck();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();
-            Move* getLegalCaptureAndCheckMoves();
             uint8_t numOfficers(Color turn) const;
             bool hasOfficers(Color turn) const;
             uint8_t getNumLegalMoves() const;
