@@ -66,20 +66,6 @@ namespace Arcanum
         return (0b1LL << pawnIdx) >> 8;
     }
 
-    static inline bitboard_t getAllKnightsAttacks(bitboard_t bitboard)
-    {
-        // For all knights get the attack bitboard
-        bitboard_t knightAttacksBitBoard = 0LL;
-        while (bitboard)
-        {
-            // Index of the knight
-            int kidx = popLS1B(&bitboard);
-            // Find and add the attack bitboard for the knight
-            knightAttacksBitBoard |= BitboardLookups::knightMoves[kidx];
-        }
-        return knightAttacksBitBoard;
-    }
-
     static inline bitboard_t getKnightAttacks(const uint8_t knightIdx)
     {
         return BitboardLookups::knightMoves[knightIdx];
