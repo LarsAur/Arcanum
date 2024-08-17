@@ -1520,7 +1520,7 @@ bool Board::hasLegalMoveFromCheck()
 uint8_t Board::numOfficers(Color turn) const
 {
     uint8_t numPawns  = CNTSBITS(m_bbTypedPieces[W_PAWN][turn]);
-    uint8_t numPieces = CNTSBITS(m_bbColoredPieces[m_turn]);
+    uint8_t numPieces = CNTSBITS(m_bbColoredPieces[turn]);
 
     // Number of total pieces, subtract pawns and king
     return numPieces - numPawns - 1;
@@ -1529,7 +1529,7 @@ uint8_t Board::numOfficers(Color turn) const
 bool Board::hasOfficers(Color turn) const
 {
     uint8_t numPawns  = CNTSBITS(m_bbTypedPieces[W_PAWN][turn]);
-    uint8_t numPieces = CNTSBITS(m_bbColoredPieces[m_turn]);
+    uint8_t numPieces = CNTSBITS(m_bbColoredPieces[turn]);
 
     // If there are more pieces on the board than the number of pawns and the king
     // There must be at least one officer on the board
