@@ -66,7 +66,7 @@ namespace Arcanum
         return (0b1LL << pawnIdx) >> 8;
     }
 
-    static inline bitboard_t getKnightAttacks(const uint8_t knightIdx)
+    static inline bitboard_t getKnightMoves(const uint8_t knightIdx)
     {
         return BitboardLookups::knightMoves[knightIdx];
     }

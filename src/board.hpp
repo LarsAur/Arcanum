@@ -155,7 +155,7 @@ namespace Arcanum
             {
                 case MoveInfoBit::PAWN_MOVE:    return;
                 case MoveInfoBit::ROOK_MOVE:    moves = getRookMoves(m_bbAllPieces, pieceIdx);   break;
-                case MoveInfoBit::KNIGHT_MOVE:  moves = getKnightAttacks(pieceIdx);              break;
+                case MoveInfoBit::KNIGHT_MOVE:  moves = getKnightMoves(pieceIdx);                break;
                 case MoveInfoBit::BISHOP_MOVE:  moves = getBishopMoves(m_bbAllPieces, pieceIdx); break;
                 case MoveInfoBit::QUEEN_MOVE:   moves = getQueenMoves(m_bbAllPieces, pieceIdx);  break;
                 case MoveInfoBit::KING_MOVE:    return;

@@ -195,7 +195,7 @@ Move* Board::getLegalMovesFromCheck()
     bitboard_t pawnAttackers = opponentPawns & kingPawnAttacks;
 
     // -- Knight
-    bitboard_t knightAttackers = getKnightAttacks(kingIdx) & m_bbTypedPieces[W_KNIGHT][opponent];
+    bitboard_t knightAttackers = getKnightMoves(kingIdx) & m_bbTypedPieces[W_KNIGHT][opponent];
 
     // -- Rooks + Queen
     bitboard_t rqPieces = m_bbTypedPieces[W_ROOK][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
@@ -230,7 +230,7 @@ Move* Board::getLegalMovesFromCheck()
     if(knightAttackers | pawnAttackers)
     {
         // -- Knight captures
-        bitboard_t capturingKnights = getKnightAttacks(attackerIdx) & m_bbTypedPieces[W_KNIGHT][m_turn];
+        bitboard_t capturingKnights = getKnightMoves(attackerIdx) & m_bbTypedPieces[W_KNIGHT][m_turn];
         while (capturingKnights)
             m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingKnights), attackerIdx, MoveInfoBit::KNIGHT_MOVE), kingIdx);
 
@@ -319,7 +319,7 @@ Move* Board::getLegalMovesFromCheck()
     while (knights)
     {
         square_t knightIdx = popLS1B(&knights);
-        bitboard_t knightMoves = getKnightAttacks(knightIdx);
+        bitboard_t knightMoves = getKnightMoves(knightIdx);
         knightMoves &= blockingMask;
         while(knightMoves)
         {
@@ -822,7 +822,7 @@ bool Board::hasLegalMove()
     while (knights)
     {
         square_t knightIdx = popLS1B(&knights);
-        bitboard_t knightMoves = getKnightAttacks(knightIdx);
+        bitboard_t knightMoves = getKnightMoves(knightIdx);
         knightMoves &= ~m_bbColoredPieces[m_turn];
 
         while(knightMoves)
@@ -969,7 +969,7 @@ bool Board::hasLegalMoveFromCheck()
     bitboard_t pawnAttackers = opponentPawns & kingPawnAttacks;
 
     // -- Knight
-    bitboard_t knightAttackers = getKnightAttacks(kingIdx) & m_bbTypedPieces[W_KNIGHT][opponent];
+    bitboard_t knightAttackers = getKnightMoves(kingIdx) & m_bbTypedPieces[W_KNIGHT][opponent];
 
     // -- Rooks + Queen
     bitboard_t rqPieces = m_bbTypedPieces[W_ROOK][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
@@ -1000,7 +1000,7 @@ bool Board::hasLegalMoveFromCheck()
     if(knightAttackers | pawnAttackers)
     {
         // -- Knight captures
-        bitboard_t capturingKnights = getKnightAttacks(attackerIdx) & m_bbTypedPieces[W_KNIGHT][m_turn];
+        bitboard_t capturingKnights = getKnightMoves(attackerIdx) & m_bbTypedPieces[W_KNIGHT][m_turn];
         while (capturingKnights)
             if(m_isLegalMove(Move(popLS1B(&capturingKnights), attackerIdx, MoveInfoBit::KNIGHT_MOVE), kingIdx)) return true;
 
@@ -1076,7 +1076,7 @@ bool Board::hasLegalMoveFromCheck()
     while (knights)
     {
         square_t knightIdx = popLS1B(&knights);
-        bitboard_t knightMoves = getKnightAttacks(knightIdx);
+        bitboard_t knightMoves = getKnightMoves(knightIdx);
         knightMoves &= blockingMask;
         while(knightMoves)
         {
@@ -1433,7 +1433,7 @@ bitboard_t Board::getOpponentAttacks()
     bitboard_t tmpKnights = m_bbTypedPieces[W_KNIGHT][opponent];
     while (tmpKnights)
     {
-        attacks |= getKnightAttacks(popLS1B(&tmpKnights));
+        attacks |= getKnightMoves(popLS1B(&tmpKnights));
     }
 
     // Remove the king from the occupied mask such that when it moves, the previous king position will not block
@@ -1502,7 +1502,7 @@ bool Board::isChecked()
     }
 
     // Knights
-    bitboard_t knightAttackPositions = getKnightAttacks(kingIdx);
+    bitboard_t knightAttackPositions = getKnightMoves(kingIdx);
     if(knightAttackPositions & m_bbTypedPieces[W_KNIGHT][opponent])
     {
         m_checkedCache = CheckedCacheState::CHECKED;
@@ -1572,7 +1572,7 @@ bitboard_t Board::attackersTo(const square_t square) const
     bitboard_t queens  = m_bbTypedPieces[Piece::W_QUEEN][Color::WHITE]  | m_bbTypedPieces[Piece::W_QUEEN][Color::BLACK];
     bitboard_t kings   = m_bbTypedPieces[Piece::W_KING][Color::WHITE]   | m_bbTypedPieces[Piece::W_KING][Color::BLACK];
 
-    attackers |= getKnightAttacks(square) & knights;
+    attackers |= getKnightMoves(square) & knights;
     attackers |= getRookMoves(m_bbAllPieces, square) & (rooks | queens);
     attackers |= getBishopMoves(m_bbAllPieces, square) & (bishops | queens);
     attackers |= getKingMoves(square) & kings;
