@@ -89,6 +89,10 @@ namespace Arcanum
             bool m_isLegalMove(Move move, square_t kingIdx);
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
+
+            template <MoveInfoBit MoveType, bool CapturesOnly>
+            void m_generateMoves();
+
         public:
             Board(const Board& board);
             Board(const std::string fen);
@@ -124,4 +128,52 @@ namespace Arcanum
             bitboard_t attackersTo(square_t square) const;
             bool see(const Move& move) const;
     };
+
+    template <MoveInfoBit MoveType, bool CapturesOnly>
+    inline void Board::m_generateMoves()
+    {
+        // TODO: Precalculate king index and just use it in isLegalMove
+        square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
+
+        Piece type;
+        switch (MoveType)
+        {
+            case MoveInfoBit::PAWN_MOVE:   type = W_PAWN;   break;
+            case MoveInfoBit::ROOK_MOVE:   type = W_ROOK;   break;
+            case MoveInfoBit::KNIGHT_MOVE: type = W_KNIGHT; break;
+            case MoveInfoBit::BISHOP_MOVE: type = W_BISHOP; break;
+            case MoveInfoBit::QUEEN_MOVE:  type = W_QUEEN;  break;
+            case MoveInfoBit::KING_MOVE:   type = W_KING;   break;
+        }
+
+        bitboard_t pieces = m_bbTypedPieces[type][m_turn];
+
+        while (pieces)
+        {
+            square_t pieceIdx = popLS1B(&pieces);
+            bitboard_t moves;
+            switch (MoveType)
+            {
+                case MoveInfoBit::PAWN_MOVE:    return;
+                case MoveInfoBit::ROOK_MOVE:    moves = getRookMoves(m_bbAllPieces, pieceIdx);   break;
+                case MoveInfoBit::KNIGHT_MOVE:  moves = getKnightAttacks(pieceIdx);              break;
+                case MoveInfoBit::BISHOP_MOVE:  moves = getBishopMoves(m_bbAllPieces, pieceIdx); break;
+                case MoveInfoBit::QUEEN_MOVE:   moves = getQueenMoves(m_bbAllPieces, pieceIdx);  break;
+                case MoveInfoBit::KING_MOVE:    return;
+            }
+
+            // Filter the allowed target squares
+            if constexpr (CapturesOnly)
+                moves &= m_bbColoredPieces[m_turn^1]; // All opponent pieces
+            else
+                moves &= ~m_bbColoredPieces[m_turn];  // All squares except own pieces
+
+            while(moves)
+            {
+                square_t target = popLS1B(&moves);
+                m_attemptAddPseudoLegalMove(Move(pieceIdx, target, MoveType), kingIdx);
+            }
+        }
+    }
+
 }

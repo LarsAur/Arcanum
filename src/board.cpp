@@ -500,65 +500,10 @@ Move* Board::getLegalMoves()
 
     square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
 
-    // Queen moves
-    bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
-    while (queens)
-    {
-        square_t queenIdx = popLS1B(&queens);
-        bitboard_t queenMoves = getQueenMoves(m_bbAllPieces, queenIdx);
-        queenMoves &= ~m_bbColoredPieces[m_turn];
-
-        while(queenMoves)
-        {
-            square_t target = popLS1B(&queenMoves);
-            m_attemptAddPseudoLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE), kingIdx);
-        }
-    }
-
-    // Knight moves
-    bitboard_t knights = m_bbTypedPieces[W_KNIGHT][m_turn];
-    while (knights)
-    {
-        square_t knightIdx = popLS1B(&knights);
-        bitboard_t knightMoves = getKnightAttacks(knightIdx);
-        knightMoves &= ~m_bbColoredPieces[m_turn];
-
-        while(knightMoves)
-        {
-            uint8_t target = popLS1B(&knightMoves);
-            m_attemptAddPseudoLegalMove(Move(knightIdx, target, MoveInfoBit::KNIGHT_MOVE), kingIdx);
-        }
-    }
-
-    // Bishop moves
-    bitboard_t bishops = m_bbTypedPieces[W_BISHOP][m_turn];
-    while (bishops)
-    {
-        square_t bishopIdx = popLS1B(&bishops);
-        bitboard_t bishopMoves = getBishopMoves(m_bbAllPieces, bishopIdx);
-        bishopMoves &= ~m_bbColoredPieces[m_turn];
-
-        while(bishopMoves)
-        {
-            square_t target = popLS1B(&bishopMoves);
-            m_attemptAddPseudoLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE), kingIdx);
-        }
-    }
-
-    // Rook moves
-    bitboard_t rooks = m_bbTypedPieces[W_ROOK][m_turn];
-    while (rooks)
-    {
-        square_t rookIdx = popLS1B(&rooks);
-        bitboard_t rookMoves = getRookMoves(m_bbAllPieces, rookIdx);
-        rookMoves &= ~m_bbColoredPieces[m_turn];
-
-        while(rookMoves)
-        {
-            square_t target = popLS1B(&rookMoves);
-            m_attemptAddPseudoLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE), kingIdx);
-        }
-    }
+    m_generateMoves<MoveInfoBit::ROOK_MOVE, false>();
+    m_generateMoves<MoveInfoBit::KNIGHT_MOVE, false>();
+    m_generateMoves<MoveInfoBit::BISHOP_MOVE, false>();
+    m_generateMoves<MoveInfoBit::QUEEN_MOVE, false>();
 
     // Pawn moves
     bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
@@ -958,63 +903,10 @@ Move* Board::getLegalCaptureMoves()
     Color opponent = Color(m_turn ^ 1);
     square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
 
-    // Queen moves
-    bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
-    while (queens)
-    {
-        square_t queenIdx = popLS1B(&queens);
-        bitboard_t queenMoves = getQueenMoves(m_bbAllPieces, queenIdx);
-        queenMoves &= ~m_bbColoredPieces[m_turn] & m_bbColoredPieces[opponent];
-
-        while(queenMoves)
-        {
-            square_t target = popLS1B(&queenMoves);
-            m_attemptAddPseudoLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE), kingIdx);
-        }
-    }
-
-    // Knight moves
-    bitboard_t knights = m_bbTypedPieces[W_KNIGHT][m_turn];
-    while (knights)
-    {
-        square_t knightIdx = popLS1B(&knights);
-        bitboard_t knightMoves = getKnightAttacks(knightIdx);
-        knightMoves &= ~m_bbColoredPieces[m_turn] & m_bbColoredPieces[opponent];
-        while(knightMoves)
-        {
-            square_t target = popLS1B(&knightMoves);
-            m_attemptAddPseudoLegalMove(Move(knightIdx, target,  MoveInfoBit::KNIGHT_MOVE), kingIdx);
-        }
-    }
-
-    // Bishop moves
-    bitboard_t bishops = m_bbTypedPieces[W_BISHOP][m_turn];
-    while (bishops)
-    {
-        square_t bishopIdx = popLS1B(&bishops);
-        bitboard_t bishopMoves = getBishopMoves(m_bbAllPieces, bishopIdx);
-        bishopMoves &= ~m_bbColoredPieces[m_turn] & m_bbColoredPieces[opponent];
-
-        while(bishopMoves)
-        {
-            square_t target = popLS1B(&bishopMoves);
-            m_attemptAddPseudoLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE), kingIdx);
-        }
-    }
-
-    // Rook moves
-    bitboard_t rooks = m_bbTypedPieces[W_ROOK][m_turn];
-    while (rooks)
-    {
-        square_t rookIdx = popLS1B(&rooks);
-        bitboard_t rookMoves = getRookMoves(m_bbAllPieces, rookIdx);
-        rookMoves &= ~m_bbColoredPieces[m_turn] & m_bbColoredPieces[opponent];
-        while(rookMoves)
-        {
-            square_t target = popLS1B(&rookMoves);
-            m_attemptAddPseudoLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE), kingIdx);
-        }
-    }
+    m_generateMoves<MoveInfoBit::ROOK_MOVE, true>();
+    m_generateMoves<MoveInfoBit::KNIGHT_MOVE, true>();
+    m_generateMoves<MoveInfoBit::BISHOP_MOVE, true>();
+    m_generateMoves<MoveInfoBit::QUEEN_MOVE, true>();
 
     // Pawn captues
     bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
