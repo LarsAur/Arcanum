@@ -317,7 +317,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
 
     // Null move search
-    if(depth > 2 && !isChecked && !isNullMoveSearch && staticEval >= beta && board.numOfficers(board.getTurn()) > 1 && board.getColoredPieces(board.getTurn()) > 5)
+    if(depth > 2 && !isChecked && !isNullMoveSearch && staticEval >= beta && board.hasOfficers(board.getTurn()))
     {
         Board newBoard = Board(board);
         int R = 2 + isImproving + depth / 4;
