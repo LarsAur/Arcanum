@@ -799,65 +799,12 @@ bool Board::hasLegalMove()
     kMoves &= ~(m_bbColoredPieces[m_turn] | opponentAttacks);
     if(kMoves) return true;
 
-    // Queen moves
-    bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
-    while (queens)
-    {
-        square_t queenIdx = popLS1B(&queens);
-        bitboard_t queenMoves = getQueenMoves(m_bbAllPieces, queenIdx);
-        queenMoves &= ~m_bbColoredPieces[m_turn];
-
-        while(queenMoves)
-        {
-            square_t target = popLS1B(&queenMoves);
-            if(m_isLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE))) return true;
-        }
-    }
-
-    // Knight moves
-    bitboard_t knights = m_bbTypedPieces[W_KNIGHT][m_turn];
-    while (knights)
-    {
-        square_t knightIdx = popLS1B(&knights);
-        bitboard_t knightMoves = getKnightMoves(knightIdx);
-        knightMoves &= ~m_bbColoredPieces[m_turn];
-
-        while(knightMoves)
-        {
-            square_t target = popLS1B(&knightMoves);
-            if(m_isLegalMove(Move(knightIdx, target, MoveInfoBit::KNIGHT_MOVE))) return true;
-        }
-    }
-
-    // Bishop moves
-    bitboard_t bishops = m_bbTypedPieces[W_BISHOP][m_turn];
-    while (bishops)
-    {
-        square_t bishopIdx = popLS1B(&bishops);
-        bitboard_t bishopMoves = getBishopMoves(m_bbAllPieces, bishopIdx);
-        bishopMoves &= ~m_bbColoredPieces[m_turn];
-
-        while(bishopMoves)
-        {
-            square_t target = popLS1B(&bishopMoves);
-            if(m_isLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE))) return true;
-        }
-    }
-
-    // Rook moves
-    bitboard_t rooks = m_bbTypedPieces[W_ROOK][m_turn];
-    while (rooks)
-    {
-        square_t rookIdx = popLS1B(&rooks);
-        bitboard_t rookMoves = getRookMoves(m_bbAllPieces, rookIdx);
-        rookMoves &= ~m_bbColoredPieces[m_turn];
-
-        while(rookMoves)
-        {
-            square_t target = popLS1B(&rookMoves);
-            if(m_isLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE))) return true;
-        }
-    }
+    // Note: The ordering can matter for performance
+    // Try the cheapest moves to generate first
+    if(m_hasMove<MoveInfoBit::KNIGHT_MOVE>()) return true;
+    if(m_hasMove<MoveInfoBit::BISHOP_MOVE>()) return true;
+    if(m_hasMove<MoveInfoBit::QUEEN_MOVE>()) return true;
+    if(m_hasMove<MoveInfoBit::ROOK_MOVE>()) return true;
 
     // Pawn moves
     bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];

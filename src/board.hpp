@@ -95,6 +95,9 @@ namespace Arcanum
             template <MoveInfoBit MoveType, bool CapturesOnly>
             void m_generateMoves();
 
+            template <MoveInfoBit MoveType>
+            bool m_hasMove();
+
         public:
             Board(const Board& board);
             Board(const std::string fen);
@@ -172,6 +175,50 @@ namespace Arcanum
                 m_attemptAddPseudoLegalMove(Move(pieceIdx, target, MoveType));
             }
         }
+    }
+
+    template <MoveInfoBit MoveType>
+    inline bool Board::m_hasMove()
+    {
+        Piece type;
+        switch (MoveType)
+        {
+            case MoveInfoBit::PAWN_MOVE:   type = W_PAWN;   break;
+            case MoveInfoBit::ROOK_MOVE:   type = W_ROOK;   break;
+            case MoveInfoBit::KNIGHT_MOVE: type = W_KNIGHT; break;
+            case MoveInfoBit::BISHOP_MOVE: type = W_BISHOP; break;
+            case MoveInfoBit::QUEEN_MOVE:  type = W_QUEEN;  break;
+            case MoveInfoBit::KING_MOVE:   type = W_KING;   break;
+        }
+
+        bitboard_t pieces = m_bbTypedPieces[type][m_turn];
+
+        while (pieces)
+        {
+            square_t pieceIdx = popLS1B(&pieces);
+            bitboard_t moves;
+            switch (MoveType)
+            {
+                case MoveInfoBit::PAWN_MOVE:    return false;
+                case MoveInfoBit::ROOK_MOVE:    moves = getRookMoves(m_bbAllPieces, pieceIdx);   break;
+                case MoveInfoBit::KNIGHT_MOVE:  moves = getKnightMoves(pieceIdx);                break;
+                case MoveInfoBit::BISHOP_MOVE:  moves = getBishopMoves(m_bbAllPieces, pieceIdx); break;
+                case MoveInfoBit::QUEEN_MOVE:   moves = getQueenMoves(m_bbAllPieces, pieceIdx);  break;
+                case MoveInfoBit::KING_MOVE:    return false;
+            }
+
+            // Filter the allowed target squares
+            moves &= ~m_bbColoredPieces[m_turn];  // All squares except own pieces
+
+            while(moves)
+            {
+                square_t target = popLS1B(&moves);
+                if(m_isLegalMove(Move(pieceIdx, target, MoveType)))
+                    return true;
+            }
+        }
+
+        return false;
     }
 
 }
