@@ -51,6 +51,7 @@ Board::Board(const Board& board)
     m_checkedCache = board.m_checkedCache;
     m_moveset = MoveSet::NOT_GENERATED; // Moves are not copied over
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
+    m_kingIdx = board.m_kingIdx;
 }
 
 // Calulate slider blockers and pinners
@@ -97,7 +98,7 @@ inline void Board::m_findPinnedPieces()
     }
 }
 
-inline bool Board::m_isLegalEnpassant(Move move, square_t kingIdx)
+inline bool Board::m_isLegalEnpassant(Move move)
 {
     bitboard_t bbFrom = (0b1LL << move.from);
     bitboard_t bbTo = (0b1LL << move.to);
@@ -106,9 +107,9 @@ inline bool Board::m_isLegalEnpassant(Move move, square_t kingIdx)
     // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
     if(move.moveInfo & MoveInfoBit::ENPASSANT)
     {
-        if(RANK(m_enPassantTarget) == RANK(kingIdx))
+        if(RANK(m_enPassantTarget) == RANK(m_kingIdx))
         {
-            bitboard_t kingRookMoves = getRookMoves((m_bbAllPieces & ~m_bbEnPassantTarget & ~bbFrom) | bbTo, kingIdx);
+            bitboard_t kingRookMoves = getRookMoves((m_bbAllPieces & ~m_bbEnPassantTarget & ~bbFrom) | bbTo, m_kingIdx);
             if(kingRookMoves & (m_bbTypedPieces[W_ROOK][opponent] | m_bbTypedPieces[W_QUEEN][opponent]))
                 return false;
         }
@@ -123,7 +124,7 @@ inline bool Board::m_isLegalEnpassant(Move move, square_t kingIdx)
     // Have to check for blockers still blocking after move
     // TODO: This can be replaced by a lookup table similar to between by containing the entire line
     square_t pinnerIdx = m_pinnerBlockerIdxPairs[move.from];
-    if((getBetweens(pinnerIdx, kingIdx) | (1LL << pinnerIdx)) & bbTo)
+    if((getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx)) & bbTo)
     {
         return true;
     }
@@ -131,9 +132,9 @@ inline bool Board::m_isLegalEnpassant(Move move, square_t kingIdx)
     return false;
 }
 
-inline bool Board::m_attemptAddPseudoLegalEnpassant(Move move, square_t kingIdx)
+inline bool Board::m_attemptAddPseudoLegalEnpassant(Move move)
 {
-    if(m_isLegalEnpassant(move, kingIdx))
+    if(m_isLegalEnpassant(move))
     {
         m_legalMoves[m_numLegalMoves++] = move;
         return true;
@@ -142,7 +143,7 @@ inline bool Board::m_attemptAddPseudoLegalEnpassant(Move move, square_t kingIdx)
     return false;
 }
 
-inline bool Board::m_isLegalMove(Move move, square_t kingIdx)
+inline bool Board::m_isLegalMove(Move move)
 {
     bitboard_t bbFrom = (0b1LL << move.from);
     bitboard_t bbTo = (0b1LL << move.to);
@@ -156,7 +157,7 @@ inline bool Board::m_isLegalMove(Move move, square_t kingIdx)
     // Have to check for blockers still blocking after move
     // TODO: This can be replaced by a lookup table similar to between by containing the entire line
     square_t pinnerIdx = m_pinnerBlockerIdxPairs[move.from];
-    if((getBetweens(pinnerIdx, kingIdx) | (1LL << pinnerIdx)) & bbTo)
+    if((getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx)) & bbTo)
     {
         return true;
     }
@@ -164,9 +165,9 @@ inline bool Board::m_isLegalMove(Move move, square_t kingIdx)
     return false;
 }
 
-inline bool Board::m_attemptAddPseudoLegalMove(Move move, square_t kingIdx)
+inline bool Board::m_attemptAddPseudoLegalMove(Move move)
 {
-    if(m_isLegalMove(move, kingIdx))
+    if(m_isLegalMove(move))
     {
         m_legalMoves[m_numLegalMoves++] = move;
         return true;
@@ -181,7 +182,6 @@ Move* Board::getLegalMovesFromCheck()
     m_numLegalMoves = 0;
     Color opponent = Color(m_turn^1);
     bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];
-    square_t kingIdx = LS1B(bbKing);
 
     // -- Check if there are more than one checking piece
 
@@ -195,27 +195,27 @@ Move* Board::getLegalMovesFromCheck()
     bitboard_t pawnAttackers = opponentPawns & kingPawnAttacks;
 
     // -- Knight
-    bitboard_t knightAttackers = getKnightMoves(kingIdx) & m_bbTypedPieces[W_KNIGHT][opponent];
+    bitboard_t knightAttackers = getKnightMoves(m_kingIdx) & m_bbTypedPieces[W_KNIGHT][opponent];
 
     // -- Rooks + Queen
     bitboard_t rqPieces = m_bbTypedPieces[W_ROOK][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
-    bitboard_t kingRookAttacks = getRookMoves(m_bbAllPieces, kingIdx);
+    bitboard_t kingRookAttacks = getRookMoves(m_bbAllPieces, m_kingIdx);
     bitboard_t rookAttackers = kingRookAttacks & rqPieces;
 
     // -- Bishop + Queen
     bitboard_t bqPieces = m_bbTypedPieces[W_BISHOP][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
-    bitboard_t kingBishopAttacks = getBishopMoves(m_bbAllPieces, kingIdx);
+    bitboard_t kingBishopAttacks = getBishopMoves(m_bbAllPieces, m_kingIdx);
     bitboard_t bishopAttackers = kingBishopAttacks & bqPieces;
 
     bitboard_t attackers = knightAttackers | rookAttackers | bishopAttackers | pawnAttackers;
 
     // Add king moves
-    bitboard_t kMoves = getKingMoves(kingIdx);
+    bitboard_t kMoves = getKingMoves(m_kingIdx);
     kMoves &= ~(m_bbColoredPieces[m_turn] | getOpponentAttacks());
     while(kMoves)
     {
         square_t target = popLS1B(&kMoves);
-        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MoveInfoBit::KING_MOVE);
+        m_legalMoves[m_numLegalMoves++] = Move(m_kingIdx, target, MoveInfoBit::KING_MOVE);
     }
 
     // If there are more than one attacker, the only solution is to move the king
@@ -232,7 +232,7 @@ Move* Board::getLegalMovesFromCheck()
         // -- Knight captures
         bitboard_t capturingKnights = getKnightMoves(attackerIdx) & m_bbTypedPieces[W_KNIGHT][m_turn];
         while (capturingKnights)
-            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingKnights), attackerIdx, MoveInfoBit::KNIGHT_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingKnights), attackerIdx, MoveInfoBit::KNIGHT_MOVE));
 
         // -- Pawn captures
         bitboard_t capturingPawns;
@@ -248,7 +248,7 @@ Move* Board::getLegalMovesFromCheck()
             if(attackers & 0xff000000000000ffLL)
             {
                 // If one promotion move is legal, all are legal
-                bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, attackerIdx, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+                bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, attackerIdx, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
                 if(added)
                 {
                     m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, attackerIdx, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -258,7 +258,7 @@ Move* Board::getLegalMovesFromCheck()
             }
             else
             {
-                m_attemptAddPseudoLegalMove(Move(pawnIdx, attackerIdx, MoveInfoBit::PAWN_MOVE), kingIdx);
+                m_attemptAddPseudoLegalMove(Move(pawnIdx, attackerIdx, MoveInfoBit::PAWN_MOVE));
             }
         }
 
@@ -271,7 +271,7 @@ Move* Board::getLegalMovesFromCheck()
         capturingPawns = m_bbTypedPieces[W_PAWN][m_turn] & capturingPawns;
         while(capturingPawns)
         {
-            m_attemptAddPseudoLegalEnpassant(Move(popLS1B(&capturingPawns), m_enPassantSquare, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::PAWN_MOVE | MoveInfoBit::ENPASSANT), kingIdx);
+            m_attemptAddPseudoLegalEnpassant(Move(popLS1B(&capturingPawns), m_enPassantSquare, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::PAWN_MOVE | MoveInfoBit::ENPASSANT));
         }
 
         // -- Rook + Queen captures
@@ -279,18 +279,18 @@ Move* Board::getLegalMovesFromCheck()
         bitboard_t capturingRooks = capturingRookMoves & m_bbTypedPieces[W_ROOK][m_turn];
         bitboard_t capturingRQueens = capturingRookMoves & m_bbTypedPieces[W_QUEEN][m_turn];
         while (capturingRooks)
-            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingRooks), attackerIdx, MoveInfoBit::ROOK_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingRooks), attackerIdx, MoveInfoBit::ROOK_MOVE));
         while (capturingRQueens)
-            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingRQueens), attackerIdx, MoveInfoBit::QUEEN_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingRQueens), attackerIdx, MoveInfoBit::QUEEN_MOVE));
 
         // -- Bishop + Queen captures
         bitboard_t capturingBishopMoves = getBishopMoves(m_bbAllPieces, attackerIdx);
         bitboard_t capturingBishops = capturingBishopMoves & m_bbTypedPieces[W_BISHOP][m_turn];
         bitboard_t capturingBQueens = capturingBishopMoves & m_bbTypedPieces[W_QUEEN][m_turn];
         while (capturingBishops)
-            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingBishops), attackerIdx, MoveInfoBit::BISHOP_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingBishops), attackerIdx, MoveInfoBit::BISHOP_MOVE));
         while (capturingBQueens)
-            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingBQueens), attackerIdx, MoveInfoBit::QUEEN_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingBQueens), attackerIdx, MoveInfoBit::QUEEN_MOVE));
 
         return m_legalMoves;
     }
@@ -298,7 +298,7 @@ Move* Board::getLegalMovesFromCheck()
     // -- The attacking piece is a sliding piece (Rook, Bishop or Queen)
 
     // Create a blocking mask, consisting of all squares in which pieces can move to block attackers
-    bitboard_t blockingMask = attackers | getBetweens(attackerIdx, kingIdx);
+    bitboard_t blockingMask = attackers | getBetweens(attackerIdx, m_kingIdx);
 
     // Queen moves
     bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
@@ -310,7 +310,7 @@ Move* Board::getLegalMovesFromCheck()
         while(queenMoves)
         {
             square_t target = popLS1B(&queenMoves);
-            m_attemptAddPseudoLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE));
         }
     }
 
@@ -324,7 +324,7 @@ Move* Board::getLegalMovesFromCheck()
         while(knightMoves)
         {
             square_t target = popLS1B(&knightMoves);
-            m_attemptAddPseudoLegalMove(Move(knightIdx, target, MoveInfoBit::KNIGHT_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(knightIdx, target, MoveInfoBit::KNIGHT_MOVE));
         }
     }
 
@@ -339,7 +339,7 @@ Move* Board::getLegalMovesFromCheck()
         while(bishopMoves)
         {
             square_t target = popLS1B(&bishopMoves);
-            m_attemptAddPseudoLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE));
         }
     }
 
@@ -354,7 +354,7 @@ Move* Board::getLegalMovesFromCheck()
         while(rookMoves)
         {
             square_t target = popLS1B(&rookMoves);
-            m_attemptAddPseudoLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE));
         }
     }
 
@@ -402,7 +402,7 @@ Move* Board::getLegalMovesFromCheck()
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
             // If one promotion move is legal, all are legal
-            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
             if(added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -414,7 +414,7 @@ Move* Board::getLegalMovesFromCheck()
         {
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
             Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-            m_attemptAddPseudoLegalEnpassant(move, kingIdx);
+            m_attemptAddPseudoLegalEnpassant(move);
         }
     }
 
@@ -426,7 +426,7 @@ Move* Board::getLegalMovesFromCheck()
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
             // If one promotion move is legal, all are legal
-            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
             if(added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -438,7 +438,7 @@ Move* Board::getLegalMovesFromCheck()
         {
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
             Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-            m_attemptAddPseudoLegalEnpassant(move, kingIdx);
+            m_attemptAddPseudoLegalEnpassant(move);
         }
     }
 
@@ -451,7 +451,7 @@ Move* Board::getLegalMovesFromCheck()
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
             // If one promotion move is legal, all are legal
-            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
             if(added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -461,7 +461,7 @@ Move* Board::getLegalMovesFromCheck()
         }
         else
         {
-            m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
         }
     }
 
@@ -472,7 +472,7 @@ Move* Board::getLegalMovesFromCheck()
     {
         int target = popLS1B(&doubleMoves);
         int pawnIdx = popLS1B(&doubleMovesOrigin);
-        m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE), kingIdx);
+        m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE));
     }
 
     return m_legalMoves;
@@ -497,8 +497,6 @@ Move* Board::getLegalMoves()
 
     // Create bitboard for where the king would be attacked
     bitboard_t opponentAttacks = getOpponentAttacks();
-
-    square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
 
     m_generateMoves<MoveInfoBit::ROOK_MOVE, false>();
     m_generateMoves<MoveInfoBit::KNIGHT_MOVE, false>();
@@ -549,7 +547,7 @@ Move* Board::getLegalMoves()
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
             // If one promotion move is legal, all are legal
-            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
             if(added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -561,7 +559,7 @@ Move* Board::getLegalMoves()
         {
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
             Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-            m_attemptAddPseudoLegalEnpassant(move, kingIdx);
+            m_attemptAddPseudoLegalEnpassant(move);
         }
     }
 
@@ -573,7 +571,7 @@ Move* Board::getLegalMoves()
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
             // If one promotion move is legal, all are legal
-            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
             if(added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -585,7 +583,7 @@ Move* Board::getLegalMoves()
         {
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
             Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-            m_attemptAddPseudoLegalEnpassant(move, kingIdx);
+            m_attemptAddPseudoLegalEnpassant(move);
         }
     }
 
@@ -598,7 +596,7 @@ Move* Board::getLegalMoves()
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
             // If one promotion move is legal, all are legal
-            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
             if(added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -608,7 +606,7 @@ Move* Board::getLegalMoves()
         }
         else
         {
-            m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE), kingIdx);
+            m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
         }
     }
 
@@ -619,16 +617,16 @@ Move* Board::getLegalMoves()
     {
         int target = popLS1B(&doubleMoves);
         int pawnIdx = popLS1B(&doubleMovesOrigin);
-        m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE), kingIdx);
+        m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE));
     }
 
     // King moves
-    bitboard_t kMoves = getKingMoves(kingIdx);
+    bitboard_t kMoves = getKingMoves(m_kingIdx);
     kMoves &= ~(m_bbColoredPieces[m_turn] | opponentAttacks);
     while(kMoves)
     {
         square_t target = popLS1B(&kMoves);
-        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MoveInfoBit::KING_MOVE);
+        m_legalMoves[m_numLegalMoves++] = Move(m_kingIdx, target, MoveInfoBit::KING_MOVE);
     }
 
     // Castle
@@ -688,7 +686,6 @@ Move* Board::getLegalCaptureMoves()
     m_numLegalMoves = 0;
     // Everything below is generating moves when not in check, thus we can filter for capturing moves
     Color opponent = Color(m_turn ^ 1);
-    square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
 
     m_generateMoves<MoveInfoBit::ROOK_MOVE, true>();
     m_generateMoves<MoveInfoBit::KNIGHT_MOVE, true>();
@@ -725,7 +722,7 @@ Move* Board::getLegalCaptureMoves()
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
             // If one promotion move is legal, all are legal
-            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
             if(added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -737,7 +734,7 @@ Move* Board::getLegalCaptureMoves()
         {
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
             Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-            m_attemptAddPseudoLegalEnpassant(move, kingIdx);
+            m_attemptAddPseudoLegalEnpassant(move);
         }
     }
 
@@ -749,7 +746,7 @@ Move* Board::getLegalCaptureMoves()
         if((0b1LL << target) & 0xff000000000000ffLL)
         {
             // If one promotion move is legal, all are legal
-            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN), kingIdx);
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
             if(added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
@@ -761,18 +758,18 @@ Move* Board::getLegalCaptureMoves()
         {
             // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
             Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-            m_attemptAddPseudoLegalEnpassant(move, kingIdx);
+            m_attemptAddPseudoLegalEnpassant(move);
         }
     }
 
     // King moves
-    bitboard_t kMoves = getKingMoves(kingIdx);
+    bitboard_t kMoves = getKingMoves(m_kingIdx);
     bitboard_t opponentAttacks = getOpponentAttacks();
     kMoves &= ~(m_bbColoredPieces[m_turn] | opponentAttacks) & m_bbColoredPieces[opponent];
     while(kMoves)
     {
         square_t target = popLS1B(&kMoves);
-        m_legalMoves[m_numLegalMoves++] = Move(kingIdx, target, MoveInfoBit::KING_MOVE);
+        m_legalMoves[m_numLegalMoves++] = Move(m_kingIdx, target, MoveInfoBit::KING_MOVE);
     }
 
     return m_legalMoves;
@@ -795,10 +792,9 @@ bool Board::hasLegalMove()
 
     // Create bitboard for where the king would be attacked
     bitboard_t opponentAttacks = getOpponentAttacks();
-    square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
 
     // King moves
-    bitboard_t kMoves = getKingMoves(kingIdx);
+    bitboard_t kMoves = getKingMoves(m_kingIdx);
     kMoves &= ~(m_bbColoredPieces[m_turn] | opponentAttacks);
     if(kMoves) return true;
 
@@ -813,7 +809,7 @@ bool Board::hasLegalMove()
         while(queenMoves)
         {
             square_t target = popLS1B(&queenMoves);
-            if(m_isLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE))) return true;
         }
     }
 
@@ -828,7 +824,7 @@ bool Board::hasLegalMove()
         while(knightMoves)
         {
             square_t target = popLS1B(&knightMoves);
-            if(m_isLegalMove(Move(knightIdx, target, MoveInfoBit::KNIGHT_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(knightIdx, target, MoveInfoBit::KNIGHT_MOVE))) return true;
         }
     }
 
@@ -843,7 +839,7 @@ bool Board::hasLegalMove()
         while(bishopMoves)
         {
             square_t target = popLS1B(&bishopMoves);
-            if(m_isLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE))) return true;
         }
     }
 
@@ -858,7 +854,7 @@ bool Board::hasLegalMove()
         while(rookMoves)
         {
             square_t target = popLS1B(&rookMoves);
-            if(m_isLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE))) return true;
         }
     }
 
@@ -905,7 +901,7 @@ bool Board::hasLegalMove()
         // It is not required to check if the move is promotion, we only require to know if the piece can be moved
         // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
         Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-        bool added = m_isLegalEnpassant(move, kingIdx);
+        bool added = m_isLegalEnpassant(move);
         if(added) return true;
     }
 
@@ -916,7 +912,7 @@ bool Board::hasLegalMove()
         // It is not required to check if the move is promotion, we only require to know if the piece can be moved
         // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
         Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-        bool added = m_isLegalEnpassant(move, kingIdx);
+        bool added = m_isLegalEnpassant(move);
         if(added) return true;
     }
 
@@ -926,7 +922,7 @@ bool Board::hasLegalMove()
         square_t target = popLS1B(&pawnMoves);
         square_t pawnIdx = popLS1B(&pawnMovesOrigin);
         // It is not required to check if the move is promotion, we only require to know if the piece can be moved
-        bool added = m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE), kingIdx);
+        bool added = m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
         if(added) return true;
     }
 
@@ -938,7 +934,7 @@ bool Board::hasLegalMove()
     {
         int target = popLS1B(&doubleMoves);
         int pawnIdx = popLS1B(&doubleMovesOrigin);
-        bool added = m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE), kingIdx);
+        bool added = m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE));
         if(added) return true;
     }
 
@@ -955,7 +951,6 @@ bool Board::hasLegalMoveFromCheck()
     m_findPinnedPieces();
     Color opponent = Color(m_turn^1);
     bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];
-    square_t kingIdx = LS1B(bbKing);
 
     // -- Check if there are more than one checking piece
 
@@ -969,22 +964,22 @@ bool Board::hasLegalMoveFromCheck()
     bitboard_t pawnAttackers = opponentPawns & kingPawnAttacks;
 
     // -- Knight
-    bitboard_t knightAttackers = getKnightMoves(kingIdx) & m_bbTypedPieces[W_KNIGHT][opponent];
+    bitboard_t knightAttackers = getKnightMoves(m_kingIdx) & m_bbTypedPieces[W_KNIGHT][opponent];
 
     // -- Rooks + Queen
     bitboard_t rqPieces = m_bbTypedPieces[W_ROOK][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
-    bitboard_t kingRookAttacks = getRookMoves(m_bbAllPieces, kingIdx);
+    bitboard_t kingRookAttacks = getRookMoves(m_bbAllPieces, m_kingIdx);
     bitboard_t rookAttackers = kingRookAttacks & rqPieces;
 
     // -- Bishop + Queen
     bitboard_t bqPieces = m_bbTypedPieces[W_BISHOP][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
-    bitboard_t kingBishopAttacks = getBishopMoves(m_bbAllPieces, kingIdx);
+    bitboard_t kingBishopAttacks = getBishopMoves(m_bbAllPieces, m_kingIdx);
     bitboard_t bishopAttackers = kingBishopAttacks & bqPieces;
 
     bitboard_t attackers = knightAttackers | rookAttackers | bishopAttackers | pawnAttackers;
 
     // Add king moves
-    bitboard_t kMoves = getKingMoves(kingIdx);
+    bitboard_t kMoves = getKingMoves(m_kingIdx);
     kMoves &= ~(m_bbColoredPieces[m_turn] | getOpponentAttacks());
     if(kMoves) return true;
 
@@ -1002,7 +997,7 @@ bool Board::hasLegalMoveFromCheck()
         // -- Knight captures
         bitboard_t capturingKnights = getKnightMoves(attackerIdx) & m_bbTypedPieces[W_KNIGHT][m_turn];
         while (capturingKnights)
-            if(m_isLegalMove(Move(popLS1B(&capturingKnights), attackerIdx, MoveInfoBit::KNIGHT_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(popLS1B(&capturingKnights), attackerIdx, MoveInfoBit::KNIGHT_MOVE))) return true;
 
         // -- Pawn captures
         bitboard_t capturingPawns;
@@ -1015,7 +1010,7 @@ bool Board::hasLegalMoveFromCheck()
         {
             square_t pawnIdx = popLS1B(&capturingPawns);
             // Dont care if it is a promotion, only checking if the move can be made
-            if(m_isLegalMove(Move(pawnIdx, attackerIdx, MoveInfoBit::PAWN_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(pawnIdx, attackerIdx, MoveInfoBit::PAWN_MOVE))) return true;
         }
 
         // -- Enpassant
@@ -1027,7 +1022,7 @@ bool Board::hasLegalMoveFromCheck()
         capturingPawns = m_bbTypedPieces[W_PAWN][m_turn] & capturingPawns;
         if(capturingPawns)
         {
-            bool added = m_isLegalEnpassant(Move(LS1B(capturingPawns), m_enPassantSquare, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::PAWN_MOVE | MoveInfoBit::ENPASSANT), kingIdx);
+            bool added = m_isLegalEnpassant(Move(LS1B(capturingPawns), m_enPassantSquare, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::PAWN_MOVE | MoveInfoBit::ENPASSANT));
             if(added) return true;
         }
 
@@ -1036,18 +1031,18 @@ bool Board::hasLegalMoveFromCheck()
         bitboard_t capturingRooks = capturingRookMoves & m_bbTypedPieces[W_ROOK][m_turn];
         bitboard_t capturingRQueens = capturingRookMoves & m_bbTypedPieces[W_QUEEN][m_turn];
         while (capturingRooks)
-            if(m_isLegalMove(Move(popLS1B(&capturingRooks), attackerIdx, MoveInfoBit::ROOK_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(popLS1B(&capturingRooks), attackerIdx, MoveInfoBit::ROOK_MOVE))) return true;
         while (capturingRQueens)
-            if(m_isLegalMove(Move(popLS1B(&capturingRQueens), attackerIdx, MoveInfoBit::QUEEN_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(popLS1B(&capturingRQueens), attackerIdx, MoveInfoBit::QUEEN_MOVE))) return true;
 
         // -- Bishop + Queen captures
         bitboard_t capturingBishopMoves = getBishopMoves(m_bbAllPieces, attackerIdx);
         bitboard_t capturingBishops = capturingBishopMoves & m_bbTypedPieces[W_BISHOP][m_turn];
         bitboard_t capturingBQueens = capturingBishopMoves & m_bbTypedPieces[W_QUEEN][m_turn];
         while (capturingBishops)
-            if(m_isLegalMove(Move(popLS1B(&capturingBishops), attackerIdx, MoveInfoBit::BISHOP_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(popLS1B(&capturingBishops), attackerIdx, MoveInfoBit::BISHOP_MOVE))) return true;
         while (capturingBQueens)
-            if(m_isLegalMove(Move(popLS1B(&capturingBQueens), attackerIdx, MoveInfoBit::QUEEN_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(popLS1B(&capturingBQueens), attackerIdx, MoveInfoBit::QUEEN_MOVE))) return true;
 
         return false;
     }
@@ -1055,7 +1050,7 @@ bool Board::hasLegalMoveFromCheck()
     // -- The attacking piece is a sliding piece (Rook, Bishop or Queen)
 
     // Create a blocking mask, consisting of all squares in which pieces can move to block attackers
-    bitboard_t blockingMask = attackers | getBetweens(kingIdx, attackerIdx);
+    bitboard_t blockingMask = attackers | getBetweens(m_kingIdx, attackerIdx);
 
     // Queen moves
     bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
@@ -1067,7 +1062,7 @@ bool Board::hasLegalMoveFromCheck()
         while(queenMoves)
         {
             square_t target = popLS1B(&queenMoves);
-            if(m_isLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(queenIdx, target, MoveInfoBit::QUEEN_MOVE))) return true;
         }
     }
 
@@ -1081,7 +1076,7 @@ bool Board::hasLegalMoveFromCheck()
         while(knightMoves)
         {
             square_t target = popLS1B(&knightMoves);
-            if(m_isLegalMove(Move(knightIdx, target, MoveInfoBit::KNIGHT_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(knightIdx, target, MoveInfoBit::KNIGHT_MOVE))) return true;
         }
     }
 
@@ -1096,7 +1091,7 @@ bool Board::hasLegalMoveFromCheck()
         while(bishopMoves)
         {
             square_t target = popLS1B(&bishopMoves);
-            if(m_isLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(bishopIdx, target, MoveInfoBit::BISHOP_MOVE))) return true;
         }
     }
 
@@ -1111,7 +1106,7 @@ bool Board::hasLegalMoveFromCheck()
         while(rookMoves)
         {
             square_t target = popLS1B(&rookMoves);
-            if(m_isLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE), kingIdx)) return true;
+            if(m_isLegalMove(Move(rookIdx, target, MoveInfoBit::ROOK_MOVE))) return true;
         }
     }
 
@@ -1159,7 +1154,7 @@ bool Board::hasLegalMoveFromCheck()
         // Dont care if it is a promotion, only checking if the move can be made
         // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
         Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-        if(m_isLegalEnpassant(move, kingIdx)) return true;
+        if(m_isLegalEnpassant(move)) return true;
     }
 
     while (pawnAttacksRight)
@@ -1170,7 +1165,7 @@ bool Board::hasLegalMoveFromCheck()
         // Dont care if it is a promotion, only checking if the move can be made
         // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
         Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-        if(m_isLegalEnpassant(move, kingIdx)) return true;
+        if(m_isLegalEnpassant(move)) return true;
     }
 
     // Forward move
@@ -1180,7 +1175,7 @@ bool Board::hasLegalMoveFromCheck()
         square_t pawnIdx = popLS1B(&pawnMovesOrigin);
 
         // Dont care if it is a promotion, only checking if the move can be made
-        if(m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE), kingIdx)) return true;
+        if(m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE))) return true;
     }
 
     // Double move
@@ -1190,7 +1185,7 @@ bool Board::hasLegalMoveFromCheck()
     {
         int target = popLS1B(&doubleMoves);
         int pawnIdx = popLS1B(&doubleMovesOrigin);
-        if(m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE), kingIdx)) return true;
+        if(m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE))) return true;
     }
 
     return false;
@@ -1363,6 +1358,7 @@ void Board::performMove(const Move move)
     m_moveset = MoveSet::NOT_GENERATED;
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_turn = opponent;
+    m_kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
 
     // Update halfmoves / 50 move rule
@@ -1383,6 +1379,7 @@ void Board::performNullMove()
     s_zobrist.updateHashsAfterNullMove(m_hash, m_pawnHash, oldEnPassantSquare);
 
     m_turn = Color(m_turn^1);
+    m_kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
     m_rule50++;
 }
 

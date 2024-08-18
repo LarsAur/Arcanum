@@ -220,7 +220,7 @@ bool FEN::setFEN(Board& board, const std::string fen)
     board.m_checkedCache = Board::CheckedCacheState::UNKNOWN;
     board.m_moveset = Board::MoveSet::NOT_GENERATED;
     board.m_captureInfoGenerated = Board::MoveSet::NOT_GENERATED;
-
+    board.m_kingIdx = LS1B(board.m_bbTypedPieces[W_KING][board.m_turn]);
     return true;
 }
 

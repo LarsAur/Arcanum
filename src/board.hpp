@@ -51,6 +51,7 @@ namespace Arcanum
             bitboard_t m_blockers[NUM_COLORS]; // Pieces blocking the king from a sliding piece
             bitboard_t m_pinners[NUM_COLORS];  // Pieces which targets the king with only one opponent piece blocking
             square_t m_pinnerBlockerIdxPairs[64]; // Array containing the idx of the pinner
+            square_t m_kingIdx;
 
             Piece m_pieces[64];
             uint8_t m_numLegalMoves = 0;
@@ -83,10 +84,10 @@ namespace Arcanum
             friend class FEN;
 
             // Tests if the king will be checked before adding the move
-            bool m_attemptAddPseudoLegalEnpassant(Move move, square_t kingIdx);
-            bool m_attemptAddPseudoLegalMove(Move move, square_t kingIdx);
-            bool m_isLegalEnpassant(Move move, square_t kingIdx);
-            bool m_isLegalMove(Move move, square_t kingIdx);
+            bool m_attemptAddPseudoLegalEnpassant(Move move);
+            bool m_attemptAddPseudoLegalMove(Move move);
+            bool m_isLegalEnpassant(Move move);
+            bool m_isLegalMove(Move move);
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
 
@@ -131,9 +132,6 @@ namespace Arcanum
     template <MoveInfoBit MoveType, bool CapturesOnly>
     inline void Board::m_generateMoves()
     {
-        // TODO: Precalculate king index and just use it in isLegalMove
-        square_t kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
-
         Piece type;
         switch (MoveType)
         {
@@ -170,7 +168,7 @@ namespace Arcanum
             while(moves)
             {
                 square_t target = popLS1B(&moves);
-                m_attemptAddPseudoLegalMove(Move(pieceIdx, target, MoveType), kingIdx);
+                m_attemptAddPseudoLegalMove(Move(pieceIdx, target, MoveType));
             }
         }
     }
