@@ -221,6 +221,7 @@ bool FEN::setFEN(Board& board, const std::string fen)
     board.m_moveset = Board::MoveSet::NOT_GENERATED;
     board.m_captureInfoGenerated = Board::MoveSet::NOT_GENERATED;
     board.m_kingIdx = LS1B(board.m_bbTypedPieces[W_KING][board.m_turn]);
+    board.m_bbOpponentAttacks = 0LL;
     return true;
 }
 

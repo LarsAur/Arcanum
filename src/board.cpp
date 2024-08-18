@@ -52,6 +52,7 @@ Board::Board(const Board& board)
     m_moveset = MoveSet::NOT_GENERATED; // Moves are not copied over
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_kingIdx = board.m_kingIdx;
+    m_bbOpponentAttacks = board.m_bbOpponentAttacks;
 }
 
 // Calulate slider blockers and pinners
@@ -1360,6 +1361,7 @@ void Board::performMove(const Move move)
     m_turn = opponent;
     m_kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
+    m_bbOpponentAttacks = 0LL;
 
     // Update halfmoves / 50 move rule
     if(CAPTURED_PIECE(move.moveInfo) || (move.moveInfo & MoveInfoBit::PAWN_MOVE))
@@ -1380,6 +1382,7 @@ void Board::performNullMove()
 
     m_turn = Color(m_turn^1);
     m_kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
+    m_bbOpponentAttacks = 0LL;
     m_rule50++;
 }
 
@@ -1418,19 +1421,22 @@ uint8_t Board::getCastleRights() const
 // Used for checking if the king is in check after king moves.
 bitboard_t Board::getOpponentAttacks()
 {
+    if(m_bbOpponentAttacks != 0LL)
+        return m_bbOpponentAttacks;
+
     Color opponent = Color(m_turn ^ 1);
 
     // Pawns
-    bitboard_t attacks = getOpponentPawnAttacks();
+    m_bbOpponentAttacks = getOpponentPawnAttacks();
 
     // King
-    attacks |= getKingMoves(LS1B(m_bbTypedPieces[W_KING][opponent]));
+    m_bbOpponentAttacks |= getKingMoves(LS1B(m_bbTypedPieces[W_KING][opponent]));
 
     // Knight
     bitboard_t tmpKnights = m_bbTypedPieces[W_KNIGHT][opponent];
     while (tmpKnights)
     {
-        attacks |= getKnightMoves(popLS1B(&tmpKnights));
+        m_bbOpponentAttacks |= getKnightMoves(popLS1B(&tmpKnights));
     }
 
     // Remove the king from the occupied mask such that when it moves, the previous king position will not block
@@ -1440,17 +1446,17 @@ bitboard_t Board::getOpponentAttacks()
     bitboard_t tmpBishops = m_bbTypedPieces[W_BISHOP][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
     while (tmpBishops)
     {
-        attacks |= getBishopMoves(allPiecesNoKing, popLS1B(&tmpBishops));
+        m_bbOpponentAttacks |= getBishopMoves(allPiecesNoKing, popLS1B(&tmpBishops));
     }
 
     // Queens and rooks
     bitboard_t tmpRooks = m_bbTypedPieces[W_ROOK][opponent] | m_bbTypedPieces[W_QUEEN][opponent];
     while (tmpRooks)
     {
-        attacks |= getRookMoves(allPiecesNoKing, popLS1B(&tmpRooks));
+        m_bbOpponentAttacks |= getRookMoves(allPiecesNoKing, popLS1B(&tmpRooks));
     }
 
-    return attacks;
+    return m_bbOpponentAttacks;
 }
 
 bitboard_t Board::getOpponentPawnAttacks()
