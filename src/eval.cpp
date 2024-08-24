@@ -2,6 +2,7 @@
 #include <memory.hpp>
 #include <fen.hpp>
 #include <algorithm>
+#include <syzygy.hpp>
 
 using namespace Arcanum;
 
@@ -81,6 +82,11 @@ bool Evaluator::isTbMateScore(eval_t eval)
 bool Evaluator::isMateScore(eval_t eval)
 {
     return std::abs(eval) > TB_MATE_SCORE - TB_MAX_MATE_DISTANCE;
+}
+
+bool Evaluator::isCloseToMate(Board& board, eval_t eval)
+{
+    return (std::abs(eval) > 900) || (board.getNumPieces() <= 5);
 }
 
 // Positive values represents advantage for current player

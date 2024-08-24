@@ -24,6 +24,8 @@ namespace Arcanum
             static bool isTbMateScore(eval_t eval);
             // Returns true if the score is a mate score
             static bool isMateScore(eval_t eval);
+            // Returns true if the board and score indicates that it might be close to mate
+            static bool isCloseToMate(Board& board, eval_t eval);
 
             static NN::NNUE nnue;
             static const char* nnuePathDefault;
