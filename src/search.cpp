@@ -66,11 +66,18 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         return 0;
 
     m_numNodesSearched++;
-    m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
-    m_stats.pvNodes += isPv;
-    m_stats.nonPvNodes += !isPv;
     m_stats.qSearchNodes++;
-    if constexpr (isPv) m_pvTable.updatePvLength(plyFromRoot);
+
+    if constexpr (isPv)
+    {
+        m_pvTable.updatePvLength(plyFromRoot);
+        m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
+        m_stats.pvNodes++;
+    }
+    else
+    {
+        m_stats.nonPvNodes++;
+    }
 
     if(m_isDraw(board))
         return DRAW_VALUE;
@@ -212,10 +219,16 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         return m_alphaBetaQuiet<isPv>(board, alpha, beta, plyFromRoot);
 
     m_numNodesSearched++;
-    m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
-    if constexpr (isPv) m_pvTable.updatePvLength(plyFromRoot);
-    m_stats.pvNodes += isPv;
-    m_stats.nonPvNodes += !isPv;
+    if constexpr (isPv)
+    {
+        m_pvTable.updatePvLength(plyFromRoot);
+        m_seldepth = std::max(m_seldepth, uint8_t(plyFromRoot));
+        m_stats.pvNodes++;
+    }
+    else
+    {
+        m_stats.nonPvNodes++;
+    }
 
     if(m_isDraw(board))
         return DRAW_VALUE;
