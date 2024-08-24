@@ -304,7 +304,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     // Reverse futility pruning
     if(!isChecked && !Evaluator::isCloseToMate(board, beta) && depth < 9)
     {
-        if(staticEval - 300 * depth >= beta)
+        if(staticEval - 300 * (depth + isPv)  >= beta)
         {
             m_stats.reverseFutilityCutoffs++;
             return staticEval;
@@ -314,7 +314,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     // Razoring
     if(!isChecked && !Evaluator::isCloseToMate(board, alpha))
     {
-        if(staticEval + 200 * depth < alpha)
+        if(staticEval + 200 * (depth + isPv) < alpha)
         {
             eval_t razorEval = m_alphaBetaQuiet<isPv>(board, alpha, beta, plyFromRoot);
             if(razorEval <= alpha)
