@@ -276,11 +276,11 @@ void Perf::search()
     for(int i = 0; i < 20; i++)
     {
         DEBUG("PERF: " << i << "/" << 20)
-        Move whiteMove = whiteSearcher.getBestMove(board, 10);
+        Move whiteMove = whiteSearcher.getBestMove(board, 15);
         board.performMove(whiteMove);
         whiteSearcher.addBoardToHistory(board);
         blackSearcher.addBoardToHistory(board);
-        Move blackMove = blackSearcher.getBestMove(board, 10);
+        Move blackMove = blackSearcher.getBestMove(board, 15);
         board.performMove(blackMove);
         whiteSearcher.addBoardToHistory(board);
         blackSearcher.addBoardToHistory(board);
