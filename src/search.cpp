@@ -302,7 +302,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStack[plyFromRoot - 2].staticEval);
 
     // Reverse futility pruning
-    if(!isChecked && !Evaluator::isMateScore(beta) && depth < 9)
+    if(!isChecked && !Evaluator::isCloseToMate(board, beta) && depth < 9)
     {
         if(staticEval - 300 * depth >= beta)
         {
@@ -312,7 +312,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     }
 
     // Razoring
-    if(!isChecked && !Evaluator::isMateScore(alpha))
+    if(!isChecked && !Evaluator::isCloseToMate(board, alpha))
     {
         if(staticEval + 200 * depth < alpha)
         {
