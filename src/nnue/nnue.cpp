@@ -599,6 +599,9 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
             std::getline(is, strCp);
             std::getline(is, fen);
 
+            if(fen == "")
+                continue;
+
             // Convert strings to floats and board
             // Normalize the result from [-1, 1] to [0, 1]
             float wdl = (atof(strWdl.c_str()) + 1) / 2.0f;
