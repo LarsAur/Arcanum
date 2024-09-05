@@ -188,7 +188,6 @@ void UCI::eval()
     Evaluator evaluator;
     evaluator.initAccumulatorStack(board);
     UCI_OUT(evaluator.evaluate(board, 0))
-    Evaluator::nnue.logEvalBreakdown(board);
 }
 
 void UCI::drawboard()

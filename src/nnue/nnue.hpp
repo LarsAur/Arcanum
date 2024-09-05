@@ -52,8 +52,6 @@ namespace NN
 
             void m_storeNet(std::string filename, FloatNet& net);
             void m_loadNet(std::string filename, FloatNet& net);
-
-            Arcanum::eval_t m_getSquareValue(const Arcanum::Board& board, Arcanum::square_t square);
         public:
             static const char* NNUE_MAGIC;
 
@@ -69,7 +67,5 @@ namespace NN
 
             Arcanum::eval_t evaluateBoard(const Arcanum::Board& board);
             Arcanum::eval_t evaluate(Accumulator* acc, Arcanum::Color turn);
-
-            void logEvalBreakdown(const Arcanum::Board& board);
     };
 }
