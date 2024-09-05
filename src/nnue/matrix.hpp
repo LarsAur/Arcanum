@@ -180,6 +180,16 @@ namespace NN
                     LOG(ss.str())
                 }
             }
+
+            void writeToStream(std::ofstream& stream)
+            {
+                stream.write((char*) m_data, rows * cols * sizeof(float));
+            }
+
+            void readFromStream(std::ifstream& stream)
+            {
+                stream.read((char*) m_data, rows * cols * sizeof(float));
+            }
     };
 
     template <uint32_t rows, uint32_t cols>
@@ -242,11 +252,7 @@ namespace NN
 
         for(uint32_t i = 0; i < in; i++)
         {
-            // // Skip iteration if input is zero
-            // // This is valuable as the activation function is ReLu
-            // // which sets a large number of inputs to zero
             const float fac = inputPtr[i];
-
             __m256 factor = _mm256_set1_ps(fac);
             for(uint32_t r = 0; r < numRegs; r++)
             {

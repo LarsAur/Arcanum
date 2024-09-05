@@ -6,7 +6,8 @@
 namespace NN
 {
     static constexpr uint32_t FTSize  = 768;
-    static constexpr uint32_t L1Size  = 1024;
+    static constexpr uint32_t L1Size  = 256;
+    static constexpr uint32_t L2Size  = 32;
     static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
     struct Accumulator
     {
@@ -17,8 +18,10 @@ namespace NN
     {
         Matrix<L1Size, FTSize>  ftWeights;
         Matrix<L1Size, 1>       ftBiases;
-        Matrix<1, L1Size>       l1Weights;
-        Matrix<1, 1>            l1Biases;
+        Matrix<L2Size, L1Size>  l1Weights;
+        Matrix<L2Size, 1>       l1Biases;
+        Matrix<1, L2Size>       l2Weights;
+        Matrix<1, 1>            l2Biases;
     };
 
     // Intermediate results in the net
@@ -26,6 +29,7 @@ namespace NN
     {
         Matrix<FTSize, 1>  input;         // Only used by backprop
         Matrix<L1Size, 1>  accumulator;   // Post ReLU accumulator
+        Matrix<L2Size, 1>  l1Out;   // Post ReLU accumulator
         Matrix<1, 1>       out;           // Scalar output
     };
 

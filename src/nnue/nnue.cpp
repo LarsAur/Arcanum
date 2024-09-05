@@ -30,10 +30,10 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
     std::string path = getWorkPath();
     std::stringstream ss;
     ss << path << filename;
-    std::ifstream is(ss.str(), std::ios::in | std::ios::binary);
+    std::ifstream stream(ss.str(), std::ios::in | std::ios::binary);
 
     LOG("Loading NNUE " << ss.str())
-    if(!is.is_open())
+    if(!stream.is_open())
     {
         ERROR("Unable to open " << ss.str())
         return;
@@ -46,7 +46,7 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
     uint32_t size;
 
     magic.resize(strlen(NNUE_MAGIC));
-    is.read(magic.data(), strlen(NNUE_MAGIC));
+    stream.read(magic.data(), strlen(NNUE_MAGIC));
 
     if(magic != NNUE_MAGIC)
     {
@@ -54,22 +54,24 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
         return;
     }
 
-    is.read((char*) &size, sizeof(uint32_t));
+    stream.read((char*) &size, sizeof(uint32_t));
 
     metadata.resize(size);
-    is.read(metadata.data(), size);
+    stream.read(metadata.data(), size);
 
     DEBUG("Magic:" << magic)
     DEBUG("Metadata:\n" << metadata)
 
     // Read Net data
 
-    is.read((char*) net.ftWeights.data(), FTSize * L1Size * sizeof(float));
-    is.read((char*) net.ftBiases.data(),           L1Size * sizeof(float));
-    is.read((char*) net.l1Weights.data(),      1 * L1Size * sizeof(float));
-    is.read((char*) net.l1Biases.data(),                1 * sizeof(float));
+    net.ftWeights.readFromStream(stream);
+    net.ftBiases.readFromStream(stream);
+    net.l1Weights.readFromStream(stream);
+    net.l1Biases.readFromStream(stream);
+    net.l2Weights.readFromStream(stream);
+    net.l2Biases.readFromStream(stream);
 
-    is.close();
+    stream.close();
 
     LOG("Finished loading NNUE " << ss.str())
 }
@@ -86,9 +88,9 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     std::stringstream ss;
     ss << path << filename;
     LOG("Storing nnue in " << ss.str())
-    std::ofstream fstream(ss.str(), std::ios::out | std::ios::binary);
+    std::ofstream stream(ss.str(), std::ios::out | std::ios::binary);
 
-    if(!fstream.is_open())
+    if(!stream.is_open())
     {
         ERROR("Unable to open " << ss.str())
         return;
@@ -98,22 +100,24 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     time_t now = time(0);
     tm *gmt = gmtime(&now);
     std::string utcstr = asctime(gmt);
-    std::string arch = "768->1024->1 vertical mirror";
+    std::string arch = "768->256->32->1";
 
     std::string metadata = utcstr + arch;
     uint32_t size = metadata.size();
 
-    fstream.write(NNUE_MAGIC, strlen(NNUE_MAGIC));
-    fstream.write((char*) &size, sizeof(uint32_t));
-    fstream.write(metadata.c_str(), size);
+    stream.write(NNUE_MAGIC, strlen(NNUE_MAGIC));
+    stream.write((char*) &size, sizeof(uint32_t));
+    stream.write(metadata.c_str(), size);
 
     // Write Net data
-    fstream.write((char*) net.ftWeights.data(), FTSize * L1Size * sizeof(float));
-    fstream.write((char*) net.ftBiases.data(),           L1Size * sizeof(float));
-    fstream.write((char*) net.l1Weights.data(),      1 * L1Size * sizeof(float));
-    fstream.write((char*) net.l1Biases.data(),                1 * sizeof(float));
+    net.ftWeights.writeToStream(stream);
+    net.ftBiases.writeToStream(stream);
+    net.l1Weights.writeToStream(stream);
+    net.l1Biases.writeToStream(stream);
+    net.l2Weights.writeToStream(stream);
+    net.l2Biases.writeToStream(stream);
 
-    fstream.close();
+    stream.close();
 
     LOG("Finished storing nnue in " << ss.str())
 }
@@ -346,8 +350,10 @@ void NNUE::m_randomizeWeights()
 {
     m_net.ftWeights.heRandomize();
     m_net.l1Weights.heRandomize();
+    m_net.l2Weights.heRandomize();
     m_net.ftBiases.setZero();
     m_net.l1Biases.setZero();
+    m_net.l2Biases.setZero();
 }
 
 void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
@@ -370,7 +376,8 @@ void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace
 float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
 {
     m_reluAccumulator(acc, perspective, trace);
-    lastLevelFeedForward<L1Size>(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.out);
+    feedForwardReLu(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.l1Out);
+    lastLevelFeedForward(m_net.l2Weights, m_net.l2Biases, trace.l1Out, trace.out);
     return *trace.out.data();
 }
 
@@ -429,33 +436,45 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
     }
 
     // -- Calculation of auxillery coefficients
-    Matrix<1, 1> delta2(false);
     Matrix<L1Size, 1> delta1(false);
+    Matrix<L2Size, 1> delta2(false);
+    Matrix<1, 1>      delta3(false);
+
+    // Calculate derivative of activation functions (Sigma prime)
+    Matrix<L2Size, 1> L2ReLuPrime(false);
+    L2ReLuPrime.copy(trace.l1Out);
+    L2ReLuPrime.reluPrime();
 
     Matrix<L1Size, 1> accumulatorReLuPrime(false);
-
     accumulatorReLuPrime.copy(trace.accumulator);
-
     accumulatorReLuPrime.reluPrime();
 
-    delta2.set(0, 0, sigmoidPrime * lossPrime);
+    // Calculate deltas (d_l = W_l+1^T * d_l+1) * sigma prime (Z_l)
+
+    delta3.set(0, 0, sigmoidPrime * lossPrime);
+
+    multiplyTransposeA(net.l2Weights, delta3, delta2);
+    delta2.hadamard(L2ReLuPrime);
 
     multiplyTransposeA(net.l1Weights, delta2, delta1);
     delta1.hadamard(accumulatorReLuPrime);
 
-    // -- Calculation of gradient
+    // Calculation of gradient
 
-    Matrix<1, L1Size>   gradientL1Weights(false);
+    Matrix<1, L2Size>        gradientL2Weights(false);
+    Matrix<L2Size, L1Size>   gradientL1Weights(false);
 
+    multiplyTransposeB(delta3, trace.l1Out,       gradientL2Weights);
     multiplyTransposeB(delta2, trace.accumulator, gradientL1Weights);
-
     calcAndAccFtGradient(numFeatures, features, delta1, gradient.ftWeights);
 
     // Accumulate the change
 
+    gradient.l2Biases.add(delta3);
     gradient.l1Biases.add(delta2);
     gradient.ftBiases.add(delta1);
     gradient.l1Weights.add(gradientL1Weights);
+    gradient.l2Weights.add(gradientL2Weights);
 }
 
 void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2)
@@ -475,16 +494,22 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     momentum1.ftBiases  .scale(beta1 / (1.0f - beta1));
     momentum1.l1Weights .scale(beta1 / (1.0f - beta1));
     momentum1.l1Biases  .scale(beta1 / (1.0f - beta1));
+    momentum1.l2Weights .scale(beta1 / (1.0f - beta1));
+    momentum1.l2Biases  .scale(beta1 / (1.0f - beta1));
 
     momentum1.ftWeights .add(gradient.ftWeights );
     momentum1.ftBiases  .add(gradient.ftBiases  );
     momentum1.l1Weights .add(gradient.l1Weights );
     momentum1.l1Biases  .add(gradient.l1Biases  );
+    momentum1.l2Weights .add(gradient.l2Weights );
+    momentum1.l2Biases  .add(gradient.l2Biases  );
 
-    momentum1.ftWeights .scale((1.0f - beta1));
-    momentum1.ftBiases  .scale((1.0f - beta1));
-    momentum1.l1Weights .scale((1.0f - beta1));
-    momentum1.l1Biases  .scale((1.0f - beta1));
+    momentum1.ftWeights .scale(1.0f - beta1);
+    momentum1.ftBiases  .scale(1.0f - beta1);
+    momentum1.l1Weights .scale(1.0f - beta1);
+    momentum1.l1Biases  .scale(1.0f - beta1);
+    momentum1.l2Weights .scale(1.0f - beta1);
+    momentum1.l2Biases  .scale(1.0f - beta1);
 
     // v_t = B2 * v_t-1 + (1 - B2) * g_t^2
 
@@ -492,21 +517,29 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     momentum2.ftBiases  .scale(beta2);
     momentum2.l1Weights .scale(beta2);
     momentum2.l1Biases  .scale(beta2);
+    momentum2.l2Weights .scale(beta2);
+    momentum2.l2Biases  .scale(beta2);
 
     gradient.ftWeights .pow(2);
     gradient.ftBiases  .pow(2);
     gradient.l1Weights .pow(2);
     gradient.l1Biases  .pow(2);
+    gradient.l2Weights .pow(2);
+    gradient.l2Biases  .pow(2);
 
     gradient.ftWeights .scale(1.0f - beta2);
     gradient.ftBiases  .scale(1.0f - beta2);
     gradient.l1Weights .scale(1.0f - beta2);
     gradient.l1Biases  .scale(1.0f - beta2);
+    gradient.l2Weights .scale(1.0f - beta2);
+    gradient.l2Biases  .scale(1.0f - beta2);
 
     momentum2.ftWeights .add(gradient.ftWeights);
     momentum2.ftBiases  .add(gradient.ftBiases );
     momentum2.l1Weights .add(gradient.l1Weights);
     momentum2.l1Biases  .add(gradient.l1Biases );
+    momentum2.l2Weights .add(gradient.l2Weights);
+    momentum2.l2Biases  .add(gradient.l2Biases );
 
     // M^_t = alpha * M_t / (1 - Beta1^t)
 
@@ -514,11 +547,15 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     m_hat.ftBiases  .copy(momentum1.ftBiases );
     m_hat.l1Weights .copy(momentum1.l1Weights);
     m_hat.l1Biases  .copy(momentum1.l1Biases );
+    m_hat.l2Weights .copy(momentum1.l2Weights);
+    m_hat.l2Biases  .copy(momentum1.l2Biases );
 
     m_hat.ftWeights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
     m_hat.ftBiases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
     m_hat.l1Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
     m_hat.l1Biases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
+    m_hat.l2Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
+    m_hat.l2Biases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
 
     // v^_t = v_t / (1 - Beta2^t)
 
@@ -526,11 +563,15 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     v_hat.ftBiases  .copy(momentum2.ftBiases );
     v_hat.l1Weights .copy(momentum2.l1Weights);
     v_hat.l1Biases  .copy(momentum2.l1Biases );
+    v_hat.l2Weights .copy(momentum2.l2Weights);
+    v_hat.l2Biases  .copy(momentum2.l2Biases );
 
     v_hat.ftWeights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
     v_hat.ftBiases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
     v_hat.l1Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
     v_hat.l1Biases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
+    v_hat.l2Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
+    v_hat.l2Biases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
 
     // sqrt(v^_t) + epsilon
 
@@ -538,11 +579,15 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     v_hat.ftBiases .pow(0.5f);
     v_hat.l1Weights.pow(0.5f);
     v_hat.l1Biases .pow(0.5f);
+    v_hat.l2Weights.pow(0.5f);
+    v_hat.l2Biases .pow(0.5f);
 
     v_hat.ftWeights.addScalar(epsilon);
     v_hat.ftBiases .addScalar(epsilon);
     v_hat.l1Weights.addScalar(epsilon);
     v_hat.l1Biases .addScalar(epsilon);
+    v_hat.l2Weights.addScalar(epsilon);
+    v_hat.l2Biases .addScalar(epsilon);
 
     // Note: Addition instead of subtraction because gradient it is already negated
     // net = net + M^_t / (sqrt(v^_t) + epsilon)
@@ -551,11 +596,15 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     m_hat.ftBiases  .hadamardInverse(v_hat.ftBiases );
     m_hat.l1Weights .hadamardInverse(v_hat.l1Weights);
     m_hat.l1Biases  .hadamardInverse(v_hat.l1Biases );
+    m_hat.l2Weights .hadamardInverse(v_hat.l2Weights);
+    m_hat.l2Biases  .hadamardInverse(v_hat.l2Biases );
 
     m_net.ftWeights .add(m_hat.ftWeights);
     m_net.ftBiases  .add(m_hat.ftBiases );
     m_net.l1Weights .add(m_hat.l1Weights);
     m_net.l1Biases  .add(m_hat.l1Biases );
+    m_net.l2Weights .add(m_hat.l2Weights);
+    m_net.l2Biases  .add(m_hat.l2Biases );
 }
 
 void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch, bool randomize)
@@ -591,6 +640,8 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
         gradient.ftBiases .setZero();
         gradient.l1Weights.setZero();
         gradient.l1Biases .setZero();
+        gradient.l2Weights.setZero();
+        gradient.l2Biases .setZero();
 
         while (!is.eof())
         {
@@ -619,8 +670,17 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
                 gradient.ftBiases  .scale(1.0f / batchPosCount);
                 gradient.l1Weights .scale(1.0f / batchPosCount);
                 gradient.l1Biases  .scale(1.0f / batchPosCount);
+                gradient.l2Weights .scale(1.0f / batchPosCount);
+                gradient.l2Biases  .scale(1.0f / batchPosCount);
 
                 m_applyGradient(epoch, gradient, momentum1, momentum2);
+
+                gradient.ftWeights .setZero();
+                gradient.ftBiases  .setZero();
+                gradient.l1Weights .setZero();
+                gradient.l1Biases  .setZero();
+                gradient.l2Weights .setZero();
+                gradient.l2Biases  .setZero();
 
                 // Aggregate the loss and position count
                 epochPosCount += batchPosCount;
