@@ -1,5 +1,5 @@
 #include <search.hpp>
-#include <uci.hpp>
+#include <uci/uci.hpp>
 #include <utils.hpp>
 #include <syzygy.hpp>
 #include <algorithm>
@@ -723,7 +723,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         m_tt.add(alpha, bestMove, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
-        UCI::SearchInfo info = UCI::SearchInfo();
+        Interface::SearchInfo info = Interface::SearchInfo();
         info.depth = depth;
         info.seldepth = m_seldepth;
         info.msTime = m_timer.getMs();
@@ -731,7 +731,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         info.nodes = m_numNodesSearched;
         info.score = alpha;
         info.hashfull = m_tt.permills();
-        info.bestMove = bestMove;
         info.pvTable = &m_pvTable;
         if(Evaluator::isRealMateScore(alpha))
         {
@@ -750,7 +749,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
         if(m_verbose)
         {
-            UCI::sendUciInfo(info);
+            Interface::UCI::sendInfo(info);
         }
 
         // End early if checkmate is found
@@ -766,7 +765,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_searchStack.pop_back();
 
     // Send UCI info
-    UCI::SearchInfo info = UCI::SearchInfo();
+    Interface::SearchInfo info = Interface::SearchInfo();
     info.depth = depth;
     info.seldepth = m_seldepth;
     info.msTime = m_timer.getMs();
@@ -774,7 +773,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     info.nodes = m_numNodesSearched;
     info.score = searchScore;
     info.hashfull = m_tt.permills();
-    info.bestMove = searchBestMove;
     info.pvTable = &m_pvTable;
     if(Evaluator::isRealMateScore(searchScore))
     {
@@ -793,8 +791,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     if(m_verbose)
     {
-        UCI::sendUciInfo(info);
-        UCI::sendUciBestMove(searchBestMove);
+        Interface::UCI::sendInfo(info);
+        Interface::UCI::sendBestMove(searchBestMove);
     }
 
     m_stats.nodes += m_numNodesSearched;

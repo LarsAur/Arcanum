@@ -1,4 +1,4 @@
-#include <uci.hpp>
+#include <uci/uci.hpp>
 #include <test.hpp>
 #include <eval.hpp>
 #include <bitboardlookups.hpp>
@@ -11,11 +11,11 @@ int main(int argc, char *argv[])
 
     BitboardLookups::generateBitboardLookups();
 
-    Evaluator::nnue.load(Evaluator::nnuePathDefault);
+    Evaluator::nnue.load(Interface::UCI::optionNNUEPath.value);
 
     if(argc == 1)
     {
-        UCI::loop();
+        Interface::UCI::loop();
         exit(EXIT_SUCCESS);
     }
 

@@ -25,8 +25,9 @@ void PvTable::updatePv(const Move& move, uint8_t plyFromRoot)
 std::string PvTable::getPvLine()
 {
     std::stringstream ss;
-    for(uint8_t i = 0; i < m_pvLengths[0]; i++)
+    for(uint8_t i = 0; i < m_pvLengths[0] - 1; i++)
         ss << m_table[0][i] << " ";
+    ss << m_table[0][m_pvLengths[0] - 1];
     return ss.str();
 }
 

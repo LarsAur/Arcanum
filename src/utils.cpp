@@ -31,3 +31,14 @@ std::string getWorkPath()
     #endif
 
 }
+
+bool caseInsensitiveStrCmp(std::string& a, std::string& b)
+{
+    #if defined(_WIN64)
+        return _stricmp(a.c_str(), b.c_str()) == 0;
+    #elif defined(__linux__)
+        return strcasecmp(a.c_str(), b.c_str()) == 0;
+    #else
+        #error Missing implementation of caseInsensitiveStrCmp
+    #endif
+}

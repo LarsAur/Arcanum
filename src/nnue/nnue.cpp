@@ -558,7 +558,7 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     m_net.l1Biases  .add(m_hat.l1Biases );
 }
 
-void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch)
+void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch, bool randomize)
 {
     FloatNet gradient;
     Trace trace;
@@ -569,6 +569,8 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
     std::string strWdl;
     std::string strCp;
     std::string fen;
+
+    if(randomize) m_randomizeWeights();
 
     for(uint32_t epoch = startEpoch; epoch < endEpoch; epoch++)
     {

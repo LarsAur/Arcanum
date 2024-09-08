@@ -28,7 +28,6 @@ namespace Arcanum
             static bool isCloseToMate(Board& board, eval_t eval);
 
             static NN::NNUE nnue;
-            static const char* nnuePathDefault;
 
             Evaluator();
             ~Evaluator();

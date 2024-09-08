@@ -101,5 +101,10 @@ extern std::string _logFileName;
     #define SUCCESS(_str) ;
 #endif
 
+#define UCI_OUT(_str) std::cout << _str << std::endl;
+
 // Gets the path to the folder which the executable is in
 std::string getWorkPath();
+
+// Case insensitive string compare
+bool caseInsensitiveStrCmp(std::string& a, std::string& b);

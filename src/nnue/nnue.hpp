@@ -56,7 +56,7 @@ namespace NN
             NNUE();
             ~NNUE();
 
-            void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch);
+            void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch, bool randomize);
             void load(std::string filename);
             void store(std::string filename);
 
