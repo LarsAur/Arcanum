@@ -12,7 +12,7 @@ const char* NNUE::NNUE_MAGIC = "Arcanum FNNUE";
 
 NNUE::NNUE()
 {
-    m_randomizeWeights();
+
 }
 
 NNUE::~NNUE()
@@ -348,6 +348,7 @@ Arcanum::eval_t NNUE::evaluate(Accumulator* acc, Arcanum::Color turn)
 
 void NNUE::m_randomizeWeights()
 {
+    LOG("Randomizing NNUE")
     m_net.ftWeights.heRandomize();
     m_net.l1Weights.heRandomize();
     m_net.l2Weights.heRandomize();
@@ -410,7 +411,6 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
         cpTarget = -cpTarget;
         wdlTarget = 1.0f - wdlTarget;
     }
-
 
     // Calculate target
     float wdlOutput       = SIGMOID(out);
