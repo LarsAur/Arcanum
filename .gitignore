@@ -1,7 +1,7 @@
 __pycache__
 /build/
 /syzygy/
-/snapshots/
+/releases/
 /lichess-bot/
 .vscode
 *.o

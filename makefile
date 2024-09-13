@@ -1,9 +1,12 @@
-
-PROJECT ?= Arcanum
+NAME ?= Arcanum
+VERSION ?= dev_build
+BUILDDIR ?= build
+RELEASEDIR ?= releases
 SOURCEDIR = src
 HEADERDIR = src
 BUILDDIR = build
 NNUE = arcanum-net-v3.0.fnnue
+CXX = g++
 
 DEFINES += -DIS_64BIT
 DEFINES += -DUSE_AVX2 -mavx2 -mfma
@@ -11,10 +14,20 @@ DEFINES += -DUSE_BMI -mbmi
 DEFINES += -DUSE_BMI2 -mbmi2
 DEFINES += -DUSE_POPCNT -mpopcnt
 DEFINES += -DUSE_LZCNT -mlzcnt
+DEFINES += -DARCANUM_VERSION=$(VERSION)
 
-CC = g++
+RELEASE_DEFINES += -DPRINT_TO_FILE
+RELEASE_DEFINES += -DDISABLE_LOG
+RELEASE_DEFINES += -DDISABLE_DEBUG
+
 override CFLAGS += -std=c++17 -O3 -Wall $(DEFINES)
 LDFLAGS = -lpthread -lm -lstdc++ --static
+
+ifeq ($(OS),Windows_NT)
+FILENAME = $(NAME).exe
+else
+FILENAME = $(NAME)
+endif
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
 SOURCES := $(call rwildcard, $(SOURCEDIR)/, %.cpp)          # Recursive search all files in source directory
@@ -24,17 +37,29 @@ SOURCES := $(filter-out %.hpp, $(SOURCES))                  # Filter out header 
 SOURCES := $(filter-out %/, $(SOURCES))                     # Filter out folder
 OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))   # Create list of all object files
 
-all: $(BUILDDIR)/$(PROJECT).exe
+.PHONY: uci run test perf release
 
-.PHONY: uci run test perf
-uci: $(BUILDDIR)/$(PROJECT).exe
+all: $(BUILDDIR)/$(FILENAME)
+
+uci: $(BUILDDIR)/$(FILENAME)
 	./$^
 
-test: $(BUILDDIR)/$(PROJECT).exe
+test: $(BUILDDIR)/$(FILENAME)
 	./$^ --see-test --draw-test --capture-test --zobrist-test --perft-test
 
-perf: $(BUILDDIR)/$(PROJECT).exe
+perf: $(BUILDDIR)/$(FILENAME)
 	./$^ --search-perf --engine-perf
+
+release: $(RELEASEDIR)
+	make clean
+	make $(BUILDDIR)/$(FILENAME) -j "CFLAGS=$(RELEASE_DEFINES)"
+ifeq ($(OS),Windows_NT)
+	copy ".\$(BUILDDIR)\$(FILENAME)" /b ".\$(RELEASEDIR)\$(FILENAME)" /b
+	-copy ".\$(NNUE)" /b ".\$(RELEASEDIR)\$(NNUE)" /b
+else
+	cp $(BUILDDIR)/$(FILENAME) $(RELEASEDIR)/$(FILENAME)
+	-cp $(NNUE) $(RELEASEDIR)
+endif
 
 clean:
 ifeq ($(OS),Windows_NT)
@@ -43,10 +68,8 @@ else
 	-rm -rf $(BUILDDIR)
 endif
 
-clean-logs:
-	del *.log
-	cd snapshots & del *.log
-	cd build & del *.log
+$(RELEASEDIR):
+	mkdir $(RELEASEDIR)
 
 $(BUILDDIR):
 	mkdir $(BUILDDIR)
@@ -64,7 +87,7 @@ else
 endif
 
 $(BUILDDIR)/%.o: %.cpp $(HEADERS) | $(BUILDDIR)
-	$(CC) $(CFLAGS) $(LDFLAGS) -I$(HEADERDIR) -I$(dir $<) -c $< -o $@
+	$(CXX) $(CFLAGS) $(LDFLAGS) -I$(HEADERDIR) -I$(dir $<) -c $< -o $@
 
-$(BUILDDIR)/$(PROJECT).exe: $(OBJECTS) | $(BUILDDIR)/$(NNUE)
-	$(CC) $(OBJECTS) $(CFLAGS) $(LDFLAGS) -o $@
+$(BUILDDIR)/$(FILENAME): $(OBJECTS) | $(BUILDDIR)/$(NNUE)
+	$(CXX) $(OBJECTS) $(CFLAGS) $(LDFLAGS) -o $@
