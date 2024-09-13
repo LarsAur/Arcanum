@@ -4,7 +4,7 @@
 
 ## Overview
 Arcanum is a free [UCI][uci-protocol] chess engine under the GPL-3.0 license.
-Arcanum 2.2 has a rating of ~2889 elo in blitz on [CCRL][ccrl].
+Arcanum 2.2 has a rating of ~2925 elo in blitz on [CCRL][ccrl].
 
 ## Building
 Arcanum requires `c++17` and has only been tested using `g++`. It can be compiled on Windows (Tested for Windows 11 using MinGW), and Linux (Tested for Ubuntu 22.04). Arcanum takes advantage of and requires some x86 intrinsics: `AVX2`, `FMA`, `BMI1`, `BMI2` `POPCNT` and `LZCNT`.
