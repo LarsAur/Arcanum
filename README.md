@@ -22,22 +22,18 @@ To delete the build directory and its contents all the contents, run:
 make clean
 ```
 
-### UCI build
-To build a *UCI build*, meant for connecting to a UCI GUI such as [Cute Chess][cute-chess] or [Lucas Chess][lucas-chess], run:
+### Release build
+To build a *release build*, meant for connecting to a UCI GUI such as [Cute Chess][cute-chess] or [Lucas Chess][lucas-chess], `-DPRINT_TO_FILE` should be added to `CFLAGS`. This redirects all logging to a file. It is also possible to add `-DDISABLE_DEBUG`, `-DDISABLE_LOG`, `-DDISABLE_WARNING` and `-DDISABLE_ERROR` to the `CFLAGS` to disable these logs.
+
+To add a version name, which shows up in the *id* section of the UCI protocol, `-DARCANUM_VERSION=<version>` can be added to the `CFLAGS`. If not included, the version will be set to `dev_build`.
+
+A simpler approach is to run:
 
 ```
-make -j CFLAGS="-DPRINT_TO_FILE"
+make release -j NAME=<executable-name> VERSION=<version>
 ```
-This redirects all logging to a file. It is also possible to add `-DDISABLE_DEBUG`, `-DDISABLE_LOG`, `-DDISABLE_WARNING` and `-DDISABLE_ERROR` to the CFLAGS in this command to disable these logs.
 
-To add a version name, which shows up in the *id* section of the UCI protocol, `-DARCANUM_VERSION=<version>` can be added to the CFLAGS. If not included, the version will be set to `dev_build`.
-
-Optionally, a *UCI build* can be built by running:
-
-```
-snapshot.bat <executable-name> <version-name>
-```
-This will create a fresh *UCI build* named `<executable-name>` and copy it to the snapshots directory.
+This creates a clean build named `<executable-name>` with version `<version>` which logs to file, and only have warnings and errors enabled. The build will be copied to the *releases* directory.
 
 ## NNUE
 Arcanum has a floating point [NNUE][nnue], which is created from selfplay, starting from the HCE from Arcanum v1.12.
