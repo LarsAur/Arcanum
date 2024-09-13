@@ -2,13 +2,13 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="200.64mm"
-   height="58.187729mm"
-   viewBox="0 0 200.64 58.187729"
+   width="21.207628mm"
+   height="27.107414mm"
+   viewBox="0 0 21.207628 27.107414"
    version="1.1"
    id="svg5"
    inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
-   sodipodi:docname="Arcanum-Logo-Project.svg"
+   sodipodi:docname="Arcanum-Logo.svg"
    inkscape:export-filename="Arcanum-Logo.svg"
    inkscape:export-xdpi="96"
    inkscape:export-ydpi="96"
@@ -27,9 +27,9 @@
      inkscape:deskcolor="#505050"
      inkscape:document-units="mm"
      showgrid="false"
-     inkscape:zoom="0.93951257"
-     inkscape:cx="146.35249"
-     inkscape:cy="659.91666"
+     inkscape:zoom="0.66433571"
+     inkscape:cx="-120.42104"
+     inkscape:cy="34.62105"
      inkscape:window-width="2560"
      inkscape:window-height="1009"
      inkscape:window-x="-8"
@@ -38,6 +38,78 @@
      inkscape:current-layer="layer1" />
   <defs
      id="defs2">
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-0" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-09" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-3" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-7" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-7-0" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-8" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-7-9" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-83" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-7-9-6" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-7-0-1" />
+    <rect
+       x="557.73602"
+       y="385.30618"
+       width="180.94489"
+       height="350.73761"
+       id="rect10056-8-7" />
     <rect
        x="557.73602"
        y="385.30618"
@@ -55,12 +127,12 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(-6.770548,-115.49424)">
+     transform="translate(-94.469946,-133.96012)">
     <g
        id="g2592-5-9-7"
        inkscape:label="White Outline"
        style="fill:#ffffff;stroke:#ffffff;stroke-width:6.1;stroke-dasharray:none;stroke-opacity:1"
-       transform="matrix(0.37965722,0.19680408,-0.19680408,0.37965722,-13.143916,25.538914)"
+       transform="matrix(0.17686764,0.09168342,-0.09168342,0.17686764,85.192566,92.053406)"
        inkscape:export-filename="Arcanum-Logo.svg"
        inkscape:export-xdpi="96"
        inkscape:export-ydpi="96">
@@ -92,7 +164,7 @@
     <g
        id="g2653-8-3-0"
        inkscape:label="Black Outline"
-       transform="matrix(0.37965722,0.19680408,-0.19680408,0.37965722,34.517592,57.889252)">
+       transform="matrix(0.17686764,0.09168342,-0.09168342,0.17686764,107.39621,107.12418)">
       <rect
          style="fill:#fffffc;fill-opacity:1;stroke:#000000;stroke-width:1.9435;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1"
          id="rect443-2-1-4"
@@ -120,7 +192,8 @@
     </g>
     <g
        id="g26186"
-       inkscape:label="PotionLiquid">
+       inkscape:label="PotionLiquid"
+       transform="matrix(0.46586139,0,0,0.46586139,91.315807,80.155811)">
       <path
          id="path3777-8-6-5"
          style="fill:#ff001c;fill-opacity:0.710938;stroke:#000000;stroke-width:0.412272;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:fill markers stroke"
@@ -137,28 +210,10 @@
          inkscape:label="TopSurface" />
     </g>
     <path
-       style="opacity:0.847426;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.516895;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
-       d="m 11.453683,153.61586 c -0.45428,5.16257 3.897112,10.88399 6.893345,11.90309 -4.665461,-5.90295 -4.493932,-5.73716 -6.893345,-11.90309 z"
+       style="opacity:0.847426;fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.240801;stroke-linecap:butt;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers"
+       d="m 96.651636,151.71951 c -0.211632,2.40504 1.815514,5.07043 3.211343,5.54519 -2.173458,-2.74996 -2.093549,-2.67272 -3.211343,-5.54519 z"
        id="path6748-55-3-1"
        sodipodi:nodetypes="ccc"
        inkscape:label="Highlight" />
-    <text
-       xml:space="preserve"
-       transform="matrix(0.98174838,0,0,0.98174838,-496.18868,-247.54502)"
-       id="text10054-3-9-8-8"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:'High Tower Text';-inkscape-font-specification:'High Tower Text, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;white-space:pre;shape-inside:url(#rect10056-7-0-1-2);display:inline;fill:none;stroke:#fffffc;stroke-width:2.61351;stroke-dasharray:none;stroke-opacity:1"
-       inkscape:label="TextOutline"><tspan
-         x="557.73633"
-         y="419.91602"
-         id="tspan26427">Arcanum</tspan></text>
-    <text
-       xml:space="preserve"
-       transform="matrix(0.98174838,0,0,0.98174838,-496.18868,-247.54501)"
-       id="text10054-5-6-8"
-       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:'High Tower Text';-inkscape-font-specification:'High Tower Text, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;white-space:pre;shape-inside:url(#rect10056-8-7-0);display:inline;fill:#fffffc;fill-opacity:1;stroke:#000000;stroke-width:0.87117;stroke-dasharray:none;stroke-opacity:1"
-       inkscape:label="TextFill"><tspan
-         x="557.73633"
-         y="419.91602"
-         id="tspan26429">Arcanum</tspan></text>
   </g>
 </svg>

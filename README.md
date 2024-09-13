@@ -1,6 +1,7 @@
-<p align="center">
+<div align="center">
   <img src="Arcanum-Logo.svg" />
-</p>
+  <h1>Arcanum</h1>
+</div>
 
 ## Overview
 Arcanum is a free [UCI][uci-protocol] chess engine under the GPL-3.0 license.
