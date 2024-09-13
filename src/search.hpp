@@ -50,6 +50,7 @@ namespace Arcanum
         uint64_t razorCutoffs;
         uint64_t failedRazorCutoffs;
         uint64_t reverseFutilityCutoffs;
+        uint64_t lmpPrunedMoves;
 
         SearchStats() :
             nodes(0),
@@ -68,7 +69,8 @@ namespace Arcanum
             futilityPrunedMoves(0),
             razorCutoffs(0),
             failedRazorCutoffs(0),
-            reverseFutilityCutoffs(0)
+            reverseFutilityCutoffs(0),
+            lmpPrunedMoves(0)
         {};
 
     } SearchStats;
@@ -113,6 +115,7 @@ namespace Arcanum
             std::vector<SearchStackElement> m_searchStack;
             std::vector<hash_t> m_knownEndgameMaterialDraws;
             uint8_t m_lmrReductions[MAX_SEARCH_DEPTH][MAX_MOVE_COUNT];
+            uint32_t m_lmpThresholds[2][MAX_SEARCH_DEPTH];
             Timer m_timer;
             Evaluator m_evaluator;
             KillerMoveManager m_killerMoveManager;

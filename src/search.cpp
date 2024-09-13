@@ -33,6 +33,13 @@ Searcher::Searcher()
         for(uint8_t m = 0; m < MAX_MOVE_COUNT; m++)
             m_lmrReductions[d][m] = static_cast<uint8_t>(1 + (std::log2(m) * std::log2(d) / 4));
 
+    // Initialize the LMP threshold lookup table
+    for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
+    {
+        m_lmpThresholds[0][d] = 2 + 1 * d * d;
+        m_lmpThresholds[1][d] = 4 + 2 * d * d;
+    }
+
     m_verbose = true;
 }
 
@@ -350,8 +357,18 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
+    uint8_t quietMovesPerformed = 0;
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
+
+        if(!Evaluator::isCloseToMate(board, bestScore)
+        && !isChecked && quietMovesPerformed > m_lmpThresholds[isImproving][depth]
+        && !CAPTURED_PIECE(move->moveInfo)
+        && !(PROMOTED_PIECE(move->moveInfo)))
+        {
+            m_stats.lmpPrunedMoves++;
+            continue;
+        }
 
         // Generate new board and make the move
         Board newBoard = Board(board);
@@ -359,6 +376,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         m_tt.prefetch(newBoard.getHash());
         eval_t score;
         bool checkOrChecking = isChecked || newBoard.isChecked();
+
+        quietMovesPerformed += !CAPTURED_PIECE(move->moveInfo) && !(PROMOTED_PIECE(move->moveInfo));
 
         // Futility pruning
         if(depth > 0 && depth < 4 && !checkOrChecking && !(PROMOTED_PIECE(move->moveInfo) | CAPTURED_PIECE(move->moveInfo)))
@@ -869,6 +888,7 @@ void Searcher::logStats()
     ss << "\nRazor Cutoffs:             " << m_stats.razorCutoffs;
     ss << "\nFailed Razor Cutoffs:      " << m_stats.failedRazorCutoffs;
     ss << "\nReverseFutilityCutoffs:    " << m_stats.reverseFutilityCutoffs;
+    ss << "\nLate Pruned Moves:         " << m_stats.lmpPrunedMoves;
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";
