@@ -11,6 +11,8 @@
 #define STRINGIFY(s) #s
 #define TOSTRING(x) STRINGIFY(x)
 
+#define NORMALIZE(_x) (eval_t((_x) / 1.75f))
+
 namespace Arcanum
 {
     namespace Interface
@@ -68,10 +70,12 @@ namespace Arcanum
                 static StringOption optionSyzygyPath;
                 static StringOption optionNNUEPath;
                 static SpinOption   optionMoveOverhead;
+                static CheckOption  optionNormalizeScore;
 
                 static void sendBestMove(const Move& move);
                 static void sendInfo(const SearchInfo& info);
                 static void loop();
+                static eval_t normalize(eval_t score);
         };
     }
 }

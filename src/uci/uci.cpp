@@ -18,6 +18,7 @@ ButtonOption UCI::optionClearHash    = ButtonOption("ClearHash", []{ UCI::search
 StringOption UCI::optionSyzygyPath   = StringOption("SyzygyPath", "<empty>", []{ TBInit(UCI::optionSyzygyPath.value); });
 StringOption UCI::optionNNUEPath     = StringOption("NNUEPath", "arcanum-net-v4.0.fnnue", []{ Evaluator::nnue.load(UCI::optionNNUEPath.value); });
 SpinOption   UCI::optionMoveOverhead = SpinOption("MoveOverhead", 10, 0, 5000);
+CheckOption  UCI::optionNormalizeScore = CheckOption("NormalizeScore", true);
 
 void UCI::listUCI()
 {
@@ -28,6 +29,7 @@ void UCI::listUCI()
     UCI::optionSyzygyPath.list();
     UCI::optionNNUEPath.list();
     UCI::optionMoveOverhead.list();
+    UCI::optionNormalizeScore.list();
     UCI_OUT("uciok")
 }
 
@@ -68,6 +70,7 @@ void UCI::setoption(std::istringstream& is)
     else if(UCI::optionMoveOverhead.matches(name)) UCI::optionMoveOverhead.set(value);
     else if(UCI::optionNNUEPath.matches(name)    ) UCI::optionNNUEPath.set(value);
     else if(UCI::optionSyzygyPath.matches(name)  ) UCI::optionSyzygyPath.set(value);
+    else if(UCI::optionNormalizeScore.matches(name)) UCI::optionNormalizeScore.set(value);
 }
 
 void UCI::go(std::istringstream& is)
@@ -187,7 +190,8 @@ void UCI::eval()
 {
     Evaluator evaluator;
     evaluator.initAccumulatorStack(board);
-    UCI_OUT(evaluator.evaluate(board, 0))
+    eval_t score = evaluator.evaluate(board, 0);
+    UCI_OUT(UCI::normalize(score))
 }
 
 void UCI::drawboard()
@@ -356,7 +360,7 @@ void UCI::sendInfo(const SearchInfo& info)
     if(info.mate)
         ss << " score mate " << info.mateDistance;
     else
-        ss << " score cp " << std::setfill(' ') << std::setw(5) << info.score;
+        ss << " score cp " << std::setfill(' ') << std::setw(5) << UCI::normalize(info.score);
     if(info.hashfull > 0)
         ss << " hashfull " << std::setfill(' ') << std::setw(3) << info.hashfull;
     else
@@ -377,4 +381,16 @@ void UCI::sendBestMove(const Move& move)
         ERROR("Illegal Null-Move was reported as the best move")
 
     UCI_OUT("bestmove " << move)
+}
+
+// Normalizes the score such that a score of 100cp gives ~50% winrate
+// Score are only normalized if the 'NormalizeScore' option is set
+// Mate scores are not normalized
+eval_t UCI::normalize(eval_t score)
+{
+    if(optionNormalizeScore.value && !Evaluator::isMateScore(score))
+    {
+        return eval_t(score / 1.75f);
+    }
+    return score;
 }
