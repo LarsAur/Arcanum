@@ -85,10 +85,12 @@ void UCI::go(std::istringstream& is)
 
     while(is >> token)
     {
+        toLowerCase(token);
         if(token == "searchmoves")
         {
             while (is >> token)
             {
+                toLowerCase(token);
                 Move move = board.getMoveFromArithmetic(token);
                 parameters.searchMoves[parameters.numSearchMoves++] = move;
             }
@@ -143,6 +145,7 @@ void UCI::position(std::istringstream& is)
 {
     std::string token, fen;
     is >> token;
+    toLowerCase(token);
 
     if(token == "startpos")
     {
@@ -151,7 +154,8 @@ void UCI::position(std::istringstream& is)
     }
     else if(token == "fen")
     {
-        while (is >> token && token != "moves")
+        // Do not convert token to lower case, because the FEN is case sensitive
+        while (is >> token && !strEqCi(token, "moves"))
             fen += token + " ";
     }
 
@@ -163,6 +167,7 @@ void UCI::position(std::istringstream& is)
     // Parse any moves
     while (is >> token)
     {
+        toLowerCase(token);
         Move move = board.getMoveFromArithmetic(token);
         if(move == NULL_MOVE)
         {
@@ -212,6 +217,7 @@ void UCI::fengen(std::istringstream& is)
     std::string token;
     while(is >> token)
     {
+        toLowerCase(token);
         if     (token == "positions")  is >> startPosPath;
         else if(token == "output")     is >> outputPath;
         else if(token == "numfens")    is >> numFens;
@@ -242,6 +248,7 @@ void UCI::train(std::istringstream& is)
     std::string token;
     while(is >> token)
     {
+        toLowerCase(token);
         if     (token == "dataset")    is >> dataset;
         else if(token == "output")     is >> outputPath;
         else if(token == "batchsize")  is >> batchSize;
@@ -316,13 +323,11 @@ void UCI::loop()
         if(!isSearching && searchThread.joinable())
             searchThread.join();
 
-        // Convert the command to lower case
-        std::transform(cmd.begin(), cmd.end(), cmd.begin(), [](unsigned char c){ return std::tolower(c); });
-
         DEBUG("UCI command: " << cmd)
 
         std::istringstream is(cmd);
         is >> std::skipws >> token;
+        toLowerCase(token);
 
         if      (token == "uci"       ) UCI::listUCI();
         else if (token == "setoption" ) UCI::setoption(is);
