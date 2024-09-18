@@ -19,7 +19,7 @@ namespace Arcanum
 
                 bool matches(std::string name)
                 {
-                    return caseInsensitiveStrCmp(m_name, name);
+                    return strEqCi(m_name, name);
                 }
         };
 

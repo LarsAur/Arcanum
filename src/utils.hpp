@@ -106,5 +106,8 @@ extern std::string _logFileName;
 // Gets the path to the folder which the executable is in
 std::string getWorkPath();
 
-// Case insensitive string compare
-bool caseInsensitiveStrCmp(std::string& a, std::string& b);
+// Check for case insensitive string equality
+bool strEqCi(std::string a, std::string b);
+
+// Convert string to lowercase
+void toLowerCase(std::string& str);

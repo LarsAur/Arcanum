@@ -1,4 +1,5 @@
 #include <utils.hpp>
+#include <algorithm>
 
 #if defined(_WIN64)
 #include <Libloaderapi.h>
@@ -32,13 +33,19 @@ std::string getWorkPath()
 
 }
 
-bool caseInsensitiveStrCmp(std::string& a, std::string& b)
+// Check for case insensitive string equality
+bool strEqCi(std::string a, std::string b)
 {
     #if defined(_WIN64)
         return _stricmp(a.c_str(), b.c_str()) == 0;
     #elif defined(__linux__)
         return strcasecmp(a.c_str(), b.c_str()) == 0;
     #else
-        #error Missing implementation of caseInsensitiveStrCmp
+        #error Missing implementation of StrEqCi
     #endif
+}
+
+void toLowerCase(std::string& str)
+{
+    std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c){ return std::tolower(c); });
 }
