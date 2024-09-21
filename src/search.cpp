@@ -633,13 +633,13 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         Move bestMove = NULL_MOVE;
 
         // Aspiration window
-        bool useAspiration = depth > 5 && searchScore < 900;
-        if(useAspiration)
-        {
-            // If the window becomes too large, continue using mate score as alpha/beta
-            if(aspirationWindowAlpha < 600) alpha = searchScore - aspirationWindowAlpha;
-            if(aspirationWindowBeta < 600)  beta  = searchScore + aspirationWindowBeta;
-        }
+        bool restartSearch = false;
+        bool useAspAlpha = depth > 5 && searchScore < 900 && aspirationWindowAlpha < 600;
+        bool useAspBeta = depth > 5 && searchScore < 900 && aspirationWindowBeta < 600;
+
+        // If the window becomes too large, continue using mate score as alpha/beta
+        if(useAspAlpha) alpha = searchScore - aspirationWindowAlpha;
+        if(useAspBeta)  beta  = searchScore + aspirationWindowBeta;
 
         for (int i = 0; i < numMoves; i++)  {
             const Move *move = moveSelector.getNextMove();
@@ -652,9 +652,12 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             {
                 score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
 
-                // If aspiration window is used, restart and widen the window if the first move scores outside the window
-                if(score <= alpha)
+                // Aspiration window
+                // Check if the score is lower than alpha for the first move
+                if(useAspAlpha && score <= alpha)
                 {
+                    restartSearch = true;
+                    aspirationWindowAlpha += aspirationWindowAlpha;
                     m_evaluator.popMoveFromAccumulator();
                     break;
                 }
@@ -673,12 +676,12 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
                 break;
 
             // Check if the score was outside the aspiration window
-            // 1. Alpha exceeded beta
             // It is important to break before the best move is assigned,
             // to avoid returning a move which is outside the window when search is stopped
-            if(useAspiration && (score > beta))
+            if(useAspBeta && (score >= beta))
             {
-                alpha = score; // Alpha is updated to correctly detect being outside the window
+                restartSearch = true;
+                aspirationWindowBeta += aspirationWindowBeta;
                 break;
             }
 
@@ -690,23 +693,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             }
         }
 
-        if(!m_stopSearch)
+        // Restart search if the score fell outside of the aspiration window
+        if(!m_stopSearch && restartSearch)
         {
-            // Check if the score was outside the aspiration window
-            // 1. Alpha exceeded beta
-            if(useAspiration && (alpha > beta))
-            {
-                aspirationWindowBeta += aspirationWindowBeta;
-                goto searchStart;
-            }
-
-            // Check if the score was outside the aspiration window
-            // 2. Alpha did not improve
-            if(useAspiration && (alpha == searchScore - aspirationWindowAlpha))
-            {
-                aspirationWindowAlpha += aspirationWindowAlpha;
-                goto searchStart;
-            }
+            goto searchStart;
         }
 
         // The move found can be used even if search is canceled, if we search the previously best move first
