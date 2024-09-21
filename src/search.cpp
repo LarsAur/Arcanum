@@ -570,10 +570,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     Move* moves = m_searchParameters.searchMoves;
     uint8_t numMoves = m_searchParameters.numSearchMoves;
     bool forceTBScore = false;
-    uint8_t tbwdl = 0xff;
+    uint8_t wdlTB = 0xff;
     if(m_searchParameters.numSearchMoves == 0)
     {
-        if(TBProbeDTZ(board, moves, numMoves, tbwdl))
+        if(TBProbeDTZ(board, moves, numMoves, wdlTB))
         {
             forceTBScore = true;
         }
@@ -742,34 +742,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         m_tt.add(alpha, bestMove, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
-        Interface::SearchInfo info = Interface::SearchInfo();
-        info.depth = depth;
-        info.seldepth = m_seldepth;
-        info.msTime = m_timer.getMs();
-        info.nsTime = m_timer.getNs();
-        info.nodes = m_numNodesSearched;
-        info.score = alpha;
-        info.hashfull = m_tt.permills();
-        info.pvTable = &m_pvTable;
-        if(Evaluator::isRealMateScore(alpha))
-        {
-            info.mate = true;
-            // Divide by 2 to get moves and not plys.
-            // Round away from zero, as the last ply in odd plys has to be counted as a move
-            uint16_t distance = std::ceil((MATE_SCORE - std::abs(alpha)) / 2.0f);
-            info.mateDistance = alpha > 0 ? distance : -distance;
-        }
-        else if(forceTBScore)
-        {
-            if(tbwdl >= TB_BLESSED_LOSS && tbwdl <= TB_CURSED_WIN) info.score = 0;
-            if(tbwdl == TB_LOSS) info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE;
-            if(tbwdl >= TB_WIN ) info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE;
-        }
-
-        if(m_verbose)
-        {
-            Interface::UCI::sendInfo(info);
-        }
+        m_sendUciInfo(alpha, NULL_MOVE, depth, forceTBScore, wdlTB);
 
         // End early if checkmate is found
         if(Evaluator::isRealMateScore(searchScore))
@@ -783,36 +756,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     m_searchStack.pop_back();
 
-    // Send UCI info
-    Interface::SearchInfo info = Interface::SearchInfo();
-    info.depth = depth;
-    info.seldepth = m_seldepth;
-    info.msTime = m_timer.getMs();
-    info.nsTime = m_timer.getNs();
-    info.nodes = m_numNodesSearched;
-    info.score = searchScore;
-    info.hashfull = m_tt.permills();
-    info.pvTable = &m_pvTable;
-    if(Evaluator::isRealMateScore(searchScore))
-    {
-        info.mate = true;
-        // Divide by 2 to get moves and not plys.
-        // Round away from zero, as the last ply in odd plys has to be counted as a move
-        uint16_t distance = std::ceil((MATE_SCORE - std::abs(searchScore)) / 2.0f);
-        info.mateDistance = searchScore > 0 ? distance : -distance;
-    }
-    else if(forceTBScore)
-    {
-        if(tbwdl >= TB_BLESSED_LOSS && tbwdl <= TB_CURSED_WIN) info.score = 0;
-        if(tbwdl == TB_LOSS) info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE;
-        if(tbwdl >= TB_WIN ) info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE;
-    }
-
-    if(m_verbose)
-    {
-        Interface::UCI::sendInfo(info);
-        Interface::UCI::sendBestMove(searchBestMove);
-    }
+    m_sendUciInfo(searchScore, searchBestMove, depth, forceTBScore, wdlTB);
 
     m_stats.nodes += m_numNodesSearched;
 
@@ -858,6 +802,45 @@ bool Searcher::m_shouldStop()
     }
 
     return false;
+}
+
+void Searcher::m_sendUciInfo(eval_t score, Move move, uint32_t depth, bool forceTBScore, uint8_t wdlTB)
+{
+    if(!m_verbose)
+    {
+        return;
+    }
+
+    // Send UCI info
+    Interface::SearchInfo info = Interface::SearchInfo();
+    info.depth = depth;
+    info.seldepth = m_seldepth;
+    info.msTime = m_timer.getMs();
+    info.nsTime = m_timer.getNs();
+    info.nodes = m_numNodesSearched;
+    info.score = score;
+    info.hashfull = m_tt.permills();
+    info.pvTable = &m_pvTable;
+    if(Evaluator::isRealMateScore(score))
+    {
+        info.mate = true;
+        // Divide by 2 to get moves and not plys.
+        // Round away from zero, as the last ply in odd plys has to be counted as a move
+        uint16_t distance = std::ceil((MATE_SCORE - std::abs(score)) / 2.0f);
+        info.mateDistance = score > 0 ? distance : -distance;
+    }
+    else if(forceTBScore)
+    {
+        if(wdlTB >= TB_BLESSED_LOSS && wdlTB <= TB_CURSED_WIN) info.score = 0;
+        if(wdlTB == TB_LOSS) info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE;
+        if(wdlTB >= TB_WIN ) info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE;
+    }
+
+    Interface::UCI::sendInfo(info);
+    if(move != NULL_MOVE)
+    {
+        Interface::UCI::sendBestMove(move);
+    }
 }
 
 SearchStats Searcher::getStats()
