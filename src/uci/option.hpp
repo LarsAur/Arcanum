@@ -123,7 +123,42 @@ namespace Arcanum
                 }
         };
 
-        // TODO: Add combo option
+        class ComboOption : public Option
+        {
+            private:
+                uint32_t m_defIndex;
+                std::vector<std::string> m_vars;
+            public:
+                uint32_t index;
+                ComboOption(std::string name, uint32_t defIndex, std::initializer_list<std::string> vars, std::function<void()> callback = []{}) :
+                    Option(name, callback),
+                    m_defIndex(defIndex),
+                    index(defIndex)
+                {
+                    m_vars.insert(m_vars.end(), vars.begin(), vars.end());
+                };
 
+            virtual void list()
+            {
+                std::stringstream ss;
+                for(uint32_t i = 0; i < m_vars.size(); i++)
+                {
+                    ss << " var " << m_vars[i];
+                }
+                UCI_OUT("option name " << m_name << " type combo default " << m_vars[m_defIndex] << ss.str())
+            }
+
+            virtual void set(std::string str)
+            {
+                for(uint32_t i = 0; i < m_vars.size(); i++)
+                {
+                    if(strEqCi(m_vars[i], str))
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+            }
+        };
     }
 }
