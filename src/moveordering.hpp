@@ -1,15 +1,13 @@
 #pragma once
 #include <board.hpp>
 
-#define KILLER_MOVES_MAX_PLY 64
+#define KILLER_MOVES_MAX_PLY 96
 
 namespace Arcanum
 {
     class KillerMoveManager
     {
         private:
-            // Maximum search depth (ply) for 64 for killer moves
-            // 2 killer moves per ply
             Move m_killerMoves[KILLER_MOVES_MAX_PLY][2];
         public:
             KillerMoveManager();

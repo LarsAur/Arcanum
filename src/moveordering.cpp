@@ -148,12 +148,6 @@ void KillerMoveManager::add(Move move, uint8_t plyFromRoot)
 
 bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
 {
-    if(move == NULL_MOVE)
-    {
-        WARNING("Cannot check for killer move Move(0,0)")
-        return false;
-    }
-
     if(plyFromRoot >= KILLER_MOVES_MAX_PLY)
     {
         WARNING("Cannot check for killer move at " << unsigned(plyFromRoot) << " plyFromRoot")
