@@ -283,7 +283,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     Move* moves = nullptr;
     uint8_t numMoves = 0;
 
-
     moves = board.getLegalMoves();
     numMoves = board.getNumLegalMoves();
 
@@ -308,51 +307,65 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     bool isImproving = (plyFromRoot > 1) && (staticEval > m_searchStack[plyFromRoot - 2].staticEval);
     bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStack[plyFromRoot - 2].staticEval);
 
-    // Reverse futility pruning
-    if(!isChecked && !Evaluator::isCloseToMate(board, beta) && depth < 9)
+    // Internal Iterative Reductions
+    if(isPv && depth >= 5 && !entry.has_value() && !isChecked)
     {
-        if(staticEval - 300 * (depth + isPv)  >= beta)
-        {
-            m_stats.reverseFutilityCutoffs++;
-            return staticEval;
-        }
+        depth--;
     }
 
-    // Razoring
-    if(!isChecked && !Evaluator::isCloseToMate(board, alpha))
+    if(!isPv && !isChecked)
     {
-        if(staticEval + 200 * (depth + isPv) < alpha)
+        // Reverse futility pruning
+        if(!Evaluator::isCloseToMate(board, beta) && depth < 9)
         {
-            eval_t razorEval = m_alphaBetaQuiet<isPv>(board, alpha, beta, plyFromRoot);
-            if(razorEval <= alpha)
+            if(staticEval - 300 * depth  >= beta)
             {
-                m_stats.razorCutoffs++;
-                return razorEval;
+                m_stats.reverseFutilityCutoffs++;
+                return staticEval;
             }
-            m_stats.failedRazorCutoffs++;
+        }
+
+        // Razoring
+        if(!Evaluator::isCloseToMate(board, alpha))
+        {
+            if(staticEval + 200 * depth < alpha)
+            {
+                eval_t razorEval = m_alphaBetaQuiet<false>(board, alpha, beta, plyFromRoot);
+                if(razorEval <= alpha)
+                {
+                    m_stats.razorCutoffs++;
+                    return razorEval;
+                }
+                m_stats.failedRazorCutoffs++;
+            }
+        }
+
+        // Push the board on the search stack before performing any moves (Including null moves)
+        m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
+
+        // Null move search
+        if(depth > 2 && !isNullMoveSearch && staticEval >= beta && board.hasOfficers(board.getTurn()))
+        {
+            Board newBoard = Board(board);
+            int R = 2 + isImproving + depth / 4;
+            newBoard.performNullMove();
+            m_tt.prefetch(newBoard.getHash());
+            eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
+
+            if(nullMoveScore >= beta)
+            {
+                // Pop the board off the search stack before returning
+                m_searchStack.pop_back();
+                m_stats.nullMoveCutoffs++;
+                return nullMoveScore;
+            }
+            m_stats.failedNullMoveCutoffs++;
         }
     }
-
-    // Push the board on the search stack before performing any moves (Including null moves)
-    m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
-
-    // Null move search
-    if(depth > 2 && !isChecked && !isNullMoveSearch && staticEval >= beta && board.hasOfficers(board.getTurn()))
+    else
     {
-        Board newBoard = Board(board);
-        int R = 2 + isImproving + depth / 4;
-        newBoard.performNullMove();
-        m_tt.prefetch(newBoard.getHash());
-        eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, true, totalExtensions);
-
-        if(nullMoveScore >= beta)
-        {
-            // Pop the board off the search stack before returning
-            m_searchStack.pop_back();
-            m_stats.nullMoveCutoffs++;
-            return nullMoveScore;
-        }
-        m_stats.failedNullMoveCutoffs++;
+        // Push the board on the search stack before performing any moves
+        m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
     }
 
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
