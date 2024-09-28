@@ -86,7 +86,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         m_stats.nonPvNodes++;
     }
 
-    if(m_isDraw(board))
+    if(m_isDraw(board, plyFromRoot))
         return DRAW_VALUE;
 
     // Table base probe
@@ -164,7 +164,10 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     }
 
     // Push the board on the search stack
-    m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
+    m_searchStack[plyFromRoot] = {
+        .hash = board.getHash(),
+        .staticEval = staticEval
+    };
 
     board.generateCaptureInfo();
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
@@ -211,8 +214,6 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
     m_tt.add(bestScore, bestMove, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
-    // Pop the board off the search stack
-    m_searchStack.pop_back();
     return bestScore;
 }
 
@@ -237,7 +238,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         m_stats.nonPvNodes++;
     }
 
-    if(m_isDraw(board))
+    if(m_isDraw(board, plyFromRoot))
         return DRAW_VALUE;
 
     eval_t originalAlpha = alpha;
@@ -307,6 +308,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     bool isImproving = (plyFromRoot > 1) && (staticEval > m_searchStack[plyFromRoot - 2].staticEval);
     bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStack[plyFromRoot - 2].staticEval);
 
+    // Push the board on the search stack
+    m_searchStack[plyFromRoot] = {
+        .hash = board.getHash(),
+        .staticEval = staticEval
+    };
+
     // Internal Iterative Reductions
     if(isPv && depth >= 5 && !entry.has_value() && !isChecked)
     {
@@ -340,9 +347,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             }
         }
 
-        // Push the board on the search stack before performing any moves (Including null moves)
-        m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
-
         // Null move search
         if(depth > 2 && !isNullMoveSearch && staticEval >= beta && board.hasOfficers(board.getTurn()))
         {
@@ -354,18 +358,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
             if(nullMoveScore >= beta)
             {
-                // Pop the board off the search stack before returning
-                m_searchStack.pop_back();
                 m_stats.nullMoveCutoffs++;
                 return nullMoveScore;
             }
             m_stats.failedNullMoveCutoffs++;
         }
-    }
-    else
-    {
-        // Push the board on the search stack before performing any moves
-        m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
     }
 
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
@@ -490,9 +487,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
     }
 
-    // Pop the board off the search stack before returning
-    m_searchStack.pop_back();
-
     // Stop the thread from writing to the TT when search is stopped
     if(m_stopSearch)
     {
@@ -508,16 +502,15 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     return bestScore;
 }
 
-inline bool Searcher::m_isDraw(const Board& board) const
+inline bool Searcher::m_isDraw(const Board& board, uint8_t plyFromRoot) const
 {
     // Check for repeated positions in the current search
     // * Only check for boards backwards until captures occur (halfMoves)
     // * Only check every other board, as the turn has to be correct
-    const size_t stackSize = m_searchStack.size();
-    const size_t limit = std::min(stackSize, size_t(board.getHalfMoves()));
-    for(size_t i = 2; i <= limit; i += 2)
+    const uint16_t limit = std::min(uint16_t(plyFromRoot), board.getHalfMoves());
+    for(uint16_t i = 2; i <= limit; i += 2)
     {
-        if(m_searchStack[stackSize - i].hash == board.getHash())
+        if(m_searchStack[plyFromRoot - i].hash == board.getHash())
             return true;
     }
 
@@ -621,7 +614,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         staticEval = m_evaluator.evaluate(board, 0);
     }
 
-    m_searchStack.push_back({.hash = board.getHash(), .staticEval = staticEval});
+    m_searchStack[0] = {
+        .hash = board.getHash(),
+        .staticEval = staticEval
+    };
 
     uint32_t depth = 0;
     while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
@@ -756,8 +752,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         if(depth >= MAX_SEARCH_DEPTH - 1)
             break;
     }
-
-    m_searchStack.pop_back();
 
     m_sendUciInfo(searchScore, searchBestMove, depth, forceTBScore, wdlTB);
 

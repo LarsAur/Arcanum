@@ -12,6 +12,7 @@
 #include <memory>
 
 #define MAX_SEARCH_DEPTH 64
+#define MAX_SEARCH_PLY 96
 
 namespace Arcanum
 {
@@ -112,7 +113,7 @@ namespace Arcanum
         private:
             std::unordered_map<hash_t, uint8_t, HashFunction> m_gameHistory;
             TranspositionTable m_tt;
-            std::vector<SearchStackElement> m_searchStack;
+            SearchStackElement m_searchStack[MAX_SEARCH_PLY];
             std::vector<hash_t> m_knownEndgameMaterialDraws;
             uint8_t m_lmrReductions[MAX_SEARCH_DEPTH][MAX_MOVE_COUNT];
             uint32_t m_lmpThresholds[2][MAX_SEARCH_DEPTH];
@@ -130,7 +131,7 @@ namespace Arcanum
             bool m_verbose; // Print use output and stats while searching
             volatile bool m_stopSearch;
 
-            bool m_isDraw(const Board& board) const;
+            bool m_isDraw(const Board& board, uint8_t plyFromRoot) const;
             bool m_shouldStop();
             void m_sendUciInfo(eval_t score, Move move, uint32_t depth, bool forceTBScore, uint8_t wdlTB);
 
