@@ -52,6 +52,8 @@ namespace Arcanum
         uint64_t failedRazorCutoffs;
         uint64_t reverseFutilityCutoffs;
         uint64_t lmpPrunedMoves;
+        uint64_t singularExtensions;
+        uint64_t failedSingularExtensions;
 
         SearchStats() :
             nodes(0),
@@ -71,7 +73,9 @@ namespace Arcanum
             razorCutoffs(0),
             failedRazorCutoffs(0),
             reverseFutilityCutoffs(0),
-            lmpPrunedMoves(0)
+            lmpPrunedMoves(0),
+            singularExtensions(0),
+            failedSingularExtensions(0)
         {};
 
     } SearchStats;
@@ -136,7 +140,7 @@ namespace Arcanum
             void m_sendUciInfo(eval_t score, Move move, uint32_t depth, bool forceTBScore, uint8_t wdlTB);
 
             template <bool isPv>
-            eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions);
+            eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions, Move skipMove = NULL_MOVE);
             template <bool isPv>
             eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot);
         public:

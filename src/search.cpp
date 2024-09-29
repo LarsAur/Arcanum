@@ -218,7 +218,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 }
 
 template <bool isPv>
-eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions)
+eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool isNullMoveSearch, uint8_t totalExtensions, Move skipMove)
 {
     if(m_shouldStop())
         return 0;
@@ -243,7 +243,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     eval_t originalAlpha = alpha;
     std::optional<ttEntry_t> entry = m_tt.get(board.getHash(), plyFromRoot);
-    if(!isPv && entry.has_value() && (entry->depth >= depth))
+    if(!isPv && entry.has_value() && (entry->depth >= depth) && skipMove== NULL_MOVE)
     {
         switch (entry->flags)
         {
@@ -300,7 +300,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     if(numMoves == 0)
     {
-        return staticEval;
+        return skipMove == NULL_MOVE ? staticEval : alpha;
     }
 
     board.generateCaptureInfo();
@@ -320,7 +320,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         depth--;
     }
 
-    if(!isPv && !isChecked)
+    if(!isPv && !isChecked && skipMove == NULL_MOVE)
     {
         // Reverse futility pruning
         if(!Evaluator::isCloseToMate(board, beta) && depth < 9)
@@ -371,6 +371,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
+        if(*move == skipMove)
+            continue;
+
         if(!Evaluator::isCloseToMate(board, bestScore)
         && !isChecked && quietMovesPerformed > m_lmpThresholds[isImproving][depth]
         && !CAPTURED_PIECE(move->moveInfo)
@@ -399,8 +402,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             }
         }
 
-        m_evaluator.pushMoveToAccumulator(newBoard, *move);
-
         // Extend search for checking moves or check avoiding moves
         // This is to avoid horizon effect occuring by starting with a forced line
         uint8_t extension = (
@@ -409,9 +410,37 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             (numMoves == 1)
         ) ? 1 : 0;
 
+        // Singular extension
+        if(
+            i == 0
+            && skipMove == NULL_MOVE
+            && extension == 0
+            && depth >= 7
+            && entry.has_value()
+            && entry->flags != TTFlag::UPPER_BOUND
+            && entry->depth >= depth - 2
+            && !Evaluator::isMateScore(entry->value))
+        {
+            eval_t seBeta = entry->value - 3 * depth;
+            uint8_t seDepth = (depth - 1) / 2;
+            eval_t seScore = m_alphaBeta<isPv>(board, seBeta - 1, seBeta, seDepth, plyFromRoot, isNullMoveSearch, totalExtensions, *move);
+
+            if(seScore < seBeta)
+            {
+                extension++;
+                m_stats.singularExtensions++;
+            }
+            else
+            {
+                m_stats.failedSingularExtensions++;
+            }
+        }
+
         // Limit the number of extensions
         if(totalExtensions > 32)
             extension = 0;
+
+        m_evaluator.pushMoveToAccumulator(newBoard, *move);
 
         if(i == 0)
         {
@@ -493,11 +522,14 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         return 0;
     }
 
-    TTFlag flag = TTFlag::EXACT;
-    if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
-    else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
+    if(skipMove == NULL_MOVE)
+    {
+        TTFlag flag = TTFlag::EXACT;
+        if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
+        else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
-    m_tt.add(bestScore, bestMove, depth, plyFromRoot, staticEval, flag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+        m_tt.add(bestScore, bestMove, depth, plyFromRoot, staticEval, flag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+    }
 
     return bestScore;
 }
@@ -869,12 +901,15 @@ void Searcher::logStats()
     ss << "\nFailed Razor Cutoffs:      " << m_stats.failedRazorCutoffs;
     ss << "\nReverseFutilityCutoffs:    " << m_stats.reverseFutilityCutoffs;
     ss << "\nLate Pruned Moves:         " << m_stats.lmpPrunedMoves;
+    ss << "\nSingular Extensions:       " << m_stats.singularExtensions;
+    ss << "\nFailed Singular Extensions:" << m_stats.failedSingularExtensions;
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";
     ss << "\nRe-Searches:          " << (float) (100 * m_stats.researchesRequired) / m_stats.nullWindowSearches << "%";
     ss << "\nNull-Move Cutoffs:    " << (float) (100 * m_stats.nullMoveCutoffs) / (m_stats.nullMoveCutoffs + m_stats.failedNullMoveCutoffs) << "%";
     ss << "\nRazor Cutoffs:        " << (float) (100 * m_stats.razorCutoffs) / (m_stats.razorCutoffs + m_stats.failedRazorCutoffs) << "%";
+    ss << "\nSingular Extension    " << (float) (100 * m_stats.singularExtensions) / (m_stats.failedSingularExtensions + m_stats.failedSingularExtensions) << "%";
     ss << "\n----------------------------------";
 
     LOG(ss.str())
