@@ -332,3 +332,181 @@ std::string FEN::toString(const Board& board)
 
     return ss.str();
 }
+
+// https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
+Move getMoveFromAlgebraic(std::string token, Board& board)
+{
+    uint32_t consumed = 0;
+    int8_t fromFile = -1;
+    int8_t fromRank = -1;
+    Move toMatch = NULL_MOVE;
+    std::string _token = token;
+
+    // Remove possible semicolon from EDP
+    if(token[token.size() - 1] == ';')
+    {
+        token = token.substr(0, token.size() - 1);
+    }
+
+    // Remove possible checkmate '#' or check '+' symbol
+    if(token[token.size() - 1] == '#' || token[token.size() - 1] == '+')
+    {
+        token = token.substr(0, token.size() - 1);
+    }
+
+    {
+        // Remove capture character 'x'
+        size_t p = token.find('x');
+        if(p != std::string::npos)
+        {
+            token.erase(p, 1);
+        }
+
+        // Remove capture character ':'
+        p = token.find(':');
+        if(p != std::string::npos)
+        {
+            token.erase(p, 1);
+        }
+    }
+
+    // Parse king side castling moves
+    if(token == "O-O" || token == "0-0")
+    {
+        toMatch.moveInfo |= board.getTurn() ? MoveInfoBit::CASTLE_BLACK_KING : MoveInfoBit::CASTLE_WHITE_KING;
+        toMatch.to = board.getTurn() ? 62 : 6;
+        goto find_move;
+    }
+
+    // Parse queen side castling moves
+    if(token == "O-O-O" || token == "0-0-0")
+    {
+        toMatch.moveInfo |= board.getTurn() ? MoveInfoBit::CASTLE_BLACK_QUEEN : MoveInfoBit::CASTLE_WHITE_QUEEN;
+        toMatch.to = board.getTurn() ? 58 : 2;
+        goto find_move;
+    }
+
+    // Parse the first character containing the moved piece
+    // If no character matches, the move is a pawn move
+    switch (token[consumed])
+    {
+        case 'R': toMatch.moveInfo |= MoveInfoBit::ROOK_MOVE;   consumed++; break;
+        case 'N': toMatch.moveInfo |= MoveInfoBit::KNIGHT_MOVE; consumed++; break;
+        case 'B': toMatch.moveInfo |= MoveInfoBit::BISHOP_MOVE; consumed++; break;
+        case 'Q': toMatch.moveInfo |= MoveInfoBit::QUEEN_MOVE;  consumed++; break;
+        case 'K': toMatch.moveInfo |= MoveInfoBit::KING_MOVE;   consumed++; break;
+        default:  toMatch.moveInfo |= MoveInfoBit::PAWN_MOVE;   break;
+    }
+
+    // Check if the move is ambigous
+    if(token[consumed] >= 'a' && token[consumed] <= 'h' && token[consumed+1] >= '1' && token[consumed+1] <= '8')
+    {
+        if(token.size() > consumed + 3 && token[consumed+2] >= 'a' && token[consumed+2] <= 'h' && token[consumed+3] >= '1' && token[consumed+3] <= '8')
+        {
+            // Ambigous
+            fromFile = token[consumed] - 'a';
+            fromRank = token[consumed+1] - '8';
+            toMatch.to = SQUARE(token[consumed+2] - 'a', token[consumed+3] - '1');
+        }
+        else
+        {
+            // Unambigous
+            toMatch.to = SQUARE(token[consumed] - 'a', token[consumed+1] - '1');
+        }
+    }
+    else if(token[consumed] >= 'a' && token[consumed] <= 'h')
+    {
+        // Ambigous
+        fromFile = token[consumed] - 'a';
+        if(token[consumed+1] >= 'a' && token[consumed+1] <= 'h' && token[consumed+2] >= '1' && token[consumed+2] <= '8')
+        {
+            toMatch.to = SQUARE(token[consumed+1] - 'a', token[consumed+2] - '1');
+        }
+    }
+    else if(token[consumed] >= '1' && token[consumed] <= '8')
+    {
+        // Ambigous
+        fromRank = token[consumed] - '1';
+        if(token[consumed+1] >= 'a' && token[consumed+1] <= 'h' && token[consumed+2] >= '1' && token[consumed+2] <= '8')
+        {
+            toMatch.to = SQUARE(token[consumed+1] - 'a', token[consumed+2] - '1');
+        }
+    }
+
+    // Check for possible promotions
+    switch (token[token.size() - 1])
+    {
+        case 'R': toMatch.moveInfo |= MoveInfoBit::PROMOTE_ROOK;   break;
+        case 'N': toMatch.moveInfo |= MoveInfoBit::PROMOTE_KNIGHT; break;
+        case 'B': toMatch.moveInfo |= MoveInfoBit::PROMOTE_BISHOP; break;
+        case 'Q': toMatch.moveInfo |= MoveInfoBit::PROMOTE_QUEEN;  break;
+    }
+
+    // Find the correct move based on the required match info
+    find_move:
+    Move* moves = board.getLegalMoves();
+    uint8_t numMoves = board.getNumLegalMoves();
+    board.generateCaptureInfo();
+
+    for(uint8_t i = 0; i < numMoves; i++)
+    {
+        if(RANK(moves[i].from) != fromRank && fromRank != -1)
+            continue;
+
+        if(FILE(moves[i].from) != fromFile && fromFile != -1)
+            continue;
+
+        // Verify that all the fields in toMatch is set in the move.
+        // And that the destination squares are matching
+        if((moves[i].moveInfo & toMatch.moveInfo) == toMatch.moveInfo && (moves[i].to == toMatch.to))
+        {
+            return moves[i];
+        }
+    }
+
+    WARNING("No matching move found for " << _token << " in " << FEN::getFEN(board))
+    return NULL_MOVE;
+}
+
+EDP FEN::parseEDP(std::string edp)
+{
+    std::string token;
+    EDP desc;
+
+    std::istringstream is(edp);
+
+    // Parse the FEN
+    is >> token; desc.fen.append(token);       // Position
+    is >> token; desc.fen.append(" " + token); // Turn
+    is >> token; desc.fen.append(" " + token); // Castle rights
+    is >> token; desc.fen.append(" " + token); // Enpassant move
+    desc.fen.append(" 0 1"); // Set default "half move clock" and "full move number" // TODO: Set based on fmvn and hmvc
+
+    Board board = Board(desc.fen);
+    Move* moves = board.getLegalMoves();
+    board.generateCaptureInfo();
+
+    while(is >> token)
+    {
+        if     (token == "acd" ) is >> desc.acd;
+        else if(token == "acn" ) is >> desc.acn;
+        else if(token == "acs" ) is >> desc.acs;
+        else if(token == "am"  ) WARNING("Missing EDP am")
+        else if(token == "bm"  ) WARNING("Missing EDP bm")
+        else if(token == "c"   ) WARNING("Missing EDP comment")
+        else if(token == "ce"  ) is >> desc.ce;
+        else if(token == "dm"  ) is >> desc.dm;
+        else if(token == "eco" ) is >> desc.eco;
+        else if(token == "fmvn") is >> desc.fmvn;
+        else if(token == "hmvc") is >> desc.hmvc;
+        else if(token == "id"  ) is >> desc.id;
+        else if(token == "nic" ) is >> desc.nic;
+        else if(token == "pm"  ) {is >> token; desc.pm = getMoveFromAlgebraic(token, board); }
+        else if(token == "pv"  ) WARNING("Missing EDP pv")
+        else if(token == "rc"  ) is >> desc.rc;
+        else if(token == "sm"  ) {is >> token; desc.pm = getMoveFromAlgebraic(token, board); }
+        else if(token == "v0"  ) WARNING("Missing EDP variant name")
+    }
+
+    return desc;
+}
