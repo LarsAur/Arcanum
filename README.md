@@ -5,7 +5,7 @@
 
 ## Overview
 Arcanum is a free [UCI][uci-protocol] chess engine under the GPL-3.0 license.
-Arcanum 2.2 has a rating of ~2925 elo in blitz on [CCRL][ccrl].
+Arcanum 2.3 has a rating of ~3140 elo in blitz on [CCRL][ccrl].
 
 ## Building
 Arcanum requires `c++17` and has only been tested using `g++`. It can be compiled on Windows (Tested for Windows 11 using MinGW), and Linux (Tested for Ubuntu 22.04). Arcanum takes advantage of and requires some x86 intrinsics: `AVX2`, `FMA`, `BMI1`, `BMI2` `POPCNT` and `LZCNT`.
@@ -37,8 +37,8 @@ make release -j NAME=<executable-name> VERSION=<version>
 This creates a clean build named `<executable-name>` with version `<version>` which logs to file, and only have warnings and errors enabled. The build will be copied to the *releases* directory.
 
 ## NNUE
-Arcanum has a floating point [NNUE][nnue], which is created from selfplay, starting from the HCE from Arcanum v1.12.
-The architecture is `768->256->1`, where the feature set is 'flipped' based on the perspective rather than having two feature transformers.
+Arcanum has a floating point [NNUE][nnue], which is created from selfplay, starting from the HCE from Arcanum v1.12. \
+The architecture is `768->256->32->1`, where the feature set is 'flipped' based on the perspective rather than having two feature transformers.
 
 Both the inference and backpropagation is written from scratch and requires AVX2.
 
@@ -55,14 +55,27 @@ setoption name syzygypath value <folder>
 ```
 where `<folder>` is the _absolute path_ to the folder containing the tablebase.
 
-## Testing
-Arcanum has a number of arguments to validate the engine and test the performance:
-* `--capture-test` Test that move generation for capture moves works.
-* `--zobrist-test` Testing that zobrist hashing works.
-* `--perft-test` Runs [perft][perft] on a number of predefined positions with known [results][perft-results].
-* `--search-perf` Runs a 40 ply game searching at depth 10 with [quiescence][qsearch] search. This is a performance test, checking the speed of the search.
-* `--engine-perf` Runs a search for 5 seconds on a number of difficult [test-positions][test-positions] ([Bratko-Kopec Test][bkt]). This is a performance test, checking the strength of the search.
+## Options
+All of the following UCI options are available in Arcanum.
+| Name           | Type   | Default                | Description                                                                                                                                                                                    |
+|----------------|--------|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Hash           | Spin   | 32                     | Number of MBs to allocate for the transposition table. If 0, the transposition table will be disabled.                                                                                         |
+| ClearHash      | Button |                        | Clears the transposition table.                                                                                                                                                                |
+| SyzygyPath     | String | \<empty\>              | Absolute path to the Syzygy directory. If \<empty\>, Syzygy will be disabled.                                                                                                                  |
+| NNUEPath       | String | arcanum&#8209;net&#8209;v4.0.fnnue | Path to the NNUE net relative to the executable.                                                                                                                                   |
+| MoveOverhead   | Spin   | 10                     | Number of ms to assume as move overhead. MoveOverhead is subtracted from the remaining time before doing time management. If MoveOverhead is larger than the remaining time, 1ms will be used. |
+| NormalizeScore | Check  | True                   | Normalize the score reported in UCI info such that 100cp equates to a ~50% chance to win                                                                                                       |
 
+## Rating Progression
+
+| Version | CCRL Blitz | CCRL 40/15 |
+|---------|------------|------------|
+| 2.3.*   | 3144       |            |
+| 2.2     | 2926       | 2929       |
+| 2.1     | 2724       |            |
+| 2.0     | 2456       |            |
+| 1.12    | 2227       | 2228       |
+| 1.11.*  | 2140       |            |
 
 [uci-protocol]: https://backscattering.de/chess/uci/
 [lucas-chess]: https://lucaschess.pythonanywhere.com/
