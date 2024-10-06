@@ -491,8 +491,6 @@ EDP FEN::parseEDP(std::string edp)
     desc.fen.append(" 0 1"); // Set default "half move clock" and "full move number" // TODO: Set based on fmvn and hmvc
 
     Board board = Board(desc.fen);
-    Move* moves = board.getLegalMoves();
-    board.generateCaptureInfo();
 
     while(is >> token)
     {
