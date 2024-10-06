@@ -151,8 +151,8 @@ bool FEN::setFEN(Board& board, const std::string fen)
     // Simply remove the castle rights and show a warning
     if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << 4 ) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << 7))  == 0) board.m_castleRights &= ~WHITE_KING_SIDE;
     if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << 4 ) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << 0))  == 0) board.m_castleRights &= ~WHITE_QUEEN_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << 60) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << 63)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << 60) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << 56)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
+    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << 60) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << 63)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
+    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << 60) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << 56)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
 
     // Read enpassant square
     board.m_enPassantSquare = 64;
