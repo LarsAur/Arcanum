@@ -374,7 +374,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(*move == skipMove)
             continue;
 
-        if(!Evaluator::isCloseToMate(board, bestScore)
+        if( !isPv
+        && !Evaluator::isCloseToMate(board, bestScore)
         && !isChecked && quietMovesPerformed > m_lmpThresholds[isImproving][depth]
         && !CAPTURED_PIECE(move->moveInfo)
         && !(PROMOTED_PIECE(move->moveInfo)))
@@ -393,7 +394,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         quietMovesPerformed += !CAPTURED_PIECE(move->moveInfo) && !(PROMOTED_PIECE(move->moveInfo));
 
         // Futility pruning
-        if(depth > 0 && depth < 4 && !checkOrChecking && !(PROMOTED_PIECE(move->moveInfo) | CAPTURED_PIECE(move->moveInfo)))
+        if(!isPv && depth < 4 && !checkOrChecking && !(PROMOTED_PIECE(move->moveInfo) | CAPTURED_PIECE(move->moveInfo)))
         {
             if(staticEval + futilityMargins[depth - 1] < alpha && std::abs(alpha) < 900 && std::abs(beta) < 900)
             {
