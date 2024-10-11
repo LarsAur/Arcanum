@@ -38,6 +38,7 @@ namespace Arcanum
     #define CASTLE_SIDE(_moveInfo)    ((_moveInfo) & MOVE_INFO_CASTLE_MASK)
     #define PROMOTED_PIECE(_moveInfo) ((_moveInfo) & MOVE_INFO_PROMOTE_MASK)
     #define CAPTURED_PIECE(_moveInfo) ((_moveInfo) & MOVE_INFO_CAPTURE_MASK)
+    #define IS_QUIET(_moveInfo)       (!((_moveInfo) & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
 
     enum Square : square_t
     {

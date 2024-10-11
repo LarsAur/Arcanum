@@ -204,7 +204,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         if(alpha >= beta)
         {
             ttFlag = TTFlag::LOWER_BOUND;
-            if(!(CAPTURED_PIECE(move->moveInfo) | PROMOTED_PIECE(move->moveInfo)))
+            if(IS_QUIET(move->moveInfo))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
             }
@@ -374,11 +374,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(*move == skipMove)
             continue;
 
+        // Late move pruning (LMP)
+        // Skip quiet moves after having tried a certain number of quiet moves
         if( !isPv
         && !Evaluator::isCloseToMate(board, bestScore)
         && !isChecked && quietMovesPerformed > m_lmpThresholds[isImproving][depth]
-        && !CAPTURED_PIECE(move->moveInfo)
-        && !(PROMOTED_PIECE(move->moveInfo)))
+        &&  IS_QUIET(move->moveInfo))
         {
             m_stats.lmpPrunedMoves++;
             continue;
@@ -391,10 +392,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t score;
         bool checkOrChecking = isChecked || newBoard.isChecked();
 
-        quietMovesPerformed += !CAPTURED_PIECE(move->moveInfo) && !(PROMOTED_PIECE(move->moveInfo));
+        // Count quiet moves for LMP
+        quietMovesPerformed += IS_QUIET(move->moveInfo);
 
         // Futility pruning
-        if(!isPv && depth < 4 && !checkOrChecking && !(PROMOTED_PIECE(move->moveInfo) | CAPTURED_PIECE(move->moveInfo)))
+        if(!isPv && depth < 4 && !checkOrChecking && IS_QUIET(move->moveInfo))
         {
             if(staticEval + futilityMargins[depth - 1] < alpha && std::abs(alpha) < 900 && std::abs(beta) < 900)
             {
@@ -496,7 +498,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(alpha >= beta)
         {
             // Update move history and killers for quiet moves
-            if(!(CAPTURED_PIECE(move->moveInfo) | PROMOTED_PIECE(move->moveInfo)))
+            if(IS_QUIET(move->moveInfo))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
                 if(depth > 3)
@@ -508,7 +510,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
 
         // Quiet move did not cause a beta-cutoff, increase the relative butterfly history
-        if(!(CAPTURED_PIECE(move->moveInfo) | PROMOTED_PIECE(move->moveInfo)))
+        if(IS_QUIET(move->moveInfo))
         {
             if(depth > 3)
             {
