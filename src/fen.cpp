@@ -149,14 +149,14 @@ bool FEN::setFEN(Board& board, const std::string fen)
     // Handle cases where the castle rights are illegal, and the FEN is incorrect
     // This can happen if the rooks or kings are not in the correct locations
     // Simply remove the castle rights and show a warning
-    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << 4 ) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << 7))  == 0) board.m_castleRights &= ~WHITE_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << 4 ) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << 0))  == 0) board.m_castleRights &= ~WHITE_QUEEN_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << 60) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << 63)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << 60) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << 56)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
+    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~WHITE_KING_SIDE;
+    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~WHITE_QUEEN_SIDE;
+    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
+    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
 
     // Read enpassant square
-    board.m_enPassantSquare = 64;
-    board.m_enPassantTarget = 64;
+    board.m_enPassantSquare = Square::NONE;
+    board.m_enPassantTarget = Square::NONE;
     board.m_bbEnPassantSquare = 0LL;
     board.m_bbEnPassantTarget = 0LL;
     chr = fen[fenPosition++];
@@ -283,7 +283,7 @@ std::string FEN::getFEN(const Board& board)
     if(board.m_castleRights == 0) ss << "-";
 
     // Enpassant
-    if(board.m_enPassantSquare != 64) ss << " " << squareToString(board.m_enPassantSquare) << " ";
+    if(board.m_enPassantSquare != Square::NONE) ss << " " << squareToString(board.m_enPassantSquare) << " ";
     else ss << " - ";
 
     // Half moves

@@ -29,7 +29,7 @@ Zobrist::Zobrist()
     {
         m_enPassantTable[i] = distribution(generator);
     }
-    m_enPassantTable[64] = 0LL;
+    m_enPassantTable[Square::NONE] = 0LL;
 
     m_blackToMove = distribution(generator);
 }
@@ -82,11 +82,8 @@ void Zobrist::getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_
         hash ^= m_blackToMove;
     }
 
-    if(board.m_enPassantSquare != 64)
-    {
-        hash ^= m_enPassantTable[board.m_enPassantSquare];
-        pawnHash ^= m_enPassantTable[board.m_enPassantSquare];
-    }
+    hash     ^= m_enPassantTable[board.m_enPassantSquare];
+    pawnHash ^= m_enPassantTable[board.m_enPassantSquare];
 }
 
 void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassantSquare, square_t newEnPassantSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
@@ -115,19 +112,19 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     {
         if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
         {
-            hash ^= m_tables[W_ROOK][WHITE][0] ^  m_tables[W_ROOK][WHITE][3];
+            hash ^= m_tables[W_ROOK][WHITE][Square::A1] ^ m_tables[W_ROOK][WHITE][Square::D1];
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
         {
-            hash ^= m_tables[W_ROOK][WHITE][7] ^  m_tables[W_ROOK][WHITE][5];
+            hash ^= m_tables[W_ROOK][WHITE][Square::H1] ^ m_tables[W_ROOK][WHITE][Square::F1];
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
         {
-            hash ^= m_tables[W_ROOK][BLACK][56] ^ m_tables[W_ROOK][BLACK][59];
+            hash ^= m_tables[W_ROOK][BLACK][Square::A8] ^ m_tables[W_ROOK][BLACK][Square::D8];
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
         {
-            hash ^= m_tables[W_ROOK][BLACK][63] ^ m_tables[W_ROOK][BLACK][61];
+            hash ^= m_tables[W_ROOK][BLACK][Square::H8] ^ m_tables[W_ROOK][BLACK][Square::F8];
         }
     }
 

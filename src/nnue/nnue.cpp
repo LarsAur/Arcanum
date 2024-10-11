@@ -218,23 +218,23 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
     {
         if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
         {
-            removedFeatures[1] = m_getFeatureIndex(0, WHITE, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(3, WHITE, W_ROOK);
+            removedFeatures[1] = m_getFeatureIndex(Square::A1, WHITE, W_ROOK);
+            addedFeatures[1]   = m_getFeatureIndex(Square::D1, WHITE, W_ROOK);
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
         {
-            removedFeatures[1] = m_getFeatureIndex(7, WHITE, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(5, WHITE, W_ROOK);
+            removedFeatures[1] = m_getFeatureIndex(Square::H1, WHITE, W_ROOK);
+            addedFeatures[1]   = m_getFeatureIndex(Square::F1, WHITE, W_ROOK);
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
         {
-            removedFeatures[1] = m_getFeatureIndex(56, BLACK, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(59, BLACK, W_ROOK);
+            removedFeatures[1] = m_getFeatureIndex(Square::A8, BLACK, W_ROOK);
+            addedFeatures[1]   = m_getFeatureIndex(Square::D8, BLACK, W_ROOK);
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
         {
-            removedFeatures[1] = m_getFeatureIndex(63, BLACK, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(61, BLACK, W_ROOK);
+            removedFeatures[1] = m_getFeatureIndex(Square::H8, BLACK, W_ROOK);
+            addedFeatures[1]   = m_getFeatureIndex(Square::F8, BLACK, W_ROOK);
         }
     }
 

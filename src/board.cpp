@@ -1003,32 +1003,32 @@ void Board::performMove(const Move move)
             m_bbTypedPieces[W_ROOK][WHITE] = (m_bbTypedPieces[W_ROOK][WHITE] & ~0x01LL) | 0x08LL;
             m_bbColoredPieces[WHITE] = (m_bbColoredPieces[WHITE] & ~0x01LL) | 0x08LL;
             m_bbAllPieces = (m_bbAllPieces & ~0x01LL) | 0x08LL;
-            m_pieces[3] = W_ROOK;
-            m_pieces[0] = NO_PIECE;
+            m_pieces[Square::D1] = W_ROOK;
+            m_pieces[Square::A1] = NO_PIECE;
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
         {
             m_bbTypedPieces[W_ROOK][WHITE] = (m_bbTypedPieces[W_ROOK][WHITE] & ~0x80LL) | 0x20LL;
             m_bbColoredPieces[WHITE] = (m_bbColoredPieces[WHITE] & ~0x80LL) | 0x20LL;
             m_bbAllPieces = (m_bbAllPieces & ~0x80LL) | 0x20LL;
-            m_pieces[5] = W_ROOK;
-            m_pieces[7] = NO_PIECE;
+            m_pieces[Square::F1] = W_ROOK;
+            m_pieces[Square::H1] = NO_PIECE;
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
         {
             m_bbTypedPieces[W_ROOK][BLACK] = (m_bbTypedPieces[W_ROOK][BLACK] & ~0x0100000000000000LL) | 0x0800000000000000LL;
             m_bbColoredPieces[BLACK] = (m_bbColoredPieces[BLACK] & ~0x0100000000000000LL) | 0x0800000000000000LL;
             m_bbAllPieces = (m_bbAllPieces & ~0x0100000000000000LL) | 0x0800000000000000LL;
-            m_pieces[59] = B_ROOK;
-            m_pieces[56] = NO_PIECE;
+            m_pieces[Square::D8] = B_ROOK;
+            m_pieces[Square::A8] = NO_PIECE;
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
         {
             m_bbTypedPieces[W_ROOK][BLACK] = (m_bbTypedPieces[W_ROOK][BLACK] & ~0x8000000000000000LL) | 0x2000000000000000LL;
             m_bbColoredPieces[BLACK] = (m_bbColoredPieces[BLACK] & ~0x8000000000000000LL) | 0x2000000000000000LL;
             m_bbAllPieces = (m_bbAllPieces & ~0x8000000000000000LL) | 0x2000000000000000LL;
-            m_pieces[61] = B_ROOK;
-            m_pieces[63] = NO_PIECE;
+            m_pieces[Square::F8] = B_ROOK;
+            m_pieces[Square::H8] = NO_PIECE;
         }
     }
 
@@ -1044,22 +1044,22 @@ void Board::performMove(const Move move)
         }
     }
 
-    if(move.to == 0 || move.from == 0)
+    if(move.to == Square::A1 || move.from == Square::A1)
     {
         m_castleRights &= ~(WHITE_QUEEN_SIDE);
     }
 
-    if(move.to == 7 || move.from == 7)
+    if(move.to == Square::H1 || move.from == Square::H1)
     {
         m_castleRights &= ~(WHITE_KING_SIDE);
     }
 
-    if(move.to == 56 || move.from == 56)
+    if(move.to == Square::A8 || move.from == Square::A8)
     {
         m_castleRights &= ~(BLACK_QUEEN_SIDE);
     }
 
-    if(move.to == 63 || move.from == 63)
+    if(move.to == Square::H8 || move.from == Square::H8)
     {
         m_castleRights &= ~(BLACK_KING_SIDE);
     }
@@ -1100,8 +1100,8 @@ void Board::performMove(const Move move)
 
     square_t oldEnPassantSquare = m_enPassantSquare;
     // Required to reset
-    m_enPassantSquare = 64;
-    m_enPassantTarget = 64;
+    m_enPassantSquare = Square::NONE;
+    m_enPassantTarget = Square::NONE;
     m_bbEnPassantSquare = 0LL;
     m_bbEnPassantTarget = 0LL;
     if(move.moveInfo & MoveInfoBit::DOUBLE_MOVE)
@@ -1132,8 +1132,8 @@ void Board::performMove(const Move move)
 void Board::performNullMove()
 {
     square_t oldEnPassantSquare = m_enPassantSquare;
-    m_enPassantSquare = 64;
-    m_enPassantTarget = 64;
+    m_enPassantSquare = Square::NONE;
+    m_enPassantTarget = Square::NONE;
     m_bbEnPassantSquare = 0LL;
     m_bbEnPassantTarget = 0LL;
 
