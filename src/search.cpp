@@ -426,7 +426,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         {
             eval_t seBeta = entry->value - 3 * depth;
             uint8_t seDepth = (depth - 1) / 2;
-            eval_t seScore = m_alphaBeta<isPv>(board, seBeta - 1, seBeta, seDepth, plyFromRoot, isNullMoveSearch, totalExtensions, *move);
+            eval_t seScore = m_alphaBeta<false>(board, seBeta - 1, seBeta, seDepth, plyFromRoot, isNullMoveSearch, totalExtensions, *move);
 
             if(seScore < seBeta)
             {
