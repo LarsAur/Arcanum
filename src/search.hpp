@@ -54,6 +54,10 @@ namespace Arcanum
         uint64_t lmpPrunedMoves;
         uint64_t singularExtensions;
         uint64_t failedSingularExtensions;
+        uint64_t probCuts;
+        uint64_t probCutQSearches;
+        uint64_t probCutSearches;
+        uint64_t failedProbCuts;
 
         SearchStats() :
             nodes(0),
@@ -75,7 +79,11 @@ namespace Arcanum
             reverseFutilityCutoffs(0),
             lmpPrunedMoves(0),
             singularExtensions(0),
-            failedSingularExtensions(0)
+            failedSingularExtensions(0),
+            probCuts(0),
+            probCutQSearches(0),
+            probCutSearches(0),
+            failedProbCuts(0)
         {};
 
     } SearchStats;

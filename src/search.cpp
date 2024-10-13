@@ -363,6 +363,47 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             }
             m_stats.failedNullMoveCutoffs++;
         }
+
+        // ProbCut
+        eval_t probBeta = beta + 300;
+        if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->value < probBeta))
+        {
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
+
+            for(uint8_t i = 0; i < numMoves; i++)
+            {
+                const Move* move = moveSelector.getNextMove();
+
+                if(IS_QUIET(move->moveInfo))
+                {
+                    continue;
+                }
+
+                Board newBoard = Board(board);
+                newBoard.performMove(*move);
+
+                m_evaluator.pushMoveToAccumulator(newBoard, *move);
+
+                m_stats.probCutQSearches++;
+                eval_t score = -m_alphaBetaQuiet<false>(newBoard, -probBeta, -probBeta + 1, plyFromRoot + 1);
+
+                if(score >= probBeta)
+                {
+                    m_stats.probCutSearches++;
+                    score = -m_alphaBeta<false>(newBoard, -probBeta, -probBeta + 1, depth - 4, plyFromRoot + 1, false, totalExtensions);
+                }
+
+                m_evaluator.popMoveFromAccumulator();
+
+                if(score >= probBeta)
+                {
+                    m_stats.probCuts++;
+                    return score;
+                }
+            }
+
+            m_stats.failedProbCuts++;
+        }
     }
 
     static constexpr eval_t futilityMargins[] = {300, 500, 900};
@@ -906,6 +947,10 @@ void Searcher::logStats()
     ss << "\nLate Pruned Moves:         " << m_stats.lmpPrunedMoves;
     ss << "\nSingular Extensions:       " << m_stats.singularExtensions;
     ss << "\nFailed Singular Extensions:" << m_stats.failedSingularExtensions;
+    ss << "\nProbCuts:                  " << m_stats.probCuts;
+    ss << "\nProbCut Quiet Searches:    " << m_stats.probCutQSearches;
+    ss << "\nProbCut Searches:          " << m_stats.probCutSearches;
+    ss << "\nFailed ProbCuts:           " << m_stats.failedProbCuts;
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";
@@ -913,6 +958,9 @@ void Searcher::logStats()
     ss << "\nNull-Move Cutoffs:    " << (float) (100 * m_stats.nullMoveCutoffs) / (m_stats.nullMoveCutoffs + m_stats.failedNullMoveCutoffs) << "%";
     ss << "\nRazor Cutoffs:        " << (float) (100 * m_stats.razorCutoffs) / (m_stats.razorCutoffs + m_stats.failedRazorCutoffs) << "%";
     ss << "\nSingular Extension    " << (float) (100 * m_stats.singularExtensions) / (m_stats.failedSingularExtensions + m_stats.failedSingularExtensions) << "%";
+    ss << "\nProbCuts              " << (float) (100 * m_stats.probCuts) / (m_stats.probCuts + m_stats.failedProbCuts) << "%";
+    ss << "\nProbCut QSearches     " << (float) (100 * m_stats.probCuts) / m_stats.probCutQSearches << "%";
+    ss << "\nProbCut Searches      " << (float) (100 * m_stats.probCuts) / m_stats.probCutSearches << "%";
     ss << "\n----------------------------------";
 
     LOG(ss.str())
