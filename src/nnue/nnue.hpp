@@ -27,9 +27,8 @@ namespace NN
     // Intermediate results in the net
     struct Trace
     {
-        Matrix<FTSize, 1>  input;         // Only used by backprop
-        Matrix<L1Size, 1>  accumulator;   // Post ReLU accumulator
-        Matrix<L2Size, 1>  l1Out;   // Post ReLU accumulator
+        Matrix<L1Size, 1>  accumulator;   // Post ReLu accumulator
+        Matrix<L2Size, 1>  l1Out;         // L1 Output post ReLu
         Matrix<1, 1>       out;           // Scalar output
     };
 
