@@ -477,16 +477,13 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
     gradient.l2Weights.add(gradientL2Weights);
 }
 
-void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2)
+void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2, FloatNet& mHat, FloatNet& vHat)
 {
     // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
     constexpr float alpha   = 0.01f;
     constexpr float beta1   = 0.9f;
     constexpr float beta2   = 0.999f;
     constexpr float epsilon = 1.0E-8;
-
-    FloatNet m_hat;
-    FloatNet v_hat;
 
     // M_t = B1 * M_t-1 + (1 - B1) * g_t
 
@@ -520,12 +517,12 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
     momentum2.l2Weights .scale(beta2);
     momentum2.l2Biases  .scale(beta2);
 
-    gradient.ftWeights .pow(2);
-    gradient.ftBiases  .pow(2);
-    gradient.l1Weights .pow(2);
-    gradient.l1Biases  .pow(2);
-    gradient.l2Weights .pow(2);
-    gradient.l2Biases  .pow(2);
+    gradient.ftWeights .pow2();
+    gradient.ftBiases  .pow2();
+    gradient.l1Weights .pow2();
+    gradient.l1Biases  .pow2();
+    gradient.l2Weights .pow2();
+    gradient.l2Biases  .pow2();
 
     gradient.ftWeights .scale(1.0f - beta2);
     gradient.ftBiases  .scale(1.0f - beta2);
@@ -543,68 +540,68 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
 
     // M^_t = alpha * M_t / (1 - Beta1^t)
 
-    m_hat.ftWeights .copy(momentum1.ftWeights);
-    m_hat.ftBiases  .copy(momentum1.ftBiases );
-    m_hat.l1Weights .copy(momentum1.l1Weights);
-    m_hat.l1Biases  .copy(momentum1.l1Biases );
-    m_hat.l2Weights .copy(momentum1.l2Weights);
-    m_hat.l2Biases  .copy(momentum1.l2Biases );
+    mHat.ftWeights .copy(momentum1.ftWeights);
+    mHat.ftBiases  .copy(momentum1.ftBiases );
+    mHat.l1Weights .copy(momentum1.l1Weights);
+    mHat.l1Biases  .copy(momentum1.l1Biases );
+    mHat.l2Weights .copy(momentum1.l2Weights);
+    mHat.l2Biases  .copy(momentum1.l2Biases );
 
-    m_hat.ftWeights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.ftBiases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.l1Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.l1Biases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.l2Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
-    m_hat.l2Biases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
+    mHat.ftWeights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
+    mHat.ftBiases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
+    mHat.l1Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
+    mHat.l1Biases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
+    mHat.l2Weights .scale(alpha / (1.0f - std::pow(beta1, timestep)));
+    mHat.l2Biases  .scale(alpha / (1.0f - std::pow(beta1, timestep)));
 
     // v^_t = v_t / (1 - Beta2^t)
 
-    v_hat.ftWeights .copy(momentum2.ftWeights);
-    v_hat.ftBiases  .copy(momentum2.ftBiases );
-    v_hat.l1Weights .copy(momentum2.l1Weights);
-    v_hat.l1Biases  .copy(momentum2.l1Biases );
-    v_hat.l2Weights .copy(momentum2.l2Weights);
-    v_hat.l2Biases  .copy(momentum2.l2Biases );
+    vHat.ftWeights .copy(momentum2.ftWeights);
+    vHat.ftBiases  .copy(momentum2.ftBiases );
+    vHat.l1Weights .copy(momentum2.l1Weights);
+    vHat.l1Biases  .copy(momentum2.l1Biases );
+    vHat.l2Weights .copy(momentum2.l2Weights);
+    vHat.l2Biases  .copy(momentum2.l2Biases );
 
-    v_hat.ftWeights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.ftBiases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.l1Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.l1Biases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.l2Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
-    v_hat.l2Biases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
+    vHat.ftWeights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
+    vHat.ftBiases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
+    vHat.l1Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
+    vHat.l1Biases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
+    vHat.l2Weights .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
+    vHat.l2Biases  .scale(1.0f / (1.0f - std::pow(beta2, timestep)));
 
     // sqrt(v^_t) + epsilon
 
-    v_hat.ftWeights.pow(0.5f);
-    v_hat.ftBiases .pow(0.5f);
-    v_hat.l1Weights.pow(0.5f);
-    v_hat.l1Biases .pow(0.5f);
-    v_hat.l2Weights.pow(0.5f);
-    v_hat.l2Biases .pow(0.5f);
+    vHat.ftWeights.sqrt();
+    vHat.ftBiases .sqrt();
+    vHat.l1Weights.sqrt();
+    vHat.l1Biases .sqrt();
+    vHat.l2Weights.sqrt();
+    vHat.l2Biases .sqrt();
 
-    v_hat.ftWeights.addScalar(epsilon);
-    v_hat.ftBiases .addScalar(epsilon);
-    v_hat.l1Weights.addScalar(epsilon);
-    v_hat.l1Biases .addScalar(epsilon);
-    v_hat.l2Weights.addScalar(epsilon);
-    v_hat.l2Biases .addScalar(epsilon);
+    vHat.ftWeights.addScalar(epsilon);
+    vHat.ftBiases .addScalar(epsilon);
+    vHat.l1Weights.addScalar(epsilon);
+    vHat.l1Biases .addScalar(epsilon);
+    vHat.l2Weights.addScalar(epsilon);
+    vHat.l2Biases .addScalar(epsilon);
 
     // Note: Addition instead of subtraction because gradient it is already negated
     // net = net + M^_t / (sqrt(v^_t) + epsilon)
 
-    m_hat.ftWeights .hadamardInverse(v_hat.ftWeights);
-    m_hat.ftBiases  .hadamardInverse(v_hat.ftBiases );
-    m_hat.l1Weights .hadamardInverse(v_hat.l1Weights);
-    m_hat.l1Biases  .hadamardInverse(v_hat.l1Biases );
-    m_hat.l2Weights .hadamardInverse(v_hat.l2Weights);
-    m_hat.l2Biases  .hadamardInverse(v_hat.l2Biases );
+    mHat.ftWeights .hadamardInverse(vHat.ftWeights);
+    mHat.ftBiases  .hadamardInverse(vHat.ftBiases );
+    mHat.l1Weights .hadamardInverse(vHat.l1Weights);
+    mHat.l1Biases  .hadamardInverse(vHat.l1Biases );
+    mHat.l2Weights .hadamardInverse(vHat.l2Weights);
+    mHat.l2Biases  .hadamardInverse(vHat.l2Biases );
 
-    m_net.ftWeights .add(m_hat.ftWeights);
-    m_net.ftBiases  .add(m_hat.ftBiases );
-    m_net.l1Weights .add(m_hat.l1Weights);
-    m_net.l1Biases  .add(m_hat.l1Biases );
-    m_net.l2Weights .add(m_hat.l2Weights);
-    m_net.l2Biases  .add(m_hat.l2Biases );
+    m_net.ftWeights .add(mHat.ftWeights);
+    m_net.ftBiases  .add(mHat.ftBiases );
+    m_net.l1Weights .add(mHat.l1Weights);
+    m_net.l1Biases  .add(mHat.l1Biases );
+    m_net.l2Weights .add(mHat.l2Weights);
+    m_net.l2Biases  .add(mHat.l2Biases );
 }
 
 void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch, bool randomize)
@@ -614,6 +611,8 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
 
     FloatNet momentum1;
     FloatNet momentum2;
+    FloatNet mHat;
+    FloatNet vHat;
 
     std::string strWdl;
     std::string strCp;
@@ -645,7 +644,6 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
 
         while (!is.eof())
         {
-
             std::getline(is, strWdl);
             std::getline(is, strCp);
             std::getline(is, fen);
@@ -673,7 +671,7 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
                 gradient.l2Weights .scale(1.0f / batchPosCount);
                 gradient.l2Biases  .scale(1.0f / batchPosCount);
 
-                m_applyGradient(epoch, gradient, momentum1, momentum2);
+                m_applyGradient(epoch, gradient, momentum1, momentum2, mHat, vHat);
 
                 gradient.ftWeights .setZero();
                 gradient.ftBiases  .setZero();
@@ -693,7 +691,6 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
                 batchPosCount = 0;
                 batchLoss = 0.0f;
             }
-
         }
 
         // Write the epoch loss to a file

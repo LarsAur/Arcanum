@@ -59,6 +59,18 @@ namespace NN
                     m_data[i] = std::pow(m_data[i], exp);
             }
 
+            void pow2()
+            {
+                for(uint32_t i = 0; i < cols * rows; i++)
+                    m_data[i] *= m_data[i];
+            }
+
+            void sqrt()
+            {
+                for(uint32_t i = 0; i < cols * rows; i++)
+                    m_data[i] = std::sqrt(m_data[i]);
+            }
+
             void add(Matrix<rows, cols>& matrix)
             {
                 constexpr uint32_t regSize = 256 / 32;
