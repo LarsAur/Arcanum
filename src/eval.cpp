@@ -47,8 +47,8 @@ void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
     m_accumulatorStackPointer++;
 
     #ifdef VERIFY_NNUE_INCR
-    eval_t e1 = m_nnue.evaluate(m_accumulatorStack[m_accumulatorStackPointer], board.m_turn);
-    eval_t e2 = m_nnue.evaluateBoard(board);
+    eval_t e1 = nnue.evaluate(m_accumulatorStack[m_accumulatorStackPointer], board.m_turn);
+    eval_t e2 = nnue.evaluateBoard(board);
     // Check if the difference is larger than one,
     // This is because the net using floating point may accumulate some error
     // because of this, an error of up to 1 is acceptable
