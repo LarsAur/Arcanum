@@ -3,11 +3,11 @@
 
 using namespace Arcanum;
 
-bool FEN::setFEN(Board& board, const std::string fen)
+bool FEN::m_setPosition(Board& board, std::istringstream& is)
 {
     // -- Create empty board
     board.m_bbAllPieces = 0LL;
-    for(int c = 0; c < NUM_COLORS; c++)
+    for(int c = 0; c < Color::NUM_COLORS; c++)
     {
         board.m_bbColoredPieces[c] = 0LL;
         for(int t = 0; t < 6; t++)
@@ -18,17 +18,27 @@ bool FEN::setFEN(Board& board, const std::string fen)
 
     for(int i = 0; i < 64; i++)
     {
-        board.m_pieces[i] = NO_PIECE;
+        board.m_pieces[i] = Piece::NO_PIECE;
     }
 
     // -- Create board from FEN
     int file = 0, rank = 7;
-    int fenPosition = 0;
+    char chr;
+
+    // Loop through all the squares rank by rank.
+    // A8 -> H8, A7 -> H7 ..., A1 -> H1
     while (!(file > 7 && rank == 0))
     {
-        char chr = fen[fenPosition++];
+        is.get(chr);
 
-        // -- Move to next rank
+        // Verify that the EOF is not hit
+        if(is.eof())
+        {
+            ERROR("Not enough characters in FEN string")
+            return false;
+        }
+
+        // Move to next rank
         if(chr == '/')
         {
             file = 0;
@@ -36,191 +46,323 @@ bool FEN::setFEN(Board& board, const std::string fen)
             continue;
         }
 
-        if (chr > '0' && chr <= '8')
+        // Verify that the file is still within the board
+        // I.e. There are no missing '/'
+        if(file >= 8)
         {
+            ERROR("Too many squares on the rank in FEN string: " << file)
+            return false;
+        }
+
+        // Skip squares N squares if the char is a digit N
+        if(std::isdigit(chr))
+        {
+            if(chr <= '0' || chr > '8')
+            {
+                ERROR("Invalid empty squares in FEN string: " << chr)
+                return false;
+            }
+
             file += chr - '0';
             continue;
         }
 
+        // At this point, the char should represent a piece
+        // Get the color of the piece
         Color color = BLACK;
-        if(chr >= 'A' && chr <= 'Z')
+        if(std::isupper(chr))
         {
             color = WHITE;
-            chr -= 'A' - 'a';
+            chr = std::tolower(chr);
         }
 
-        square_t square = ((rank << 3) | file);
-        bitboard_t bbSquare = 0b1LL << square;
-        file++;
+        square_t square = SQUARE(file, rank);
+        bitboard_t bbSquare = SQUARE_BB(file, rank);
 
         board.m_bbColoredPieces[color] |= bbSquare;
         board.m_bbAllPieces |= bbSquare;
 
+        uint8_t pieceColorDelta = (Piece::B_PAWN - Piece::W_PAWN) * color;
         switch (chr)
         {
         case 'p':
-            board.m_bbTypedPieces[W_PAWN][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_PAWN + (B_PAWN - W_PAWN) * color);
+            board.m_bbTypedPieces[Piece::W_PAWN][color] |= bbSquare;
+            board.m_pieces[square] = Piece(W_PAWN + pieceColorDelta);
             break;
         case 'r':
-            board.m_bbTypedPieces[W_ROOK][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_ROOK + (B_PAWN - W_PAWN) * color);
+            board.m_bbTypedPieces[Piece::W_ROOK][color] |= bbSquare;
+            board.m_pieces[square] = Piece(W_ROOK + pieceColorDelta);
             break;
         case 'n':
-            board.m_bbTypedPieces[W_KNIGHT][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_KNIGHT + (B_PAWN - W_PAWN) * color);
+            board.m_bbTypedPieces[Piece::W_KNIGHT][color] |= bbSquare;
+            board.m_pieces[square] = Piece(W_KNIGHT + pieceColorDelta);
             break;
         case 'b':
-            board.m_bbTypedPieces[W_BISHOP][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_BISHOP + (B_PAWN - W_PAWN) * color);
+            board.m_bbTypedPieces[Piece::W_BISHOP][color] |= bbSquare;
+            board.m_pieces[square] = Piece(W_BISHOP + pieceColorDelta);
             break;
         case 'k':
-            board.m_bbTypedPieces[W_KING][color] = bbSquare;
-            board.m_pieces[square] = Piece(W_KING + (B_PAWN - W_PAWN) * color);
+            board.m_bbTypedPieces[Piece::W_KING][color] = bbSquare;
+            board.m_pieces[square] = Piece(W_KING + pieceColorDelta);
             break;
         case 'q':
-            board.m_bbTypedPieces[W_QUEEN][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_QUEEN + (B_PAWN - W_PAWN) * color);
+            board.m_bbTypedPieces[Piece::W_QUEEN][color] |= bbSquare;
+            board.m_pieces[square] = Piece(W_QUEEN + pieceColorDelta);
             break;
         default:
-            ERROR("Unknown piece: " << chr << " in " << fen)
+            ERROR("Unknown piece: " << chr << " in FEN string")
             return false;
         }
+
+        // Move to the next square
+        file++;
     }
 
-    // Skip space
-    char chr = fen[fenPosition++];
-    if(chr != ' ')
+    return true;
+}
+
+bool FEN::m_setTurn(Board& board, std::istringstream& is)
+{
+    char chr;
+    is.get(chr);
+
+    // Verify that the EOF is not hit
+    if(is.eof())
     {
-        ERROR("Missing space after board in " << fen);
+        ERROR("Not enough characters in FEN string")
         return false;
     }
 
-    // Read turn
-    chr = fen[fenPosition++];
-    if(chr == 'w') board.m_turn = WHITE;
-    else if(chr == 'b') board.m_turn = BLACK;
-    else {
-        ERROR("Illegal turn: " << chr << " in " << fen);
-        return false;
-    }
-
-    // Skip space
-    chr = fen[fenPosition++];
-    if(chr != ' ')
+    if(chr == 'w')
     {
-        ERROR("Missing space after turn in " << fen);
-        return false;
+        board.m_turn = Color::WHITE;
     }
-
-    // Read castle rights
-    board.m_castleRights = 0;
-    chr = fen[fenPosition++];
-    if(chr != '-')
+    else if(chr == 'b')
     {
-        int safeGuard = 0;
-        while(chr != ' ' && safeGuard < 5)
-        {
-            switch (chr)
-            {
-            case 'K': board.m_castleRights |= WHITE_KING_SIDE; break;
-            case 'Q': board.m_castleRights |= WHITE_QUEEN_SIDE; break;
-            case 'k': board.m_castleRights |= BLACK_KING_SIDE; break;
-            case 'q': board.m_castleRights |= BLACK_QUEEN_SIDE; break;
-            default:
-                ERROR("Illegal castle right: " << chr << " in " << fen);
-                return false;
-            }
-
-            safeGuard++;
-            chr = fen[fenPosition++];
-        }
+        board.m_turn = Color::BLACK;
     }
     else
     {
-        chr = fen[fenPosition++];
-        if(chr != ' ')
+        ERROR("Illegal turn: " << chr);
+        return false;
+    }
+
+    return true;
+}
+
+bool FEN::m_setCastleRights(Board& board, std::istringstream& is)
+{
+    char chr;
+    board.m_castleRights = 0;
+
+    is.get(chr);
+
+    // Verify that the EOF is not hit
+    if(is.eof())
+    {
+        ERROR("Not enough characters in FEN string")
+        return false;
+    }
+
+    // No castle rights available
+    if(chr == '-')
+    {
+        return true;
+    }
+
+    // Read the castle rights until the next character is a space
+    while(true)
+    {
+        switch (chr)
         {
-            ERROR("Missing space after castle rights in " << fen);
+        case 'K': board.m_castleRights |= WHITE_KING_SIDE;  break;
+        case 'Q': board.m_castleRights |= WHITE_QUEEN_SIDE; break;
+        case 'k': board.m_castleRights |= BLACK_KING_SIDE;  break;
+        case 'q': board.m_castleRights |= BLACK_QUEEN_SIDE; break;
+        default:
+            ERROR("Illegal castle right: " << chr);
+            return false;
+        }
+
+        // Exit the loop if there are no more castle rights
+        if(is.peek() == ' ')
+        {
+            break;
+        }
+
+        is.get(chr);
+
+        // Verify that the EOF is not hit
+        if(is.eof())
+        {
+            ERROR("Not enough characters in FEN string")
             return false;
         }
     }
 
-    // Handle cases where the castle rights are illegal, and the FEN is incorrect
-    // This can happen if the rooks or kings are not in the correct locations
-    // Simply remove the castle rights and show a warning
-    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~WHITE_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~WHITE_QUEEN_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
+    return true;
+}
+
+bool FEN::m_setEnpassantTarget(Board& board, std::istringstream& is)
+{
+    char chr;
 
     // Read enpassant square
     board.m_enPassantSquare = Square::NONE;
     board.m_enPassantTarget = Square::NONE;
     board.m_bbEnPassantSquare = 0LL;
     board.m_bbEnPassantTarget = 0LL;
-    chr = fen[fenPosition++];
-    if(chr != '-')
+
+    is.get(chr);
+
+    // Verify that the EOF is not hit
+    if(is.eof())
     {
-        int file = chr - 'a';
-        int rank = fen[fenPosition++] - '1';
-
-        if(file < 0 || file > 7 || rank < 0 || rank > 7)
-        {
-            ERROR("Illegal enpassant square " << fen);
-            return false;
-        }
-
-        board.m_enPassantSquare = (rank << 3) | file;
-        board.m_bbEnPassantSquare = 1LL << board.m_enPassantSquare;
-        if(rank == 2)
-        {
-            board.m_enPassantTarget = board.m_enPassantSquare + 8;
-            board.m_bbEnPassantTarget = 1LL << board.m_enPassantTarget;
-        }
-        else
-        {
-            board.m_enPassantTarget = board.m_enPassantSquare - 8;
-            board.m_bbEnPassantTarget = 1LL << board.m_enPassantTarget;
-        }
-    }
-
-    // Skip space
-    chr = fen[fenPosition++];
-    if(chr != ' ')
-    {
-        ERROR("Missing space after enpassant square in " << fen);
+        ERROR("Not enough characters in FEN string")
         return false;
     }
 
-    chr = fen[fenPosition++];
-    if(chr < '0' || chr > '9')
+    // No enpassant square available
+    if(chr == '-')
     {
-        ERROR("Number of half moves is not a number: " << chr << " in " << fen)
+        return true;
+    }
+
+    int32_t file = chr - 'a';
+
+    is.get(chr);
+
+    // Verify that the EOF is not hit
+    if(is.eof())
+    {
+        ERROR("Not enough characters in FEN string")
+        return false;
+    }
+
+    int32_t rank = chr - '1';
+
+    // Verify that the enpassant square is on a legal rank and file
+    if(file < 0 || file > 7 || !(rank == 2 || rank == 5))
+    {
+        ERROR("Illegal enpassant square");
+        return false;
+    }
+
+    // Set the enpassant square
+    board.m_enPassantSquare = SQUARE(file, rank);
+    board.m_bbEnPassantSquare = SQUARE_BB(file, rank);
+
+    // Set the location of the target piece
+    if(rank == 2)
+    {
+        board.m_enPassantTarget = board.m_enPassantSquare + 8;
+        board.m_bbEnPassantTarget = 1LL << board.m_enPassantTarget;
+    }
+    else
+    {
+        board.m_enPassantTarget = board.m_enPassantSquare - 8;
+        board.m_bbEnPassantTarget = 1LL << board.m_enPassantTarget;
+    }
+
+    return true;
+}
+
+bool FEN::m_setHalfmoveClock(Board& board, std::istringstream& is)
+{
+    if(!std::isdigit(is.peek()))
+    {
+        ERROR("The half move clock is not a number")
         return false;
     }
 
     // Read half moves
-    board.m_rule50 = atoi(fen.c_str() + fenPosition - 1);
+    is >> board.m_rule50;
 
-    // Skip until space
-    while(fen[fenPosition++] != ' ' && fenPosition < (int) fen.length());
+    return true;
+}
 
-    if(fenPosition == (int) fen.length())
+bool FEN::m_setFullmoveClock(Board& board, std::istringstream& is)
+{
+    if(!std::isdigit(is.peek()))
     {
-        ERROR("Missing number of full moves in " << fen)
-        return false;
-    }
-
-    chr = fen[fenPosition];
-    if(chr < '0' || chr > '9')
-    {
-        ERROR("Number of full moves is not a number " << fen)
+        ERROR("The full move clock is not a number")
         return false;
     }
 
     // Read full moves
-    board.m_fullMoves = atoi(fen.c_str() + fenPosition);
+    is >> board.m_fullMoves;
+
+    return true;
+}
+
+bool FEN::m_consumeExpectedSpace(std::istringstream& is)
+{
+    char chr;
+    is.get(chr);
+
+    // Verify that the EOF is not hit
+    if(is.eof())
+    {
+        ERROR("Not enough characters in FEN string")
+        return false;
+    }
+
+    if(chr != ' ')
+    {
+        ERROR("Missing expected space in FEN string");
+        return false;
+    }
+
+    return true;
+}
+
+bool FEN::setFEN(Board& board, const std::string fen, bool strict)
+{
+    bool success = true;
+    std::istringstream is(fen);
+
+    success &= m_setPosition(board, is);
+    success &= m_consumeExpectedSpace(is);
+    success &= m_setTurn(board, is);
+    success &= m_consumeExpectedSpace(is);
+    success &= m_setCastleRights(board, is);
+    success &= m_consumeExpectedSpace(is);
+    success &= m_setEnpassantTarget(board, is);
+
+    // Some FEN strings does not contain information about the move clocks
+    // By disabling strict mode, these are not parsed and instead set to zero
+    // Disabling strict mode also handles cases where the castle rights are illegal
+    // This can happen if the rooks or kings are not in legal castle positions
+    // Simply remove the castle rights and show a warning
+    if(strict)
+    {
+        success &= m_consumeExpectedSpace(is);
+        success &= m_setHalfmoveClock(board, is);
+        success &= m_consumeExpectedSpace(is);
+        success &= m_setFullmoveClock(board, is);
+
+    }
+    else
+    {
+        uint8_t prev = board.m_castleRights;
+        if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~WHITE_KING_SIDE;
+        if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~WHITE_QUEEN_SIDE;
+        if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
+        if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
+
+        if(prev != board.m_castleRights)
+        {
+            WARNING("The castle rights were illegal and changed from " << unsigned(prev) << " to " << unsigned(board.m_castleRights))
+        }
+
+        board.m_rule50 = 0;
+        board.m_fullMoves = 0;
+    }
+
+    if(!success)
+    {
+        ERROR("Unable to parse FEN: " << fen);
+    }
 
     s_zobrist.getHashs(board, board.m_hash, board.m_pawnHash, board.m_materialHash);
 
@@ -230,7 +372,8 @@ bool FEN::setFEN(Board& board, const std::string fen)
     board.m_captureInfoGenerated = Board::MoveSet::NOT_GENERATED;
     board.m_kingIdx = LS1B(board.m_bbTypedPieces[W_KING][board.m_turn]);
     board.m_bbOpponentAttacks = 0LL;
-    return true;
+
+    return success;
 }
 
 std::string FEN::getFEN(const Board& board)

@@ -2,6 +2,7 @@
 
 #include <board.hpp>
 #include <string>
+#include <istream>
 
 namespace Arcanum
 {
@@ -31,9 +32,17 @@ namespace Arcanum
 
     class FEN
     {
+        private:
+        static bool m_consumeExpectedSpace(std::istringstream& is);
+        static bool m_setPosition(Board& board, std::istringstream& is);
+        static bool m_setTurn(Board& board, std::istringstream& is);
+        static bool m_setCastleRights(Board& board, std::istringstream& is);
+        static bool m_setEnpassantTarget(Board& board, std::istringstream& is);
+        static bool m_setHalfmoveClock(Board& board, std::istringstream& is);
+        static bool m_setFullmoveClock(Board& board, std::istringstream& is);
         public:
         static constexpr const char* startpos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        static bool setFEN(Board& board, const std::string fen);
+        static bool setFEN(Board& board, const std::string fen, bool strict = true);
         static std::string getFEN(const Board& board);
         static std::string toString(const Board& board);
         static EDP parseEDP(std::string edp);
