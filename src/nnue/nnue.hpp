@@ -5,13 +5,26 @@
 
 namespace NN
 {
-    static constexpr uint32_t FTSize  = 768;
-    static constexpr uint32_t L1Size  = 256;
-    static constexpr uint32_t L2Size  = 32;
+    static constexpr uint32_t NumKingBuckets = 16;
+    static constexpr uint32_t FTSize  = NumKingBuckets * NumKingBuckets * 64 * 6 * 2 ;
+    static constexpr uint32_t L1Size  = 128;
+    static constexpr uint32_t L2Size  = 16;
     static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
+
     struct Accumulator
     {
         alignas(64) float acc[2][L1Size];
+    };
+
+    constexpr uint16_t KingBuckets[64] = {
+        3,  2,  1,  0,  0,  1,  2,  3,
+        7,  6,  5,  4,  4,  5,  6,  7,
+        11, 10, 9,  8,  8,  9,  10, 11,
+        11, 10, 9,  8,  8,  9,  10, 11,
+        13, 13, 12, 12, 12, 12, 13, 13,
+        13, 13, 12, 12, 12, 12, 13, 13,
+        15, 15, 14, 14, 14, 14, 15, 15,
+        15, 15, 14, 14, 14, 14, 15, 15
     };
 
     struct FloatNet
@@ -40,12 +53,22 @@ namespace NN
 
             float m_sigmoid(float v);
             float m_sigmoidPrime(float sigmoid);
-            uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
+
+            uint32_t m_getFeatureIndex(
+                Arcanum::Color perspective,
+                Arcanum::square_t kingSquare,
+                Arcanum::square_t opponentKingSquare,
+                Arcanum::Piece pieceType,
+                Arcanum::Color pieceColor,
+                Arcanum::square_t pieceSquare
+            );
+
             float m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
             float m_predict(Accumulator* acc, Arcanum::Color perspective);
-            void m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures, uint32_t* features);
-            void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features);
-            void m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
+            void m_calculateFeatures(const Arcanum::Board& board, Arcanum::Color perspective, uint8_t* numFeatures, uint32_t* features);
+            void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, const Arcanum::Board& board);
+            void m_incAccumumulatorPerspective(Accumulator* accIn, Accumulator* accOut, Arcanum::Color perspective, const Arcanum::Board& board, const Arcanum::Move& move);
+            void m_reluAccumulator(Accumulator* accIn, Arcanum::Color perspective, Trace& trace);
             void m_randomizeWeights();
             void m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2, FloatNet& mHat, FloatNet& vHat);
             void m_test();

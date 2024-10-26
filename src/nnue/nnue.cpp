@@ -171,18 +171,44 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     LOG("Finished storing nnue in " << ss.str())
 }
 
-// Calculate the feature indices of the board with the white perspective
-// To the the feature indices of the black perspective, xor the indices with 1
-inline uint32_t NNUE::m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece)
-{
-    if(color == BLACK)
-        square = ((7 - RANK(square)) << 3) | FILE(square);
+inline uint32_t NNUE::m_getFeatureIndex(
+    Arcanum::Color perspective,
+    Arcanum::square_t kingSquare,
+    Arcanum::square_t opponentKingSquare,
+    Arcanum::Piece pieceType,
+    Arcanum::Color pieceColor,
+    Arcanum::square_t pieceSquare
+){
+    // Flip the positions of the kings and the pieces
+    if(perspective == Color::BLACK)
+    {
+        pieceSquare        = VFLIPPED_SQUARE(pieceSquare);
+        pieceColor         = Color(!pieceColor);
+    }
 
-    return (((uint32_t(piece) << 6) | uint32_t(square)) << 1) | color;
+    return (
+        KingBuckets[kingSquare] |
+        (KingBuckets[opponentKingSquare] << 4) |
+        (((uint32_t(pieceType) << 7) | (uint32_t(pieceSquare) << 1) | uint32_t(pieceColor)) << 8)
+    );
 }
 
-void NNUE::m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures, uint32_t* features)
+void NNUE::m_calculateFeatures(const Arcanum::Board& board, Arcanum::Color perspective, uint8_t* numFeatures, uint32_t* features)
 {
+    square_t kingSquare         = LS1B(board.getTypedPieces(W_KING, perspective));
+    square_t opponentKingSquare = LS1B(board.getTypedPieces(W_KING, Color(!perspective)));
+
+    // Flip the black king position to have more granularity for the king buckets
+    // The most common squares are close to the start position
+    if(perspective == Color::WHITE)
+    {
+        opponentKingSquare = VFLIPPED_SQUARE(opponentKingSquare);
+    }
+    else
+    {
+        kingSquare = VFLIPPED_SQUARE(kingSquare);
+    }
+
     *numFeatures = 0;
     for(uint32_t color = 0; color < 2; color++)
     {
@@ -191,18 +217,22 @@ void NNUE::m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures
             Arcanum::bitboard_t pieces = board.getTypedPieces(Piece(type), Color(color));
             while(pieces)
             {
-                square_t idx = popLS1B(&pieces);
-                uint32_t findex = m_getFeatureIndex(idx, Color(color), Piece(type));
+                square_t square = popLS1B(&pieces);
+                uint32_t findex = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, Piece(type), Color(color), square);
                 features[(*numFeatures)++] = findex;
             }
         }
     }
 }
 
-void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features)
+void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, const Arcanum::Board& board)
 {
     constexpr uint32_t numRegs = L1Size / RegSize;
     __m256 regs[numRegs];
+
+    uint8_t numFeatures;
+    uint32_t features[32];
+    m_calculateFeatures(board, perspective, &numFeatures, features);
 
     float* biasesPtr         = m_net.ftBiases.data();
     float* weightsPtr        = m_net.ftWeights.data();
@@ -214,9 +244,7 @@ void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspec
 
     for(uint32_t i = 0; i < numFeatures; i++)
     {
-        // XOR to the the correct index for the perspective
-        uint32_t findex = features[i] ^ perspective;
-
+        uint32_t findex = features[i];
         for(uint32_t j = 0; j < numRegs; j++)
         {
             __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
@@ -232,34 +260,76 @@ void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspec
 
 void NNUE::initAccumulator(Accumulator* acc, const Arcanum::Board& board)
 {
-    uint8_t numFeatures;
-    uint32_t features[32];
-    m_calculateFeatures(board, &numFeatures, features);
-    m_initAccumulatorPerspective(acc, Color::WHITE, numFeatures, features);
-    m_initAccumulatorPerspective(acc, Color::BLACK, numFeatures, features);
+    m_initAccumulatorPerspective(acc, Color::WHITE, board);
+    m_initAccumulatorPerspective(acc, Color::BLACK, board);
 }
 
 void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum::Board& board, const Arcanum::Move& move)
 {
-    int32_t removedFeatures[2] = {-1, -1};
-    int32_t addedFeatures[2] = {-1, -1};
+    // Check if any of the king buckets changed
+
+    // Only flip the
+    if((MOVED_PIECE(move.moveInfo) == KING_MOVE))
+    {
+        square_t bucketSquareFrom = move.from;
+        square_t bucketSquareTo   = move.to;
+
+        // Flip the bucket square if the moved king was black
+        // Note that the move is already performed on the board thus checking if turn is white
+        if(board.getTurn() == WHITE)
+        {
+            bucketSquareFrom = VFLIPPED_SQUARE(bucketSquareFrom);
+            bucketSquareTo   = VFLIPPED_SQUARE(bucketSquareTo  );
+        }
+
+        if(KingBuckets[bucketSquareFrom] != KingBuckets[bucketSquareTo])
+        {
+            m_initAccumulatorPerspective(accOut, Color::WHITE, board);
+            m_initAccumulatorPerspective(accOut, Color::BLACK, board);
+            return;
+        }
+    }
+
+    m_incAccumumulatorPerspective(accIn, accOut, Color::WHITE, board, move);
+    m_incAccumumulatorPerspective(accIn, accOut, Color::BLACK, board, move);
+}
+
+void NNUE::m_incAccumumulatorPerspective(Accumulator* accIn, Accumulator* accOut, Arcanum::Color perspective, const Board& board, const Arcanum::Move& move)
+{
+    constexpr uint32_t numRegs = L1Size / RegSize;
 
     Color opponent    = board.getTurn();
     Color movingColor = Color(board.getTurn() ^ 1); // Accumulator increment is performed after move is performed
+    square_t kingSquare = LS1B(board.getTypedPieces(W_KING, perspective));
+    square_t opponentKingSquare = LS1B(board.getTypedPieces(W_KING, Color(!perspective)));
+
+    // Flip the black king position to have more granularity for the king buckets
+    // The most common squares are close to the start position
+    if(perspective == Color::WHITE)
+    {
+        opponentKingSquare = VFLIPPED_SQUARE(opponentKingSquare);
+    }
+    else
+    {
+        kingSquare = VFLIPPED_SQUARE(kingSquare);
+    }
+
+    int32_t removedFeatures[2] = {-1, -1};
+    int32_t addedFeatures[2] = {-1, -1};
 
     // -- Find the added and removed indices
 
     Piece movedType = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
-    removedFeatures[0] = m_getFeatureIndex(move.from, movingColor, movedType);
+    removedFeatures[0] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, movedType, movingColor, move.from);
 
     if(PROMOTED_PIECE(move.moveInfo))
     {
         Piece promoteType = Piece(LS1B(PROMOTED_PIECE(move.moveInfo)) - 11);
-        addedFeatures[0] = m_getFeatureIndex(move.to, movingColor, promoteType);
+        addedFeatures[0] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, promoteType, movingColor, move.to);
     }
     else
     {
-        addedFeatures[0] = m_getFeatureIndex(move.to, movingColor, movedType);
+        addedFeatures[0] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, movedType, movingColor, move.to);
     }
 
     // Handle the moved rook when castling
@@ -267,23 +337,23 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
     {
         if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
         {
-            removedFeatures[1] = m_getFeatureIndex(Square::A1, WHITE, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(Square::D1, WHITE, W_ROOK);
+            removedFeatures[1] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_ROOK, WHITE, Square::A1);
+            addedFeatures[1]   = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_ROOK, WHITE, Square::D1);
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
         {
-            removedFeatures[1] = m_getFeatureIndex(Square::H1, WHITE, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(Square::F1, WHITE, W_ROOK);
+            removedFeatures[1] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_ROOK, WHITE, Square::H1);
+            addedFeatures[1]   = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_ROOK, WHITE, Square::F1);
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
         {
-            removedFeatures[1] = m_getFeatureIndex(Square::A8, BLACK, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(Square::D8, BLACK, W_ROOK);
+            removedFeatures[1] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_ROOK, BLACK, Square::A8);
+            addedFeatures[1]   = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_ROOK, BLACK, Square::D8);
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
         {
-            removedFeatures[1] = m_getFeatureIndex(Square::H8, BLACK, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(Square::F8, BLACK, W_ROOK);
+            removedFeatures[1] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_ROOK, BLACK, Square::H8);
+            addedFeatures[1]   = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_ROOK, BLACK, Square::F8);
         }
     }
 
@@ -291,95 +361,80 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
     {
         if(move.moveInfo & MoveInfoBit::ENPASSANT)
         {
-            removedFeatures[1] = m_getFeatureIndex(movingColor == WHITE ? (move.to - 8) : (move.to + 8), opponent, W_PAWN);
+            square_t square = movingColor == WHITE ? (move.to - 8) : (move.to + 8);
+            removedFeatures[1] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, W_PAWN, opponent, square);
         }
         else
         {
             Piece captureType = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
-            removedFeatures[1] = m_getFeatureIndex(move.to, opponent, captureType);
+            removedFeatures[1] = m_getFeatureIndex(perspective, kingSquare, opponentKingSquare, captureType, opponent, move.to);
         }
     }
 
-    // -- Prefetch the weigths
-    #pragma GCC unroll 2
-    for(uint32_t perspective = 0; perspective < 2; perspective++)
-    {
-        for(uint32_t i = 0; i < 2; i++)
-        {
-            int32_t findex = addedFeatures[i];
-            // Break in case only one index is added
-            if(findex == -1) break;
-            // XOR to the the correct index for the perspective
-            findex ^= perspective;
-            m_net.ftWeights.prefetchCol(findex);
-        }
+    // Prefetch the weights
 
-        for(uint32_t i = 0; i < 2; i++)
-        {
-            int32_t findex = removedFeatures[i];
-            // Break in case only one index is added
-            if(findex == -1) break;
-            // XOR to the the correct index for the perspective
-            findex ^= perspective;
-            m_net.ftWeights.prefetchCol(findex);
-        }
+    for(uint32_t i = 0; i < 2; i++)
+    {
+        int32_t findex = addedFeatures[i];
+        // Break in case only one index is added
+        if(findex == -1) break;
+        m_net.ftWeights.prefetchCol(findex);
+    }
+
+    for(uint32_t i = 0; i < 2; i++)
+    {
+        int32_t findex = removedFeatures[i];
+        // Break in case only one index is added
+        if(findex == -1) break;
+        m_net.ftWeights.prefetchCol(findex);
     }
 
     // -- Update the accumulators
 
-    constexpr uint32_t numRegs = L1Size / RegSize;
     __m256 regs[numRegs];
 
     float* weightsPtr        = m_net.ftWeights.data();
 
-    #pragma GCC unroll 2
-    for(uint32_t perspective = 0; perspective < 2; perspective++)
+    // -- Load the accumulator into the registers
+    #pragma GCC unroll 32
+    for(uint32_t i = 0; i < numRegs; i++)
     {
-        // -- Load the accumulator into the registers
-        #pragma GCC unroll 32
-        for(uint32_t i = 0; i < numRegs; i++)
+        regs[i] = _mm256_load_ps(accIn->acc[perspective] + RegSize*i);
+    }
+
+    // -- Added features
+    for(uint32_t i = 0; i < 2; i++)
+    {
+        int32_t findex = addedFeatures[i];
+        // Break in case only one index is added
+        if(findex == -1) break;
+
+        for(uint32_t j = 0; j < numRegs; j++)
         {
-            regs[i] = _mm256_load_ps(accIn->acc[perspective] + RegSize*i);
+            __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
+            regs[j] = _mm256_add_ps(regs[j], weights);
         }
+    }
 
-        // -- Added features
-        for(uint32_t i = 0; i < 2; i++)
+    // -- Removed features
+    for(uint32_t i = 0; i < 2; i++)
+    {
+        int32_t findex = removedFeatures[i];
+        // Break in case only one index is added
+        if(findex == -1) break;
+
+        for(uint32_t j = 0; j < numRegs; j++)
         {
-            int32_t findex = addedFeatures[i];
-            // Break in case only one index is added
-            if(findex == -1) break;
-            // XOR to the the correct index for the perspective
-            findex ^= perspective;
-
-            for(uint32_t j = 0; j < numRegs; j++)
-            {
-                __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
-                regs[j] = _mm256_add_ps(regs[j], weights);
-            }
+            __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
+            regs[j] = _mm256_sub_ps(regs[j], weights);
         }
+    }
 
-        // -- Removed features
-        for(uint32_t i = 0; i < 2; i++)
-        {
-            int32_t findex = removedFeatures[i];
-            // Break in case only one index is added
-            if(findex == -1) break;
-            // XOR to the the correct index for the perspective
-            findex ^= perspective;
-
-            for(uint32_t j = 0; j < numRegs; j++)
-            {
-                __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
-                regs[j] = _mm256_sub_ps(regs[j], weights);
-            }
-        }
-
-        // -- Store the output in the new accumulator
-        #pragma GCC unroll 32
-        for(uint32_t i = 0; i < numRegs; i++)
-        {
-            _mm256_store_ps(accOut->acc[perspective] + RegSize*i, regs[i]);
-        }
+    // -- Store the output in the new accumulator
+    #pragma GCC unroll 32
+    for(uint32_t i = 0; i < numRegs; i++)
+    {
+        _mm256_store_ps(accOut->acc[perspective] + RegSize*i, regs[i]);
     }
 }
 
@@ -457,7 +512,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 
     // -- Run prediction
     Accumulator acc;
-    initAccumulator(&acc, board);
+    initAccumulator(&acc, board); // TODO: Only one perspective is needed
     float out = m_predict(&acc, board.getTurn(), trace);
 
     // Correct target perspective
@@ -485,12 +540,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
     // -- Create input vector
     uint8_t numFeatures;
     uint32_t features[32];
-    m_calculateFeatures(board, &numFeatures, features);
-    for(uint32_t k = 0; k < numFeatures; k++)
-    {
-        // XOR to make the correct the perspective
-        features[k] = features[k] ^ board.getTurn();
-    }
+    m_calculateFeatures(board, board.getTurn(), &numFeatures, features);
 
     // -- Calculation of auxillery coefficients
     Matrix<L1Size, 1> delta1(false);
@@ -590,7 +640,21 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
     std::string strCp;
     std::string fen;
 
-    if(randomize) m_randomizeWeights();
+    std::stringstream ssMomentumName1;
+    std::stringstream ssMomentumName2;
+
+    ssMomentumName1 << outputPath << "_m1.fnnue";
+    ssMomentumName2 << outputPath << "_m2.fnnue";
+
+    if(randomize)
+    {
+        m_randomizeWeights();
+    }
+    else
+    {
+        m_loadNet(ssMomentumName1.str(), momentum1);
+        m_loadNet(ssMomentumName2.str(), momentum2);
+    }
 
     for(uint32_t epoch = startEpoch; epoch < endEpoch; epoch++)
     {
@@ -629,7 +693,7 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
 
             batchPosCount++;
 
-            if((batchPosCount % batchSize == 0) || is.eof())
+            if((batchPosCount == batchSize) || is.eof())
             {
                 NET_UNARY_OP(gradient, scale(1.0f / batchPosCount))
 
@@ -645,7 +709,7 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
                 << " Avg. Epoch Loss = " << std::setprecision(6)               << (epochLoss / epochPosCount)
                 << " #Positions = " << epochPosCount)
 
-                batchPosCount = 0;
+                batchPosCount = 0LL;
                 batchLoss = 0.0f;
             }
         }
@@ -661,6 +725,8 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
         std::stringstream ssNnueName;
         ssNnueName << outputPath << epoch << ".fnnue";
         store(ssNnueName.str());
+        m_storeNet(ssMomentumName1.str(), momentum1);
+        m_storeNet(ssMomentumName2.str(), momentum2);
         is.close();
 
         m_test();
