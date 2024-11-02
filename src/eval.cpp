@@ -69,17 +69,17 @@ void Evaluator::popMoveFromAccumulator()
 
 bool Evaluator::isRealMateScore(eval_t eval)
 {
-    return std::abs(eval) > MATE_SCORE - MAX_MATE_DISTANCE;
+    return std::abs(eval) >= MATE_SCORE - MAX_MATE_DISTANCE;
 }
 
 bool Evaluator::isTbMateScore(eval_t eval)
 {
-    return std::abs(eval) > (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isRealMateScore(eval);
+    return std::abs(eval) >= (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isRealMateScore(eval);
 }
 
 bool Evaluator::isMateScore(eval_t eval)
 {
-    return std::abs(eval) > TB_MATE_SCORE - TB_MAX_MATE_DISTANCE;
+    return std::abs(eval) >= TB_MATE_SCORE - TB_MAX_MATE_DISTANCE;
 }
 
 bool Evaluator::isCloseToMate(Board& board, eval_t eval)
