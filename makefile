@@ -78,6 +78,7 @@ $(BUILDDIR):
 	cd $(BUILDDIR)/src && mkdir tuning
 	cd $(BUILDDIR)/src && mkdir syzygy
 	cd $(BUILDDIR)/src && mkdir uci
+	cd $(BUILDDIR)/src && mkdir test
 
 $(BUILDDIR)/$(NNUE):
 ifeq ($(OS),Windows_NT)

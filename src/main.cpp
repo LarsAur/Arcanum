@@ -1,5 +1,6 @@
 #include <uci/uci.hpp>
 #include <test.hpp>
+#include <test/engineTest.hpp>
 #include <eval.hpp>
 #include <bitboardlookups.hpp>
 
@@ -27,7 +28,7 @@ int main(int argc, char *argv[])
         if("--draw-test"    == std::string(argv[i])) Test::draw();
         if("--see-test"     == std::string(argv[i])) Test::see();
         if("--search-perf"  == std::string(argv[i])) Perf::search();
-        if("--engine-perf"  == std::string(argv[i])) Perf::engineTest();
+        if("--engine-perf"  == std::string(argv[i])) Benchmark::EngineTest::runEngineTest();
     }
 
     return 0;

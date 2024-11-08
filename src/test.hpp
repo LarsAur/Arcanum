@@ -13,5 +13,4 @@ namespace Test
 namespace Perf
 {
     void search();
-    void engineTest();
 }
