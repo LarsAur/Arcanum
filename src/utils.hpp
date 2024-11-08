@@ -19,6 +19,7 @@
 #define WARNING_COLOR COLOR_YELLOW
 #define ERROR_COLOR COLOR_RED
 #define SUCCESS_COLOR COLOR_GREEN
+#define FAIL_COLOR COLOR_RED
 // Default
 #define DEFAULT_COLOR COLOR_WHITE
 
@@ -100,6 +101,17 @@ extern std::string _logFileName;
 #else
     #define SUCCESS(_str) ;
 #endif
+
+#ifndef DISABLE_FAIL
+    #ifndef PRINT_TO_FILE
+        #define FAIL(_str) std::cout << FAIL_COLOR << "[FAIL]      " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+    #else
+        #define FAIL(_str) _FILE_PRINT("[FAIL]      [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+    #endif
+#else
+    #define FAIL(_str) ;
+#endif
+
 
 #define UCI_OUT(_str) std::cout << _str << std::endl;
 
