@@ -662,9 +662,8 @@ EDP FEN::parseEDP(std::string edp)
     is >> token; desc.fen.append(" " + token); // Turn
     is >> token; desc.fen.append(" " + token); // Castle rights
     is >> token; desc.fen.append(" " + token); // Enpassant move
-    desc.fen.append(" 0 1"); // Set default "half move clock" and "full move number" // TODO: Set based on fmvn and hmvc
 
-    Board board = Board(desc.fen);
+    Board board = Board(desc.fen, false);
 
     while(is >> token)
     {
