@@ -6,9 +6,9 @@
 
 using namespace Arcanum;
 
-Board::Board(const std::string fen)
+Board::Board(const std::string fen, bool strict)
 {
-    if(!FEN::setFEN(*this, fen))
+    if(!FEN::setFEN(*this, fen, strict))
     {
         ERROR("Exit due to FEN error")
         exit(EXIT_FAILURE);

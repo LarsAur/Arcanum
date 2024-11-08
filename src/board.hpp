@@ -103,7 +103,7 @@ namespace Arcanum
 
         public:
             Board(const Board& board);
-            Board(const std::string fen);
+            Board(const std::string fen, bool strict = true);
             void performMove(const Move move);
             void generateCaptureInfo();
             void performNullMove();
