@@ -622,6 +622,34 @@ Move getMoveFromAlgebraic(std::string token, Board& board)
     return NULL_MOVE;
 }
 
+void FEN::m_parseVariation(Board& board, std::vector<Move>& variation, std::istringstream& is)
+{
+    std::string token;
+    Board _board = Board(board);
+
+    is >> token;
+    while(token != ";" && !is.eof())
+    {
+        Move move = getMoveFromAlgebraic(token, _board);
+        _board.performMove(move);
+        variation.push_back(move);
+        is >> token;
+    }
+}
+
+void FEN::m_parseMovelist(Board& board, std::vector<Move>& list, std::istringstream& is)
+{
+    std::string token;
+
+    is >> token;
+    while(token != ";" && !is.eof())
+    {
+        Move move = getMoveFromAlgebraic(token, board);
+        list.push_back(move);
+        is >> token;
+    }
+}
+
 EDP FEN::parseEDP(std::string edp)
 {
     std::string token;
@@ -643,8 +671,8 @@ EDP FEN::parseEDP(std::string edp)
         if     (token == "acd" ) is >> desc.acd;
         else if(token == "acn" ) is >> desc.acn;
         else if(token == "acs" ) is >> desc.acs;
-        else if(token == "am"  ) WARNING("Missing EDP am")
-        else if(token == "bm"  ) WARNING("Missing EDP bm")
+        else if(token == "am"  ) m_parseMovelist(board, desc.am, is);
+        else if(token == "bm"  ) m_parseMovelist(board, desc.bm, is);
         else if(token == "c"   ) WARNING("Missing EDP comment")
         else if(token == "ce"  ) is >> desc.ce;
         else if(token == "dm"  ) is >> desc.dm;
@@ -654,7 +682,7 @@ EDP FEN::parseEDP(std::string edp)
         else if(token == "id"  ) is >> desc.id;
         else if(token == "nic" ) is >> desc.nic;
         else if(token == "pm"  ) {is >> token; desc.pm = getMoveFromAlgebraic(token, board); }
-        else if(token == "pv"  ) WARNING("Missing EDP pv")
+        else if(token == "pv"  ) m_parseVariation(board, desc.pv, is);
         else if(token == "rc"  ) is >> desc.rc;
         else if(token == "sm"  ) {is >> token; desc.pm = getMoveFromAlgebraic(token, board); }
         else if(token == "v0"  ) WARNING("Missing EDP variant name")
