@@ -8,7 +8,7 @@ using namespace Arcanum;
 
 #define DRAW_VALUE 0
 
-Searcher::Searcher()
+Searcher::Searcher(bool verbose)
 {
     m_tt = TranspositionTable();
     m_tt.resize(32);
@@ -40,7 +40,7 @@ Searcher::Searcher()
         m_lmpThresholds[1][d] = 4 + 2 * d * d;
     }
 
-    m_verbose = true;
+    m_verbose = verbose;
 }
 
 Searcher::~Searcher()

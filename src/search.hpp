@@ -152,7 +152,7 @@ namespace Arcanum
             template <bool isPv>
             eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot);
         public:
-            Searcher();
+            Searcher(bool verbose = true);
             ~Searcher();
             Move getBestMove(Board& board, int depth, SearchResult* searchResult = nullptr);
             Move getBestMoveInTime(Board& board, uint32_t ms, SearchResult* searchResult = nullptr);
