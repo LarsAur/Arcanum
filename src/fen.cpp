@@ -150,7 +150,7 @@ bool FEN::m_setTurn(Board& board, std::istringstream& is)
     return true;
 }
 
-bool FEN::m_setCastleRights(Board& board, std::istringstream& is)
+bool FEN::m_setCastleRights(Board& board, std::istringstream& is, bool strict)
 {
     char chr;
     board.m_castleRights = 0;
@@ -198,6 +198,21 @@ bool FEN::m_setCastleRights(Board& board, std::istringstream& is)
             ERROR("Not enough characters in FEN string")
             return false;
         }
+    }
+
+    // Check if the castle rights are legal
+    // If not in strict mode, fix the castle rights and return true
+    // If in strict mode, fail the parsing
+    uint8_t prev = board.m_castleRights;
+    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~WHITE_KING_SIDE;
+    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~WHITE_QUEEN_SIDE;
+    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
+    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
+
+    if(strict && prev != board.m_castleRights)
+    {
+        ERROR("The castle rights were illegal: " << unsigned(prev) << " to " << unsigned(board.m_castleRights))
+        return false;
     }
 
     return true;
@@ -325,7 +340,7 @@ bool FEN::setFEN(Board& board, const std::string fen, bool strict)
     success &= m_consumeExpectedSpace(is);
     success &= m_setTurn(board, is);
     success &= m_consumeExpectedSpace(is);
-    success &= m_setCastleRights(board, is);
+    success &= m_setCastleRights(board, is, strict);
     success &= m_consumeExpectedSpace(is);
     success &= m_setEnpassantTarget(board, is);
 
@@ -340,21 +355,9 @@ bool FEN::setFEN(Board& board, const std::string fen, bool strict)
         success &= m_setHalfmoveClock(board, is);
         success &= m_consumeExpectedSpace(is);
         success &= m_setFullmoveClock(board, is);
-
     }
     else
     {
-        uint8_t prev = board.m_castleRights;
-        if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~WHITE_KING_SIDE;
-        if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~WHITE_QUEEN_SIDE;
-        if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
-        if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
-
-        if(prev != board.m_castleRights)
-        {
-            WARNING("The castle rights were illegal and changed from " << unsigned(prev) << " to " << unsigned(board.m_castleRights))
-        }
-
         board.m_rule50 = 0;
         board.m_fullMoves = 0;
     }

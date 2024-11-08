@@ -36,7 +36,7 @@ namespace Arcanum
         static bool m_consumeExpectedSpace(std::istringstream& is);
         static bool m_setPosition(Board& board, std::istringstream& is);
         static bool m_setTurn(Board& board, std::istringstream& is);
-        static bool m_setCastleRights(Board& board, std::istringstream& is);
+        static bool m_setCastleRights(Board& board, std::istringstream& is, bool strict);
         static bool m_setEnpassantTarget(Board& board, std::istringstream& is);
         static bool m_setHalfmoveClock(Board& board, std::istringstream& is);
         static bool m_setFullmoveClock(Board& board, std::istringstream& is);
