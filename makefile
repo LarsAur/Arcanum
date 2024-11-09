@@ -47,8 +47,11 @@ uci: $(BUILDDIR)/$(FILENAME)
 test: $(BUILDDIR)/$(FILENAME)
 	./$^ --see-test --draw-test --capture-test --zobrist-test --perft-test
 
-perf: $(BUILDDIR)/$(FILENAME)
-	./$^ --search-perf --engine-perf
+selfplay: $(BUILDDIR)/$(FILENAME)
+	./$^ --selfplay-test
+
+enginetest: $(BUILDDIR)/$(FILENAME)
+	./$^ --engine-test
 
 release: $(RELEASEDIR)
 	make clean

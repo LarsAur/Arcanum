@@ -28,8 +28,8 @@ int main(int argc, char *argv[])
         if("--zobrist-test" == std::string(argv[i])) Test::zobrist();
         if("--draw-test"    == std::string(argv[i])) Test::draw();
         if("--see-test"     == std::string(argv[i])) Test::see();
-        if("--search-perf"  == std::string(argv[i])) Benchmark::SelfplayTest::runSelfplayTest();
-        if("--engine-perf"  == std::string(argv[i])) Benchmark::EngineTest::runEngineTest();
+        if("--selfplay-test"     == std::string(argv[i])) Benchmark::SelfplayTest::runSelfplayTest();
+        if("--engine-test"   == std::string(argv[i])) Benchmark::EngineTest::runEngineTest();
     }
 
     return 0;
