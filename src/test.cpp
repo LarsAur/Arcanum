@@ -243,34 +243,3 @@ void Test::see()
     else
         SUCCESS("Completed SEE test. Successes: " << successes << " / " << numTests)
 }
-
-// -- Perf functions
-void Perf::search()
-{
-    LOG("Starting search performance test")
-
-    Searcher whiteSearcher = Searcher();
-    Searcher blackSearcher = Searcher();
-    Board board = Board(Arcanum::FEN::startpos);
-    whiteSearcher.addBoardToHistory(board);
-    blackSearcher.addBoardToHistory(board);
-
-    auto start = std::chrono::high_resolution_clock::now();
-    for(int i = 0; i < 20; i++)
-    {
-        DEBUG("PERF: " << i << "/" << 20)
-        Move whiteMove = whiteSearcher.getBestMove(board, 15);
-        board.performMove(whiteMove);
-        whiteSearcher.addBoardToHistory(board);
-        blackSearcher.addBoardToHistory(board);
-        Move blackMove = blackSearcher.getBestMove(board, 15);
-        board.performMove(blackMove);
-        whiteSearcher.addBoardToHistory(board);
-        blackSearcher.addBoardToHistory(board);
-    }
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    auto micros = std::chrono::duration_cast<std::chrono::microseconds>(diff);
-
-    LOG("Completed search performance in " << micros.count() / 1000 << "ms")
-}

@@ -9,8 +9,3 @@ namespace Test
     void draw();
     void see();
 }
-
-namespace Perf
-{
-    void search();
-}
