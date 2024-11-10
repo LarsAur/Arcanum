@@ -71,14 +71,14 @@ inline void MoveSelector::m_scoreMoves()
             m_highScoreIdxPairs[m_numHighScoreMoves++] = {.score = score, .index = i};
         else
         {
-            score = m_relativeHistory->get(m_moves[i], m_board->getTurn());
+            score = m_history->get(m_moves[i], m_board->getTurn());
             m_lowScoreIdxPairs[m_numLowScoreMoves++] = {.score = score, .index = i};
         }
 
     }
 }
 
-MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, RelativeHistory* relativeHistory, Board *board, Move ttMove)
+MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, History* relativeHistory, Board *board, Move ttMove)
 {
     m_numMoves = numMoves;
     m_moves = moves;
@@ -92,7 +92,7 @@ MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFro
     m_ttMove = ttMove;
     m_board = board;
     m_killerMoveManager = killerMoveManager;
-    m_relativeHistory = relativeHistory;
+    m_history = relativeHistory;
     m_plyFromRoot = plyFromRoot;
 
     m_bbOpponentPawnAttacks = m_board->getOpponentPawnAttacks();
@@ -173,43 +173,46 @@ void KillerMoveManager::clear()
     }
 }
 
-RelativeHistory::RelativeHistory()
+History::History()
 {
     clear();
 }
 
-// Moves should only be added to the history if at an appropriate depth
-// Too low depth will instill much noise.
-// Moves should only be added at beta cutoffs
-// Add history score when a quiet move causes a beta-cutoff
-void RelativeHistory::addHistory(const Move& move, uint8_t depth, Color turn)
+inline int32_t History::m_getBonus(uint8_t depth)
 {
-    m_hhScores[turn][move.from][move.to] += depth * depth;
+    return std::min(2000, 16 * depth * depth);
 }
 
-// Add butterfly score when a quiet move does not cause a beta-cutoff
-void RelativeHistory::addButterfly(const Move& move, uint8_t depth, Color turn)
+void History::updateHistory(const Move& bestMove, const std::array<Move, MAX_MOVE_COUNT>& quiets, uint8_t numQuiets, uint8_t depth, Color turn)
 {
-    m_bfScores[turn][move.from][move.to] += depth * depth;
+    int32_t bonus = m_getBonus(depth);
+
+    m_addBonus(bestMove, turn, bonus);
+
+    for(uint8_t i = 0; i < numQuiets; i++)
+    {
+        m_addBonus(quiets[i], turn, -bonus);
+    }
 }
 
-uint32_t RelativeHistory::get(const Move& move, Color turn)
+void History::m_addBonus(const Move& move, Color turn, int32_t bonus)
 {
-    // Bitshift the history score, to avoid rounding down
-    uint64_t relativeScore = (m_hhScores[turn][move.from][move.to] << 16) / m_bfScores[turn][move.from][move.to];
-    return uint32_t(relativeScore);
+    m_historyScore[turn][move.from][move.to] += bonus - (m_historyScore[turn][move.from][move.to] * std::abs(bonus) / 16384);
 }
 
-void RelativeHistory::clear()
+int32_t History::get(const Move& move, Color turn)
+{
+    return m_historyScore[turn][move.from][move.to];
+}
+
+void History::clear()
 {
     for(int i = 0; i < 64; i++)
     {
         for(int j = 0; j < 64; j++)
         {
-            m_hhScores[Color::WHITE][i][j] = 0;
-            m_hhScores[Color::BLACK][i][j] = 0;
-            m_bfScores[Color::WHITE][i][j] = 1;
-            m_bfScores[Color::BLACK][i][j] = 1;
+            m_historyScore[Color::WHITE][i][j] = 0;
+            m_historyScore[Color::BLACK][i][j] = 0;
         }
     }
 }

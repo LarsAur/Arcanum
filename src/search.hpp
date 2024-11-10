@@ -132,7 +132,7 @@ namespace Arcanum
             Timer m_timer;
             Evaluator m_evaluator;
             KillerMoveManager m_killerMoveManager;
-            RelativeHistory m_relativeHistory;
+            History m_history;
             PvTable m_pvTable;
             SearchParameters m_searchParameters;
             uint8_t m_generation;

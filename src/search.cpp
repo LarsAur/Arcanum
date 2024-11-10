@@ -62,7 +62,7 @@ void Searcher::clear()
 {
     m_generation = 0;
     m_tt.clear();
-    m_relativeHistory.clear();
+    m_history.clear();
     m_killerMoveManager.clear();
 }
 
@@ -170,7 +170,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     };
 
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = NULL_MOVE;
     for (int i = 0; i < numMoves; i++)  {
@@ -368,7 +368,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t probBeta = beta + 300;
         if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->value < probBeta))
         {
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
 
             for(uint8_t i = 0; i < numMoves; i++)
             {
@@ -406,9 +406,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
     }
 
-    static constexpr eval_t futilityMargins[] = {300, 500, 900};
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_relativeHistory, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
     uint8_t quietMovesPerformed = 0;
+    std::array<Move, MAX_MOVE_COUNT> quiets;
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
@@ -433,18 +433,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t score;
         bool checkOrChecking = isChecked || newBoard.isChecked();
 
-        // Count quiet moves for LMP
-        quietMovesPerformed += IS_QUIET(move->moveInfo);
-
-        // Futility pruning
-        if(!isPv && depth < 4 && !checkOrChecking && IS_QUIET(move->moveInfo))
-        {
-            if(staticEval + futilityMargins[depth - 1] < alpha && std::abs(alpha) < 900 && std::abs(beta) < 900)
-            {
-                m_stats.futilityPrunedMoves++;
-                continue;
-            }
-        }
 
         // Extend search for checking moves or check avoiding moves
         // This is to avoid horizon effect occuring by starting with a forced line
@@ -543,21 +531,15 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             if(IS_QUIET(move->moveInfo))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
-                if(depth > 3)
-                {
-                    m_relativeHistory.addHistory(*move, depth, board.getTurn());
-                }
+                m_history.updateHistory(*move, quiets, quietMovesPerformed, depth, board.getTurn());
             }
             break;
         }
 
-        // Quiet move did not cause a beta-cutoff, increase the relative butterfly history
         if(IS_QUIET(move->moveInfo))
         {
-            if(depth > 3)
-            {
-                m_relativeHistory.addButterfly(*move, depth, board.getTurn());
-            }
+            // Count and track quiet moves for LMP and History
+            quiets[quietMovesPerformed++] = *move;
         }
     }
 
@@ -712,7 +694,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // This is in case the move from the transposition is not 'correct' due to a miss.
         // Misses can happen if the position cannot replace another position
         // This is required to allow using results of incomplete searches
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_relativeHistory, &board, searchBestMove);
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &board, searchBestMove);
 
         eval_t alpha = -MATE_SCORE;
         eval_t beta = MATE_SCORE;
