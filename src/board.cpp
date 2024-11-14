@@ -1325,7 +1325,7 @@ Move Board::getMoveFromArithmetic(std::string& arighemetic)
     return NULL_MOVE;
 }
 
-bitboard_t Board::attackersTo(const square_t square) const
+bitboard_t Board::attackersTo(const square_t square, bitboard_t occupancy) const
 {
     bitboard_t attackers = 0LL;
     bitboard_t rooks   = m_bbTypedPieces[Piece::W_ROOK][Color::WHITE]   | m_bbTypedPieces[Piece::W_ROOK][Color::BLACK];
@@ -1335,8 +1335,8 @@ bitboard_t Board::attackersTo(const square_t square) const
     bitboard_t kings   = m_bbTypedPieces[Piece::W_KING][Color::WHITE]   | m_bbTypedPieces[Piece::W_KING][Color::BLACK];
 
     attackers |= getKnightMoves(square) & knights;
-    attackers |= getRookMoves(m_bbAllPieces, square) & (rooks | queens);
-    attackers |= getBishopMoves(m_bbAllPieces, square) & (bishops | queens);
+    attackers |= getRookMoves(occupancy, square) & (rooks | queens);
+    attackers |= getBishopMoves(occupancy, square) & (bishops | queens);
     attackers |= getKingMoves(square) & kings;
 
     attackers |= getBlackPawnAttacks(1LL << square) & m_bbTypedPieces[Piece::W_PAWN][Color::WHITE];
@@ -1369,16 +1369,24 @@ bitboard_t Board::m_getLeastValuablePiece(const bitboard_t mask, const Color col
 bool Board::see(const Move& move) const
 {
     // Piece values used bu SEE.
-    static constexpr uint16_t values[] = {100, 300, 300, 500, 900, 32000};
+    static constexpr uint16_t values[] = {100, 500, 300, 300, 900, 32000};
 
     // Note: This also works for enpassant
-    Piece target = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
     Piece attacker = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
 
-    // It is always ok to capture equal of higher value pieces
-    int16_t swap = values[attacker] - values[target];
+    int16_t swap = values[attacker];
+
+    // Enable SEE for non-capture moves
+    if(CAPTURED_PIECE(move.moveInfo))
+    {
+        Piece target = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
+        swap -= values[target];
+    }
+
     if(swap <= 0)
+    {
         return true;
+    }
 
     // Knights and kings cannot cause a discovered attack. (Because they are not on any line containing move.to)
     const bitboard_t bishops = m_bbTypedPieces[Piece::W_BISHOP][Color::WHITE] | m_bbTypedPieces[Piece::W_BISHOP][Color::BLACK];
@@ -1389,7 +1397,7 @@ bool Board::see(const Move& move) const
     bitboard_t bbTo   = 1LL << move.to;
     bitboard_t occupancy = m_bbAllPieces ^ bbTo ^ bbFrom;
     Color turn = m_turn;
-    bitboard_t attackers = attackersTo(move.to); // Attackers and defenders of the square
+    bitboard_t attackers = attackersTo(move.to, occupancy); // Attackers and defenders of the square after the move
     bool result = true;
 
     while (true)
@@ -1400,14 +1408,18 @@ bool Board::see(const Move& move) const
 
         // Break when the side to move has no attackers
         if(!currentAttackers)
+        {
             break;
+        }
 
         if(m_pinners[turn^1] & occupancy)
         {
             currentAttackers &= ~m_blockers[turn];
 
             if(!currentAttackers)
+            {
                 break;
+            }
         }
 
         result ^= 1;
@@ -1417,18 +1429,26 @@ bool Board::see(const Move& move) const
         bitboard_t bbLvp = m_getLeastValuablePiece(currentAttackers, turn, lvp);
         swap = values[lvp] - swap;
 
-        if(swap < 0)
+        if(swap < result)
+        {
             break;
+        }
 
         occupancy ^= bbLvp;
 
         // Note: Knights cannot reveil new attackers
         if(lvp == Piece::W_PAWN)
+        {
             attackers |= getBishopMoves(occupancy, move.to) & (bishops | queens);
+        }
         else if(lvp == Piece::W_BISHOP)
+        {
             attackers |= getBishopMoves(occupancy, move.to) & (bishops | queens);
+        }
         else if(lvp == Piece::W_ROOK)
+        {
             attackers |= getRookMoves(occupancy, move.to) & (rooks | queens);
+        }
         else if(lvp == Piece::W_QUEEN)
         {
             attackers |= getBishopMoves(occupancy, move.to) & (bishops | queens);
