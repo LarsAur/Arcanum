@@ -83,7 +83,7 @@ inline void Board::m_findPinnedPieces()
             if(CNTSBITS(blockingSquares) == 1)
             {
                 m_blockers[c]  |= blockingSquares;
-                m_pinners[c^1] |= sniperIdx;
+                m_pinners[c^1] |= (1LL << sniperIdx);
 
                 // This does not have to be reset or initialized.
                 // It is assumed that the square is known to contain a blocker before lookup.
