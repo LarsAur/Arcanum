@@ -2,6 +2,7 @@
 #include <test.hpp>
 #include <test/engineTest.hpp>
 #include <test/selfplayTest.hpp>
+#include <test/seeTest.hpp>
 #include <eval.hpp>
 #include <bitboardlookups.hpp>
 
@@ -27,8 +28,8 @@ int main(int argc, char *argv[])
         if("--capture-test" == std::string(argv[i])) Test::captureMoves();
         if("--zobrist-test" == std::string(argv[i])) Test::zobrist();
         if("--draw-test"    == std::string(argv[i])) Test::draw();
-        if("--see-test"     == std::string(argv[i])) Test::see();
-        if("--selfplay-test"     == std::string(argv[i])) Benchmark::SelfplayTest::runSelfplayTest();
+        if("--see-test"      == std::string(argv[i])) Benchmark::SeeTest::runSeeTest();
+        if("--selfplay-test" == std::string(argv[i])) Benchmark::SelfplayTest::runSelfplayTest();
         if("--engine-test"   == std::string(argv[i])) Benchmark::EngineTest::runEngineTest();
     }
 

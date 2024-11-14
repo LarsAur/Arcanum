@@ -212,34 +212,3 @@ void Test::draw()
         ERROR("Did not find checkmate to avoid stalemate from k7/1p1p1p2/pPpPpPp1/P1P1P1P1/7R/8/8/K7 b - - 0 1")
     }
 }
-
-static bool s_seeTestPosition(std::string fen, Move move, bool expected)
-{
-    Board board = Board(fen);
-    board.getLegalMoves();
-    bool seeScore = board.see(move);
-
-    if(seeScore != expected)
-        ERROR("SEE test failed for " << fen << " got: " << seeScore << " expected: " << expected)
-
-    return seeScore == expected;
-}
-
-void Test::see()
-{
-    LOG("Starting SEE test")
-    int32_t successes = 0;
-    constexpr uint32_t numTests = 7;
-    successes += s_seeTestPosition("7k/p7/1p6/8/8/1Q6/8/7K w - - 0 1", Move(17, 41, MoveInfoBit::QUEEN_MOVE | MoveInfoBit::CAPTURE_PAWN), false);
-    successes += s_seeTestPosition("8/8/2k5/1q6/8/1K6/8/5B2 w - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_QUEEN), true);
-    successes += s_seeTestPosition("8/8/2k5/1q6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_QUEEN), true);
-    successes += s_seeTestPosition("8/8/2k5/1p6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_PAWN), true);
-    successes += s_seeTestPosition("8/8/b1k5/1p6/8/1KN5/8/5B2 w - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_PAWN), false);
-    successes += s_seeTestPosition("8/8/B1K5/1P6/8/1kn5/8/5b2 b - - 0 1", Move(5, 33, MoveInfoBit::BISHOP_MOVE | MoveInfoBit::CAPTURE_PAWN), false);
-    successes += s_seeTestPosition("8/6k1/6r1/8/4n3/6PQ/4N1K1/8 b - - 0 1", Move(28, 22, MoveInfoBit::KNIGHT_MOVE | MoveInfoBit::CAPTURE_PAWN), false);
-
-    if(numTests != successes)
-        ERROR("Completed SEE test. Successes: " << successes << " / " << numTests)
-    else
-        SUCCESS("Completed SEE test. Successes: " << successes << " / " << numTests)
-}
