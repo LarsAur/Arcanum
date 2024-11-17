@@ -30,6 +30,17 @@ namespace Arcanum
             void clear();
     };
 
+    class CounterMoveManager
+    {
+        private:
+            Move m_counterMoves[2][64][64];
+        public:
+            CounterMoveManager();
+            void setCounter(const Move& counterMove, const Move& prevMove, Color turn);
+            bool contains(const Move& move, const Move& prevMove, Color turn);
+            void clear();
+    };
+
     class MoveSelector
     {
         private:
@@ -43,10 +54,12 @@ namespace Arcanum
             Board* m_board;
             KillerMoveManager* m_killerMoveManager;
             History* m_history;
+            CounterMoveManager* m_counterMoveManager;
             uint8_t m_numMoves;
             uint8_t m_numLowScoreMoves;
             uint8_t m_numHighScoreMoves;
             Move m_ttMove;
+            Move m_prevMove;
             bitboard_t m_bbOpponentPawnAttacks;
             bitboard_t m_bbOpponentAttacks;
             ScoreIndex m_highScoreIdxPairs[MAX_MOVE_COUNT];
@@ -54,7 +67,17 @@ namespace Arcanum
             int32_t m_getMoveScore(const Move& move);
             void m_scoreMoves();
         public:
-            MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, History* relativeHistory, Board *board, const Move ttMove = NULL_MOVE);
+            MoveSelector(
+                const Move *moves,
+                const uint8_t numMoves,
+                int plyFromRoot,
+                KillerMoveManager* killerMoveManager,
+                History* relativeHistory,
+                CounterMoveManager* counterMoveManager,
+                Board *board,
+                const Move ttMove,
+                const Move prevMove
+            );
             const Move* getNextMove();
     };
 }

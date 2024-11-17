@@ -37,7 +37,7 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
     }
     else // Is not a capture move
     {
-        if(m_killerMoveManager->contains(move, m_plyFromRoot))
+        if(m_killerMoveManager->contains(move, m_plyFromRoot) || m_counterMoveManager->contains(move, m_prevMove, m_board->getTurn()))
         {
             score += KILLER_BIAS;
         }
@@ -70,7 +70,17 @@ inline void MoveSelector::m_scoreMoves()
     }
 }
 
-MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFromRoot, KillerMoveManager* killerMoveManager, History* relativeHistory, Board *board, Move ttMove)
+MoveSelector::MoveSelector(
+    const Move *moves,
+    const uint8_t numMoves,
+    int plyFromRoot,
+    KillerMoveManager* killerMoveManager,
+    History* relativeHistory,
+    CounterMoveManager* counterMoveManager,
+    Board *board,
+    const Move ttMove = NULL_MOVE,
+    const Move prevMove = NULL_MOVE
+)
 {
     m_numMoves = numMoves;
     m_moves = moves;
@@ -82,7 +92,9 @@ MoveSelector::MoveSelector(const Move *moves, const uint8_t numMoves, int plyFro
     }
 
     m_ttMove = ttMove;
+    m_prevMove = prevMove;
     m_board = board;
+    m_counterMoveManager = counterMoveManager;
     m_killerMoveManager = killerMoveManager;
     m_history = relativeHistory;
     m_plyFromRoot = plyFromRoot;
@@ -205,6 +217,34 @@ void History::clear()
         {
             m_historyScore[Color::WHITE][i][j] = 0;
             m_historyScore[Color::BLACK][i][j] = 0;
+        }
+    }
+}
+
+
+CounterMoveManager::CounterMoveManager()
+{
+    clear();
+}
+
+void CounterMoveManager::setCounter(const Move& counterMove, const Move& prevMove, Color turn)
+{
+    m_counterMoves[turn][prevMove.from][prevMove.to] = counterMove;
+}
+
+bool CounterMoveManager::contains(const Move& move, const Move& prevMove, Color turn)
+{
+    return m_counterMoves[turn][prevMove.from][prevMove.to] == move;
+}
+
+void CounterMoveManager::clear()
+{
+    for(int i = 0; i < 64; i++)
+    {
+        for(int j = 0; j < 64; j++)
+        {
+            m_counterMoves[Color::WHITE][i][j] = NULL_MOVE;
+            m_counterMoves[Color::BLACK][i][j] = NULL_MOVE;
         }
     }
 }

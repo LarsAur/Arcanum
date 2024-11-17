@@ -64,6 +64,7 @@ void Searcher::clear()
     m_tt.clear();
     m_history.clear();
     m_killerMoveManager.clear();
+    m_counterMoveManager.clear();
 }
 
 template <bool isPv>
@@ -166,11 +167,12 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     // Push the board on the search stack
     m_searchStack[plyFromRoot] = {
         .hash = board.getHash(),
-        .staticEval = staticEval
+        .staticEval = staticEval,
+        .move = NULL_MOVE,
     };
 
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, entry.has_value() ? entry->bestMove : NULL_MOVE, m_searchStack[plyFromRoot-1].move);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = NULL_MOVE;
     for (int i = 0; i < numMoves; i++)  {
@@ -182,6 +184,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         Board newBoard = Board(board);
         newBoard.performMove(*move);
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
+        m_searchStack[plyFromRoot].move = *move;
         eval_t score = -m_alphaBetaQuiet<isPv>(newBoard, -beta, -alpha, plyFromRoot + 1);
         m_evaluator.popMoveFromAccumulator();
 
@@ -311,7 +314,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     // Push the board on the search stack
     m_searchStack[plyFromRoot] = {
         .hash = board.getHash(),
-        .staticEval = staticEval
+        .staticEval = staticEval,
+        .move = NULL_MOVE,
     };
 
     // Internal Iterative Reductions
@@ -354,6 +358,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             int R = 2 + isImproving + depth / 4;
             newBoard.performNullMove();
             m_tt.prefetch(newBoard.getHash());
+            m_searchStack[plyFromRoot].move = NULL_MOVE;
             eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, !cutnode, true, totalExtensions);
 
             if(nullMoveScore >= beta)
@@ -368,7 +373,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t probBeta = beta + 300;
         if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->value < probBeta))
         {
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, entry.has_value() ? entry->bestMove : NULL_MOVE, m_searchStack[plyFromRoot-1].move);
 
             for(uint8_t i = 0; i < numMoves; i++)
             {
@@ -383,6 +388,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 newBoard.performMove(*move);
 
                 m_evaluator.pushMoveToAccumulator(newBoard, *move);
+                m_searchStack[plyFromRoot].move = *move;
 
                 m_stats.probCutQSearches++;
                 eval_t score = -m_alphaBetaQuiet<false>(newBoard, -probBeta, -probBeta + 1, plyFromRoot + 1);
@@ -406,7 +412,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
     }
 
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &board, entry.has_value() ? entry->bestMove : NULL_MOVE);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, entry.has_value() ? entry->bestMove : NULL_MOVE, m_searchStack[plyFromRoot-1].move);
     uint8_t quietMovesPerformed = 0;
     std::array<Move, MAX_MOVE_COUNT> quiets;
     for (int i = 0; i < numMoves; i++)  {
@@ -473,6 +479,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             extension = 0;
 
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
+        m_searchStack[plyFromRoot].move = *move;
 
         if(i == 0)
         {
@@ -531,6 +538,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             if(IS_QUIET(move->moveInfo))
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
+                m_counterMoveManager.setCounter(*move, m_searchStack[plyFromRoot-1].move, board.getTurn());
                 m_history.updateHistory(*move, quiets, quietMovesPerformed, depth, board.getTurn());
             }
             break;
@@ -675,7 +683,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     m_searchStack[0] = {
         .hash = board.getHash(),
-        .staticEval = staticEval
+        .staticEval = staticEval,
+        .move = NULL_MOVE,
     };
 
     uint32_t depth = 0;
@@ -694,7 +703,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // This is in case the move from the transposition is not 'correct' due to a miss.
         // Misses can happen if the position cannot replace another position
         // This is required to allow using results of incomplete searches
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &board, searchBestMove);
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, searchBestMove, NULL_MOVE);
 
         eval_t alpha = -MATE_SCORE;
         eval_t beta = MATE_SCORE;
@@ -714,6 +723,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             Board newBoard = Board(board);
             newBoard.performMove(*move);
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
+            m_searchStack[0].move = *move;
 
             eval_t score;
             if(i == 0)

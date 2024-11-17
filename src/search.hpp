@@ -28,6 +28,7 @@ namespace Arcanum
     {
         hash_t hash;
         eval_t staticEval;
+        Move move;
     } SearchStackElement;
 
     // https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
@@ -133,6 +134,7 @@ namespace Arcanum
             Evaluator m_evaluator;
             KillerMoveManager m_killerMoveManager;
             History m_history;
+            CounterMoveManager m_counterMoveManager;
             PvTable m_pvTable;
             SearchParameters m_searchParameters;
             uint8_t m_generation;
