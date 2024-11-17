@@ -24,7 +24,6 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
     }
 
     Piece movePiece = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
-    bitboard_t bbTo = (1LL << move.to);
     int32_t score = 0;
 
     // If it is a capture
@@ -33,15 +32,8 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
         Piece capturePiece = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
         int32_t materialDelta = s_pieceValues[capturePiece] - s_pieceValues[movePiece];
 
-        // Check if recapture is available
-        if(m_bbOpponentAttacks & bbTo)
-        {
-            score += (materialDelta >= 0 ? WINNING_CAPTURE_BIAS : LOSING_CAPTURE_BIAS) + materialDelta;
-        }
-        else
-        {
-            score += WINNING_CAPTURE_BIAS + materialDelta;
-        }
+        // Use SEE to check for winning or losing capture
+        score += (m_board->see(move) ? WINNING_CAPTURE_BIAS : LOSING_CAPTURE_BIAS) + materialDelta;
     }
     else // Is not a capture move
     {
