@@ -93,21 +93,13 @@ extern std::string _logFileName;
 #endif
 
 #ifndef DISABLE_SUCCESS
-    #ifndef PRINT_TO_FILE
-        #define SUCCESS(_str) std::cout << SUCCESS_COLOR << "[SUCCESS]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
-    #else
-        #define SUCCESS(_str) _FILE_PRINT("[SUCCESS]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
-    #endif
+    #define SUCCESS(_str) std::cout << SUCCESS_COLOR << "[SUCCESS]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
     #define SUCCESS(_str) ;
 #endif
 
 #ifndef DISABLE_FAIL
-    #ifndef PRINT_TO_FILE
-        #define FAIL(_str) std::cout << FAIL_COLOR << "[FAIL]      " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
-    #else
-        #define FAIL(_str) _FILE_PRINT("[FAIL]      [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
-    #endif
+    #define FAIL(_str) std::cout << FAIL_COLOR << "[FAIL]      " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 #else
     #define FAIL(_str) ;
 #endif
