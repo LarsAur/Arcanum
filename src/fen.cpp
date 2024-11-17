@@ -291,7 +291,9 @@ bool FEN::m_setHalfmoveClock(Board& board, std::istringstream& is)
     }
 
     // Read half moves
-    is >> board.m_rule50;
+    uint16_t rule50;
+    is >> rule50;
+    board.m_rule50 = uint8_t(rule50);
 
     return true;
 }
