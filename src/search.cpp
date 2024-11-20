@@ -341,7 +341,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         {
             if(staticEval + 200 * depth < alpha)
             {
-                eval_t razorEval = m_alphaBetaQuiet<false>(board, alpha, beta, plyFromRoot);
+                Board newBoard = Board(board);
+                eval_t razorEval = m_alphaBetaQuiet<false>(newBoard, alpha, beta, plyFromRoot);
                 if(razorEval <= alpha)
                 {
                     m_stats.razorCutoffs++;
