@@ -99,7 +99,7 @@ inline void Board::m_findPinnedPieces()
     }
 }
 
-inline bool Board::m_isLegalEnpassant(Move move)
+inline bool Board::m_isLegalEnpassant(Move move) const
 {
     bitboard_t bbFrom = (0b1LL << move.from);
     bitboard_t bbTo = (0b1LL << move.to);
@@ -144,7 +144,7 @@ inline bool Board::m_attemptAddPseudoLegalEnpassant(Move move)
     return false;
 }
 
-inline bool Board::m_isLegalMove(Move move)
+inline bool Board::m_isLegalMove(Move move) const
 {
     bitboard_t bbFrom = (0b1LL << move.from);
     bitboard_t bbTo = (0b1LL << move.to);

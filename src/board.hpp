@@ -87,8 +87,8 @@ namespace Arcanum
             // Tests if the king will be checked before adding the move
             bool m_attemptAddPseudoLegalEnpassant(Move move);
             bool m_attemptAddPseudoLegalMove(Move move);
-            bool m_isLegalEnpassant(Move move);
-            bool m_isLegalMove(Move move);
+            bool m_isLegalEnpassant(Move move) const;
+            bool m_isLegalMove(Move move) const;
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
 
