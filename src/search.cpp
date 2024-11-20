@@ -104,6 +104,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     }
 
     std::optional<ttEntry_t> entry = m_tt.get(board.getHash(), plyFromRoot);
+    const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
     if(!isPv && entry.has_value())
     {
         switch (entry->flags)
@@ -172,7 +173,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     };
 
     board.generateCaptureInfo();
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, entry.has_value() ? entry->bestMove : NULL_MOVE, m_searchStack[plyFromRoot-1].move);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, ttMove, m_searchStack[plyFromRoot-1].move);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = NULL_MOVE;
     for (int i = 0; i < numMoves; i++)  {
@@ -246,6 +247,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     eval_t originalAlpha = alpha;
     std::optional<ttEntry_t> entry = m_tt.get(board.getHash(), plyFromRoot);
+    const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
     if(!isPv && entry.has_value() && (entry->depth >= depth) && skipMove== NULL_MOVE)
     {
         switch (entry->flags)
@@ -374,7 +376,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t probBeta = beta + 300;
         if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->value < probBeta))
         {
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, entry.has_value() ? entry->bestMove : NULL_MOVE, m_searchStack[plyFromRoot-1].move);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, ttMove, m_searchStack[plyFromRoot-1].move);
 
             for(uint8_t i = 0; i < numMoves; i++)
             {
@@ -413,7 +415,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
     }
 
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, entry.has_value() ? entry->bestMove : NULL_MOVE, m_searchStack[plyFromRoot-1].move);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, ttMove, m_searchStack[plyFromRoot-1].move);
     uint8_t quietMovesPerformed = 0;
     std::array<Move, MAX_MOVE_COUNT> quiets;
     for (int i = 0; i < numMoves; i++)  {
