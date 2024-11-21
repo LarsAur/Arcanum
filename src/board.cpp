@@ -179,6 +179,12 @@ inline bool Board::m_attemptAddPseudoLegalMove(Move move)
 
 Move* Board::getLegalMovesFromCheck()
 {
+    if(m_moveset == MoveSet::ALL)
+    {
+        return m_legalMoves;
+    }
+
+    m_moveset = MoveSet::ALL;
     m_findPinnedPieces();
     m_numLegalMoves = 0;
     Color opponent = Color(m_turn^1);
@@ -486,13 +492,13 @@ Move* Board::getLegalMoves()
     {
         return m_legalMoves;
     }
-    m_moveset = MoveSet::ALL;
 
     if(isChecked())
     {
         return getLegalMovesFromCheck();
     }
 
+    m_moveset = MoveSet::ALL;
     m_findPinnedPieces();
     m_numLegalMoves = 0;
 
@@ -558,7 +564,6 @@ Move* Board::getLegalCaptureMoves()
     {
         return m_legalMoves;
     }
-    m_moveset = MoveSet::CAPTURES;
 
     // If in check, the existing function for generating legal moves will be used
     if(isChecked())
@@ -566,6 +571,7 @@ Move* Board::getLegalCaptureMoves()
         return getLegalMovesFromCheck();
     }
 
+    m_moveset = MoveSet::CAPTURES;
     m_findPinnedPieces();
     m_numLegalMoves = 0;
     // Everything below is generating moves when not in check, thus we can filter for capturing moves
