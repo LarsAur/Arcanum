@@ -1372,7 +1372,7 @@ bitboard_t Board::m_getLeastValuablePiece(const bitboard_t mask, const Color col
 
 // Static exchange evaluation based on the swap algorithm:
 // https://www.chessprogramming.org/SEE_-_The_Swap_Algorithm
-bool Board::see(const Move& move) const
+bool Board::see(const Move& move, eval_t threshold) const
 {
     // Piece values used bu SEE.
     static constexpr uint16_t values[] = {100, 500, 300, 300, 900, 32000};
@@ -1380,15 +1380,19 @@ bool Board::see(const Move& move) const
     // Note: This also works for enpassant
     Piece attacker = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
 
-    int16_t swap = values[attacker];
+    int16_t swap = -threshold;
 
     // Enable SEE for non-capture moves
     if(CAPTURED_PIECE(move.moveInfo))
     {
         Piece target = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
-        swap -= values[target];
+        swap += values[target];
     }
 
+    if(swap < 0)
+        return false;
+
+    swap = values[attacker] - swap;
     if(swap <= 0)
     {
         return true;

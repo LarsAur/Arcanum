@@ -133,7 +133,7 @@ namespace Arcanum
             uint8_t getNumColoredPieces(Color color) const;
             Move getMoveFromArithmetic(std::string& arithmetic);
             bitboard_t attackersTo(square_t square, bitboard_t occupancy) const;
-            bool see(const Move& move) const;
+            bool see(const Move& move, eval_t threshold = 0) const;
     };
 
     template <MoveInfoBit MoveType, bool CapturesOnly>
