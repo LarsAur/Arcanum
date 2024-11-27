@@ -184,6 +184,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
         Board newBoard = Board(board);
         newBoard.performMove(*move);
+        m_tt.prefetch(newBoard.getHash());
         m_evaluator.pushMoveToAccumulator(newBoard, *move);
         m_searchStack[plyFromRoot].move = *move;
         eval_t score = -m_alphaBetaQuiet<isPv>(newBoard, -beta, -alpha, plyFromRoot + 1);
@@ -389,7 +390,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
                 Board newBoard = Board(board);
                 newBoard.performMove(*move);
-
+                m_tt.prefetch(newBoard.getHash());
                 m_evaluator.pushMoveToAccumulator(newBoard, *move);
                 m_searchStack[plyFromRoot].move = *move;
 
@@ -725,6 +726,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             const Move *move = moveSelector.getNextMove();
             Board newBoard = Board(board);
             newBoard.performMove(*move);
+            m_tt.prefetch(newBoard.getHash());
             m_evaluator.pushMoveToAccumulator(newBoard, *move);
             m_searchStack[0].move = *move;
 
