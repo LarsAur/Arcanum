@@ -4,6 +4,7 @@
 #include <syzygy.hpp>
 #include <fen.hpp>
 #include <perft.hpp>
+#include <utils.hpp>
 
 using namespace Arcanum;
 using namespace Arcanum::Interface;
@@ -16,7 +17,7 @@ Searcher    UCI::searcher;
 SpinOption   UCI::optionHash         = SpinOption("Hash", 32, 0, 8196, []{ UCI::searcher.resizeTT(UCI::optionHash.value); });
 ButtonOption UCI::optionClearHash    = ButtonOption("ClearHash", []{ UCI::searcher.clear(); });
 StringOption UCI::optionSyzygyPath   = StringOption("SyzygyPath", "<empty>", []{ TBInit(UCI::optionSyzygyPath.value); });
-StringOption UCI::optionNNUEPath     = StringOption("NNUEPath", "arcanum-net-v4.0.fnnue", []{ Evaluator::nnue.load(UCI::optionNNUEPath.value); });
+StringOption UCI::optionNNUEPath     = StringOption("NNUEPath", TOSTRING(DEFAULT_NNUE), []{ Evaluator::nnue.load(UCI::optionNNUEPath.value); });
 SpinOption   UCI::optionMoveOverhead = SpinOption("MoveOverhead", 10, 0, 5000);
 CheckOption  UCI::optionNormalizeScore = CheckOption("NormalizeScore", true);
 
