@@ -55,6 +55,12 @@ setoption name syzygypath value <folder>
 ```
 where `<folder>` is the _absolute path_ to the folder containing the tablebase.
 
+## Incbin
+From v2.4 and onward, [Incbin][incbin] by [graphitemaster][graphitemaster] is used to embed the default nnue net into the executable. If the nnue path is equal to the default path, the embedded net will be used.
+
+This can be disabled by removing `-DENABLE_INCBIN` from the makefile when building.
+
+
 ## Options
 All of the following UCI options are available in Arcanum.
 | Name           | Type   | Default                | Description                                                                                                                                                                                    |
@@ -93,3 +99,5 @@ All of the following UCI options are available in Arcanum.
 [syzygy]: http://tablebase.sesse.net/
 [pyrrhic]: https://github.com/AndyGrant/Pyrrhic
 [andy-grant]: https://github.com/AndyGrant
+[incbin]: https://github.com/graphitemaster/incbin
+[graphitemaster]: https://github.com/graphitemaster
