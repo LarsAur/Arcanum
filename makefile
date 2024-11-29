@@ -5,7 +5,7 @@ RELEASEDIR ?= releases
 SOURCEDIR = src
 HEADERDIR = src
 BUILDDIR = build
-NNUE = arcanum-net-v4.0.fnnue
+DEFAULT_NNUE = arcanum-net-v4.0.fnnue
 CXX = g++
 
 DEFINES += -DIS_64BIT
@@ -15,6 +15,8 @@ DEFINES += -DUSE_BMI2 -mbmi2
 DEFINES += -DUSE_POPCNT -mpopcnt
 DEFINES += -DUSE_LZCNT -mlzcnt
 DEFINES += -DARCANUM_VERSION=$(VERSION)
+DEFINES += -DDEFAULT_NNUE=$(DEFAULT_NNUE)
+DEFINES += -DENABLE_INCBIN # Remove to disable using incbin for DEFAULT_NNUE
 
 RELEASE_DEFINES += -DPRINT_TO_FILE
 RELEASE_DEFINES += -DDISABLE_LOG
@@ -58,10 +60,10 @@ release: $(RELEASEDIR)
 	make $(BUILDDIR)/$(FILENAME) -j "CFLAGS=$(RELEASE_DEFINES)"
 ifeq ($(OS),Windows_NT)
 	copy ".\$(BUILDDIR)\$(FILENAME)" /b ".\$(RELEASEDIR)\$(FILENAME)" /b
-	-copy ".\$(NNUE)" /b ".\$(RELEASEDIR)\$(NNUE)" /b
+	-copy ".\$(DEFAULT_NNUE)" /b ".\$(RELEASEDIR)\$(DEFAULT_NNUE)" /b
 else
 	cp $(BUILDDIR)/$(FILENAME) $(RELEASEDIR)/$(FILENAME)
-	-cp $(NNUE) $(RELEASEDIR)
+	-cp $(DEFAULT_NNUE) $(RELEASEDIR)
 endif
 
 clean:
@@ -83,15 +85,15 @@ $(BUILDDIR):
 	cd $(BUILDDIR)/src && mkdir uci
 	cd $(BUILDDIR)/src && mkdir test
 
-$(BUILDDIR)/$(NNUE):
+$(BUILDDIR)/$(DEFAULT_NNUE):
 ifeq ($(OS),Windows_NT)
-	-copy /b $(NNUE) /b $(BUILDDIR)/$(NNUE)
+	-copy /b $(DEFAULT_NNUE) /b $(BUILDDIR)/$(DEFAULT_NNUE)
 else
-	-cp $(NNUE) $(BUILDDIR)
+	-cp $(DEFAULT_NNUE) $(BUILDDIR)
 endif
 
 $(BUILDDIR)/%.o: %.cpp $(HEADERS) | $(BUILDDIR)
 	$(CXX) $(CFLAGS) $(LDFLAGS) -I$(HEADERDIR) -I$(dir $<) -c $< -o $@
 
-$(BUILDDIR)/$(FILENAME): $(OBJECTS) | $(BUILDDIR)/$(NNUE)
+$(BUILDDIR)/$(FILENAME): $(OBJECTS) | $(BUILDDIR)/$(DEFAULT_NNUE)
 	$(CXX) $(OBJECTS) $(CFLAGS) $(LDFLAGS) -o $@
