@@ -198,7 +198,7 @@ namespace NN
                 stream.write((char*) m_data, rows * cols * sizeof(float));
             }
 
-            void readFromStream(std::ifstream& stream)
+            void readFromStream(std::istream& stream)
             {
                 stream.read((char*) m_data, rows * cols * sizeof(float));
             }

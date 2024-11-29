@@ -30,15 +30,24 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
     std::string path = getWorkPath();
     std::stringstream ss;
     ss << path << filename;
-    std::ifstream stream(ss.str(), std::ios::in | std::ios::binary);
+    std::ifstream fStream(ss.str(), std::ios::in | std::ios::binary);
 
     LOG("Loading NNUE " << ss.str())
-    if(!stream.is_open())
+    if(!fStream.is_open())
     {
         ERROR("Unable to open " << ss.str())
         return;
     }
 
+    std::istream& stream = fStream;
+    m_loadNetFromStream(stream, net);
+    fStream.close();
+
+    LOG("Finished loading NNUE " << ss.str())
+}
+
+void NNUE::m_loadNetFromStream(std::istream& stream, FloatNet& net)
+{
     // Reading header
 
     std::string magic;
@@ -70,10 +79,6 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
     net.l1Biases.readFromStream(stream);
     net.l2Weights.readFromStream(stream);
     net.l2Biases.readFromStream(stream);
-
-    stream.close();
-
-    LOG("Finished loading NNUE " << ss.str())
 }
 
 void NNUE::store(std::string filename)

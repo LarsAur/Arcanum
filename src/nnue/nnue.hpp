@@ -51,6 +51,7 @@ namespace NN
 
             void m_storeNet(std::string filename, FloatNet& net);
             void m_loadNet(std::string filename, FloatNet& net);
+            void m_loadNetFromStream(std::istream& stream, FloatNet& net);
         public:
             static const char* NNUE_MAGIC;
 
