@@ -8,8 +8,6 @@
 #ifndef ARCANUM_VERSION
 #define ARCANUM_VERSION dev_build
 #endif
-#define STRINGIFY(s) #s
-#define TOSTRING(x) STRINGIFY(x)
 
 #define NORMALIZE(_x) (eval_t((_x) / 1.75f))
 
