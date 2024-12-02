@@ -4,7 +4,6 @@ BUILDDIR ?= build
 RELEASEDIR ?= releases
 SOURCEDIR = src
 HEADERDIR = src
-BUILDDIR = build
 DEFAULT_NNUE = arcanum-net-v4.0.fnnue
 CXX = g++
 
