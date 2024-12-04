@@ -86,7 +86,7 @@ $(BUILDDIR):
 
 $(BUILDDIR)/$(DEFAULT_NNUE):
 ifeq ($(OS),Windows_NT)
-	-copy /b $(DEFAULT_NNUE) /b $(BUILDDIR)/$(DEFAULT_NNUE)
+	-copy .\$(DEFAULT_NNUE) /b .\$(BUILDDIR)\$(DEFAULT_NNUE) /b
 else
 	-cp $(DEFAULT_NNUE) $(BUILDDIR)
 endif
