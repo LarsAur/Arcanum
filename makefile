@@ -5,7 +5,7 @@ RELEASEDIR ?= releases
 SOURCEDIR = src
 HEADERDIR = src
 DEFAULT_NNUE = arcanum-net-v4.0.fnnue
-CXX = g++
+CXX = clang++
 
 DEFINES += -DIS_64BIT
 DEFINES += -DUSE_AVX2 -mavx2 -mfma
