@@ -22,7 +22,7 @@ RELEASE_DEFINES += -DDISABLE_LOG
 RELEASE_DEFINES += -DDISABLE_DEBUG
 
 override CFLAGS += -std=c++17 -O3 -Wall $(DEFINES)
-LDFLAGS = -lpthread -lm -lstdc++ --static
+LDFLAGS = --static
 
 ifeq ($(OS),Windows_NT)
 FILENAME = $(NAME).exe
