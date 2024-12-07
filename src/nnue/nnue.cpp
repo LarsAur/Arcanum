@@ -436,18 +436,24 @@ float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
     return m_predict(acc, perspective, m_trace);
 }
 
+constexpr float SIGMOID_FACTOR = 200.0f;
+inline float NNUE::m_sigmoid(float v)
+{
+    constexpr float e = 2.71828182846f;
+    return 1.0f / (1.0f + pow(e, -v / SIGMOID_FACTOR));
+}
+
+inline float NNUE::m_sigmoidPrime(float sigmoid)
+{
+    // Calculate derivative of sigmoid based on the sigmoid value
+    // f'(x) = f(x) * (1 - f(x)) / SIG_FACTOR
+    return ((sigmoid) * (1.0f - (sigmoid))) / SIGMOID_FACTOR;
+}
+
 // http://neuralnetworksanddeeplearning.com/chap2.html
 void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
 {
     constexpr float lambda = 0.50f; // Weighting between wdlTarget and cpTarget
-    constexpr float e = 2.71828182846f;
-    constexpr float SIG_FACTOR = 200.0f;
-
-    #define SIGMOID(_v) (1.0f / (1.0f + pow(e, -(_v) / SIG_FACTOR)))
-
-    // Calculate derivative of sigmoid based on the sigmoid value
-    // f'(x) = f(x) * (1 - f(x)) * SIG_FACTOR
-    #define SIGMOID_PRIME(_sigmoid) ((_sigmoid) * (1.0f - (_sigmoid)))
 
     // -- Run prediction
     Accumulator acc;
@@ -462,8 +468,8 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
     }
 
     // Calculate target
-    float wdlOutput       = SIGMOID(out);
-    float wdlTargetCp     = SIGMOID(cpTarget);
+    float wdlOutput       = m_sigmoid(out);
+    float wdlTargetCp     = m_sigmoid(cpTarget);
     float target          = wdlTargetCp * lambda + wdlTarget * (1.0f - lambda);
 
     // Calculate loss
@@ -471,7 +477,9 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
     totalLoss             += loss;
 
     // Calculate loss gradients
-    float sigmoidPrime    = SIGMOID_PRIME(wdlOutput);
+    float sigmoidPrime    = m_sigmoidPrime(wdlOutput);
+    // Note: The loss gradient should be -2 * (target - wdlOutput),
+    //       but the minus is ommitted and the gradient is later added instead of subtracted in m_applyGradient
     float lossPrime       = 2 * (target - wdlOutput);
 
     // -- Create input vector

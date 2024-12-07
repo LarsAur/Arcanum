@@ -38,6 +38,8 @@ namespace NN
             Trace m_trace;
             FloatNet m_net;
 
+            float m_sigmoid(float v);
+            float m_sigmoidPrime(float sigmoid);
             uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
             float m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
             float m_predict(Accumulator* acc, Arcanum::Color perspective);
