@@ -223,7 +223,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 }
 
 template <bool isPv>
-eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, bool isNullMoveSearch, uint8_t totalExtensions, Move skipMove)
+eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove)
 {
     if(m_shouldStop())
         return 0;
@@ -313,6 +313,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     bool isChecked = board.isChecked();
     bool isImproving = (plyFromRoot > 1) && (staticEval > m_searchStack[plyFromRoot - 2].staticEval);
     bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStack[plyFromRoot - 2].staticEval);
+    bool isNullMoveSearch = m_searchStack[plyFromRoot-1].move == NULL_MOVE;
 
     // Push the board on the search stack
     m_searchStack[plyFromRoot] = {
@@ -363,7 +364,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             newBoard.performNullMove();
             m_tt.prefetch(newBoard.getHash());
             m_searchStack[plyFromRoot].move = NULL_MOVE;
-            eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, !cutnode, true, totalExtensions);
+            eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, !cutnode, totalExtensions);
 
             if(nullMoveScore >= beta)
             {
@@ -400,7 +401,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 if(score >= probBeta)
                 {
                     m_stats.probCutSearches++;
-                    score = -m_alphaBeta<false>(newBoard, -probBeta, -probBeta + 1, depth - 4, plyFromRoot + 1, cutnode, false, totalExtensions);
+                    score = -m_alphaBeta<false>(newBoard, -probBeta, -probBeta + 1, depth - 4, plyFromRoot + 1, cutnode, totalExtensions);
                 }
 
                 m_evaluator.popMoveFromAccumulator();
@@ -465,7 +466,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         {
             eval_t seBeta = entry->value - 3 * depth;
             uint8_t seDepth = (depth - 1) / 2;
-            eval_t seScore = m_alphaBeta<false>(board, seBeta - 1, seBeta, seDepth, plyFromRoot, cutnode, isNullMoveSearch, totalExtensions, *move);
+            eval_t seScore = m_alphaBeta<false>(board, seBeta - 1, seBeta, seDepth, plyFromRoot, cutnode, totalExtensions, *move);
 
             if(seScore < seBeta)
             {
@@ -487,7 +488,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
         if(i == 0)
         {
-            score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, !(isPv | cutnode), false, totalExtensions + extension);
+            score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, !(isPv | cutnode), totalExtensions + extension);
         }
         else
         {
@@ -502,21 +503,21 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 R = std::max(int8_t(1), R);
             }
 
-            score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth + extension - R, plyFromRoot + 1, !cutnode, false, totalExtensions + extension);
+            score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth + extension - R, plyFromRoot + 1, !cutnode, totalExtensions + extension);
             m_stats.researchesRequired += score > alpha && (isPv || R > 1);
             m_stats.nullWindowSearches += 1;
 
             // Potential research of LMR returns a score > alpha
             if(score > alpha && R > 1)
             {
-                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth + extension - 1 , plyFromRoot + 1, !cutnode, false, totalExtensions + extension);
+                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth + extension - 1 , plyFromRoot + 1, !cutnode, totalExtensions + extension);
                 m_stats.researchesRequired += score > alpha && isPv;
                 m_stats.nullWindowSearches += 1;
             }
 
             if(score > alpha && isPv)
             {
-                score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, false, totalExtensions + extension);
+                score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
             }
         }
 
@@ -733,7 +734,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             eval_t score;
             if(i == 0)
             {
-                score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, false, 0);
+                score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
 
                 // Aspiration window
                 // Check if the score is lower than alpha for the first move
@@ -747,10 +748,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             }
             else
             {
-                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth - 1, 1, true, false, 0);
+                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth - 1, 1, true, 0);
 
                 if(score > alpha)
-                    score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, false, 0);
+                    score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
             }
 
             m_evaluator.popMoveFromAccumulator();

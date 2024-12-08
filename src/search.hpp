@@ -150,7 +150,7 @@ namespace Arcanum
             void m_sendUciInfo(eval_t score, Move move, uint32_t depth, bool forceTBScore, uint8_t wdlTB);
 
             template <bool isPv>
-            eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, bool isNullMoveSearch, uint8_t totalExtensions, Move skipMove = NULL_MOVE);
+            eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove = NULL_MOVE);
             template <bool isPv>
             eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot);
         public:
