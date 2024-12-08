@@ -76,7 +76,8 @@ All of the following UCI options are available in Arcanum.
 
 | Version | CCRL Blitz | CCRL 40/15 |
 |---------|------------|------------|
-| 2.3.*   | 3144       |            |
+| 2.4     | 3195       |            |
+| 2.3.*   | 3129       | 3107       |
 | 2.2     | 2926       | 2929       |
 | 2.1     | 2724       |            |
 | 2.0     | 2456       |            |
