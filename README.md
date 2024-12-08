@@ -1,5 +1,4 @@
 <div align="center">
-  <img src="Arcanum-Logo.svg" />
   <h1>Arcanum</h1>
 </div>
 
