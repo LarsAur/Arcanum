@@ -19,16 +19,20 @@ _net1.ftWeights._op(_net2.ftWeights); \
 _net1.ftBiases ._op(_net2.ftBiases ); \
 _net1.l1Weights._op(_net2.l1Weights); \
 _net1.l1Biases ._op(_net2.l1Biases ); \
-_net1.l2Weights._op(_net2.l2Weights); \
-_net1.l2Biases ._op(_net2.l2Biases );
+for(uint32_t i = 0; i < NumOutputBuckets; i++) { \
+_net1.l2Weights[i]._op(_net2.l2Weights[i]); \
+_net1.l2Biases [i]._op(_net2.l2Biases [i]); \
+}
 
 #define NET_UNARY_OP(_net1, _op) \
 _net1.ftWeights._op; \
 _net1.ftBiases ._op; \
 _net1.l1Weights._op; \
 _net1.l1Biases ._op; \
-_net1.l2Weights._op; \
-_net1.l2Biases ._op;
+for(uint32_t i = 0; i < NumOutputBuckets; i++) { \
+_net1.l2Weights[i]._op; \
+_net1.l2Biases [i]._op; \
+}
 
 const char* NNUE::NNUE_MAGIC = "Arcanum FNNUE";
 
@@ -116,13 +120,7 @@ void NNUE::m_loadNetFromStream(std::istream& stream, FloatNet& net)
     DEBUG("Metadata:\n" << metadata)
 
     // Read Net data
-
-    net.ftWeights.readFromStream(stream);
-    net.ftBiases.readFromStream(stream);
-    net.l1Weights.readFromStream(stream);
-    net.l1Biases.readFromStream(stream);
-    net.l2Weights.readFromStream(stream);
-    net.l2Biases.readFromStream(stream);
+    NET_UNARY_OP(net, readFromStream(stream))
 }
 
 void NNUE::store(std::string filename)
@@ -159,12 +157,7 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     stream.write(metadata.c_str(), size);
 
     // Write Net data
-    net.ftWeights.writeToStream(stream);
-    net.ftBiases.writeToStream(stream);
-    net.l1Weights.writeToStream(stream);
-    net.l1Biases.writeToStream(stream);
-    net.l2Weights.writeToStream(stream);
-    net.l2Biases.writeToStream(stream);
+    NET_UNARY_OP(net, writeToStream(stream))
 
     stream.close();
 
@@ -179,6 +172,11 @@ inline uint32_t NNUE::m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color
         square = ((7 - RANK(square)) << 3) | FILE(square);
 
     return (((uint32_t(piece) << 6) | uint32_t(square)) << 1) | color;
+}
+
+inline uint32_t NNUE::m_getOutputBucketIndex(const Arcanum::Board& board)
+{
+    return (board.getNumPieces() - 2) * NumOutputBuckets / 32;
 }
 
 void NNUE::m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures, uint32_t* features)
@@ -387,12 +385,12 @@ Arcanum::eval_t NNUE::evaluateBoard(const Arcanum::Board& board)
 {
     Accumulator acc;
     initAccumulator(&acc, board);
-    return static_cast<eval_t>(m_predict(&acc, board.getTurn()));
+    return static_cast<eval_t>(m_predict(&acc, board, board.getTurn()));
 }
 
-Arcanum::eval_t NNUE::evaluate(Accumulator* acc, Arcanum::Color turn)
+Arcanum::eval_t NNUE::evaluate(Accumulator* acc, const Arcanum::Board& board)
 {
-    return static_cast<eval_t>(m_predict(acc, turn));
+    return static_cast<eval_t>(m_predict(acc, board, board.getTurn()));
 }
 
 void NNUE::m_randomizeWeights()
@@ -400,10 +398,18 @@ void NNUE::m_randomizeWeights()
     LOG("Randomizing NNUE")
     m_net.ftWeights.heRandomize();
     m_net.l1Weights.heRandomize();
-    m_net.l2Weights.heRandomize();
+    for(uint32_t i = 0; i < NumOutputBuckets; i++)
+    {
+        m_net.l2Weights[i].heRandomize();
+    }
+
+
     m_net.ftBiases.setZero();
     m_net.l1Biases.setZero();
-    m_net.l2Biases.setZero();
+    for(uint32_t i = 0; i < NumOutputBuckets; i++)
+    {
+        m_net.l2Biases[i].setZero();
+    }
 }
 
 void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
@@ -423,17 +429,18 @@ void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace
     }
 }
 
-float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
+float NNUE::m_predict(Accumulator* acc, const Arcanum::Board& board, Arcanum::Color perspective, Trace& trace)
 {
+    uint32_t obi = m_getOutputBucketIndex(board);
     m_reluAccumulator(acc, perspective, trace);
     feedForwardReLu(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.l1Out);
-    lastLevelFeedForward(m_net.l2Weights, m_net.l2Biases, trace.l1Out, trace.out);
+    lastLevelFeedForward(m_net.l2Weights[obi], m_net.l2Biases[obi], trace.l1Out, trace.out);
     return *trace.out.data();
 }
 
-float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
+float NNUE::m_predict(Accumulator* acc, const Arcanum::Board& board, Arcanum::Color perspective)
 {
-    return m_predict(acc, perspective, m_trace);
+    return m_predict(acc, board, perspective, m_trace);
 }
 
 constexpr float SIGMOID_FACTOR = 200.0f;
@@ -453,12 +460,13 @@ inline float NNUE::m_sigmoidPrime(float sigmoid)
 // http://neuralnetworksanddeeplearning.com/chap2.html
 void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
 {
-    constexpr float lambda = 0.50f; // Weighting between wdlTarget and cpTarget
+    constexpr float lambda = 1.0f; // Weighting between wdlTarget and cpTarget
 
     // -- Run prediction
     Accumulator acc;
     initAccumulator(&acc, board);
-    float out = m_predict(&acc, board.getTurn(), trace);
+    uint32_t obi = m_getOutputBucketIndex(board);
+    float out = m_predict(&acc, board, board.getTurn(), trace);
 
     // Correct target perspective
     if(board.getTurn() == BLACK)
@@ -510,7 +518,7 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 
     delta3.set(0, 0, sigmoidPrime * lossPrime);
 
-    multiplyTransposeA(net.l2Weights, delta3, delta2);
+    multiplyTransposeA(net.l2Weights[obi], delta3, delta2);
     delta2.hadamard(L2ReLuPrime);
 
     multiplyTransposeA(net.l1Weights, delta2, delta1);
@@ -527,11 +535,11 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
 
     // Accumulate the change
 
-    gradient.l2Biases.add(delta3);
+    gradient.l2Biases[obi].add(delta3);
     gradient.l1Biases.add(delta2);
     gradient.ftBiases.add(delta1);
     gradient.l1Weights.add(gradientL1Weights);
-    gradient.l2Weights.add(gradientL2Weights);
+    gradient.l2Weights[obi].add(gradientL2Weights);
 }
 
 void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2, FloatNet& mHat, FloatNet& vHat)

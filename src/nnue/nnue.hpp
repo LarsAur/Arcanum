@@ -8,6 +8,7 @@ namespace NN
     static constexpr uint32_t FTSize  = 768;
     static constexpr uint32_t L1Size  = 256;
     static constexpr uint32_t L2Size  = 32;
+    static constexpr uint32_t NumOutputBuckets = 8;
     static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
     struct Accumulator
     {
@@ -20,8 +21,8 @@ namespace NN
         Matrix<L1Size, 1>       ftBiases;
         Matrix<L2Size, L1Size>  l1Weights;
         Matrix<L2Size, 1>       l1Biases;
-        Matrix<1, L2Size>       l2Weights;
-        Matrix<1, 1>            l2Biases;
+        Matrix<1, L2Size>       l2Weights[NumOutputBuckets];
+        Matrix<1, 1>            l2Biases[NumOutputBuckets];
     };
 
     // Intermediate results in the net
@@ -40,9 +41,10 @@ namespace NN
 
             float m_sigmoid(float v);
             float m_sigmoidPrime(float sigmoid);
+            uint32_t m_getOutputBucketIndex(const Arcanum::Board& board);
             uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
-            float m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
-            float m_predict(Accumulator* acc, Arcanum::Color perspective);
+            float m_predict(Accumulator* acc, const Arcanum::Board& board, Arcanum::Color perspective, Trace& trace);
+            float m_predict(Accumulator* acc, const Arcanum::Board& board, Arcanum::Color perspective);
             void m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures, uint32_t* features);
             void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features);
             void m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
@@ -71,6 +73,6 @@ namespace NN
             void incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum::Board& board, const Arcanum::Move& move);
 
             Arcanum::eval_t evaluateBoard(const Arcanum::Board& board);
-            Arcanum::eval_t evaluate(Accumulator* acc, Arcanum::Color turn);
+            Arcanum::eval_t evaluate(Accumulator* acc, const Arcanum::Board& board);
     };
 }

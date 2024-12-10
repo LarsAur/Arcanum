@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 
     BitboardLookups::generateBitboardLookups();
 
-    Evaluator::nnue.load(Interface::UCI::optionNNUEPath.value);
+    // Evaluator::nnue.load(Interface::UCI::optionNNUEPath.value);
 
     if(argc == 1)
     {
