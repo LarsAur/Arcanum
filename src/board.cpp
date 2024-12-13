@@ -1002,7 +1002,7 @@ void Board::performMove(const Move move)
     bitboard_t bbFrom = 0b1LL << move.from;
     bitboard_t bbTo = 0b1LL << move.to;
 
-    if(CASTLE_SIDE(move.moveInfo))
+    if(move.isCastle())
     {
         if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
         {
@@ -1088,9 +1088,9 @@ void Board::performMove(const Move move)
     // Move the pieces
     m_bbAllPieces = (m_bbAllPieces | bbTo) & ~bbFrom;
     m_bbColoredPieces[m_turn] = (m_bbColoredPieces[m_turn] | bbTo) & ~bbFrom;
-    if(PROMOTED_PIECE(move.moveInfo))
+    if(move.isPromotion())
     {
-        Piece promoteType = Piece(LS1B(PROMOTED_PIECE(move.moveInfo)) - 11);
+        Piece promoteType = move.promotedPiece();
         m_bbTypedPieces[W_PAWN][m_turn] = m_bbTypedPieces[W_PAWN][m_turn] & ~(bbFrom);
         m_bbTypedPieces[promoteType][m_turn] = m_bbTypedPieces[promoteType][m_turn] | bbTo;
         m_pieces[move.to] = Piece(promoteType + B_PAWN * m_turn);
@@ -1098,7 +1098,7 @@ void Board::performMove(const Move move)
     }
     else
     {
-        Piece pieceIndex = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
+        Piece pieceIndex = move.movedPiece();
         m_bbTypedPieces[pieceIndex][m_turn] = (m_bbTypedPieces[pieceIndex][m_turn] & ~(bbFrom)) | bbTo;
         m_pieces[move.to] = m_pieces[move.from];
         m_pieces[move.from] = NO_PIECE;
@@ -1129,7 +1129,7 @@ void Board::performMove(const Move move)
     m_bbOpponentAttacks = 0LL;
 
     // Update halfmoves / 50 move rule
-    if(CAPTURED_PIECE(move.moveInfo) || (move.moveInfo & MoveInfoBit::PAWN_MOVE))
+    if(move.isCapture() || (move.moveInfo & MoveInfoBit::PAWN_MOVE))
         m_rule50 = 0;
     else
         m_rule50++;
@@ -1378,15 +1378,14 @@ bool Board::see(const Move& move, eval_t threshold) const
     static constexpr uint16_t values[] = {100, 500, 300, 300, 900, 32000};
 
     // Note: This also works for enpassant
-    Piece attacker = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
+    Piece attacker = move.movedPiece();
 
     int16_t swap = -threshold;
 
     // Enable SEE for non-capture moves
-    if(CAPTURED_PIECE(move.moveInfo))
+    if(move.isCapture())
     {
-        Piece target = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
-        swap += values[target];
+        swap += values[move.capturedPiece()];
     }
 
     if(swap < 0)

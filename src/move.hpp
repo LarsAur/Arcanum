@@ -45,7 +45,6 @@ namespace Arcanum
     #define CASTLE_SIDE(_moveInfo)    ((_moveInfo) & MOVE_INFO_CASTLE_MASK)
     #define PROMOTED_PIECE(_moveInfo) ((_moveInfo) & MOVE_INFO_PROMOTE_MASK)
     #define CAPTURED_PIECE(_moveInfo) ((_moveInfo) & MOVE_INFO_CAPTURE_MASK)
-    #define IS_QUIET(_moveInfo)       (!((_moveInfo) & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK)))
 
     enum Square : square_t
     {
@@ -84,9 +83,45 @@ namespace Arcanum
             return (from != move.from) || (to != move.to) || (PROMOTED_PIECE(moveInfo) != PROMOTED_PIECE(move.moveInfo));
         }
 
-        bool isNull() const
+        inline bool isNull() const
         {
             return from == 0 && to == 0;
+        }
+
+        inline bool isPromotion() const
+        {
+            return moveInfo & MOVE_INFO_PROMOTE_MASK;
+        }
+
+        inline Piece promotedPiece() const
+        {
+            return Piece(LS1B(moveInfo & MOVE_INFO_PROMOTE_MASK) - 11);
+        }
+
+        inline bool isCapture() const
+        {
+            return moveInfo & MOVE_INFO_CAPTURE_MASK;
+        }
+
+        inline Piece capturedPiece() const
+        {
+            return Piece(LS1B(moveInfo & MOVE_INFO_CAPTURE_MASK) - 16);
+        }
+
+        inline Piece movedPiece() const
+        {
+            return Piece(LS1B(moveInfo & MOVE_INFO_MOVE_MASK));
+        }
+
+        inline bool isCastle() const
+        {
+            return moveInfo & MOVE_INFO_CASTLE_MASK;
+        }
+
+        // Move is not a capture or promotion
+        inline bool isQuiet() const
+        {
+            return !((moveInfo) & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK));
         }
 
         std::string toString() const

@@ -210,7 +210,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         if(alpha >= beta)
         {
             ttFlag = TTFlag::LOWER_BOUND;
-            if(IS_QUIET(move->moveInfo))
+            if(move->isQuiet())
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
             }
@@ -386,7 +386,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             {
                 const Move* move = moveSelector.getNextMove();
 
-                if(IS_QUIET(move->moveInfo))
+                if(move->isQuiet())
                 {
                     continue;
                 }
@@ -432,8 +432,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         // Skip quiet moves after having tried a certain number of quiet moves
         if( !isPv
         && !Evaluator::isCloseToMate(board, bestScore)
-        && !isChecked && quietMovesPerformed > m_lmpThresholds[isImproving][depth]
-        &&  IS_QUIET(move->moveInfo))
+        && !isChecked
+        && quietMovesPerformed > m_lmpThresholds[isImproving][depth]
+        && move->isQuiet())
         {
             m_stats.lmpPrunedMoves++;
             continue;
@@ -496,7 +497,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         {
             // Late move reduction (LMR)
             int8_t R = 1;
-            if(depth >= 3 && !CAPTURED_PIECE(move->moveInfo) && !checkOrChecking && !Evaluator::isMateScore(bestScore))
+            if(depth >= 3 && !move->isCapture() && !checkOrChecking && !Evaluator::isMateScore(bestScore))
             {
                 R =  m_lmrReductions[depth][i];
                 R += isWorsening;
@@ -542,7 +543,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(alpha >= beta)
         {
             // Update move history and killers for quiet moves
-            if(IS_QUIET(move->moveInfo))
+            if(move->isQuiet())
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
                 m_counterMoveManager.setCounter(*move, prevMove, board.getTurn());
@@ -551,7 +552,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             break;
         }
 
-        if(IS_QUIET(move->moveInfo))
+        if(move->isQuiet())
         {
             // Count and track quiet moves for LMP and History
             quiets[quietMovesPerformed++] = *move;

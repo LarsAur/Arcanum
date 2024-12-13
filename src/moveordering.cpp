@@ -23,14 +23,12 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
         return INT32_MAX;
     }
 
-    Piece movePiece = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
     int32_t score = 0;
 
     // If it is a capture
-    if(CAPTURED_PIECE(move.moveInfo))
+    if(move.isCapture())
     {
-        Piece capturePiece = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
-        int32_t materialDelta = s_pieceValues[capturePiece] - s_pieceValues[movePiece];
+        int32_t materialDelta = s_pieceValues[move.capturedPiece()] - s_pieceValues[move.movedPiece()];
 
         // Use SEE to check for winning or losing capture
         score += (m_board->see(move) ? WINNING_CAPTURE_BIAS : LOSING_CAPTURE_BIAS) + materialDelta;
@@ -43,10 +41,9 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
         }
     }
 
-    if(PROMOTED_PIECE(move.moveInfo))
+    if(move.isPromotion())
     {
-        Piece promotePiece = Piece(LS1B(PROMOTED_PIECE(move.moveInfo)) - 11); // Not -12 because rook is at index 1
-        score += PROMOTE_BIAS + s_pieceValues[promotePiece];
+        score += PROMOTE_BIAS + s_pieceValues[move.promotedPiece()];
     }
 
     return score;

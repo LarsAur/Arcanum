@@ -249,13 +249,12 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
 
     // -- Find the added and removed indices
 
-    Piece movedType = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
+    Piece movedType = move.movedPiece();
     removedFeatures[0] = m_getFeatureIndex(move.from, movingColor, movedType);
 
-    if(PROMOTED_PIECE(move.moveInfo))
+    if(move.isPromotion())
     {
-        Piece promoteType = Piece(LS1B(PROMOTED_PIECE(move.moveInfo)) - 11);
-        addedFeatures[0] = m_getFeatureIndex(move.to, movingColor, promoteType);
+        addedFeatures[0] = m_getFeatureIndex(move.to, movingColor, move.promotedPiece());
     }
     else
     {
@@ -263,7 +262,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
     }
 
     // Handle the moved rook when castling
-    if(CASTLE_SIDE(move.moveInfo))
+    if(move.isCastle())
     {
         if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
         {
@@ -287,7 +286,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
         }
     }
 
-    if(CAPTURED_PIECE(move.moveInfo))
+    if(move.isCapture())
     {
         if(move.moveInfo & MoveInfoBit::ENPASSANT)
         {
@@ -295,8 +294,7 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
         }
         else
         {
-            Piece captureType = Piece(LS1B(CAPTURED_PIECE(move.moveInfo)) - 16);
-            removedFeatures[1] = m_getFeatureIndex(move.to, opponent, captureType);
+            removedFeatures[1] = m_getFeatureIndex(move.to, opponent, move.capturedPiece());
         }
     }
 

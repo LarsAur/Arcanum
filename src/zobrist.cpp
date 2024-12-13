@@ -90,9 +90,9 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
 {
     // TODO: Include castle opertunities
     // XOR in and out the moved piece corresponding to its location
-    if(PROMOTED_PIECE(move.moveInfo))
+    if(move.isPromotion())
     {
-        Piece promoteType = Piece(LS1B(PROMOTED_PIECE(move.moveInfo)) - 11);
+        Piece promoteType = move.promotedPiece();
         uint8_t pawnCount = CNTSBITS(board.m_bbTypedPieces[W_PAWN][board.m_turn]);
         uint8_t promoteCount = CNTSBITS(board.m_bbTypedPieces[promoteType][board.m_turn]) - 1;
         hash ^= m_tables[W_PAWN][board.m_turn][move.from] ^ m_tables[promoteType][board.m_turn][move.to];
@@ -101,14 +101,14 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     }
     else
     {
-        uint8_t pieceIndex = Piece(LS1B(MOVED_PIECE(move.moveInfo)));
+        uint8_t pieceIndex = move.movedPiece();
         hash_t moveHash = m_tables[pieceIndex][board.m_turn][move.from] ^ m_tables[pieceIndex][board.m_turn][move.to];
         hash ^= moveHash;
         pawnHash ^= moveHash * (move.moveInfo & MoveInfoBit::PAWN_MOVE); // Multiplication works as MoveInfoBit::PAWN_MOVE == 1
     }
 
     // Handle the moved rook when castling
-    if(CASTLE_SIDE(move.moveInfo))
+    if(move.isCastle())
     {
         if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
         {
@@ -129,7 +129,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     }
 
     // XOR out the captured piece
-    if(CAPTURED_PIECE(move.moveInfo))
+    if(move.isCapture())
     {
         Color opponent = Color(board.m_turn^1);
 
@@ -150,7 +150,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
         }
         else
         {
-            uint8_t capturedIndex = LS1B(CAPTURED_PIECE(move.moveInfo)) - 16;
+            uint8_t capturedIndex = move.capturedPiece();
             uint8_t count = CNTSBITS(board.m_bbTypedPieces[capturedIndex][opponent]);
             hash ^= m_tables[capturedIndex][opponent][move.to];
             materialHash ^= m_tables[capturedIndex][opponent][count];
