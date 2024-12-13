@@ -17,13 +17,6 @@ namespace Arcanum
         NUM_COLORS,
     } Color;
 
-    typedef enum Piece : uint8_t
-    {
-        W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING,
-        B_PAWN, B_ROOK, B_KNIGHT, B_BISHOP, B_QUEEN, B_KING,
-        NO_PIECE,
-    } Piece;
-
     typedef enum CastleRights : uint8_t
     {
         WHITE_KING_SIDE = 1,

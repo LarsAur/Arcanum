@@ -29,6 +29,13 @@ namespace Arcanum
         CAPTURE_QUEEN       = 1048576,
     };
 
+    typedef enum Piece : uint8_t
+    {
+        W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING,
+        B_PAWN, B_ROOK, B_KNIGHT, B_BISHOP, B_QUEEN, B_KING,
+        NO_PIECE,
+    } Piece;
+
     #define MOVE_INFO_MOVE_MASK     (Arcanum::PAWN_MOVE | Arcanum::ROOK_MOVE | Arcanum::KNIGHT_MOVE | Arcanum::BISHOP_MOVE | Arcanum::QUEEN_MOVE | Arcanum::KING_MOVE)
     #define MOVE_INFO_CASTLE_MASK   (Arcanum::CASTLE_WHITE_QUEEN | Arcanum::CASTLE_WHITE_KING | Arcanum::CASTLE_BLACK_QUEEN | Arcanum::CASTLE_BLACK_KING)
     #define MOVE_INFO_PROMOTE_MASK  (Arcanum::PROMOTE_ROOK | Arcanum::PROMOTE_KNIGHT | Arcanum::PROMOTE_BISHOP | Arcanum::PROMOTE_QUEEN)
