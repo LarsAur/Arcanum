@@ -24,7 +24,7 @@ namespace Arcanum
         NO_PIECE,
     } Piece;
 
-    typedef enum CastleRights
+    typedef enum CastleRights : uint8_t
     {
         WHITE_KING_SIDE = 1,
         WHITE_QUEEN_SIDE = 2,

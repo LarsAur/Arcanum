@@ -535,21 +535,21 @@ Move* Board::getLegalMoves()
     // The fact that the rook and king are in the correct position is handled by the castle-rights flags
     if(m_turn == WHITE)
     {
-        if(m_castleRights & WHITE_QUEEN_SIDE)
+        if(m_castleRights & CastleRights::WHITE_QUEEN_SIDE)
             if(!(m_bbAllPieces & whiteQueenCastlePieceMask) && !(opponentAttacks & whiteQueenCastleAttackMask))
                 m_legalMoves[m_numLegalMoves++] = Move(4, 2, MoveInfoBit::CASTLE_WHITE_QUEEN | MoveInfoBit::KING_MOVE);
 
-        if(m_castleRights & WHITE_KING_SIDE)
+        if(m_castleRights & CastleRights::WHITE_KING_SIDE)
             if(!((m_bbAllPieces | opponentAttacks) & whiteKingCastleMask))
                 m_legalMoves[m_numLegalMoves++] = Move(4, 6, MoveInfoBit::CASTLE_WHITE_KING | MoveInfoBit::KING_MOVE);
     }
     else
     {
-        if(m_castleRights & BLACK_QUEEN_SIDE)
+        if(m_castleRights & CastleRights::BLACK_QUEEN_SIDE)
             if(!(m_bbAllPieces & blackQueenCastlePieceMask) && !(opponentAttacks & blackQueenCastleAttackMask))
                 m_legalMoves[m_numLegalMoves++] = Move(60, 58, MoveInfoBit::CASTLE_BLACK_QUEEN | MoveInfoBit::KING_MOVE);
 
-        if(m_castleRights & BLACK_KING_SIDE)
+        if(m_castleRights & CastleRights::BLACK_KING_SIDE)
             if(!((m_bbAllPieces | opponentAttacks) & blackKingCastleMask))
                 m_legalMoves[m_numLegalMoves++] = Move(60, 62, MoveInfoBit::CASTLE_BLACK_KING | MoveInfoBit::KING_MOVE);
     }
@@ -1042,32 +1042,32 @@ void Board::performMove(const Move move)
     {
         if(m_turn == WHITE)
         {
-            m_castleRights &= ~(WHITE_KING_SIDE | WHITE_QUEEN_SIDE);
+            m_castleRights &= ~(CastleRights::WHITE_KING_SIDE | CastleRights::WHITE_QUEEN_SIDE);
         }
         else
         {
-            m_castleRights &= ~(BLACK_KING_SIDE | BLACK_QUEEN_SIDE);
+            m_castleRights &= ~(CastleRights::BLACK_KING_SIDE | CastleRights::BLACK_QUEEN_SIDE);
         }
     }
 
     if(move.to == Square::A1 || move.from == Square::A1)
     {
-        m_castleRights &= ~(WHITE_QUEEN_SIDE);
+        m_castleRights &= ~CastleRights::WHITE_QUEEN_SIDE;
     }
 
     if(move.to == Square::H1 || move.from == Square::H1)
     {
-        m_castleRights &= ~(WHITE_KING_SIDE);
+        m_castleRights &= ~CastleRights::WHITE_KING_SIDE;
     }
 
     if(move.to == Square::A8 || move.from == Square::A8)
     {
-        m_castleRights &= ~(BLACK_QUEEN_SIDE);
+        m_castleRights &= ~CastleRights::BLACK_QUEEN_SIDE;
     }
 
     if(move.to == Square::H8 || move.from == Square::H8)
     {
-        m_castleRights &= ~(BLACK_KING_SIDE);
+        m_castleRights &= ~CastleRights::BLACK_KING_SIDE;
     }
 
     // Remove potential captures

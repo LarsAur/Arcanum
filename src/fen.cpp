@@ -175,10 +175,10 @@ bool FEN::m_setCastleRights(Board& board, std::istringstream& is, bool strict)
     {
         switch (chr)
         {
-        case 'K': board.m_castleRights |= WHITE_KING_SIDE;  break;
-        case 'Q': board.m_castleRights |= WHITE_QUEEN_SIDE; break;
-        case 'k': board.m_castleRights |= BLACK_KING_SIDE;  break;
-        case 'q': board.m_castleRights |= BLACK_QUEEN_SIDE; break;
+        case 'K': board.m_castleRights |= CastleRights::WHITE_KING_SIDE;  break;
+        case 'Q': board.m_castleRights |= CastleRights::WHITE_QUEEN_SIDE; break;
+        case 'k': board.m_castleRights |= CastleRights::BLACK_KING_SIDE;  break;
+        case 'q': board.m_castleRights |= CastleRights::BLACK_QUEEN_SIDE; break;
         default:
             ERROR("Illegal castle right: " << chr);
             return false;
@@ -204,10 +204,10 @@ bool FEN::m_setCastleRights(Board& board, std::istringstream& is, bool strict)
     // If not in strict mode, fix the castle rights and return true
     // If in strict mode, fail the parsing
     uint8_t prev = board.m_castleRights;
-    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~WHITE_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~WHITE_QUEEN_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~BLACK_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~BLACK_QUEEN_SIDE;
+    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~CastleRights::WHITE_KING_SIDE;
+    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~CastleRights::WHITE_QUEEN_SIDE;
+    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~CastleRights::BLACK_KING_SIDE;
+    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~CastleRights::BLACK_QUEEN_SIDE;
 
     if(strict && prev != board.m_castleRights)
     {
@@ -424,10 +424,10 @@ std::string FEN::getFEN(const Board& board)
     ss << ((board.m_turn == Color::WHITE) ? " w " : " b ");
 
     // Castle
-    if(board.m_castleRights & WHITE_KING_SIDE)  ss << "K";
-    if(board.m_castleRights & WHITE_QUEEN_SIDE) ss << "Q";
-    if(board.m_castleRights & BLACK_KING_SIDE)  ss << "k";
-    if(board.m_castleRights & BLACK_QUEEN_SIDE) ss << "q";
+    if(board.m_castleRights & CastleRights::WHITE_KING_SIDE)  ss << "K";
+    if(board.m_castleRights & CastleRights::WHITE_QUEEN_SIDE) ss << "Q";
+    if(board.m_castleRights & CastleRights::BLACK_KING_SIDE)  ss << "k";
+    if(board.m_castleRights & CastleRights::BLACK_QUEEN_SIDE) ss << "q";
     if(board.m_castleRights == 0) ss << "-";
 
     // Enpassant
