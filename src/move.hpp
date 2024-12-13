@@ -77,6 +77,11 @@ namespace Arcanum
             return (from != move.from) || (to != move.to) || (PROMOTED_PIECE(moveInfo) != PROMOTED_PIECE(move.moveInfo));
         }
 
+        bool isNull() const
+        {
+            return from == 0 && to == 0;
+        }
+
         std::string toString() const
         {
             std::stringstream ss;

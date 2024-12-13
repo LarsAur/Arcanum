@@ -250,7 +250,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     eval_t originalAlpha = alpha;
     std::optional<ttEntry_t> entry = m_tt.get(board.getHash(), plyFromRoot);
     const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
-    if(!isPv && entry.has_value() && (entry->depth >= depth) && skipMove== NULL_MOVE)
+    if(!isPv && entry.has_value() && (entry->depth >= depth) && skipMove.isNull())
     {
         switch (entry->flags)
         {
@@ -307,7 +307,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     if(numMoves == 0)
     {
-        return skipMove == NULL_MOVE ? staticEval : alpha;
+        return skipMove.isNull() ? staticEval : alpha;
     }
 
     board.generateCaptureInfo();
@@ -315,7 +315,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     bool isImproving = (plyFromRoot > 1) && (staticEval > m_searchStack[plyFromRoot - 2].staticEval);
     bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStack[plyFromRoot - 2].staticEval);
     Move prevMove = m_searchStack[plyFromRoot-1].move;
-    bool isNullMoveSearch = prevMove == NULL_MOVE;
+    bool isNullMoveSearch = prevMove.isNull();
 
     // Push the board on the search stack
     m_searchStack[plyFromRoot] = {
@@ -330,7 +330,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         depth--;
     }
 
-    if(!isPv && !isChecked && skipMove == NULL_MOVE)
+    if(!isPv && !isChecked && skipMove.isNull())
     {
         // Reverse futility pruning
         if(!Evaluator::isCloseToMate(board, beta) && depth < 9)
@@ -458,7 +458,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         // Singular extension
         if(
             i == 0
-            && skipMove == NULL_MOVE
+            && skipMove.isNull()
             && extension == 0
             && depth >= 7
             && entry.has_value()
@@ -564,7 +564,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         return 0;
     }
 
-    if(skipMove == NULL_MOVE)
+    if(skipMove.isNull())
     {
         TTFlag flag = TTFlag::EXACT;
         if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
@@ -789,7 +789,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // If a better move is found, it is guaranteed to be better than the best move at the previous depth
         // If the search is so short that the first iteration does not finish, this will still assign a searchBestMove.
         // As long as bestMove is not a null move.
-        if(bestMove != NULL_MOVE)
+        if(!bestMove.isNull())
         {
             searchScore = alpha;
             searchBestMove = bestMove;
@@ -803,7 +803,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
             // If the search is so short that no score is calculated for any moves.
             // The first available move is returned to avoid returning a null move
-            if(searchBestMove == NULL_MOVE)
+            if(searchBestMove.isNull())
             {
                 WARNING("Not enough time to find the value of any moves. Returning the first move with score 0")
                 searchBestMove = moves[0];
@@ -911,7 +911,7 @@ void Searcher::m_sendUciInfo(eval_t score, Move move, uint32_t depth, bool force
     }
 
     Interface::UCI::sendInfo(info);
-    if(move != NULL_MOVE)
+    if(!move.isNull())
     {
         Interface::UCI::sendBestMove(move);
     }
