@@ -95,6 +95,7 @@ namespace Arcanum
             bool m_hasMove();
 
         public:
+            Board();
             Board(const Board& board);
             Board(const std::string fen, bool strict = true);
             void performMove(const Move move);

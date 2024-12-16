@@ -6,6 +6,40 @@
 
 using namespace Arcanum;
 
+Board::Board()
+{
+    m_hash = 0LL;
+    m_pawnHash = 0LL;
+    m_materialHash = 0LL;
+    m_turn = WHITE;
+    m_rule50 = 0;
+    m_fullMoves = 1;
+    m_castleRights = 0;
+    m_enPassantSquare = 64;
+    m_enPassantTarget = 64;
+    m_bbEnPassantSquare = 0LL;
+    m_bbEnPassantTarget = 0LL;
+
+    for(uint32_t i = 0; i < 64; i++)
+    {
+        m_pieces[i] = NO_PIECE;
+    }
+
+    for(uint32_t c = 0; c < 2; c++)
+    {
+        m_bbColoredPieces[c] = 0LL;
+        for(uint32_t p = 0; p < 6; p++)
+        {
+            m_bbTypedPieces[p][c] = 0LL;
+        }
+    }
+
+    m_checkedCache = CheckedCacheState::UNKNOWN;
+    m_moveset = MoveSet::NOT_GENERATED;
+    m_captureInfoGenerated = MoveSet::NOT_GENERATED;
+    m_bbOpponentAttacks = 0LL;
+}
+
 Board::Board(const std::string fen, bool strict)
 {
     if(!FEN::setFEN(*this, fen, strict))
