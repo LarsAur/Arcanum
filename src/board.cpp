@@ -1031,6 +1031,44 @@ void Board::generateCaptureInfo()
     }
 }
 
+Move Board::generateMoveWithInfo(square_t from, square_t to, uint32_t promoteInfo)
+{
+    Move move = Move(from, to, promoteInfo);
+
+    // Set the moved info bit
+    move.moveInfo |= (MoveInfoBit::PAWN_MOVE << (m_pieces[from] % B_PAWN));
+
+    // Set the capture info bit
+    if(m_pieces[to] != NO_PIECE)
+    {
+        move.moveInfo |= (MoveInfoBit::CAPTURE_PAWN << (m_pieces[to] % B_PAWN));
+    }
+
+    // Set the enpassant info bit
+    // Also set pawn capture as it is not handled by the capture condition above
+    if((move.moveInfo & MoveInfoBit::PAWN_MOVE) && (to == m_enPassantSquare))
+    {
+        move.moveInfo |= MoveInfoBit::ENPASSANT | MoveInfoBit::CAPTURE_PAWN;
+    }
+
+    // Set the double move info bit
+    if((move.moveInfo & MoveInfoBit::PAWN_MOVE) && std::abs(RANK(from) - RANK(to)) == 2)
+    {
+        move.moveInfo |= MoveInfoBit::DOUBLE_MOVE;
+    }
+
+    if((m_pieces[from] % B_PAWN) == W_KING && std::abs(to - from) == 2)
+    {
+        if(to == Square::C1)      move.moveInfo |= MoveInfoBit::CASTLE_WHITE_QUEEN;
+        else if(to == Square::G1) move.moveInfo |= MoveInfoBit::CASTLE_WHITE_KING;
+        else if(to == Square::C8) move.moveInfo |= MoveInfoBit::CASTLE_BLACK_QUEEN;
+        else if(to == Square::G8) move.moveInfo |= MoveInfoBit::CASTLE_BLACK_KING;
+    }
+
+    return move;
+}
+
+
 void Board::performMove(const Move move)
 {
     bitboard_t bbFrom = 0b1LL << move.from;

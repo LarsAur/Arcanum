@@ -100,6 +100,7 @@ namespace Arcanum
             Board(const std::string fen, bool strict = true);
             void performMove(const Move move);
             void generateCaptureInfo();
+            Move generateMoveWithInfo(square_t from, square_t to, uint32_t promoteInfo);
             void performNullMove();
             hash_t getHash() const;
             hash_t getPawnHash() const;
