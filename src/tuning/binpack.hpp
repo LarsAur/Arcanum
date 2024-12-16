@@ -52,7 +52,9 @@ namespace Arcanum
         public:
         BinpackParser();
         bool open(std::string path);
+        void close();
         Board* getNextBoard();
         int16_t getCurrentScore();
+        bool eof();
     };
 }

@@ -26,6 +26,11 @@ bool BinpackParser::open(std::string path)
     return true;
 }
 
+void BinpackParser::close()
+{
+    m_ifs.close();
+}
+
 Board* BinpackParser::getNextBoard()
 {
     if(m_currentChuckStart - m_ifs.tellg() == 0)
@@ -46,6 +51,11 @@ Board* BinpackParser::getNextBoard()
 int16_t BinpackParser::getCurrentScore()
 {
     return m_currentScore;
+}
+
+bool BinpackParser::eof()
+{
+    return m_ifs.eof();
 }
 
  int16_t BinpackParser::m_unsignedToSigned(uint16_t u)
