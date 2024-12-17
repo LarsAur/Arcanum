@@ -316,6 +316,20 @@ void BinpackParser::m_parseMove()
     square_t to = (data[1] >> 2) & 0b111111;
     uint32_t promoteBit = type == CompressedMoveType::PROMOTION ? PromoteMap[data[1] & 0b11] : 0;
 
+    // Note: In the binpack format castling moves can have the rook square as the target
+    // I.e. A1, H1, A8 and H8 not the targets used by Arcanum which is C1, G1, C8 and G8
+    // We thus have to detect castling moves here and convert them to the Arcanum format
+    if(m_currentBoard.m_pieces[from] == W_KING && from == Square::E1)
+    {
+        if(to == Square::A1) to = Square::C1;
+        if(to == Square::H1) to = Square::G1;
+    }
+    else if(m_currentBoard.m_pieces[from] == B_KING && from == Square::E8)
+    {
+        if(to == Square::A8) to = Square::C8;
+        if(to == Square::H8) to = Square::G8;
+    }
+
     m_currentMove = m_currentBoard.generateMoveWithInfo(from, to, promoteBit);
 }
 
