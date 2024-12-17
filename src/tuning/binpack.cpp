@@ -23,6 +23,7 @@ bool BinpackParser::open(std::string path)
     }
 
     m_currentChuckStart = m_ifs.tellg();
+    m_currentChuckSize = 0;
     return true;
 }
 
@@ -33,7 +34,7 @@ void BinpackParser::close()
 
 Board* BinpackParser::getNextBoard()
 {
-    if(m_currentChuckStart - m_ifs.tellg() == 0)
+    if(m_currentChuckStart + std::streamoff(m_currentChuckSize) - m_ifs.tellg() == 0)
     {
         m_parseBlock();
     }
@@ -74,8 +75,6 @@ uint16_t BinpackParser::m_bigToLittleEndian(uint16_t b)
 
 void BinpackParser::m_parseBlock()
 {
-    m_currentChuckStart = m_ifs.tellg();
-
     char header[4];
     m_ifs.read(header, 4);
     if(strncmp(header, "BINP", 4))
@@ -88,6 +87,7 @@ void BinpackParser::m_parseBlock()
     // https://github.com/official-stockfish/Stockfish/blob/tools/src/extra/nnue_data_binpack_format.h#L6796-L6800
     // Chunk size seems to be stored as little endian
     m_ifs.read(reinterpret_cast<char*>(&m_currentChuckSize), 4);
+    m_currentChuckStart = m_ifs.tellg();
 }
 
 // Reads the next N bits of the input file
