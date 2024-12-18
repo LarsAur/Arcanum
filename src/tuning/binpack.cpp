@@ -46,6 +46,7 @@ Board* BinpackParser::getNextBoard()
     }
 
     m_parseNextMoveAndScore();
+
     return &m_currentBoard;
 }
 
@@ -114,7 +115,6 @@ uint8_t BinpackParser::m_getNextNBits(uint8_t numBits)
     m_bitBuffer = m_bitBuffer << numBits;
     m_numBitsInBuffer -= numBits;
 
-    // DEBUG(unsigned(numBits) << " " << std::bitset<8>(bits))
     return bits;
 }
 
@@ -187,7 +187,6 @@ void BinpackParser::m_parsePos()
     {
         uint8_t occIndex = popLS1B(&occupancy);
         bitboard_t bbOcc = 1LL << occIndex;
-
 
         // Read the next nibble from pieceState
         uint8_t nibble = pieceState[nibbleIndex / 2];
@@ -352,8 +351,6 @@ void BinpackParser::m_parsePlyAndResult()
 
     uint16_t ply = plyAndResult & PlyMask;
     m_currentResult = m_unsignedToSigned(plyAndResult >> 14);
-
-    // DEBUG("Result:" << m_currentResult)
 }
 
 void BinpackParser::m_parseRule50()
@@ -534,9 +531,6 @@ void BinpackParser::m_parseNextMoveAndScore()
     }
 
     m_currentMove = m_currentBoard.generateMoveWithInfo(from, to, promoteInfo);
-
-    // std::cout << m_currentMove << std::endl;
-    // std::cout << FEN::getFEN(m_currentBoard) << std::endl;
 
     m_parseVEncodedScore();
 
