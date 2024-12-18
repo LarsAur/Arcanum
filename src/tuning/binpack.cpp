@@ -394,6 +394,8 @@ void BinpackParser::m_parseNextMoveAndScore()
     {
         bitboard_t destinations;
         uint8_t promotionRank;
+        bitboard_t attacks;
+
         if(m_currentBoard.m_turn == WHITE)
         {
             promotionRank = 6;
@@ -404,7 +406,7 @@ void BinpackParser::m_parseNextMoveAndScore()
             if(RANK(from) == 1) destinations |= getWhitePawnMoves(destinations) & ~m_currentBoard.m_bbAllPieces;
 
             // Attacks and enpassant squares
-            destinations |= (getWhitePawnAttacks(bbFrom) & (m_currentBoard.m_bbColoredPieces[opponent] | m_currentBoard.m_bbEnPassantSquare));
+            attacks = getWhitePawnAttacks(bbFrom);
         }
         else
         {
@@ -415,9 +417,40 @@ void BinpackParser::m_parseNextMoveAndScore()
             destinations = getBlackPawnMoves(bbFrom) & ~m_currentBoard.m_bbAllPieces;
             if(RANK(from) == 6) destinations |= getBlackPawnMoves(destinations) & ~m_currentBoard.m_bbAllPieces;
 
-            // Attacks and enpassant squares
-            destinations |= (getBlackPawnAttacks(bbFrom) & (m_currentBoard.m_bbColoredPieces[opponent] | m_currentBoard.m_bbEnPassantSquare));
+            attacks = getBlackPawnAttacks(bbFrom);
         }
+
+        // SF Binpacks does not include the enpassant square if the move would cause the king to become checked
+        // Thus we have to invalidate the enpassant square if this is the case to not end up with an additional
+        // bit in the destionations bitboard. To simplify it, we generate all legal moves on the board and check
+        // if the enpassant move is legal, as this check is done in move generation
+        // TODO: This can be done without generating all legal moves
+        if(attacks & m_currentBoard.m_bbEnPassantSquare)
+        {
+            Move* moves = m_currentBoard.getLegalMoves();
+            uint8_t numMoves = m_currentBoard.getNumLegalMoves();
+
+            bool found = false;
+            for(uint8_t i = 0; i < numMoves; i++)
+            {
+                if(moves[i].from == from && (moves[i].moveInfo & MoveInfoBit::ENPASSANT))
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if(!found)
+            {
+                m_currentBoard.m_enPassantSquare = Square::NONE;
+                m_currentBoard.m_enPassantTarget = Square::NONE;
+                m_currentBoard.m_bbEnPassantSquare = 0LL;
+                m_currentBoard.m_bbEnPassantTarget = 0LL;
+            }
+        }
+
+        // Attacks and enpassant squares
+        destinations |= (attacks & (m_currentBoard.m_bbColoredPieces[opponent] | m_currentBoard.m_bbEnPassantSquare));
 
         if(RANK(from) == promotionRank)
         {
