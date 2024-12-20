@@ -60,7 +60,13 @@ int16_t BinpackParser::getCurrentScore()
 
 bool BinpackParser::eof()
 {
-    return m_numBytesRead >= m_currentChuckSize && m_ifs.eof();
+    if(m_numBytesRead < m_currentChuckSize)
+    {
+        return false;
+    }
+
+    m_ifs.peek();
+    return m_ifs.eof();
 }
 
  int16_t BinpackParser::m_unsignedToSigned(uint16_t u)
