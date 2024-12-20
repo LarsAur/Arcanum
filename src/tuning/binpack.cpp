@@ -5,11 +5,10 @@
 
 using namespace Arcanum;
 
+constexpr uint64_t MaxBufferSize = 100 * 1024 * 1024; // 100 MB
+
 BinpackParser::BinpackParser()
 {
-    m_currentMoveTextCount = 0;
-    m_numBitsInBuffer = 0;
-    m_bitBuffer = 0;
 }
 
 bool BinpackParser::open(std::string path)
@@ -22,8 +21,11 @@ bool BinpackParser::open(std::string path)
         return false;
     }
 
-    m_currentChuckStart = m_ifs.tellg();
     m_currentChuckSize = 0;
+    m_numBytesRead = 0;
+    m_bitBuffer = 0;
+    m_numBitsInBitBuffer = 0;
+    m_currentMoveTextCount = 0;
     return true;
 }
 
@@ -34,7 +36,8 @@ void BinpackParser::close()
 
 Board* BinpackParser::getNextBoard()
 {
-    if(m_currentChuckStart + std::streamoff(m_currentChuckSize) - m_ifs.tellg() == 0)
+
+    if(m_numBytesRead >= m_currentChuckSize)
     {
         m_parseBlock();
     }
@@ -57,7 +60,7 @@ int16_t BinpackParser::getCurrentScore()
 
 bool BinpackParser::eof()
 {
-    return m_ifs.eof();
+    return m_numBytesRead >= m_currentChuckSize && m_ifs.eof();
 }
 
  int16_t BinpackParser::m_unsignedToSigned(uint16_t u)
@@ -74,6 +77,19 @@ uint16_t BinpackParser::m_bigToLittleEndian(uint16_t b)
     return (b >> 8) | (b << 8);
 }
 
+void BinpackParser::m_readBytesFromBuffer(void* dest, uint32_t numBytes)
+{
+    if(m_numBytesRead + numBytes > m_buffer.size())
+    {
+        ERROR("Unable to read " << numBytes << " bytes from buffer")
+        return;
+    }
+
+    std::memcpy(dest, m_buffer.data() + m_numBytesRead, numBytes);
+    m_numBytesRead += numBytes;
+}
+
+
 void BinpackParser::m_parseBlock()
 {
     char header[4];
@@ -88,7 +104,16 @@ void BinpackParser::m_parseBlock()
     // https://github.com/official-stockfish/Stockfish/blob/tools/src/extra/nnue_data_binpack_format.h#L6796-L6800
     // Chunk size seems to be stored as little endian
     m_ifs.read(reinterpret_cast<char*>(&m_currentChuckSize), 4);
-    m_currentChuckStart = m_ifs.tellg();
+
+    if(m_currentChuckSize > MaxBufferSize)
+    {
+        ERROR("Chunk size is too large: " << m_currentChuckSize)
+        return;
+    }
+
+    m_numBytesRead = 0;
+    m_buffer.resize(m_currentChuckSize);
+    m_ifs.read(m_buffer.data(), m_currentChuckSize);
 }
 
 // Reads the next N bits of the input file
@@ -97,15 +122,15 @@ uint8_t BinpackParser::m_getNextNBits(uint8_t numBits)
 {
     // If there are not enough bits in the buffer
     // A byte has to be read from file and added to the buffer
-    if(m_numBitsInBuffer < numBits)
+    if(m_numBitsInBitBuffer < numBits)
     {
         uint8_t rbyte;
-        m_ifs.read(reinterpret_cast<char*>(&rbyte), 1);
+        m_readBytesFromBuffer(&rbyte, 1);
 
         // Insert the byte into the MSBs of the buffer
         // It is assumed that the 'empty' bits in the buffer is 0 bits due to how the bits are removed
-        m_bitBuffer |= uint16_t(rbyte) << (8 - m_numBitsInBuffer);
-        m_numBitsInBuffer += 8;
+        m_bitBuffer |= uint16_t(rbyte) << (8 - m_numBitsInBitBuffer);
+        m_numBitsInBitBuffer += 8;
     }
 
     // Read N bits out of the buffer
@@ -113,7 +138,7 @@ uint8_t BinpackParser::m_getNextNBits(uint8_t numBits)
 
     // Remove the bits from the buffer
     m_bitBuffer = m_bitBuffer << numBits;
-    m_numBitsInBuffer -= numBits;
+    m_numBitsInBitBuffer -= numBits;
 
     return bits;
 }
@@ -159,7 +184,7 @@ void BinpackParser::m_parsePos()
     constexpr uint32_t PosByteSize = 24;
 
     unsigned char data[PosByteSize];
-    m_ifs.read(reinterpret_cast<char*>(data), PosByteSize);
+    m_readBytesFromBuffer(data, PosByteSize);
 
     m_currentBoard = Board();
 
@@ -308,7 +333,7 @@ void BinpackParser::m_parseMove()
 {
     constexpr MoveInfoBit PromoteMap[4] = {MoveInfoBit::PROMOTE_KNIGHT, MoveInfoBit::PROMOTE_BISHOP, MoveInfoBit::PROMOTE_ROOK, MoveInfoBit::PROMOTE_QUEEN};
     char data[2];
-    m_ifs.read(data, 2);
+    m_readBytesFromBuffer(data, 2);
 
     CompressedMoveType type = CompressedMoveType(data[0] >> 6);
     square_t from = data[0] & 0b111111;
@@ -335,7 +360,7 @@ void BinpackParser::m_parseMove()
 void BinpackParser::m_parseScore()
 {
     uint16_t uScore;
-    m_ifs.read(reinterpret_cast<char*>(&uScore), 2);
+    m_readBytesFromBuffer(&uScore, 2);
     uScore = m_bigToLittleEndian(uScore);
     m_currentScore = m_unsignedToSigned(uScore);
 }
@@ -345,7 +370,7 @@ void BinpackParser::m_parsePlyAndResult()
     constexpr uint16_t PlyMask = (1 << 14) - 1;
 
     uint16_t plyAndResult;
-    m_ifs.read(reinterpret_cast<char*>(&plyAndResult), 2);
+    m_readBytesFromBuffer(&plyAndResult, 2);
 
     plyAndResult = m_bigToLittleEndian(plyAndResult);
 
@@ -356,18 +381,18 @@ void BinpackParser::m_parsePlyAndResult()
 void BinpackParser::m_parseRule50()
 {
     uint16_t rule50;
-    m_ifs.read(reinterpret_cast<char*>(&rule50), 2);
+    m_readBytesFromBuffer(&rule50, 2);
     m_currentBoard.m_rule50 = m_bigToLittleEndian(rule50);
 }
 
 void BinpackParser::m_parseMovetextCount()
 {
-    m_ifs.read(reinterpret_cast<char*>(&m_currentMoveTextCount), 2);
+    m_readBytesFromBuffer(&m_currentMoveTextCount, 2);
     m_currentMoveTextCount = m_bigToLittleEndian(m_currentMoveTextCount);
 
     // Erase the bit-buffer to prepare reading moves and scores
     m_bitBuffer = 0;
-    m_numBitsInBuffer = 0;
+    m_numBitsInBitBuffer = 0;
 }
 
 // https://github.com/Sopel97/chess_pos_db/blob/master/docs/bcgn/variable_length.md
