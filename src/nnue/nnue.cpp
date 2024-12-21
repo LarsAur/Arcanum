@@ -449,7 +449,7 @@ inline float NNUE::m_sigmoidPrime(float sigmoid)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wdlTarget, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
+void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, DataParser::Result result, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
 {
     constexpr float lambda = 0.50f; // Weighting between wdlTarget and cpTarget
 
@@ -458,10 +458,13 @@ void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, float wd
     initAccumulator(&acc, board);
     float out = m_predict(&acc, board.getTurn(), trace);
 
+    // Set Win-Draw-Loss target based on result
+    // Normalize from [-1, 1] to [0, 1]
+    float wdlTarget = (result + 1.0f) / 2.0f;
+
     // Correct target perspective
     if(board.getTurn() == BLACK)
     {
-        cpTarget = -cpTarget;
         wdlTarget = 1.0f - wdlTarget;
     }
 
@@ -592,12 +595,11 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
 
     for(uint32_t epoch = startEpoch; epoch < endEpoch; epoch++)
     {
-        std::ifstream is(dataset, std::ios::in);
-
-        if(!is.is_open())
+        DataLoader loader;
+        if(!loader.open(dataset))
         {
-            ERROR("Unable to open " << dataset)
-            exit(-1);
+            ERROR("Unable to open dataset " << dataset)
+            return;
         }
 
         uint64_t epochPosCount = 0LL;
@@ -607,27 +609,18 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
 
         NET_UNARY_OP(gradient, setZero())
 
-        while (!is.eof())
+        while (!loader.eof())
         {
-            std::getline(is, strWdl);
-            std::getline(is, strCp);
-            std::getline(is, fen);
-
-            if(fen == "")
-                continue;
-
-            // Convert strings to floats and board
-            // Normalize the result from [-1, 1] to [0, 1]
-            float wdl = (atof(strWdl.c_str()) + 1) / 2.0f;
-            float cp = atof(strCp.c_str());
-            Arcanum::Board board = Arcanum::Board(fen);
+            Arcanum::Board *board = loader.getNextBoard();
+            eval_t cp = loader.getScore();
+            Arcanum::DataParser::Result result = loader.getResult();
 
             // Run back propagation
-            m_backPropagate(board, cp, wdl, gradient, batchLoss, m_net, trace);
+            m_backPropagate(*board, cp, result, gradient, batchLoss, m_net, trace);
 
             batchPosCount++;
 
-            if((batchPosCount % batchSize == 0) || is.eof())
+            if((batchPosCount % batchSize == 0) || loader.eof())
             {
                 NET_UNARY_OP(gradient, scale(1.0f / batchPosCount))
 
@@ -659,7 +652,7 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
         std::stringstream ssNnueName;
         ssNnueName << outputPath << epoch << ".fnnue";
         store(ssNnueName.str());
-        is.close();
+        loader.close();
 
         m_test();
     }

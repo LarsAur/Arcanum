@@ -1,5 +1,6 @@
 #pragma once
 
+#include <dataloader.hpp>
 #include <types.hpp>
 #include <string>
 #include <fstream>
@@ -7,19 +8,18 @@
 
 namespace Arcanum
 {
-    enum class CompressedMoveType
-    {
-        NORMAL,
-        PROMOTION,
-        CASTLE,
-        ENPASSANT,
-    };
-
     // A parser for the binpack fileformat for storing chess positions for nnue training
     // Spec: https://github.com/official-stockfish/Stockfish/blob/tools/docs/binpack.md
-    class BinpackParser
+    class BinpackParser : public DataParser
     {
         private:
+        enum class CompressedMoveType
+        {
+            NORMAL,
+            PROMOTION,
+            CASTLE,
+            ENPASSANT,
+        };
         std::ifstream m_ifs;
         std::vector<char> m_buffer;
         uint32_t m_currentChuckSize;
@@ -27,7 +27,7 @@ namespace Arcanum
 
         Board m_currentBoard;
         int16_t m_currentScore;
-        int16_t m_currentResult;
+        DataParser::Result m_currentResult;
         Move m_currentMove;
         uint16_t m_currentMoveTextCount;
 
@@ -56,8 +56,9 @@ namespace Arcanum
         BinpackParser();
         bool open(std::string path);
         void close();
-        Board* getNextBoard();
-        int16_t getCurrentScore();
         bool eof();
+        Board* getNextBoard();
+        eval_t getScore();
+        Result getResult();
     };
 }

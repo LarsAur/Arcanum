@@ -36,7 +36,6 @@ void BinpackParser::close()
 
 Board* BinpackParser::getNextBoard()
 {
-
     if(m_numBytesRead >= m_currentChuckSize)
     {
         m_parseBlock();
@@ -53,9 +52,14 @@ Board* BinpackParser::getNextBoard()
     return &m_currentBoard;
 }
 
-int16_t BinpackParser::getCurrentScore()
+eval_t BinpackParser::getScore()
 {
     return m_currentScore;
+}
+
+DataParser::Result BinpackParser::getResult()
+{
+    return m_currentResult;
 }
 
 bool BinpackParser::eof()
@@ -381,7 +385,20 @@ void BinpackParser::m_parsePlyAndResult()
     plyAndResult = m_bigToLittleEndian(plyAndResult);
 
     uint16_t ply = plyAndResult & PlyMask;
-    m_currentResult = m_unsignedToSigned(plyAndResult >> 14);
+
+    int16_t result = m_unsignedToSigned(plyAndResult >> 14);
+    if(result == 0)
+    {
+        m_currentResult = DataParser::Result::DRAW;
+    }
+    else if(result > 0 && m_currentBoard.m_turn == WHITE)
+    {
+        m_currentResult = DataParser::Result::WHITE_WIN;
+    }
+    else
+    {
+        m_currentResult = DataParser::Result::BLACK_WIN;
+    }
 }
 
 void BinpackParser::m_parseRule50()
