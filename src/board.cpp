@@ -1543,3 +1543,8 @@ bool Board::see(const Move& move, eval_t threshold) const
 
     return result;
 }
+
+std::string Board::fen() const
+{
+    return FEN::getFEN(*this);
+}

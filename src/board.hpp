@@ -130,6 +130,7 @@ namespace Arcanum
             Move getMoveFromArithmetic(std::string& arithmetic);
             bitboard_t attackersTo(square_t square, bitboard_t occupancy) const;
             bool see(const Move& move, eval_t threshold = 0) const;
+            std::string fen() const;
     };
 
     template <MoveInfoBit MoveType, bool CapturesOnly>
