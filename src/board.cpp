@@ -15,8 +15,8 @@ Board::Board()
     m_rule50 = 0;
     m_fullMoves = 1;
     m_castleRights = 0;
-    m_enPassantSquare = 64;
-    m_enPassantTarget = 64;
+    m_enPassantSquare = Square::NONE;
+    m_enPassantTarget = Square::NONE;
     m_bbEnPassantSquare = 0LL;
     m_bbEnPassantTarget = 0LL;
 
