@@ -1,4 +1,5 @@
 #include <tuning/fengen.hpp>
+#include <tuning/dataloader.hpp>
 #include <fstream>
 #include <thread>
 #include <mutex>
@@ -10,16 +11,7 @@
 
 using namespace Arcanum;
 
-enum Result
-{
-    BLACK_WIN = -1,
-    DRAW = 0,
-    WHITE_WIN = 1,
-};
-
-std::vector<hash_t> s_materialDraws;
-
-void m_setupMaterialDraws()
+void Fengen::m_setupMaterialDraws()
 {
     // Setup a table of known endgame draws based on material
     // This is based on: https://www.chess.com/terms/draw-chess
@@ -28,14 +20,14 @@ void m_setupMaterialDraws()
     Board kingsBBishop = Board("K1k1b3/8/8/8/8/8/8/8 w - - 0 1");
     Board kingsWKnight = Board("K1k1N3/8/8/8/8/8/8/8 w - - 0 1");
     Board kingsBKnight = Board("K1k1n3/8/8/8/8/8/8/8 w - - 0 1");
-    s_materialDraws.push_back(kings.getMaterialHash());
-    s_materialDraws.push_back(kingsWBishop.getMaterialHash());
-    s_materialDraws.push_back(kingsBBishop.getMaterialHash());
-    s_materialDraws.push_back(kingsWKnight.getMaterialHash());
-    s_materialDraws.push_back(kingsBKnight.getMaterialHash());
+    m_materialDraws.push_back(kings.getMaterialHash());
+    m_materialDraws.push_back(kingsWBishop.getMaterialHash());
+    m_materialDraws.push_back(kingsBBishop.getMaterialHash());
+    m_materialDraws.push_back(kingsWKnight.getMaterialHash());
+    m_materialDraws.push_back(kingsBKnight.getMaterialHash());
 }
 
-bool m_isFinished(Board& board, Searcher& searcher, Result& result)
+bool Fengen::m_isFinished(Board& board, Searcher& searcher, Result& result)
 {
     auto history = searcher.getHistory();
     if(history.at(board.getHash()) > 2)
@@ -46,7 +38,7 @@ bool m_isFinished(Board& board, Searcher& searcher, Result& result)
 
     if(board.getNumPieces() <= 3)
     {
-        for(auto it = s_materialDraws.begin(); it != s_materialDraws.end(); it++)
+        for(auto it = m_materialDraws.begin(); it != m_materialDraws.end(); it++)
         {
             if(*it == board.getMaterialHash())
             {
@@ -61,11 +53,11 @@ bool m_isFinished(Board& board, Searcher& searcher, Result& result)
     {
         if(board.isChecked())
         {
-            result = (board.getTurn() == WHITE) ? BLACK_WIN : WHITE_WIN;
+            result = (board.getTurn() == WHITE) ? Result::BLACK_WIN : Result::WHITE_WIN;
         }
         else
         {
-            result = DRAW;
+            result = Result::DRAW;
         }
 
         return true;
@@ -81,7 +73,7 @@ bool m_isFinished(Board& board, Searcher& searcher, Result& result)
     return false;
 }
 
-void Tuning::fengen(std::string startPosPath, std::string outputPath, size_t numFens, uint8_t numThreads, uint32_t depth)
+void Fengen::start(std::string startPosPath, std::string outputPath, size_t numFens, uint8_t numThreads, uint32_t depth)
 {
     std::vector<std::thread> threads;
     std::mutex readLock;

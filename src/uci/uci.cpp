@@ -234,7 +234,8 @@ void UCI::fengen(std::istringstream& is)
     if(startPosPath == "") { ERROR("Path to list positions cannot be empty") return; }
     if(outputPath   == "") { ERROR("Output path cannot be empty")            return; }
 
-    Tuning::fengen(startPosPath, outputPath, numFens, numThreads, depth);
+    Fengen fengen;
+    fengen.start(startPosPath, outputPath, numFens, numThreads, depth);
 }
 
 void UCI::train(std::istringstream& is)
