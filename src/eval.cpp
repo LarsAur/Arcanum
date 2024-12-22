@@ -6,7 +6,7 @@
 
 using namespace Arcanum;
 
-NN::NNUE Evaluator::nnue = NN::NNUE();
+NNUE Evaluator::nnue = NNUE();
 
 Evaluator::Evaluator()
 {
@@ -24,7 +24,7 @@ Evaluator::~Evaluator()
 void Evaluator::initAccumulatorStack(const Board& board)
 {
     if(m_accumulatorStack.empty())
-        m_accumulatorStack.push_back(new NN::Accumulator);
+        m_accumulatorStack.push_back(new Accumulator);
 
     m_accumulatorStackPointer = 0;
     nnue.initAccumulator(m_accumulatorStack[0], board);
@@ -34,7 +34,7 @@ void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
 {
     if(m_accumulatorStack.size() == m_accumulatorStackPointer + 1)
     {
-        m_accumulatorStack.push_back(new NN::Accumulator);
+        m_accumulatorStack.push_back(new Accumulator);
     }
 
     nnue.incAccumulator(

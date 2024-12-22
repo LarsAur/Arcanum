@@ -8,7 +8,7 @@
 #include <cmath>
 #include <random>
 
-namespace NN
+namespace Arcanum
 {
 
     template <uint32_t rows, uint32_t cols>

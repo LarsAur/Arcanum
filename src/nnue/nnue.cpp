@@ -5,7 +5,6 @@
 #include <math.h>
 #include <eval.hpp>
 
-using namespace NN;
 using namespace Arcanum;
 
 #ifdef ENABLE_INCBIN
@@ -173,7 +172,7 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
 
 // Calculate the feature indices of the board with the white perspective
 // To the the feature indices of the black perspective, xor the indices with 1
-inline uint32_t NNUE::m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece)
+inline uint32_t NNUE::m_getFeatureIndex(square_t square, Color color, Piece piece)
 {
     if(color == BLACK)
         square = ((7 - RANK(square)) << 3) | FILE(square);
@@ -181,14 +180,14 @@ inline uint32_t NNUE::m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color
     return (((uint32_t(piece) << 6) | uint32_t(square)) << 1) | color;
 }
 
-void NNUE::m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures, uint32_t* features)
+void NNUE::m_calculateFeatures(const Board& board, uint8_t* numFeatures, uint32_t* features)
 {
     *numFeatures = 0;
     for(uint32_t color = 0; color < 2; color++)
     {
         for(uint32_t type = 0; type < 6; type++)
         {
-            Arcanum::bitboard_t pieces = board.getTypedPieces(Piece(type), Color(color));
+            bitboard_t pieces = board.getTypedPieces(Piece(type), Color(color));
             while(pieces)
             {
                 square_t idx = popLS1B(&pieces);
@@ -199,7 +198,7 @@ void NNUE::m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures
     }
 }
 
-void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features)
+void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Color perspective, uint8_t numFeatures, uint32_t* features)
 {
     constexpr uint32_t numRegs = L1Size / RegSize;
     __m256 regs[numRegs];
@@ -230,7 +229,7 @@ void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspec
     }
 }
 
-void NNUE::initAccumulator(Accumulator* acc, const Arcanum::Board& board)
+void NNUE::initAccumulator(Accumulator* acc, const Board& board)
 {
     uint8_t numFeatures;
     uint32_t features[32];
@@ -239,7 +238,7 @@ void NNUE::initAccumulator(Accumulator* acc, const Arcanum::Board& board)
     m_initAccumulatorPerspective(acc, Color::BLACK, numFeatures, features);
 }
 
-void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum::Board& board, const Arcanum::Move& move)
+void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Board& board, const Move& move)
 {
     int32_t removedFeatures[2] = {-1, -1};
     int32_t addedFeatures[2] = {-1, -1};
@@ -381,14 +380,14 @@ void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum
     }
 }
 
-Arcanum::eval_t NNUE::evaluateBoard(const Arcanum::Board& board)
+eval_t NNUE::evaluateBoard(const Board& board)
 {
     Accumulator acc;
     initAccumulator(&acc, board);
     return static_cast<eval_t>(m_predict(&acc, board.getTurn()));
 }
 
-Arcanum::eval_t NNUE::evaluate(Accumulator* acc, Arcanum::Color turn)
+eval_t NNUE::evaluate(Accumulator* acc, Color turn)
 {
     return static_cast<eval_t>(m_predict(acc, turn));
 }
@@ -404,7 +403,7 @@ void NNUE::m_randomizeWeights()
     m_net.l2Biases.setZero();
 }
 
-void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
+void NNUE::m_reluAccumulator(Accumulator* acc, Color perspective, Trace& trace)
 {
     constexpr uint32_t numRegs = L1Size / RegSize;
     __m256 zero = _mm256_setzero_ps();
@@ -421,7 +420,7 @@ void NNUE::m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace
     }
 }
 
-float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace)
+float NNUE::m_predict(Accumulator* acc, Color perspective, Trace& trace)
 {
     m_reluAccumulator(acc, perspective, trace);
     feedForwardReLu(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.l1Out);
@@ -429,7 +428,7 @@ float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace
     return *trace.out.data();
 }
 
-float NNUE::m_predict(Accumulator* acc, Arcanum::Color perspective)
+float NNUE::m_predict(Accumulator* acc, Color perspective)
 {
     return m_predict(acc, perspective, m_trace);
 }
@@ -449,7 +448,7 @@ inline float NNUE::m_sigmoidPrime(float sigmoid)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-void NNUE::m_backPropagate(const Arcanum::Board& board, float cpTarget, DataParser::Result result, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
+void NNUE::m_backPropagate(const Board& board, float cpTarget, DataParser::Result result, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
 {
     constexpr float lambda = 0.50f; // Weighting between wdlTarget and cpTarget
 
@@ -611,9 +610,9 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
 
         while (!loader.eof())
         {
-            Arcanum::Board *board = loader.getNextBoard();
+            Board *board = loader.getNextBoard();
             eval_t cp = loader.getScore();
-            Arcanum::DataParser::Result result = loader.getResult();
+            DataParser::Result result = loader.getResult();
 
             // Run back propagation
             m_backPropagate(*board, cp, result, gradient, batchLoss, m_net, trace);

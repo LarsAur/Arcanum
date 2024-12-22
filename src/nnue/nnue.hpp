@@ -4,7 +4,7 @@
 #include <nnue/matrix.hpp>
 #include <tuning/dataloader.hpp>
 
-namespace NN
+namespace Arcanum
 {
     static constexpr uint32_t FTSize  = 768;
     static constexpr uint32_t L1Size  = 256;
@@ -41,16 +41,16 @@ namespace NN
 
             float m_sigmoid(float v);
             float m_sigmoidPrime(float sigmoid);
-            uint32_t m_getFeatureIndex(Arcanum::square_t square, Arcanum::Color color, Arcanum::Piece piece);
-            float m_predict(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
-            float m_predict(Accumulator* acc, Arcanum::Color perspective);
-            void m_calculateFeatures(const Arcanum::Board& board, uint8_t* numFeatures, uint32_t* features);
-            void m_initAccumulatorPerspective(Accumulator* acc, Arcanum::Color perspective, uint8_t numFeatures, uint32_t* features);
-            void m_reluAccumulator(Accumulator* acc, Arcanum::Color perspective, Trace& trace);
+            uint32_t m_getFeatureIndex(square_t square, Color color, Piece piece);
+            float m_predict(Accumulator* acc, Color perspective, Trace& trace);
+            float m_predict(Accumulator* acc, Color perspective);
+            void m_calculateFeatures(const Board& board, uint8_t* numFeatures, uint32_t* features);
+            void m_initAccumulatorPerspective(Accumulator* acc, Color perspective, uint8_t numFeatures, uint32_t* features);
+            void m_reluAccumulator(Accumulator* acc, Color perspective, Trace& trace);
             void m_randomizeWeights();
             void m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2, FloatNet& mHat, FloatNet& vHat);
             void m_test();
-            void m_backPropagate(const Arcanum::Board& board, float cpTarget, Arcanum::DataParser::Result result, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace);
+            void m_backPropagate(const Board& board, float cpTarget, DataParser::Result result, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace);
 
             void m_storeNet(std::string filename, FloatNet& net);
             void m_loadNet(std::string filename, FloatNet& net);
@@ -68,10 +68,10 @@ namespace NN
             void load(std::string filename);
             void store(std::string filename);
 
-            void initAccumulator(Accumulator* acc, const Arcanum::Board& board);
-            void incAccumulator(Accumulator* accIn, Accumulator* accOut, const Arcanum::Board& board, const Arcanum::Move& move);
+            void initAccumulator(Accumulator* acc, const Board& board);
+            void incAccumulator(Accumulator* accIn, Accumulator* accOut, const Board& board, const Move& move);
 
-            Arcanum::eval_t evaluateBoard(const Arcanum::Board& board);
-            Arcanum::eval_t evaluate(Accumulator* acc, Arcanum::Color turn);
+            eval_t evaluateBoard(const Board& board);
+            eval_t evaluate(Accumulator* acc, Color turn);
     };
 }

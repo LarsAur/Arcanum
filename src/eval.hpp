@@ -15,7 +15,7 @@ namespace Arcanum
     {
         private:
             uint32_t m_accumulatorStackPointer;
-            std::vector<NN::Accumulator*> m_accumulatorStack;
+            std::vector<Accumulator*> m_accumulatorStack;
 
         public:
             // Returns true if the score is a mate score not from the TB
@@ -27,7 +27,7 @@ namespace Arcanum
             // Returns true if the board and score indicates that it might be close to mate
             static bool isCloseToMate(Board& board, eval_t eval);
 
-            static NN::NNUE nnue;
+            static NNUE nnue;
 
             Evaluator();
             ~Evaluator();
