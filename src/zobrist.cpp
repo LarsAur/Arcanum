@@ -6,7 +6,7 @@
 
 using namespace Arcanum;
 
-Zobrist Arcanum::s_zobrist;
+Zobrist Zobrist::zobrist = Zobrist();
 
 Zobrist::Zobrist()
 {
