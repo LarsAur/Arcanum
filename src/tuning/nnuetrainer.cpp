@@ -204,25 +204,22 @@ float NNUETrainer::m_predict(const Board& board)
     return *m_trace.out.data();
 }
 
-constexpr float SIGMOID_FACTOR = 200.0f;
 inline float NNUETrainer::m_sigmoid(float v)
 {
     constexpr float e = 2.71828182846f;
-    return 1.0f / (1.0f + pow(e, -v / SIGMOID_FACTOR));
+    return 1.0f / (1.0f + pow(e, -v * SigmoidFactor));
 }
 
 inline float NNUETrainer::m_sigmoidPrime(float sigmoid)
 {
     // Calculate derivative of sigmoid based on the sigmoid value
     // f'(x) = f(x) * (1 - f(x)) / SIG_FACTOR
-    return ((sigmoid) * (1.0f - (sigmoid))) / SIGMOID_FACTOR;
+    return ((sigmoid) * (1.0f - (sigmoid))) * SigmoidFactor;
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
 void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser::Result result, float& totalLoss)
 {
-    constexpr float lambda = 0.50f; // Weighting between wdlTarget and cpTarget
-
     // -- Run prediction
     float out = m_predict(board);
 
@@ -239,7 +236,7 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser
     // Calculate target
     float wdlOutput       = m_sigmoid(out);
     float wdlTargetCp     = m_sigmoid(cpTarget);
-    float target          = wdlTargetCp * lambda + wdlTarget * (1.0f - lambda);
+    float target          = wdlTargetCp * Lambda + wdlTarget * (1.0f - Lambda);
 
     // Calculate loss
     float loss            = pow(target - wdlOutput, 2);
