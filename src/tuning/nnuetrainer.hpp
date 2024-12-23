@@ -60,12 +60,12 @@ namespace Arcanum
             void m_applyGradient(uint32_t timestep);
             void m_backPropagate(const Board& board, float cpTarget, DataParser::Result result, float& totalLoss);
 
-            void m_randomizeNet();
             void m_storeNet(std::string filename, Net& net);
             void m_loadNet(std::string filename, Net& net);
             void m_loadNetFromStream(std::istream& stream, Net& net);
         public:
-            void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch, bool randomize);
+            void randomizeNet();
+            void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch);
             void load(std::string filename);
             void store(std::string filename);
     };

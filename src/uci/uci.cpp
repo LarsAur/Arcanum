@@ -1,6 +1,7 @@
 #include <uci/uci.hpp>
 #include <uci/timeman.hpp>
 #include <tuning/fengen.hpp>
+#include <tuning/nnuetrainer.hpp>
 #include <syzygy.hpp>
 #include <fen.hpp>
 #include <perft.hpp>
@@ -241,22 +242,22 @@ void UCI::fengen(std::istringstream& is)
 void UCI::train(std::istringstream& is)
 {
     std::string dataset    = "";    // Dataset created by fengen
+    std::string inputPath  = "";    // If randomized is not set this file will be loaded as the starting net
     std::string outputPath = "";    // Output path (_epoch.fnnue will be added as a suffix)
     uint32_t batchSize     = 0;     // Batch size
     uint32_t startEpoch    = 0;     // Epoch to start at (used for naming output and ADAM time variable)
     uint32_t endEpoch      = 0;     // Epoch to end at
-    bool randomize         = false; // Create a new randomized net
 
     std::string token;
     while(is >> token)
     {
         toLowerCase(token);
         if     (token == "dataset")    is >> dataset;
+        else if(token == "input")      is >> inputPath;
         else if(token == "output")     is >> outputPath;
         else if(token == "batchsize")  is >> batchSize;
         else if(token == "startepoch") is >> startEpoch;
         else if(token == "endepoch")   is >> endEpoch;
-        else if(token == "randomize")  randomize = true;
         else WARNING("Unknown token: " << token)
     }
 
@@ -266,7 +267,17 @@ void UCI::train(std::istringstream& is)
     if(startEpoch < 1) { ERROR("Start epoch must be at least 1") return; }
     if(endEpoch <= startEpoch) { ERROR("End epoch must be larger than the end epoch") return; }
 
-    Evaluator::nnue.train(dataset, outputPath, batchSize, startEpoch, endEpoch, randomize);
+    NNUETrainer trainer;
+    if(inputPath == "")
+    {
+        trainer.randomizeNet();
+    }
+    else
+    {
+        trainer.load(inputPath);
+    }
+
+    trainer.train(dataset, outputPath, batchSize, startEpoch, endEpoch);
 }
 
 void UCI::help()
@@ -300,7 +311,7 @@ void UCI::help()
     UCI_OUT("\tbatchsize <batchsize>               - Number of poisitions to process in each batch")
     UCI_OUT("\tstartepoch <epoch>                  - Epoch to start training. Epoch is used as timestep in ADAM optimizer")
     UCI_OUT("\tendepoch <epoch>                    - Epoch to stop training")
-    UCI_OUT("\t[randomize]                         - Create a new randomly initialized net. Currently loaded net is used otherwise")
+    UCI_OUT("\t[input <path>]                      - Path to the input net to continue training. Net is randomized if not set")
     UCI_OUT("fengen                                - Generate FENs used to train the NNUE")
     UCI_OUT("\tpositions <path>                    - Path to a file containing a list of stating positions")
     UCI_OUT("\toutput <path>                       - Path to the output file")

@@ -184,7 +184,7 @@ void NNUETrainer::m_initAccumulator(const Board& board)
     }
 }
 
-void NNUETrainer::m_randomizeNet()
+void NNUETrainer::randomizeNet()
 {
     LOG("Randomizing NNUETrainer")
     m_net.ftWeights.heRandomize();
@@ -339,7 +339,7 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
     NET_BINARY_OP(m_net, add, m_moments.mHat)
 }
 
-void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch, bool randomize)
+void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch)
 {
     // Initialize the gradients and ADAM moments
     NET_UNARY_OP(m_gradient, setZero())
@@ -347,8 +347,6 @@ void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t ba
     NET_UNARY_OP(m_moments.v, setZero())
     NET_UNARY_OP(m_moments.mHat, setZero())
     NET_UNARY_OP(m_moments.vHat, setZero())
-
-    if(randomize) m_randomizeNet();
 
     for(uint32_t epoch = startEpoch; epoch < endEpoch; epoch++)
     {
