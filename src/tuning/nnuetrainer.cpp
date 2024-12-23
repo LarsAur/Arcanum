@@ -1,4 +1,4 @@
-#include <nnue/nnue.hpp>
+#include <tuning/nnuetrainer.hpp>
 #include <memory.hpp>
 #include <utils.hpp>
 #include <fen.hpp>
@@ -6,12 +6,6 @@
 #include <eval.hpp>
 
 using namespace Arcanum;
-
-#ifdef ENABLE_INCBIN
-#define INCBIN_PREFIX
-#include <incbin/incbin.hpp>
-INCBIN(char, EmbeddedNNUE, TOSTRING(DEFAULT_NNUE));
-#endif
 
 #define NET_BINARY_OP(_net1, _op, _net2) \
 _net1.ftWeights._op(_net2.ftWeights); \
@@ -29,53 +23,21 @@ _net1.l1Biases ._op; \
 _net1.l2Weights._op; \
 _net1.l2Biases ._op;
 
-const char* NNUE::NNUE_MAGIC = "Arcanum FNNUE";
+const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE";
 
-NNUE::NNUE()
+void NNUETrainer::load(std::string filename)
 {
-
-}
-
-NNUE::~NNUE()
-{
-
-}
-
-void NNUE::load(std::string filename)
-{
-    #ifdef ENABLE_INCBIN
-    // Some GUIs always pass the UCI options, even if they are the default.
-    // This check is to prevent trying to load the default NNUE from file if INCBIN is used.
-    // This is done because the file will likely not exist.
-    // Additionally, it allows us to continue using a single load function
-    if(filename == TOSTRING(DEFAULT_NNUE))
-    {
-        m_loadIncbin();
-        return;
-    }
-    #endif
     m_loadNet(filename, m_net);
 }
 
-#ifdef ENABLE_INCBIN
-void NNUE::m_loadIncbin()
-{
-    DEBUG("Loading NNUE from INCBIN " << TOSTRING(DEFAULT_NNUE))
-    std::stringstream sstream;
-    sstream.write(reinterpret_cast<const char*>(EmbeddedNNUEData), EmbeddedNNUESize);
-    std::istream& stream = sstream;
-    m_loadNetFromStream(stream, m_net);
-}
-#endif
-
-void NNUE::m_loadNet(std::string filename, FloatNet& net)
+void NNUETrainer::m_loadNet(std::string filename, Net& net)
 {
     std::string path = getWorkPath();
     std::stringstream ss;
     ss << path << filename;
     std::ifstream fStream(ss.str(), std::ios::in | std::ios::binary);
 
-    LOG("Loading NNUE " << ss.str())
+    LOG("Loading FNNUE " << ss.str())
     if(!fStream.is_open())
     {
         ERROR("Unable to open " << ss.str())
@@ -86,10 +48,10 @@ void NNUE::m_loadNet(std::string filename, FloatNet& net)
     m_loadNetFromStream(stream, net);
     fStream.close();
 
-    LOG("Finished loading NNUE " << ss.str())
+    LOG("Finished loading FNNUE " << ss.str())
 }
 
-void NNUE::m_loadNetFromStream(std::istream& stream, FloatNet& net)
+void NNUETrainer::m_loadNetFromStream(std::istream& stream, Net& net)
 {
     // Reading header
 
@@ -124,12 +86,12 @@ void NNUE::m_loadNetFromStream(std::istream& stream, FloatNet& net)
     net.l2Biases.readFromStream(stream);
 }
 
-void NNUE::store(std::string filename)
+void NNUETrainer::store(std::string filename)
 {
     m_storeNet(filename, m_net);
 }
 
-void NNUE::m_storeNet(std::string filename, FloatNet& net)
+void NNUETrainer::m_storeNet(std::string filename, Net& net)
 {
     std::string path = getWorkPath();
 
@@ -170,19 +132,10 @@ void NNUE::m_storeNet(std::string filename, FloatNet& net)
     LOG("Finished storing nnue in " << ss.str())
 }
 
-// Calculate the feature indices of the board with the white perspective
-// To the the feature indices of the black perspective, xor the indices with 1
-inline uint32_t NNUE::m_getFeatureIndex(square_t square, Color color, Piece piece)
+void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet)
 {
-    if(color == BLACK)
-        square = ((7 - RANK(square)) << 3) | FILE(square);
-
-    return (((uint32_t(piece) << 6) | uint32_t(square)) << 1) | color;
-}
-
-void NNUE::m_calculateFeatures(const Board& board, uint8_t* numFeatures, uint32_t* features)
-{
-    *numFeatures = 0;
+    Color perspective = board.getTurn();
+    featureSet.numFeatures = 0;
     for(uint32_t color = 0; color < 2; color++)
     {
         for(uint32_t type = 0; type < 6; type++)
@@ -191,15 +144,19 @@ void NNUE::m_calculateFeatures(const Board& board, uint8_t* numFeatures, uint32_
             while(pieces)
             {
                 square_t idx = popLS1B(&pieces);
-                uint32_t findex = m_getFeatureIndex(idx, Color(color), Piece(type));
-                features[(*numFeatures)++] = findex;
+                uint32_t findex = NNUE::getFeatureIndex(idx, Color(color), Piece(type), perspective);
+                featureSet.features[featureSet.numFeatures++] = findex;
             }
         }
     }
 }
 
-void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Color perspective, uint8_t numFeatures, uint32_t* features)
+void NNUETrainer::m_initAccumulator(const Board& board)
 {
+    NNUE::FeatureSet featureSet;
+    m_findFeatureSet(board, featureSet);
+    float* accPtr = m_trace.acc.data();
+
     constexpr uint32_t numRegs = L1Size / RegSize;
     __m256 regs[numRegs];
 
@@ -211,11 +168,9 @@ void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Color perspective, uin
         regs[i] = _mm256_load_ps(biasesPtr + RegSize*i);
     }
 
-    for(uint32_t i = 0; i < numFeatures; i++)
+    for(uint32_t i = 0; i < featureSet.numFeatures; i++)
     {
-        // XOR to the the correct index for the perspective
-        uint32_t findex = features[i] ^ perspective;
-
+        uint32_t findex = featureSet.features[i];
         for(uint32_t j = 0; j < numRegs; j++)
         {
             __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
@@ -225,176 +180,13 @@ void NNUE::m_initAccumulatorPerspective(Accumulator* acc, Color perspective, uin
 
     for(uint32_t i = 0; i < numRegs; i++)
     {
-        _mm256_store_ps(acc->acc[perspective] + RegSize*i, regs[i]);
+        _mm256_store_ps(accPtr + RegSize*i, regs[i]);
     }
 }
 
-void NNUE::initAccumulator(Accumulator* acc, const Board& board)
+void NNUETrainer::m_randomizeNet()
 {
-    uint8_t numFeatures;
-    uint32_t features[32];
-    m_calculateFeatures(board, &numFeatures, features);
-    m_initAccumulatorPerspective(acc, Color::WHITE, numFeatures, features);
-    m_initAccumulatorPerspective(acc, Color::BLACK, numFeatures, features);
-}
-
-void NNUE::incAccumulator(Accumulator* accIn, Accumulator* accOut, const Board& board, const Move& move)
-{
-    int32_t removedFeatures[2] = {-1, -1};
-    int32_t addedFeatures[2] = {-1, -1};
-
-    Color opponent    = board.getTurn();
-    Color movingColor = Color(board.getTurn() ^ 1); // Accumulator increment is performed after move is performed
-
-    // -- Find the added and removed indices
-
-    Piece movedType = move.movedPiece();
-    removedFeatures[0] = m_getFeatureIndex(move.from, movingColor, movedType);
-
-    if(move.isPromotion())
-    {
-        addedFeatures[0] = m_getFeatureIndex(move.to, movingColor, move.promotedPiece());
-    }
-    else
-    {
-        addedFeatures[0] = m_getFeatureIndex(move.to, movingColor, movedType);
-    }
-
-    // Handle the moved rook when castling
-    if(move.isCastle())
-    {
-        if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
-        {
-            removedFeatures[1] = m_getFeatureIndex(Square::A1, WHITE, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(Square::D1, WHITE, W_ROOK);
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
-        {
-            removedFeatures[1] = m_getFeatureIndex(Square::H1, WHITE, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(Square::F1, WHITE, W_ROOK);
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
-        {
-            removedFeatures[1] = m_getFeatureIndex(Square::A8, BLACK, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(Square::D8, BLACK, W_ROOK);
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
-        {
-            removedFeatures[1] = m_getFeatureIndex(Square::H8, BLACK, W_ROOK);
-            addedFeatures[1]   = m_getFeatureIndex(Square::F8, BLACK, W_ROOK);
-        }
-    }
-
-    if(move.isCapture())
-    {
-        if(move.moveInfo & MoveInfoBit::ENPASSANT)
-        {
-            removedFeatures[1] = m_getFeatureIndex(movingColor == WHITE ? (move.to - 8) : (move.to + 8), opponent, W_PAWN);
-        }
-        else
-        {
-            removedFeatures[1] = m_getFeatureIndex(move.to, opponent, move.capturedPiece());
-        }
-    }
-
-    // -- Prefetch the weigths
-    #pragma GCC unroll 2
-    for(uint32_t perspective = 0; perspective < 2; perspective++)
-    {
-        for(uint32_t i = 0; i < 2; i++)
-        {
-            int32_t findex = addedFeatures[i];
-            // Break in case only one index is added
-            if(findex == -1) break;
-            // XOR to the the correct index for the perspective
-            findex ^= perspective;
-            m_net.ftWeights.prefetchCol(findex);
-        }
-
-        for(uint32_t i = 0; i < 2; i++)
-        {
-            int32_t findex = removedFeatures[i];
-            // Break in case only one index is added
-            if(findex == -1) break;
-            // XOR to the the correct index for the perspective
-            findex ^= perspective;
-            m_net.ftWeights.prefetchCol(findex);
-        }
-    }
-
-    // -- Update the accumulators
-
-    constexpr uint32_t numRegs = L1Size / RegSize;
-    __m256 regs[numRegs];
-
-    float* weightsPtr        = m_net.ftWeights.data();
-
-    #pragma GCC unroll 2
-    for(uint32_t perspective = 0; perspective < 2; perspective++)
-    {
-        // -- Load the accumulator into the registers
-        #pragma GCC unroll 32
-        for(uint32_t i = 0; i < numRegs; i++)
-        {
-            regs[i] = _mm256_load_ps(accIn->acc[perspective] + RegSize*i);
-        }
-
-        // -- Added features
-        for(uint32_t i = 0; i < 2; i++)
-        {
-            int32_t findex = addedFeatures[i];
-            // Break in case only one index is added
-            if(findex == -1) break;
-            // XOR to the the correct index for the perspective
-            findex ^= perspective;
-
-            for(uint32_t j = 0; j < numRegs; j++)
-            {
-                __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
-                regs[j] = _mm256_add_ps(regs[j], weights);
-            }
-        }
-
-        // -- Removed features
-        for(uint32_t i = 0; i < 2; i++)
-        {
-            int32_t findex = removedFeatures[i];
-            // Break in case only one index is added
-            if(findex == -1) break;
-            // XOR to the the correct index for the perspective
-            findex ^= perspective;
-
-            for(uint32_t j = 0; j < numRegs; j++)
-            {
-                __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);
-                regs[j] = _mm256_sub_ps(regs[j], weights);
-            }
-        }
-
-        // -- Store the output in the new accumulator
-        #pragma GCC unroll 32
-        for(uint32_t i = 0; i < numRegs; i++)
-        {
-            _mm256_store_ps(accOut->acc[perspective] + RegSize*i, regs[i]);
-        }
-    }
-}
-
-eval_t NNUE::evaluateBoard(const Board& board)
-{
-    Accumulator acc;
-    initAccumulator(&acc, board);
-    return static_cast<eval_t>(m_predict(&acc, board.getTurn()));
-}
-
-eval_t NNUE::evaluate(Accumulator* acc, Color turn)
-{
-    return static_cast<eval_t>(m_predict(acc, turn));
-}
-
-void NNUE::m_randomizeWeights()
-{
-    LOG("Randomizing NNUE")
+    LOG("Randomizing NNUETrainer")
     m_net.ftWeights.heRandomize();
     m_net.l1Weights.heRandomize();
     m_net.l2Weights.heRandomize();
@@ -403,44 +195,23 @@ void NNUE::m_randomizeWeights()
     m_net.l2Biases.setZero();
 }
 
-void NNUE::m_reluAccumulator(Accumulator* acc, Color perspective, Trace& trace)
+float NNUETrainer::m_predict(const Board& board)
 {
-    constexpr uint32_t numRegs = L1Size / RegSize;
-    __m256 zero = _mm256_setzero_ps();
-    float* dst = trace.accumulator.data();
-
-    for(uint32_t i = 0; i < numRegs; i++)
-    {
-        // Load accumulator
-        __m256 a = _mm256_load_ps(acc->acc[perspective] + RegSize*i);
-        // ReLu
-        a = _mm256_max_ps(zero, a);
-        // Score accumulator in the trace
-        _mm256_store_ps(dst + RegSize*i, a);
-    }
-}
-
-float NNUE::m_predict(Accumulator* acc, Color perspective, Trace& trace)
-{
-    m_reluAccumulator(acc, perspective, trace);
-    feedForwardReLu(m_net.l1Weights, m_net.l1Biases, trace.accumulator, trace.l1Out);
-    lastLevelFeedForward(m_net.l2Weights, m_net.l2Biases, trace.l1Out, trace.out);
-    return *trace.out.data();
-}
-
-float NNUE::m_predict(Accumulator* acc, Color perspective)
-{
-    return m_predict(acc, perspective, m_trace);
+    m_initAccumulator(board);
+    m_trace.acc.relu();
+    feedForwardReLu(m_net.l1Weights, m_net.l1Biases, m_trace.acc, m_trace.l1Out);
+    lastLevelFeedForward(m_net.l2Weights, m_net.l2Biases, m_trace.l1Out, m_trace.out);
+    return *m_trace.out.data();
 }
 
 constexpr float SIGMOID_FACTOR = 200.0f;
-inline float NNUE::m_sigmoid(float v)
+inline float NNUETrainer::m_sigmoid(float v)
 {
     constexpr float e = 2.71828182846f;
     return 1.0f / (1.0f + pow(e, -v / SIGMOID_FACTOR));
 }
 
-inline float NNUE::m_sigmoidPrime(float sigmoid)
+inline float NNUETrainer::m_sigmoidPrime(float sigmoid)
 {
     // Calculate derivative of sigmoid based on the sigmoid value
     // f'(x) = f(x) * (1 - f(x)) / SIG_FACTOR
@@ -448,14 +219,12 @@ inline float NNUE::m_sigmoidPrime(float sigmoid)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-void NNUE::m_backPropagate(const Board& board, float cpTarget, DataParser::Result result, FloatNet& gradient, float& totalLoss, FloatNet& net, Trace& trace)
+void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser::Result result, float& totalLoss)
 {
     constexpr float lambda = 0.50f; // Weighting between wdlTarget and cpTarget
 
     // -- Run prediction
-    Accumulator acc;
-    initAccumulator(&acc, board);
-    float out = m_predict(&acc, board.getTurn(), trace);
+    float out = m_predict(board);
 
     // Set Win-Draw-Loss target based on result
     // Normalize from [-1, 1] to [0, 1]
@@ -483,14 +252,8 @@ void NNUE::m_backPropagate(const Board& board, float cpTarget, DataParser::Resul
     float lossPrime       = 2 * (target - wdlOutput);
 
     // -- Create input vector
-    uint8_t numFeatures;
-    uint32_t features[32];
-    m_calculateFeatures(board, &numFeatures, features);
-    for(uint32_t k = 0; k < numFeatures; k++)
-    {
-        // XOR to make the correct the perspective
-        features[k] = features[k] ^ board.getTurn();
-    }
+    NNUE::FeatureSet featureSet;
+    m_findFeatureSet(board, featureSet);
 
     // -- Calculation of auxillery coefficients
     Matrix<L1Size, 1> delta1(false);
@@ -499,21 +262,21 @@ void NNUE::m_backPropagate(const Board& board, float cpTarget, DataParser::Resul
 
     // Calculate derivative of activation functions (Sigma prime)
     Matrix<L2Size, 1> L2ReLuPrime(false);
-    L2ReLuPrime.copy(trace.l1Out);
+    L2ReLuPrime.copy(m_trace.l1Out);
     L2ReLuPrime.reluPrime();
 
     Matrix<L1Size, 1> accumulatorReLuPrime(false);
-    accumulatorReLuPrime.copy(trace.accumulator);
+    accumulatorReLuPrime.copy(m_trace.acc);
     accumulatorReLuPrime.reluPrime();
 
     // Calculate deltas (d_l = W_l+1^T * d_l+1) * sigma prime (Z_l)
 
     delta3.set(0, 0, sigmoidPrime * lossPrime);
 
-    multiplyTransposeA(net.l2Weights, delta3, delta2);
+    multiplyTransposeA(m_net.l2Weights, delta3, delta2);
     delta2.hadamard(L2ReLuPrime);
 
-    multiplyTransposeA(net.l1Weights, delta2, delta1);
+    multiplyTransposeA(m_net.l1Weights, delta2, delta1);
     delta1.hadamard(accumulatorReLuPrime);
 
     // Calculation of gradient
@@ -521,20 +284,20 @@ void NNUE::m_backPropagate(const Board& board, float cpTarget, DataParser::Resul
     Matrix<1, L2Size>        gradientL2Weights(false);
     Matrix<L2Size, L1Size>   gradientL1Weights(false);
 
-    multiplyTransposeB(delta3, trace.l1Out,       gradientL2Weights);
-    multiplyTransposeB(delta2, trace.accumulator, gradientL1Weights);
-    calcAndAccFtGradient(numFeatures, features, delta1, gradient.ftWeights);
+    multiplyTransposeB(delta3, m_trace.l1Out, gradientL2Weights);
+    multiplyTransposeB(delta2, m_trace.acc, gradientL1Weights);
+    calcAndAccFtGradient(featureSet, delta1, m_gradient.ftWeights);
 
     // Accumulate the change
 
-    gradient.l2Biases.add(delta3);
-    gradient.l1Biases.add(delta2);
-    gradient.ftBiases.add(delta1);
-    gradient.l1Weights.add(gradientL1Weights);
-    gradient.l2Weights.add(gradientL2Weights);
+    m_gradient.l2Biases.add(delta3);
+    m_gradient.l1Biases.add(delta2);
+    m_gradient.ftBiases.add(delta1);
+    m_gradient.l1Weights.add(gradientL1Weights);
+    m_gradient.l2Weights.add(gradientL2Weights);
 }
 
-void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& momentum1, FloatNet& momentum2, FloatNet& mHat, FloatNet& vHat)
+void NNUETrainer::m_applyGradient(uint32_t timestep)
 {
     // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
     constexpr float alpha   = 0.01f;
@@ -544,53 +307,48 @@ void NNUE::m_applyGradient(uint32_t timestep, FloatNet& gradient, FloatNet& mome
 
     // M_t = B1 * M_t-1 + (1 - B1) * g_t
 
-    NET_UNARY_OP(momentum1, scale(beta1 / (1.0f - beta1)))
-    NET_BINARY_OP(momentum1, add, gradient)
-    NET_UNARY_OP(momentum1, scale(1.0f - beta1))
+    NET_UNARY_OP(m_moments.m, scale(beta1 / (1.0f - beta1)))
+    NET_BINARY_OP(m_moments.m, add, m_gradient)
+    NET_UNARY_OP(m_moments.m, scale(1.0f - beta1))
 
     // v_t = B2 * v_t-1 + (1 - B2) * g_t^2
 
-    NET_UNARY_OP(momentum2, scale(beta2))
-    NET_UNARY_OP(gradient, pow2())
-    NET_UNARY_OP(gradient, scale(1.0f - beta2))
-    NET_BINARY_OP(momentum2, add, gradient)
+    NET_UNARY_OP(m_moments.v, scale(beta2))
+    NET_UNARY_OP(m_gradient, pow2())
+    NET_UNARY_OP(m_gradient, scale(1.0f - beta2))
+    NET_BINARY_OP(m_moments.v, add, m_gradient)
 
     // M^_t = alpha * M_t / (1 - Beta1^t)
 
-    NET_BINARY_OP(mHat, copy, momentum1)
-    NET_UNARY_OP(mHat, scale(alpha / (1.0f - std::pow(beta1, timestep))))
+    NET_BINARY_OP(m_moments.mHat, copy, m_moments.m)
+    NET_UNARY_OP(m_moments.mHat, scale(alpha / (1.0f - std::pow(beta1, timestep))))
 
     // v^_t = v_t / (1 - Beta2^t)
 
-    NET_BINARY_OP(vHat, copy, momentum2)
-    NET_UNARY_OP(vHat, scale(1.0f / (1.0f - std::pow(beta2, timestep))))
+    NET_BINARY_OP(m_moments.vHat, copy, m_moments.v)
+    NET_UNARY_OP(m_moments.vHat, scale(1.0f / (1.0f - std::pow(beta2, timestep))))
 
     // sqrt(v^_t) + epsilon
 
-    NET_UNARY_OP(vHat, sqrt())
-    NET_UNARY_OP(vHat, addScalar(epsilon))
+    NET_UNARY_OP(m_moments.vHat, sqrt())
+    NET_UNARY_OP(m_moments.vHat, addScalar(epsilon))
 
     // net = net + M^_t / (sqrt(v^_t) + epsilon)
 
-    NET_BINARY_OP(mHat, hadamardInverse, vHat)
-    NET_BINARY_OP(m_net, add, mHat)
+    NET_BINARY_OP(m_moments.mHat, hadamardInverse, m_moments.vHat)
+    NET_BINARY_OP(m_net, add, m_moments.mHat)
 }
 
-void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch, bool randomize)
+void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch, bool randomize)
 {
-    FloatNet gradient;
-    Trace trace;
+    // Initialize the gradients and ADAM moments
+    NET_UNARY_OP(m_gradient, setZero())
+    NET_UNARY_OP(m_moments.m, setZero())
+    NET_UNARY_OP(m_moments.v, setZero())
+    NET_UNARY_OP(m_moments.mHat, setZero())
+    NET_UNARY_OP(m_moments.vHat, setZero())
 
-    FloatNet momentum1;
-    FloatNet momentum2;
-    FloatNet mHat;
-    FloatNet vHat;
-
-    std::string strWdl;
-    std::string strCp;
-    std::string fen;
-
-    if(randomize) m_randomizeWeights();
+    if(randomize) m_randomizeNet();
 
     for(uint32_t epoch = startEpoch; epoch < endEpoch; epoch++)
     {
@@ -606,7 +364,8 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
         float epochLoss = 0.0f;
         float batchLoss = 0.0f;
 
-        NET_UNARY_OP(gradient, setZero())
+        // Clear the gradient at the start of the epoch
+        NET_UNARY_OP(m_gradient, setZero())
 
         while (!loader.eof())
         {
@@ -615,17 +374,17 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
             DataParser::Result result = loader.getResult();
 
             // Run back propagation
-            m_backPropagate(*board, cp, result, gradient, batchLoss, m_net, trace);
+            m_backPropagate(*board, cp, result, batchLoss);
 
             batchPosCount++;
 
             if((batchPosCount % batchSize == 0) || loader.eof())
             {
-                NET_UNARY_OP(gradient, scale(1.0f / batchPosCount))
+                NET_UNARY_OP(m_gradient, scale(1.0f / batchPosCount))
 
-                m_applyGradient(epoch, gradient, momentum1, momentum2, mHat, vHat);
+                m_applyGradient(epoch);
 
-                NET_UNARY_OP(gradient, setZero())
+                NET_UNARY_OP(m_gradient, setZero())
 
                 // Aggregate the loss and position count
                 epochPosCount += batchPosCount;
@@ -652,20 +411,5 @@ void NNUE::train(std::string dataset, std::string outputPath, uint64_t batchSize
         ssNnueName << outputPath << epoch << ".fnnue";
         store(ssNnueName.str());
         loader.close();
-
-        m_test();
     }
-
-}
-
-void NNUE::m_test()
-{
-    Board b = Board(FEN::startpos);
-    eval_t score = evaluateBoard(b);
-    Board b1 = Board("1nb1kbn1/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQ - 0 1");
-    eval_t score1 = evaluateBoard(b1);
-    Board b2 = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/1NB1KBN1 w kq - 0 1");
-    eval_t score2 = evaluateBoard(b2);
-
-    LOG("Score (=) = " << score << " Score (+) = " << score1 << " Score (-) = " << score2)
 }

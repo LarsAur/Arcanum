@@ -1,5 +1,6 @@
 #pragma once
 
+#include <nnue.hpp>
 #include <types.hpp>
 #include <utils.hpp>
 #include <memory.hpp>
@@ -205,7 +206,7 @@ namespace Arcanum
     };
 
     template <uint32_t rows, uint32_t cols>
-    void calcAndAccFtGradient(uint8_t numFeatures, uint32_t* features, Matrix<rows, 1>& delta, Matrix<rows, cols>& gradient)
+    void calcAndAccFtGradient(NNUE::FeatureSet& featureSet, Matrix<rows, 1>& delta, Matrix<rows, cols>& gradient)
     {
         constexpr uint32_t regSize = 256 / 32;
         constexpr uint32_t numRegs = rows / regSize;
@@ -221,9 +222,9 @@ namespace Arcanum
             weights[i] = _mm256_load_ps(dData + i * regSize);
         }
 
-        for(uint8_t k = 0; k < numFeatures; k++)
+        for(uint8_t k = 0; k < featureSet.numFeatures; k++)
         {
-            uint32_t feature = features[k];
+            uint32_t feature = featureSet.features[k];
 
             for(uint32_t i = 0; i < numRegs; i++)
             {
