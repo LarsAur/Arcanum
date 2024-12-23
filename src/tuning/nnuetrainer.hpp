@@ -15,6 +15,7 @@ namespace Arcanum
             static constexpr uint32_t L1Size  = 256;
             static constexpr uint32_t L2Size  = 32;
             static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
+            static constexpr float ReluClipValue = 256.0f;
 
             static const char* NNUE_MAGIC;
 

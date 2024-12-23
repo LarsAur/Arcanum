@@ -121,6 +121,24 @@ namespace Arcanum
                     m_data[row] = std::max(m_data[row], 0.0f);
             }
 
+            void clippedRelu(float clip)
+            {
+                if(cols != 1)
+                    ERROR("Should not use relu on Matrix other than vector")
+
+                for(uint32_t row = 0; row < rows; row++)
+                    m_data[row] = std::clamp(m_data[row], 0.0f, clip);
+            }
+
+            void clippedReluPrime(float clip)
+            {
+                if(cols != 1)
+                    ERROR("Should not use relu on Matrix other than vector")
+
+                for(uint32_t row = 0; row < rows; row++)
+                    m_data[row] = m_data[row] > 0 && m_data[row] < clip ? 1.0f : 0.0f;
+            }
+
             void set(uint32_t row, uint32_t col, float value)
             {
                 if(row >= rows)
@@ -277,6 +295,45 @@ namespace Arcanum
         for(uint32_t i = 0; i < numRegs; i++)
         {
             regs[i] = _mm256_max_ps(zero, regs[i]);
+            _mm256_store_ps(outputPtr + i*regSize, regs[i]);
+        }
+    }
+
+    template <unsigned int in, unsigned int out>
+    void feedForwardClippedReLu(Matrix<out, in>& weights, Matrix<out,1>& biases, Matrix<in,1>& input, Matrix<out,1>& output, float clip)
+    {
+        float* inputPtr   = input.data();
+        float* biasesPtr  = biases.data();
+        float* weightsPtr = weights.data();
+        float* outputPtr  = output.data();
+
+        constexpr uint32_t regSize = 256 / 32;
+        constexpr uint32_t numRegs = out / regSize;
+
+        __m256 regs[numRegs];
+        const __m256 zero = _mm256_setzero_ps();
+        const __m256 clipValue = _mm256_set1_ps(clip);
+
+        for(uint32_t i = 0; i < numRegs; i++)
+        {
+            regs[i] = _mm256_load_ps(biasesPtr + i*regSize);
+        }
+
+        for(uint32_t i = 0; i < in; i++)
+        {
+            const float fac = inputPtr[i];
+            __m256 factor = _mm256_set1_ps(fac);
+            for(uint32_t r = 0; r < numRegs; r++)
+            {
+                __m256 weight = _mm256_load_ps(weightsPtr + r*regSize + i*numRegs*regSize);
+                regs[r] = _mm256_fmadd_ps(weight, factor, regs[r]); // a*b +c
+            }
+        }
+
+        for(uint32_t i = 0; i < numRegs; i++)
+        {
+            regs[i] = _mm256_max_ps(zero, regs[i]);
+            regs[i] = _mm256_min_ps(clipValue, regs[i]);
             _mm256_store_ps(outputPtr + i*regSize, regs[i]);
         }
     }

@@ -198,8 +198,8 @@ void NNUETrainer::randomizeNet()
 float NNUETrainer::m_predict(const Board& board)
 {
     m_initAccumulator(board);
-    m_trace.acc.relu();
-    feedForwardReLu(m_net.l1Weights, m_net.l1Biases, m_trace.acc, m_trace.l1Out);
+    m_trace.acc.clippedRelu(ReluClipValue);
+    feedForwardClippedReLu(m_net.l1Weights, m_net.l1Biases, m_trace.acc, m_trace.l1Out, ReluClipValue);
     lastLevelFeedForward(m_net.l2Weights, m_net.l2Biases, m_trace.l1Out, m_trace.out);
     return *m_trace.out.data();
 }
@@ -263,11 +263,11 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser
     // Calculate derivative of activation functions (Sigma prime)
     Matrix<L2Size, 1> L2ReLuPrime(false);
     L2ReLuPrime.copy(m_trace.l1Out);
-    L2ReLuPrime.reluPrime();
+    L2ReLuPrime.clippedReluPrime(ReluClipValue);
 
     Matrix<L1Size, 1> accumulatorReLuPrime(false);
     accumulatorReLuPrime.copy(m_trace.acc);
-    accumulatorReLuPrime.reluPrime();
+    accumulatorReLuPrime.clippedReluPrime(ReluClipValue);
 
     // Calculate deltas (d_l = W_l+1^T * d_l+1) * sigma prime (Z_l)
 
