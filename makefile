@@ -78,7 +78,6 @@ $(RELEASEDIR):
 $(BUILDDIR):
 	mkdir $(BUILDDIR)
 	cd $(BUILDDIR) && mkdir src
-	cd $(BUILDDIR)/src && mkdir nnue
 	cd $(BUILDDIR)/src && mkdir tuning
 	cd $(BUILDDIR)/src && mkdir syzygy
 	cd $(BUILDDIR)/src && mkdir uci
