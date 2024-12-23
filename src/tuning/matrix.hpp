@@ -358,9 +358,9 @@ namespace Arcanum
         float* bData = matB.data();
         float* oData = matOut.data();
 
-        for(uint32_t row = 0; row < n; row++)
+        for(uint32_t col = 0; col < p; col++)
         {
-            for(uint32_t col = 0; col < p; col++)
+            for(uint32_t row = 0; row < n; row++)
             {
                 oData[col * n + row] = 0;
 
