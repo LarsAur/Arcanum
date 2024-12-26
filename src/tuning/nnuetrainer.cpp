@@ -157,7 +157,7 @@ void NNUETrainer::m_initAccumulator(const Board& board)
     m_findFeatureSet(board, featureSet);
     float* accPtr = m_trace.acc.data();
 
-    constexpr uint32_t numRegs = L1Size / RegSize;
+    constexpr uint32_t numRegs = NNUE::L1Size / RegSize;
     __m256 regs[numRegs];
 
     float* biasesPtr         = m_net.ftBiases.data();
@@ -253,16 +253,16 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser
     m_findFeatureSet(board, featureSet);
 
     // -- Calculation of auxillery coefficients
-    Matrix<L1Size, 1> delta1(false);
-    Matrix<L2Size, 1> delta2(false);
-    Matrix<1, 1>      delta3(false);
+    Matrix<NNUE::L1Size, 1> delta1(false);
+    Matrix<NNUE::L2Size, 1> delta2(false);
+    Matrix<1, 1>            delta3(false);
 
     // Calculate derivative of activation functions (Sigma prime)
-    Matrix<L2Size, 1> L2ReLuPrime(false);
+    Matrix<NNUE::L2Size, 1> L2ReLuPrime(false);
     L2ReLuPrime.copy(m_trace.l1Out);
     L2ReLuPrime.clippedReluPrime(ReluClipValue);
 
-    Matrix<L1Size, 1> accumulatorReLuPrime(false);
+    Matrix<NNUE::L1Size, 1> accumulatorReLuPrime(false);
     accumulatorReLuPrime.copy(m_trace.acc);
     accumulatorReLuPrime.clippedReluPrime(ReluClipValue);
 
@@ -278,8 +278,8 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser
 
     // Calculation of gradient
 
-    Matrix<1, L2Size>        gradientL2Weights(false);
-    Matrix<L2Size, L1Size>   gradientL1Weights(false);
+    Matrix<1, NNUE::L2Size>            gradientL2Weights(false);
+    Matrix<NNUE::L2Size, NNUE::L1Size> gradientL1Weights(false);
 
     multiplyTransposeB(delta3, m_trace.l1Out, gradientL2Weights);
     multiplyTransposeB(delta2, m_trace.acc, gradientL1Weights);
@@ -334,6 +334,9 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
 
     NET_BINARY_OP(m_moments.mHat, hadamardInverse, m_moments.vHat)
     NET_BINARY_OP(m_net, add, m_moments.mHat)
+
+    // Clamp the weights of the linear layers to enable quantization at a later stage
+    m_net.l1Weights.clamp(-127.0f/NNUE::QFactor, 127.0f/NNUE::QFactor);
 }
 
 void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch)
@@ -407,4 +410,60 @@ void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t ba
         store(ssNnueName.str());
         loader.close();
     }
+}
+
+void NNUETrainer::quantize(std::string outputPath)
+{
+    LOG("Quantizing NNUE: " << outputPath)
+
+    NNUE::Net quantizedNet;
+    float* ftWeights = m_net.ftWeights.data();
+    float* ftBiases = m_net.ftBiases.data();
+    float* l1Weights = m_net.l1Weights.data();
+    float* l1Biases = m_net.l1Biases.data();
+    float* l2Weights = m_net.l2Weights.data();
+    float* l2Biases = m_net.l2Biases.data();
+
+    std::ofstream ofs(outputPath, std::ios::out | std::ios::binary);
+
+    if(!ofs.is_open())
+    {
+        ERROR("Unable to open " << outputPath)
+        return;
+    }
+
+    for(uint32_t i = 0; i < NNUE::FTSize * NNUE::L1Size; i++)
+    {
+        quantizedNet.ftWeights[i] = (int16_t) (NNUE::QFactor * ftWeights[i]);
+    }
+
+    for(uint32_t i = 0; i < NNUE::L1Size; i++)
+    {
+        quantizedNet.ftBiases[i] = (int16_t) (NNUE::QFactor * ftBiases[i]);
+    }
+
+    for(uint32_t i = 0; i < NNUE::L1Size * NNUE::L2Size; i++)
+    {
+        quantizedNet.l1Weights[i] = (int8_t) (NNUE::QFactor * l1Weights[i]);
+    }
+
+    for(uint32_t i = 0; i < NNUE::L2Size; i++)
+    {
+        quantizedNet.l1Biases[i] = (int32_t) (NNUE::QFactor * l1Biases[i]);
+    }
+
+    for(uint32_t i = 0; i < NNUE::L2Size; i++)
+    {
+        quantizedNet.l2Weights[i] = (l2Weights[i]);
+    }
+
+    quantizedNet.l2Biases[0] = l2Biases[0];
+
+    ofs.write(NNUE::QNNUE_MAGIC, strlen(NNUE::QNNUE_MAGIC));
+    ofs.write((char*) quantizedNet.ftWeights, sizeof(NNUE::Net::ftWeights));
+    ofs.write((char*) quantizedNet.ftBiases,  sizeof(NNUE::Net::ftBiases));
+    ofs.write((char*) quantizedNet.l1Weights, sizeof(NNUE::Net::l1Weights));
+    ofs.write((char*) quantizedNet.l1Biases,  sizeof(NNUE::Net::l1Biases));
+    ofs.write((char*) quantizedNet.l2Weights, sizeof(NNUE::Net::l2Weights));
+    ofs.write((char*) quantizedNet.l2Biases,  sizeof(NNUE::Net::l2Biases));
 }

@@ -11,9 +11,6 @@ namespace Arcanum
     {
         private:
 
-            static constexpr uint32_t FTSize  = 768;
-            static constexpr uint32_t L1Size  = 256;
-            static constexpr uint32_t L2Size  = 32;
             static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
             static constexpr float ReluClipValue = 1.0f;
             static constexpr float SigmoidFactor = 1.0f / 400.0f;
@@ -23,20 +20,20 @@ namespace Arcanum
 
             struct Net
             {
-                Matrix<L1Size, FTSize>  ftWeights;
-                Matrix<L1Size, 1>       ftBiases;
-                Matrix<L2Size, L1Size>  l1Weights;
-                Matrix<L2Size, 1>       l1Biases;
-                Matrix<1, L2Size>       l2Weights;
-                Matrix<1, 1>            l2Biases;
+                Matrix<NNUE::L1Size, NNUE::FTSize> ftWeights;
+                Matrix<NNUE::L1Size, 1>            ftBiases;
+                Matrix<NNUE::L2Size, NNUE::L1Size> l1Weights;
+                Matrix<NNUE::L2Size, 1>            l1Biases;
+                Matrix<1, NNUE::L2Size>            l2Weights;
+                Matrix<1, 1>                       l2Biases;
             };
 
             // Intermediate results in the net
             struct Trace
             {
-                Matrix<L1Size, 1>  acc;           // FT Output
-                Matrix<L2Size, 1>  l1Out;         // L1 Output post ReLu
-                Matrix<1, 1>       out;           // Scalar output
+                Matrix<NNUE::L1Size, 1> acc;
+                Matrix<NNUE::L2Size, 1> l1Out;
+                Matrix<1, 1>            out;
             };
 
             struct AdamMoments
@@ -71,5 +68,6 @@ namespace Arcanum
             void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch);
             void load(std::string filename);
             void store(std::string filename);
+            void quantize(std::string outputPath);
     };
 }

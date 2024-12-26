@@ -8,11 +8,28 @@ namespace Arcanum
 
     class NNUE
     {
-        private:
-
-
-
         public:
+            // TODO: Refer to these in the NNUETrainer class
+            static const char* QNNUE_MAGIC;
+            static constexpr uint32_t FTSize  = 768;
+            static constexpr uint32_t L1Size  = 256;
+            static constexpr uint32_t L2Size  = 32;
+            static constexpr uint32_t QFactor = 64; // Quantization factor
+
+            struct Accumulator
+            {
+                alignas(64) int16_t acc[2][L1Size];
+            };
+
+            struct Net
+            {
+                alignas(64) int16_t ftWeights[L1Size * FTSize];
+                alignas(64) int16_t ftBiases[L1Size];
+                alignas(64) int8_t  l1Weights[L2Size * L1Size];
+                alignas(64) int32_t l1Biases[L2Size];
+                alignas(64) float l2Weights[L2Size];
+                alignas(64) float l2Biases[1];
+            };
 
             struct FeatureSet
             {
@@ -21,6 +38,11 @@ namespace Arcanum
             };
 
             static uint32_t getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pieceType, Color perspective);
+
+            void load(const std::string filename);
+
+        private:
+            Net m_net;
     };
 
 }

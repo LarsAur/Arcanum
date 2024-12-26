@@ -139,6 +139,12 @@ namespace Arcanum
                     m_data[row] = m_data[row] > 0 && m_data[row] < clip ? 1.0f : 0.0f;
             }
 
+            void clamp(float min, float max)
+            {
+                for(uint32_t i = 0; i < cols * rows; i++)
+                    m_data[i] = std::clamp(m_data[i], min, max);
+            }
+
             void set(uint32_t row, uint32_t col, float value)
             {
                 if(row >= rows)
