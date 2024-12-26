@@ -15,7 +15,7 @@ namespace Arcanum
             static constexpr uint32_t L1Size  = 256;
             static constexpr uint32_t L2Size  = 32;
             static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
-            static constexpr float ReluClipValue = 256.0f;
+            static constexpr float ReluClipValue = 1.0f;
             static constexpr float SigmoidFactor = 1.0f / 400.0f;
             static constexpr float Lambda = 1.0f; // Weighting between wdlTarget and cpTarget in loss function 1.0 = 100% cpTarget 0.0 = 100% wdlTarget
 
