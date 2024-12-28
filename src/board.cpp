@@ -1317,9 +1317,16 @@ Piece Board::getPieceAt(square_t square) const
     return m_pieces[square];
 }
 
+// Returns the square where the pawn is placed after the move
 square_t Board::getEnpassantSquare() const
 {
     return m_enPassantSquare;
+}
+
+// Returns the square where the enpassant pawn is captured
+square_t Board::getEnpassantTarget() const
+{
+    return m_enPassantTarget;
 }
 
 bool Board::isChecked()

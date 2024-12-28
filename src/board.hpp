@@ -119,6 +119,7 @@ namespace Arcanum
             bitboard_t getColoredPieces(Color color) const;
             Piece getPieceAt(square_t square) const;
             square_t getEnpassantSquare() const;
+            square_t getEnpassantTarget() const;
             Move* getLegalMovesFromCheck();
             Move* getLegalMoves();
             Move* getLegalCaptureMoves();
