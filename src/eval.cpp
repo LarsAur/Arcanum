@@ -24,20 +24,20 @@ Evaluator::~Evaluator()
 void Evaluator::initAccumulatorStack(const Board& board)
 {
     if(m_accumulatorStack.empty())
-        m_accumulatorStack.push_back(new Accumulator);
+        m_accumulatorStack.push_back(new NNUE::Accumulator);
 
     m_accumulatorStackPointer = 0;
-    nnue.initAccumulator(m_accumulatorStack[0], board);
+    nnue.initializeAccumulator(m_accumulatorStack[0], board);
 }
 
 void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
 {
     if(m_accumulatorStack.size() == m_accumulatorStackPointer + 1)
     {
-        m_accumulatorStack.push_back(new Accumulator);
+        m_accumulatorStack.push_back(new NNUE::Accumulator);
     }
 
-    nnue.incAccumulator(
+    nnue.incrementAccumulator(
         m_accumulatorStack[m_accumulatorStackPointer],
         m_accumulatorStack[m_accumulatorStackPointer+1],
         board,
@@ -47,8 +47,10 @@ void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
     m_accumulatorStackPointer++;
 
     #ifdef VERIFY_NNUE_INCR
-    eval_t e1 = nnue.evaluate(m_accumulatorStack[m_accumulatorStackPointer], board.m_turn);
-    eval_t e2 = nnue.evaluateBoard(board);
+    Board newBoard = Board(board);
+    newBoard.performMove(move);
+    eval_t e1 = nnue.predict(m_accumulatorStack[m_accumulatorStackPointer], newBoard.m_turn);
+    eval_t e2 = nnue.predictBoard(newBoard);
     // Check if the difference is larger than one,
     // This is because the net using floating point may accumulate some error
     // because of this, an error of up to 1 is acceptable
@@ -56,7 +58,7 @@ void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
     {
         DEBUG(e1 << "  " << e2)
         LOG(unsigned(move.from) << " " << unsigned(move.to) << " Type: " << MOVED_PIECE(move.moveInfo) << " Capture: " << CAPTURED_PIECE(move.moveInfo) << " Castle: " << CASTLE_SIDE(move.moveInfo) << " Enpassant " << (move.moveInfo & MoveInfoBit::ENPASSANT))
-        DEBUG(FEN::toString(board))
+        DEBUG(FEN::toString(newBoard))
         exit(-1);
     }
     #endif
@@ -101,5 +103,5 @@ eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
         return 0;
     };
 
-    return nnue.evaluate(m_accumulatorStack[m_accumulatorStackPointer], board.getTurn());
+    return nnue.predict(m_accumulatorStack[m_accumulatorStackPointer], board.getTurn());
 }

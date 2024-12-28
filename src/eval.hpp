@@ -2,7 +2,7 @@
 
 #include <types.hpp>
 #include <board.hpp>
-#include <nnue/nnue.hpp>
+#include <nnue.hpp>
 
 namespace Arcanum
 {
@@ -15,7 +15,7 @@ namespace Arcanum
     {
         private:
             uint32_t m_accumulatorStackPointer;
-            std::vector<Accumulator*> m_accumulatorStack;
+            std::vector<NNUE::Accumulator*> m_accumulatorStack;
 
         public:
             // Returns true if the score is a mate score not from the TB
