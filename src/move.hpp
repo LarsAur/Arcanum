@@ -124,6 +124,11 @@ namespace Arcanum
             return !((moveInfo) & (MOVE_INFO_CAPTURE_MASK | MOVE_INFO_PROMOTE_MASK));
         }
 
+        inline bool isEnpassant() const
+        {
+            return moveInfo & ENPASSANT;
+        }
+
         std::string toString() const
         {
             std::stringstream ss;
