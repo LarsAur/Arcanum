@@ -60,6 +60,7 @@ namespace Arcanum
                 static void drawboard();
                 static void fengen(std::istringstream& is);
                 static void train(std::istringstream& is);
+                static void quantize(std::istringstream& is);
                 static void help();
             public:
                 // Options
