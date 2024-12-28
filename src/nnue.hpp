@@ -14,7 +14,8 @@ namespace Arcanum
             static constexpr uint32_t FTSize  = 768;
             static constexpr uint32_t L1Size  = 256;
             static constexpr uint32_t L2Size  = 32;
-            static constexpr uint32_t QFactor = 64; // Quantization factor
+            static constexpr int32_t FTQ = 127; // Quantization factor of the feature transformer
+            static constexpr int32_t LQ = 64;   // Quantization factor of the linear layers
 
             struct Accumulator
             {
