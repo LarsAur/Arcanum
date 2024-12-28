@@ -114,23 +114,29 @@ void NNUE::findFullFeatureSet(const Board& board, FullFeatureSet& featureSet)
 
 void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
 {
+constexpr uint32_t NumChunks = L1Size / 16;
+
     FullFeatureSet featureSet;
     findFullFeatureSet(board, featureSet);
 
-    for(uint32_t i = 0; i < L1Size; i++)
+    __m256i* wacc = (__m256i*) acc->acc[Color::WHITE];
+    __m256i* bacc = (__m256i*) acc->acc[Color::BLACK];
+
+    for(uint32_t i = 0; i < NumChunks; i++)
     {
-        acc->acc[Color::WHITE][i] = m_net.ftBiases[i];
-        acc->acc[Color::BLACK][i] = m_net.ftBiases[i];
+        *(wacc + i) = _mm256_load_si256(((__m256i*) (m_net.ftBiases)) + i);
+        *(bacc + i) = _mm256_load_si256(((__m256i*) (m_net.ftBiases)) + i);
     }
 
     for(uint32_t i = 0; i < featureSet.numFeatures; i++)
     {
         uint32_t wfindex = featureSet.features[Color::WHITE][i];
         uint32_t bfindex = featureSet.features[Color::BLACK][i];
-        for(uint32_t j = 0; j < L1Size; j++)
+
+        for(uint32_t j = 0; j < NumChunks; j++)
         {
-            acc->acc[Color::WHITE][j] += m_net.ftWeights[wfindex*L1Size + j];
-            acc->acc[Color::BLACK][j] += m_net.ftWeights[bfindex*L1Size + j];
+            *(wacc + j) = _mm256_add_epi16(*(wacc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[wfindex*L1Size])) + j));
+            *(bacc + j) = _mm256_add_epi16(*(bacc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[bfindex*L1Size])) + j));
         }
     }
 }
