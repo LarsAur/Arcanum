@@ -188,23 +188,7 @@ eval_t NNUE::predict(const Accumulator* acc, Color perspective)
         clampedAcc[i] = std::clamp(acc->acc[perspective][i], int16_t(0), int16_t(FTQ));
     }
 
-    for(uint32_t i = 0; i < L2Size; i++)
-    {
-        l1Out[i] = m_net.l1Biases[i];
-    }
-
-    for(uint32_t i = 0; i < L2Size; i++)
-    {
-        for(uint32_t j = 0; j < L1Size; j++)
-        {
-            l1Out[i] += m_net.l1Weights[j*L2Size + i] * clampedAcc[j];
-        }
-    }
-
-    for (uint32_t i = 0; i < L2Size; i++)
-    {
-        l1Out[i] = std::clamp(l1Out[i], 0, int32_t(FTQ * LQ));
-    }
+    m_l1AffineRelu(clampedAcc, m_net.l1Weights, m_net.l1Biases, l1Out);
 
     float sum = m_net.l2Biases[0];
     for(uint32_t i = 0; i < L2Size; i++)
@@ -213,6 +197,53 @@ eval_t NNUE::predict(const Accumulator* acc, Color perspective)
     }
 
     return sum / (FTQ * LQ);
+}
+
+inline void NNUE::m_l1AffineRelu(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out)
+{
+    constexpr uint32_t NumInChunks  = L1Size / 32;
+    constexpr uint32_t NumOutChunks = L2Size / 8;
+
+    const __m256i zero = _mm256_setzero_si256();
+    const __m256i clip = _mm256_set1_epi32(int32_t(FTQ * LQ));
+
+    __m256i* out256 = (__m256i*) out;
+    __m256i* in256  = (__m256i*) in;
+    __m256i* w256   = (__m256i*) weights;
+
+    for(uint32_t i = 0; i < L2Size; i++)
+    {
+        __m256i acc = _mm256_setzero_si256();
+
+        for(uint32_t j = 0; j < NumInChunks; j++)
+        {
+            __m256i factors8 = _mm256_load_si256(in256 + j);
+            __m256i weights8 = _mm256_load_si256(w256 + i*NumInChunks + j);
+
+            __m256i sum16 = _mm256_maddubs_epi16(factors8, weights8);
+
+            // Extract the upper and lower part of the 16-bit vectors and convert them to 32-bit
+            __m256i sum32_1 = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(sum16, 0));
+            __m256i sum32_2 = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(sum16, 1));
+
+            acc = _mm256_add_epi32(acc, _mm256_add_epi32(sum32_1, sum32_2));
+        }
+
+        // Horizontally add all the 32-bit values in the acc vector
+        // Two sums will accumulate in acc[0] and acc[4] where acc is a 32-bit array
+        acc = _mm256_hadd_epi32(acc, acc);
+        acc = _mm256_hadd_epi32(acc, acc);
+        int32_t* acc32 = (int32_t*) &acc;
+        out[i] = acc32[0] + acc32[4];
+    }
+
+    // Add the bias and apply ReLu
+    for(uint32_t i = 0; i < NumOutChunks; i++)
+    {
+        __m256i bias = _mm256_load_si256(((__m256i*)(biases) + i));
+        *(out256 + i) = _mm256_add_epi32(*(out256 + i), bias);
+        *(out256 + i) = _mm256_max_epi32(zero, _mm256_min_epi32(clip, *(out256 + i)));
+    }
 }
 
 void NNUE::load(const std::string filename)
@@ -244,6 +275,17 @@ void NNUE::load(const std::string filename)
     ifs.read((char*) m_net.l1Biases,  sizeof(NNUE::Net::l1Biases));
     ifs.read((char*) m_net.l2Weights, sizeof(NNUE::Net::l2Weights));
     ifs.read((char*) m_net.l2Biases,  sizeof(NNUE::Net::l2Biases));
+
+    // Transpose the L1 matrix
+    int8_t tmp[L1Size * L2Size];
+    for(uint32_t i = 0; i < L2Size; i++)
+    {
+        for(uint32_t j = 0; j < L1Size; j++)
+        {
+            tmp[i*L1Size + j] = m_net.l1Weights[j*L2Size + i];
+        }
+    }
+    memcpy(m_net.l1Weights, tmp, sizeof(m_net.l1Weights));
 
     LOG("Finished loading QNNUE: " << filename)
 }

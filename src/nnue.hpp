@@ -22,6 +22,7 @@ namespace Arcanum
             };
 
             // Matrices are stored in column-major order
+            // except the l1Weights which are transposed during loading
             struct Net
             {
                 alignas(64) int16_t ftWeights[L1Size * FTSize];
@@ -62,6 +63,7 @@ namespace Arcanum
             eval_t predictBoard(const Board& board);
         private:
             Net m_net;
+            void m_l1AffineRelu(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out);
     };
 
 }
