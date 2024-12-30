@@ -114,7 +114,7 @@ void NNUE::findFullFeatureSet(const Board& board, FullFeatureSet& featureSet)
 
 void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
 {
-constexpr uint32_t NumChunks = L1Size / 16;
+    constexpr uint32_t NumChunks = L1Size / 16;
 
     FullFeatureSet featureSet;
     findFullFeatureSet(board, featureSet);
@@ -144,24 +144,31 @@ constexpr uint32_t NumChunks = L1Size / 16;
 // The board should be in the state before the move is performed
 void NNUE::incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Board& board, const Move& move)
 {
+    constexpr uint32_t NumChunks = L1Size / 16;
+
     DeltaFeatures delta;
     findDeltaFeatures(board, move, delta);
 
+    __m256i* wacc = (__m256i*) acc->acc[Color::WHITE];
+    __m256i* bacc = (__m256i*) acc->acc[Color::BLACK];
+    __m256i* wnextAcc = (__m256i*) nextAcc->acc[Color::WHITE];
+    __m256i* bnextAcc = (__m256i*) nextAcc->acc[Color::BLACK];
+
     // Copy from the old accumulator to the new accumulator
-    for(uint32_t i = 0; i < L1Size; i++)
+    for(uint32_t i = 0; i < NumChunks; i++)
     {
-        nextAcc->acc[Color::WHITE][i] = acc->acc[Color::WHITE][i];
-        nextAcc->acc[Color::BLACK][i] = acc->acc[Color::BLACK][i];
+        *(wnextAcc + i) = _mm256_load_si256(wacc + i);
+        *(bnextAcc + i) = _mm256_load_si256(bacc + i);
     }
 
     for(uint32_t i = 0; i < delta.numAdded; i++)
     {
         uint32_t wfindex = delta.added[Color::WHITE][i];
         uint32_t bfindex = delta.added[Color::BLACK][i];
-        for(uint32_t j = 0; j < L1Size; j++)
+        for(uint32_t j = 0; j < NumChunks; j++)
         {
-            nextAcc->acc[Color::WHITE][j] += m_net.ftWeights[wfindex*L1Size + j];
-            nextAcc->acc[Color::BLACK][j] += m_net.ftWeights[bfindex*L1Size + j];
+            *(wnextAcc + j) = _mm256_add_epi16(*(wnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[wfindex*L1Size])) + j));
+            *(bnextAcc + j) = _mm256_add_epi16(*(bnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[bfindex*L1Size])) + j));
         }
     }
 
@@ -169,10 +176,10 @@ void NNUE::incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Bo
     {
         uint32_t wfindex = delta.removed[Color::WHITE][i];
         uint32_t bfindex = delta.removed[Color::BLACK][i];
-        for(uint32_t j = 0; j < L1Size; j++)
+        for(uint32_t j = 0; j < NumChunks; j++)
         {
-            nextAcc->acc[Color::WHITE][j] -= m_net.ftWeights[wfindex*L1Size + j];
-            nextAcc->acc[Color::BLACK][j] -= m_net.ftWeights[bfindex*L1Size + j];
+            *(wnextAcc + j) = _mm256_sub_epi16(*(wnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[wfindex*L1Size])) + j));
+            *(bnextAcc + j) = _mm256_sub_epi16(*(bnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[bfindex*L1Size])) + j));
         }
     }
 }
