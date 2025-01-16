@@ -280,26 +280,6 @@ void UCI::train(std::istringstream& is)
     trainer.train(dataset, outputPath, batchSize, startEpoch, endEpoch);
 }
 
-void UCI::quantize(std::istringstream& is)
-{
-    std::string inputPath = "";
-    std::string outputPath = "";
-    std::string token;
-    while(is >> token)
-    {
-        toLowerCase(token);
-        if(token == "input")       is >> inputPath;
-        else if(token == "output") is >> outputPath;
-        else WARNING("Unknown token: " << token)
-    }
-
-    if(inputPath == "") { ERROR("Path to the input net cannot be empty") return; }
-
-    NNUETrainer trainer;
-    trainer.load(inputPath);
-    trainer.quantize(outputPath);
-}
-
 void UCI::help()
 {
     UCI_OUT("ucinewgame                            - Start a new game")
@@ -332,9 +312,6 @@ void UCI::help()
     UCI_OUT("\tstartepoch <epoch>                  - Epoch to start training. Epoch is used as timestep in ADAM optimizer")
     UCI_OUT("\tendepoch <epoch>                    - Epoch to stop training")
     UCI_OUT("\t[input <path>]                      - Path to the input net to continue training. Net is randomized if not set")
-    UCI_OUT("quantize                              - Quantize a floating point net")
-    UCI_OUT("\tinput <path>                        - Path to the input net")
-    UCI_OUT("\toutput <path>                       - Path to the quantized net")
     UCI_OUT("fengen                                - Generate FENs used to train the NNUE")
     UCI_OUT("\tpositions <path>                    - Path to a file containing a list of stating positions")
     UCI_OUT("\toutput <path>                       - Path to the output file")
@@ -376,7 +353,6 @@ void UCI::loop()
         else if (token == "d"         ) UCI::drawboard();
         else if (token == "fengen"    ) UCI::fengen(is);
         else if (token == "train"     ) UCI::train(is);
-        else if (token == "quantize"  ) UCI::quantize(is);
         else if (token == "help"      ) UCI::help();
     } while (token != "quit");
 

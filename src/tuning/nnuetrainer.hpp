@@ -68,6 +68,6 @@ namespace Arcanum
             void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch);
             bool load(std::string filename);
             void store(std::string filename);
-            void quantize(std::string outputPath);
+            Net* getNet();
     };
 }

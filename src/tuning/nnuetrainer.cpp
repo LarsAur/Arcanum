@@ -415,60 +415,7 @@ void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t ba
     }
 }
 
-void NNUETrainer::quantize(std::string outputPath)
+NNUETrainer::Net* NNUETrainer::getNet()
 {
-    LOG("Quantizing NNUE: " << outputPath)
-
-    NNUE::Net quantizedNet;
-    float* ftWeights = m_net.ftWeights.data();
-    float* ftBiases = m_net.ftBiases.data();
-    float* l1Weights = m_net.l1Weights.data();
-    float* l1Biases = m_net.l1Biases.data();
-    float* l2Weights = m_net.l2Weights.data();
-    float* l2Biases = m_net.l2Biases.data();
-
-    std::ofstream ofs(outputPath, std::ios::out | std::ios::binary);
-
-    if(!ofs.is_open())
-    {
-        ERROR("Unable to open " << outputPath)
-        return;
-    }
-
-    for(uint32_t i = 0; i < NNUE::FTSize * NNUE::L1Size; i++)
-    {
-        quantizedNet.ftWeights[i] = static_cast<int16_t>(NNUE::FTQ * ftWeights[i]);
-    }
-
-    for(uint32_t i = 0; i < NNUE::L1Size; i++)
-    {
-        quantizedNet.ftBiases[i] = static_cast<int16_t>(NNUE::FTQ * ftBiases[i]);
-    }
-
-    for(uint32_t i = 0; i < NNUE::L1Size * NNUE::L2Size; i++)
-    {
-        quantizedNet.l1Weights[i] = static_cast<int8_t>(NNUE::LQ * l1Weights[i]);
-    }
-
-    for(uint32_t i = 0; i < NNUE::L2Size; i++)
-    {
-        quantizedNet.l1Biases[i] = static_cast<int32_t>(NNUE::LQ * NNUE::FTQ * l1Biases[i]);
-    }
-
-    for(uint32_t i = 0; i < NNUE::L2Size; i++)
-    {
-        quantizedNet.l2Weights[i] = (l2Weights[i]);
-    }
-
-    quantizedNet.l2Biases[0] = l2Biases[0] * NNUE::FTQ * NNUE::LQ;
-
-    ofs.write(NNUE::QNNUE_MAGIC, strlen(NNUE::QNNUE_MAGIC));
-    ofs.write((char*) quantizedNet.ftWeights, sizeof(NNUE::Net::ftWeights));
-    ofs.write((char*) quantizedNet.ftBiases,  sizeof(NNUE::Net::ftBiases));
-    ofs.write((char*) quantizedNet.l1Weights, sizeof(NNUE::Net::l1Weights));
-    ofs.write((char*) quantizedNet.l1Biases,  sizeof(NNUE::Net::l1Biases));
-    ofs.write((char*) quantizedNet.l2Weights, sizeof(NNUE::Net::l2Weights));
-    ofs.write((char*) quantizedNet.l2Biases,  sizeof(NNUE::Net::l2Biases));
-
-    LOG("Finished quantizing NNUE: " << outputPath)
+    return &m_net;
 }

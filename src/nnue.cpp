@@ -1,4 +1,6 @@
 #include <nnue.hpp>
+#include <tuning/nnuetrainer.hpp>
+#include <tuning/matrix.hpp>
 
 using namespace Arcanum;
 
@@ -206,6 +208,13 @@ eval_t NNUE::predict(const Accumulator* acc, Color perspective)
     return sum / (FTQ * LQ);
 }
 
+eval_t NNUE::predictBoard(const Board& board)
+{
+    Accumulator acc;
+    initializeAccumulator(&acc, board);
+    return predict(&acc, board.getTurn());
+}
+
 inline void NNUE::m_l1AffineRelu(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out)
 {
     constexpr uint32_t NumInChunks  = L1Size / 32;
@@ -253,53 +262,55 @@ inline void NNUE::m_l1AffineRelu(const int8_t* in, int8_t* weights, int32_t* bia
     }
 }
 
-void NNUE::load(const std::string filename)
+template <typename T, uint32_t rows, uint32_t cols>
+static void quantizeMatrix(T* qMatrix, Matrix<rows, cols>& fMatrix, int32_t qFactor)
 {
-    LOG("Loading QNNUE: " << filename)
-
-    std::ifstream ifs(filename, std::ios::binary);
-    if (!ifs.is_open())
+    float* data = fMatrix.data();
+    for(uint32_t i = 0; i < rows * cols; i++)
     {
-        ERROR("Unable to open file: " << filename);
-        return;
+        qMatrix[i] = static_cast<T>(qFactor * data[i]);
     }
-
-    // Check the NNUE magic string
-    std::string magic;
-    magic.resize(strlen(NNUE::QNNUE_MAGIC));
-    ifs.read(magic.data(), strlen(NNUE::QNNUE_MAGIC));
-    if(NNUE::QNNUE_MAGIC != magic)
-    {
-        ERROR("Invalid magic number in file: " << filename);
-        ifs.close();
-        return;
-    }
-
-    // Read the net
-    ifs.read((char*) m_net.ftWeights, sizeof(NNUE::Net::ftWeights));
-    ifs.read((char*) m_net.ftBiases,  sizeof(NNUE::Net::ftBiases));
-    ifs.read((char*) m_net.l1Weights, sizeof(NNUE::Net::l1Weights));
-    ifs.read((char*) m_net.l1Biases,  sizeof(NNUE::Net::l1Biases));
-    ifs.read((char*) m_net.l2Weights, sizeof(NNUE::Net::l2Weights));
-    ifs.read((char*) m_net.l2Biases,  sizeof(NNUE::Net::l2Biases));
-
-    // Transpose the L1 matrix
-    int8_t tmp[L1Size * L2Size];
-    for(uint32_t i = 0; i < L2Size; i++)
-    {
-        for(uint32_t j = 0; j < L1Size; j++)
-        {
-            tmp[i*L1Size + j] = m_net.l1Weights[j*L2Size + i];
-        }
-    }
-    memcpy(m_net.l1Weights, tmp, sizeof(m_net.l1Weights));
-
-    LOG("Finished loading QNNUE: " << filename)
 }
 
-eval_t NNUE::predictBoard(const Board& board)
+// Transposes / Converts the matrix to be row major instead of column major
+// which is how the data is stored in the float Matrix
+template <typename T, uint32_t rows, uint32_t cols>
+static void quantizeTransposeMatrix(T* qMatrix, Matrix<rows, cols>& fMatrix, int32_t qFactor)
 {
-    Accumulator acc;
-    initializeAccumulator(&acc, board);
-    return predict(&acc, board.getTurn());
+    float* data = fMatrix.data();
+
+    for(uint32_t i = 0; i < rows; i++)
+    {
+        for(uint32_t j = 0; j < cols; j++)
+        {
+            qMatrix[i * cols + j] = static_cast<T>(qFactor * data[j*rows + i]);
+        }
+    }
+}
+
+void NNUE::load(const std::string filename)
+{
+    LOG("Loading NNUE: " << filename)
+
+    // // Load the float net
+    NNUETrainer fLoader;
+    if(!fLoader.load(filename))
+    {
+        ERROR("Unable to load " << filename);
+        return;
+    }
+
+    LOG("Quantizing NNUE")
+
+    // Quantize the featuretransformer and the L1 linear layer
+    quantizeMatrix(m_net.ftWeights, fLoader.getNet()->ftWeights, FTQ);
+    quantizeMatrix(m_net.ftBiases,  fLoader.getNet()->ftBiases,  FTQ);
+    quantizeTransposeMatrix(m_net.l1Weights, fLoader.getNet()->l1Weights, LQ);
+    quantizeMatrix(m_net.l1Biases, fLoader.getNet()->l1Biases, LQ * FTQ);
+
+    // // Load float layers
+    memcpy(m_net.l2Weights, fLoader.getNet()->l2Weights.data(), sizeof(m_net.l2Weights));
+    m_net.l2Biases[0] =  *fLoader.getNet()->l2Biases.data() * FTQ * LQ;
+
+    LOG("Finished loading and quantizing: " << filename)
 }
