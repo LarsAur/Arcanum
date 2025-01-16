@@ -56,13 +56,16 @@ namespace Arcanum
             static uint32_t getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pieceType, Color perspective);
             static void findDeltaFeatures(const Board& board, const Move& move, DeltaFeatures& delta);
             static void findFullFeatureSet(const Board& board, FullFeatureSet& featureSet);
+
+            NNUE();
+            ~NNUE();
             void load(const std::string filename);
             void initializeAccumulator(Accumulator* acc, const Board& board);
             void incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Board& board, const Move& move);
             eval_t predict(const Accumulator* acc, Color perspective);
             eval_t predictBoard(const Board& board);
         private:
-            Net m_net;
+            Net* m_net;
             void m_l1AffineRelu(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out);
     };
 

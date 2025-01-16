@@ -114,6 +114,16 @@ void NNUE::findFullFeatureSet(const Board& board, FullFeatureSet& featureSet)
     }
 }
 
+NNUE::NNUE()
+{
+    m_net = new NNUE::Net();
+}
+
+NNUE::~NNUE()
+{
+    delete m_net;
+}
+
 void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
 {
     constexpr uint32_t NumChunks = L1Size / 16;
@@ -126,8 +136,8 @@ void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
 
     for(uint32_t i = 0; i < NumChunks; i++)
     {
-        *(wacc + i) = _mm256_load_si256(((__m256i*) (m_net.ftBiases)) + i);
-        *(bacc + i) = _mm256_load_si256(((__m256i*) (m_net.ftBiases)) + i);
+        *(wacc + i) = _mm256_load_si256(((__m256i*) (m_net->ftBiases)) + i);
+        *(bacc + i) = _mm256_load_si256(((__m256i*) (m_net->ftBiases)) + i);
     }
 
     for(uint32_t i = 0; i < featureSet.numFeatures; i++)
@@ -137,8 +147,8 @@ void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
 
         for(uint32_t j = 0; j < NumChunks; j++)
         {
-            *(wacc + j) = _mm256_add_epi16(*(wacc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[wfindex*L1Size])) + j));
-            *(bacc + j) = _mm256_add_epi16(*(bacc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[bfindex*L1Size])) + j));
+            *(wacc + j) = _mm256_add_epi16(*(wacc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[wfindex*L1Size])) + j));
+            *(bacc + j) = _mm256_add_epi16(*(bacc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[bfindex*L1Size])) + j));
         }
     }
 }
@@ -169,8 +179,8 @@ void NNUE::incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Bo
         uint32_t bfindex = delta.added[Color::BLACK][i];
         for(uint32_t j = 0; j < NumChunks; j++)
         {
-            *(wnextAcc + j) = _mm256_add_epi16(*(wnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[wfindex*L1Size])) + j));
-            *(bnextAcc + j) = _mm256_add_epi16(*(bnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[bfindex*L1Size])) + j));
+            *(wnextAcc + j) = _mm256_add_epi16(*(wnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[wfindex*L1Size])) + j));
+            *(bnextAcc + j) = _mm256_add_epi16(*(bnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[bfindex*L1Size])) + j));
         }
     }
 
@@ -180,8 +190,8 @@ void NNUE::incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Bo
         uint32_t bfindex = delta.removed[Color::BLACK][i];
         for(uint32_t j = 0; j < NumChunks; j++)
         {
-            *(wnextAcc + j) = _mm256_sub_epi16(*(wnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[wfindex*L1Size])) + j));
-            *(bnextAcc + j) = _mm256_sub_epi16(*(bnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net.ftWeights[bfindex*L1Size])) + j));
+            *(wnextAcc + j) = _mm256_sub_epi16(*(wnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[wfindex*L1Size])) + j));
+            *(bnextAcc + j) = _mm256_sub_epi16(*(bnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[bfindex*L1Size])) + j));
         }
     }
 }
@@ -197,12 +207,12 @@ eval_t NNUE::predict(const Accumulator* acc, Color perspective)
         clampedAcc[i] = std::clamp(acc->acc[perspective][i], int16_t(0), int16_t(FTQ));
     }
 
-    m_l1AffineRelu(clampedAcc, m_net.l1Weights, m_net.l1Biases, l1Out);
+    m_l1AffineRelu(clampedAcc, m_net->l1Weights, m_net->l1Biases, l1Out);
 
-    float sum = m_net.l2Biases[0];
+    float sum = m_net->l2Biases[0];
     for(uint32_t i = 0; i < L2Size; i++)
     {
-        sum += l1Out[i] * m_net.l2Weights[i];
+        sum += l1Out[i] * m_net->l2Weights[i];
     }
 
     return sum / (FTQ * LQ);
@@ -303,14 +313,14 @@ void NNUE::load(const std::string filename)
     LOG("Quantizing NNUE")
 
     // Quantize the featuretransformer and the L1 linear layer
-    quantizeMatrix(m_net.ftWeights, fLoader.getNet()->ftWeights, FTQ);
-    quantizeMatrix(m_net.ftBiases,  fLoader.getNet()->ftBiases,  FTQ);
-    quantizeTransposeMatrix(m_net.l1Weights, fLoader.getNet()->l1Weights, LQ);
-    quantizeMatrix(m_net.l1Biases, fLoader.getNet()->l1Biases, LQ * FTQ);
+    quantizeMatrix(m_net->ftWeights, fLoader.getNet()->ftWeights, FTQ);
+    quantizeMatrix(m_net->ftBiases,  fLoader.getNet()->ftBiases,  FTQ);
+    quantizeTransposeMatrix(m_net->l1Weights, fLoader.getNet()->l1Weights, LQ);
+    quantizeMatrix(m_net->l1Biases, fLoader.getNet()->l1Biases, LQ * FTQ);
 
-    // // Load float layers
-    memcpy(m_net.l2Weights, fLoader.getNet()->l2Weights.data(), sizeof(m_net.l2Weights));
-    m_net.l2Biases[0] =  *fLoader.getNet()->l2Biases.data() * FTQ * LQ;
+    // Load float layers
+    memcpy(m_net->l2Weights, fLoader.getNet()->l2Weights.data(), sizeof(m_net->l2Weights));
+    m_net->l2Biases[0] =  *fLoader.getNet()->l2Biases.data() * FTQ * LQ;
 
     LOG("Finished loading and quantizing: " << filename)
 }
