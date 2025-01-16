@@ -78,13 +78,7 @@ bool NNUETrainer::m_loadNetFromStream(std::istream& stream, Net& net)
     DEBUG("Metadata:\n" << metadata)
 
     // Read Net data
-
-    net.ftWeights.readFromStream(stream);
-    net.ftBiases.readFromStream(stream);
-    net.l1Weights.readFromStream(stream);
-    net.l1Biases.readFromStream(stream);
-    net.l2Weights.readFromStream(stream);
-    net.l2Biases.readFromStream(stream);
+    NET_UNARY_OP(net, readFromStream(stream))
 
     return true;
 }
@@ -123,12 +117,7 @@ void NNUETrainer::m_storeNet(std::string filename, Net& net)
     stream.write(metadata.c_str(), size);
 
     // Write Net data
-    net.ftWeights.writeToStream(stream);
-    net.ftBiases.writeToStream(stream);
-    net.l1Weights.writeToStream(stream);
-    net.l1Biases.writeToStream(stream);
-    net.l2Weights.writeToStream(stream);
-    net.l2Biases.writeToStream(stream);
+    NET_UNARY_OP(net, writeToStream(stream))
 
     stream.close();
 
