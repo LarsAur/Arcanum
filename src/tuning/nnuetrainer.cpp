@@ -25,12 +25,12 @@ _net1.l2Biases ._op;
 
 const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE";
 
-void NNUETrainer::load(std::string filename)
+bool NNUETrainer::load(std::string filename)
 {
-    m_loadNet(filename, m_net);
+    return m_loadNet(filename, m_net);
 }
 
-void NNUETrainer::m_loadNet(std::string filename, Net& net)
+bool NNUETrainer::m_loadNet(std::string filename, Net& net)
 {
     std::string path = getWorkPath();
     std::stringstream ss;
@@ -41,17 +41,18 @@ void NNUETrainer::m_loadNet(std::string filename, Net& net)
     if(!fStream.is_open())
     {
         ERROR("Unable to open " << ss.str())
-        return;
+        return false;
     }
 
     std::istream& stream = fStream;
-    m_loadNetFromStream(stream, net);
+    bool status = m_loadNetFromStream(stream, net);
     fStream.close();
 
     LOG("Finished loading FNNUE " << ss.str())
+    return status;
 }
 
-void NNUETrainer::m_loadNetFromStream(std::istream& stream, Net& net)
+bool NNUETrainer::m_loadNetFromStream(std::istream& stream, Net& net)
 {
     // Reading header
 
@@ -65,7 +66,7 @@ void NNUETrainer::m_loadNetFromStream(std::istream& stream, Net& net)
     if(magic != NNUE_MAGIC)
     {
         ERROR("Mismatching NNUE magic" << magic << " != " << NNUE_MAGIC);
-        return;
+        return false;
     }
 
     stream.read((char*) &size, sizeof(uint32_t));
@@ -84,6 +85,8 @@ void NNUETrainer::m_loadNetFromStream(std::istream& stream, Net& net)
     net.l1Biases.readFromStream(stream);
     net.l2Weights.readFromStream(stream);
     net.l2Biases.readFromStream(stream);
+
+    return true;
 }
 
 void NNUETrainer::store(std::string filename)
