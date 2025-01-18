@@ -18,6 +18,12 @@ uint32_t NNUE::getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pie
     return (((uint32_t(pieceType) << 6) | uint32_t(pieceSquare)) << 1) | (pieceColor ^ perspective);
 }
 
+uint32_t NNUE::getOutputBucket(const Board& board)
+{
+    constexpr uint32_t Divisor = (32 + NumOutputBuckets - 1) / NumOutputBuckets;
+    return (board.getNumPieces() - 2) / Divisor;
+}
+
 // Calculate the delta features of the board when performing a move
 // The board should be in the state before the move is performed
 void NNUE::findDeltaFeatures(const Board& board, const Move& move, DeltaFeatures& delta)
@@ -196,23 +202,21 @@ void NNUE::incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Bo
     }
 }
 
-eval_t NNUE::predict(const Accumulator* acc, Color perspective)
+eval_t NNUE::predict(const Accumulator* acc, const Board& board)
 {
     alignas(64) int8_t clampedAcc[L1Size];
     alignas(64) int32_t l1Out[L2Size];
 
-    // Clipped RELU of the accumulator
-    for(uint32_t i = 0; i < L1Size; i++)
-    {
-        clampedAcc[i] = std::clamp(acc->acc[perspective][i], int16_t(0), int16_t(FTQ));
-    }
+    uint32_t bucket = getOutputBucket(board);
 
-    m_l1AffineRelu(clampedAcc, m_net->l1Weights, m_net->l1Biases, l1Out);
+    m_clampAcc(acc->acc[board.getTurn()], clampedAcc);
 
-    float sum = m_net->l2Biases[0];
+    m_l1AffineRelu(clampedAcc, m_net->l1Weights[bucket], m_net->l1Biases[bucket], l1Out);
+
+    float sum = m_net->l2Biases[bucket][0];
     for(uint32_t i = 0; i < L2Size; i++)
     {
-        sum += l1Out[i] * m_net->l2Weights[i];
+        sum += l1Out[i] * m_net->l2Weights[bucket][i];
     }
 
     return sum / (FTQ * LQ);
@@ -222,7 +226,37 @@ eval_t NNUE::predictBoard(const Board& board)
 {
     Accumulator acc;
     initializeAccumulator(&acc, board);
-    return predict(&acc, board.getTurn());
+    return predict(&acc, board);
+}
+
+inline void NNUE::m_clampAcc(const int16_t* in, int8_t* out)
+{
+    constexpr uint32_t NumChunks = L1Size / 16;
+
+    __m256i* in256 = (__m256i*) in;
+    __m256i* out256 = (__m256i*) out;
+
+    const __m256i zero = _mm256_setzero_si256();
+    const __m256i clip = _mm256_set1_epi16(FTQ);
+
+    for(uint32_t i = 0; i < NumChunks / 2; i++)
+    {
+        __m256i acc1 = _mm256_load_si256(in256 + 2*i);
+        __m256i acc2 = _mm256_load_si256(in256 + 2*i + 1);
+        acc1 = _mm256_max_epi16(zero, _mm256_min_epi16(clip, acc1));
+        acc2 = _mm256_max_epi16(zero, _mm256_min_epi16(clip, acc2));
+
+        // Convert the two 16-bit vectors to 8-bit
+        // Note that this shuffles the output [a1,a2,a3,a4], [b1,b2,b3,b4] -> [(a1,a2), (b1,b2), (a3, a4), (b3, b4)]
+        __m256i acc8bit = _mm256_packs_epi16(acc1, acc2);
+
+        // Unshuffle the shuffled output from above
+        // 64-bit chunks are moved according to the select signal
+        constexpr uint8_t select = 0b11011000; // 0, 2, 1, 3 (LSB first)
+        acc8bit = _mm256_permute4x64_epi64(acc8bit, select);
+
+        _mm256_store_si256(out256 + i, acc8bit);
+    }
 }
 
 inline void NNUE::m_l1AffineRelu(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out)
@@ -312,15 +346,18 @@ void NNUE::load(const std::string filename)
 
     LOG("Quantizing NNUE")
 
-    // Quantize the featuretransformer and the L1 linear layer
+    // Quantize the featuretransformer
     quantizeMatrix(m_net->ftWeights, fLoader.getNet()->ftWeights, FTQ);
     quantizeMatrix(m_net->ftBiases,  fLoader.getNet()->ftBiases,  FTQ);
-    quantizeTransposeMatrix(m_net->l1Weights, fLoader.getNet()->l1Weights, LQ);
-    quantizeMatrix(m_net->l1Biases, fLoader.getNet()->l1Biases, LQ * FTQ);
 
-    // Load float layers
-    memcpy(m_net->l2Weights, fLoader.getNet()->l2Weights.data(), sizeof(m_net->l2Weights));
-    m_net->l2Biases[0] =  *fLoader.getNet()->l2Biases.data() * FTQ * LQ;
+    // Quantize the output layers with buckets
+    for(uint32_t i = 0; i < NumOutputBuckets; i++)
+    {
+        quantizeTransposeMatrix(m_net->l1Weights[i], fLoader.getNet()->l1Weights[i], LQ);
+        quantizeMatrix(m_net->l1Biases[i], fLoader.getNet()->l1Biases[i], LQ * FTQ);
+        quantizeMatrix(m_net->l2Weights[i], fLoader.getNet()->l2Weights[i], 1);      // Note: Float layer
+        quantizeMatrix(m_net->l2Biases[i], fLoader.getNet()->l2Biases[i], FTQ * LQ); // Note: Float layer
+    }
 
     LOG("Finished loading and quantizing: " << filename)
 }

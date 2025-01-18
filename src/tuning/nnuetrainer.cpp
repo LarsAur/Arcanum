@@ -10,18 +10,24 @@ using namespace Arcanum;
 #define NET_BINARY_OP(_net1, _op, _net2) \
 _net1.ftWeights._op(_net2.ftWeights); \
 _net1.ftBiases ._op(_net2.ftBiases ); \
-_net1.l1Weights._op(_net2.l1Weights); \
-_net1.l1Biases ._op(_net2.l1Biases ); \
-_net1.l2Weights._op(_net2.l2Weights); \
-_net1.l2Biases ._op(_net2.l2Biases );
+for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++) \
+{ \
+_net1.l1Weights[i]._op(_net2.l1Weights[i]); \
+_net1.l1Biases [i]._op(_net2.l1Biases [i]); \
+_net1.l2Weights[i]._op(_net2.l2Weights[i]); \
+_net1.l2Biases [i]._op(_net2.l2Biases [i]); \
+}
 
 #define NET_UNARY_OP(_net1, _op) \
 _net1.ftWeights._op; \
 _net1.ftBiases ._op; \
-_net1.l1Weights._op; \
-_net1.l1Biases ._op; \
-_net1.l2Weights._op; \
-_net1.l2Biases ._op;
+for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++) \
+{ \
+_net1.l1Weights[i]._op; \
+_net1.l1Biases [i]._op; \
+_net1.l2Weights[i]._op; \
+_net1.l2Biases [i]._op; \
+}
 
 const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE";
 
@@ -107,7 +113,7 @@ void NNUETrainer::m_storeNet(std::string filename, Net& net)
     time_t now = time(0);
     tm *gmt = gmtime(&now);
     std::string utcstr = asctime(gmt);
-    std::string arch = "768->256->32->1";
+    std::string arch = "768->8x(512->32->1) Quantizable";
 
     std::string metadata = utcstr + arch;
     uint32_t size = metadata.size();
@@ -180,19 +186,28 @@ void NNUETrainer::randomizeNet()
 {
     LOG("Randomizing NNUETrainer")
     m_net.ftWeights.heRandomize();
-    m_net.l1Weights.heRandomize();
-    m_net.l2Weights.heRandomize();
+    m_net.l1Weights[0].heRandomize();
+    m_net.l2Weights[0].heRandomize();
     m_net.ftBiases.setZero();
-    m_net.l1Biases.setZero();
-    m_net.l2Biases.setZero();
+    m_net.l1Biases[0].setZero();
+    m_net.l2Biases[0].setZero();
+
+    for(uint32_t i = 1; i < NNUE::NumOutputBuckets; i++)
+    {
+        m_net.l1Weights[i].copy(m_net.l1Weights[0]);
+        m_net.l2Weights[i].copy(m_net.l2Weights[0]);
+        m_net.l1Biases[i].copy(m_net.l1Biases[0]);
+        m_net.l2Biases[i].copy(m_net.l2Biases[0]);
+    }
 }
 
 float NNUETrainer::m_predict(const Board& board)
 {
+    uint32_t bucket = NNUE::getOutputBucket(board);
     m_initAccumulator(board);
     m_trace.acc.clippedRelu(ReluClipValue);
-    feedForwardClippedReLu(m_net.l1Weights, m_net.l1Biases, m_trace.acc, m_trace.l1Out, ReluClipValue);
-    lastLevelFeedForward(m_net.l2Weights, m_net.l2Biases, m_trace.l1Out, m_trace.out);
+    feedForwardClippedReLu(m_net.l1Weights[bucket], m_net.l1Biases[bucket], m_trace.acc, m_trace.l1Out, ReluClipValue);
+    lastLevelFeedForward(m_net.l2Weights[bucket], m_net.l2Biases[bucket], m_trace.l1Out, m_trace.out);
     return *m_trace.out.data();
 }
 
@@ -243,6 +258,7 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser
     // -- Create input vector
     NNUE::FeatureSet featureSet;
     m_findFeatureSet(board, featureSet);
+    uint32_t bucket = NNUE::getOutputBucket(board);
 
     // -- Calculation of auxillery coefficients
     Matrix<NNUE::L1Size, 1> delta1(false);
@@ -262,10 +278,10 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser
 
     delta3.set(0, 0, sigmoidPrime * lossPrime);
 
-    multiplyTransposeA(m_net.l2Weights, delta3, delta2);
+    multiplyTransposeA(m_net.l2Weights[bucket], delta3, delta2);
     delta2.hadamard(L2ReLuPrime);
 
-    multiplyTransposeA(m_net.l1Weights, delta2, delta1);
+    multiplyTransposeA(m_net.l1Weights[bucket], delta2, delta1);
     delta1.hadamard(accumulatorReLuPrime);
 
     // Calculation of gradient
@@ -279,11 +295,11 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser
 
     // Accumulate the change
 
-    m_gradient.l2Biases.add(delta3);
-    m_gradient.l1Biases.add(delta2);
+    m_gradient.l2Biases[bucket].add(delta3);
+    m_gradient.l1Biases[bucket].add(delta2);
     m_gradient.ftBiases.add(delta1);
-    m_gradient.l1Weights.add(gradientL1Weights);
-    m_gradient.l2Weights.add(gradientL2Weights);
+    m_gradient.l1Weights[bucket].add(gradientL1Weights);
+    m_gradient.l2Weights[bucket].add(gradientL2Weights);
 }
 
 void NNUETrainer::m_applyGradient(uint32_t timestep)
@@ -328,7 +344,10 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
     NET_BINARY_OP(m_net, add, m_moments.mHat)
 
     // Clamp the weights of the linear layers to enable quantization at a later stage
-    m_net.l1Weights.clamp(-127.0f/NNUE::LQ, 127.0f/NNUE::LQ);
+    for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
+    {
+        m_net.l1Weights[i].clamp(-127.0f/NNUE::LQ, 127.0f/NNUE::LQ);
+    }
 }
 
 void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch)

@@ -103,5 +103,5 @@ eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
         return 0;
     };
 
-    return nnue.predict(m_accumulatorStack[m_accumulatorStackPointer], board.getTurn());
+    return nnue.predict(m_accumulatorStack[m_accumulatorStackPointer], board);
 }
