@@ -63,6 +63,9 @@ namespace Arcanum
             void m_storeNet(std::string filename, Net& net);
             bool m_loadNet(std::string filename, Net& net);
             bool m_loadNetFromStream(std::istream& stream, Net& net);
+            #ifdef ENABLE_INCBIN
+            bool m_loadIncbin();
+            #endif
         public:
             void randomizeNet();
             void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch);

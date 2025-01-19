@@ -7,6 +7,12 @@
 
 using namespace Arcanum;
 
+#ifdef ENABLE_INCBIN
+#define INCBIN_PREFIX
+#include <incbin/incbin.hpp>
+INCBIN(char, EmbeddedNNUE, TOSTRING(DEFAULT_NNUE));
+#endif
+
 #define NET_BINARY_OP(_net1, _op, _net2) \
 _net1.ftWeights._op(_net2.ftWeights); \
 _net1.ftBiases ._op(_net2.ftBiases ); \
@@ -33,8 +39,30 @@ const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE v5";
 
 bool NNUETrainer::load(std::string filename)
 {
+    #ifdef ENABLE_INCBIN
+    // Some GUIs always pass the UCI options, even if they are the default.
+    // This check is to prevent trying to load the default NNUE from file if INCBIN is used.
+    // This is done because the file will likely not exist.
+    // Additionally, it allows us to continue using a single load function
+    if(filename == TOSTRING(DEFAULT_NNUE))
+    {
+        return m_loadIncbin();
+    }
+    #endif
+
     return m_loadNet(filename, m_net);
 }
+
+#ifdef ENABLE_INCBIN
+bool NNUETrainer::m_loadIncbin()
+{
+    DEBUG("Loading NNUE from INCBIN " << TOSTRING(DEFAULT_NNUE))
+    std::stringstream sstream;
+    sstream.write(reinterpret_cast<const char*>(EmbeddedNNUEData), EmbeddedNNUESize);
+    std::istream& stream = sstream;
+    return m_loadNetFromStream(stream, m_net);
+}
+#endif
 
 bool NNUETrainer::m_loadNet(std::string filename, Net& net)
 {
