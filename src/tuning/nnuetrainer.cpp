@@ -29,7 +29,7 @@ _net1.l2Weights[i]._op; \
 _net1.l2Biases [i]._op; \
 }
 
-const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE";
+const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE v5";
 
 bool NNUETrainer::load(std::string filename)
 {
@@ -60,25 +60,32 @@ bool NNUETrainer::m_loadNet(std::string filename, Net& net)
 
 bool NNUETrainer::m_loadNetFromStream(std::istream& stream, Net& net)
 {
-    // Reading header
-
     std::string magic;
     std::string metadata;
-    uint32_t size;
+    uint32_t magicSize;
+    uint32_t metaSize;
 
-    magic.resize(strlen(NNUE_MAGIC));
-    stream.read(magic.data(), strlen(NNUE_MAGIC));
-
-    if(magic != NNUE_MAGIC)
+    // Check magic size
+    stream.read((char*) &magicSize, sizeof(uint32_t));
+    if(magicSize != strlen(NNUE_MAGIC))
     {
-        ERROR("Mismatching NNUE magic" << magic << " != " << NNUE_MAGIC);
+        ERROR("Mismatching NNUE magic size " << magicSize << " != " << strlen(NNUE_MAGIC));
         return false;
     }
 
-    stream.read((char*) &size, sizeof(uint32_t));
+    // Check magic value
+    magic.resize(magicSize);
+    stream.read(magic.data(), magicSize);
+    if(magic != NNUE_MAGIC)
+    {
+        ERROR("Mismatching NNUE magic " << magic << " != " << NNUE_MAGIC);
+        return false;
+    }
 
-    metadata.resize(size);
-    stream.read(metadata.data(), size);
+    // Read metadata
+    stream.read((char*) &metaSize, sizeof(uint32_t));
+    metadata.resize(metaSize);
+    stream.read(metadata.data(), metaSize);
 
     DEBUG("Magic:" << magic)
     DEBUG("Metadata:\n" << metadata)
@@ -109,18 +116,20 @@ void NNUETrainer::m_storeNet(std::string filename, Net& net)
         return;
     }
 
-    // Write header
+    // Write magic (size of magic + magic)
+    uint32_t magicSize = strlen(NNUE_MAGIC);
+    stream.write((char*) &magicSize, sizeof(uint32_t));
+    stream.write(NNUE_MAGIC, magicSize);
+
+    // Write metadata (size of metadata + metadata)
     time_t now = time(0);
     tm *gmt = gmtime(&now);
     std::string utcstr = asctime(gmt);
-    std::string arch = "768->8x(512->32->1) Quantizable";
-
+    std::string arch = "768->8x(512->16->1) Quantizable";
     std::string metadata = utcstr + arch;
-    uint32_t size = metadata.size();
-
-    stream.write(NNUE_MAGIC, strlen(NNUE_MAGIC));
-    stream.write((char*) &size, sizeof(uint32_t));
-    stream.write(metadata.c_str(), size);
+    uint32_t metaSize = metadata.size();
+    stream.write((char*) &metaSize, sizeof(uint32_t));
+    stream.write(metadata.c_str(), metaSize);
 
     // Write Net data
     NET_UNARY_OP(net, writeToStream(stream))
