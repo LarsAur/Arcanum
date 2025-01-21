@@ -15,7 +15,17 @@ namespace Arcanum
                 std::string m_name;
                 std::function<void()> m_callback;
             public:
-                Option(std::string name, std::function<void()> callback = {}) : m_name(name), m_callback(callback) {}
+                static std::vector<Option*> options;
+
+                Option(std::string name, std::function<void()> callback = {}) :
+                    m_name(name), m_callback(callback)
+                {
+                    options.push_back(this);
+                }
+
+                virtual void list() = 0;
+                virtual void set(std::string str) = 0;
+                virtual bool isButton() { return false; }
 
                 bool matches(std::string name)
                 {
@@ -97,6 +107,8 @@ namespace Arcanum
                 {
                     m_callback();
                 }
+
+                virtual bool isButton() { return true; }
         };
 
         class StringOption : public Option

@@ -14,6 +14,7 @@ bool        UCI::isSearching = false;
 std::thread UCI::searchThread;
 Board       UCI::board(FEN::startpos);
 Searcher    UCI::searcher;
+std::vector<Option*> Option::options;
 
 SpinOption   UCI::optionHash         = SpinOption("Hash", 32, 0, 8196, []{ UCI::searcher.resizeTT(UCI::optionHash.value); });
 ButtonOption UCI::optionClearHash    = ButtonOption("ClearHash", []{ UCI::searcher.clear(); });
@@ -26,12 +27,10 @@ void UCI::listUCI()
 {
     UCI_OUT(std::string("id name Arcanum ").append(TOSTRING(ARCANUM_VERSION)))
     UCI_OUT("id author Lars Murud Aurud")
-    UCI::optionHash.list();
-    UCI::optionClearHash.list();
-    UCI::optionSyzygyPath.list();
-    UCI::optionNNUEPath.list();
-    UCI::optionMoveOverhead.list();
-    UCI::optionNormalizeScore.list();
+    for(auto option : Option::options)
+    {
+        option->list();
+    }
     UCI_OUT("uciok")
 }
 
@@ -63,16 +62,26 @@ void UCI::setoption(std::istringstream& is)
     if(tokens[0] != "name") return;
 
     // Match button options
-    if(UCI::optionClearHash.matches(name)) UCI::optionClearHash.set("");
+    for(auto option : Option::options)
+    {
+        if(option->matches(name) && option->isButton())
+        {
+            option->set("");
+            break;
+        }
+    }
 
     if(tokens[1] != "value") return;
 
     // Match non-button options
-    if     (UCI::optionHash.matches(name)        ) UCI::optionHash.set(value);
-    else if(UCI::optionMoveOverhead.matches(name)) UCI::optionMoveOverhead.set(value);
-    else if(UCI::optionNNUEPath.matches(name)    ) UCI::optionNNUEPath.set(value);
-    else if(UCI::optionSyzygyPath.matches(name)  ) UCI::optionSyzygyPath.set(value);
-    else if(UCI::optionNormalizeScore.matches(name)) UCI::optionNormalizeScore.set(value);
+    for(auto option : Option::options)
+    {
+        if(option->matches(name) && !option->isButton())
+        {
+            option->set(value);
+            break;
+        }
+    }
 }
 
 void UCI::go(std::istringstream& is)
