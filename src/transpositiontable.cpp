@@ -134,7 +134,7 @@ inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
            + (newEntry.generation - oldEntry.generation);
 }
 
-void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
+void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
 {
     if(!m_table)
         return;
@@ -150,6 +150,7 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
         .generation = generation,
         .numPieces = numPieces,
         .bestMove = bestMove,
+        .isPv = isPv,
         // Padding is not set
     };
 
@@ -172,7 +173,7 @@ void TranspositionTable::add(eval_t score, Move bestMove, uint8_t depth, uint8_t
         ttEntry_t _entry = cluster->entries[i];
         if(_entry.hash == entry.hash)
         {
-            if(_entry.depth < entry.depth)
+            if((_entry.depth < entry.depth) || (_entry.isPv < entry.isPv))
             {
                 m_stats.updates++;
                 cluster->entries[i] = entry;

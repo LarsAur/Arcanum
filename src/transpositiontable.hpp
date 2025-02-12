@@ -27,7 +27,8 @@ namespace Arcanum
         // If the root has less pieces, this position can never be reached, and can safely be replaced.
         uint8_t numPieces;
         Move bestMove;     // It would also be possible to pack this data into 6 bytes. For now it is 8
-        int16_t _padding; // These bytes are free and can be used for something later
+        uint8_t isPv;
+        uint8_t _padding; // These bytes are free and can be used for something later
     } ttEntry_t;
 
     typedef struct ttStats_t
@@ -67,7 +68,7 @@ namespace Arcanum
 
             void prefetch(hash_t hash);
             std::optional<ttEntry_t>get(hash_t hash, uint8_t plyFromRoot);
-            void add(eval_t score, Move bestMove, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t nonRevMovesRoot, uint8_t nonRevMoves, hash_t hash);
+            void add(eval_t score, Move bestMove, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t nonRevMovesRoot, uint8_t nonRevMoves, hash_t hash);
             void resize(uint32_t mbSize);
             void clear();
             void clearStats();
