@@ -128,12 +128,6 @@ std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
     return {}; // Return empty optional
 }
 
-inline int8_t m_replaceScore(TTEntry& newEntry, TTEntry& oldEntry)
-{
-    return (newEntry.depth - oldEntry.depth) // Depth
-           + (newEntry.generation - oldEntry.generation);
-}
-
 void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
 {
     if(!m_table)
@@ -204,15 +198,16 @@ void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t dep
 
     // If no empty entry is found, attempt to find a valid replacement
     TTEntry *replace = nullptr;
-    int8_t bestReplaceScore = 0;
+    int32_t lowestPriority = newEntry.getPriority();
     for(size_t i = 0; i < ClusterSize; i++)
     {
-        TTEntry oldEntry = cluster->entries[i];
-        int8_t replaceScore = m_replaceScore(newEntry, oldEntry);
-        if(replaceScore > bestReplaceScore)
+        TTEntry* oldEntry = &cluster->entries[i];
+        int32_t priority = oldEntry->getPriority();
+
+        if(priority < lowestPriority)
         {
-            bestReplaceScore = replaceScore;
-            replace = &cluster->entries[i];
+            lowestPriority = priority;
+            replace = oldEntry;
         }
     }
 
@@ -226,7 +221,6 @@ void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t dep
     {
         m_stats.blockedReplacements++;
     }
-
 }
 
 // Note: If the table has been resized to a smaller table, the stats may not be entirely accurate.

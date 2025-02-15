@@ -28,6 +28,12 @@ namespace Arcanum
         Move bestMove;     // It would also be possible to pack this data into 6 bytes. For now it is 8
         uint8_t isPv;
         uint8_t _padding; // These bytes are free and can be used for something later
+
+        // Returns how valuable it is to keep the entry in TT
+        inline int32_t getPriority() const
+        {
+            return depth + generation;
+        }
     };
 
     struct TTStats
