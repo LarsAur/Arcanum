@@ -11,10 +11,10 @@
 using namespace Arcanum;
 
 TranspositionTable::TranspositionTable() :
-    m_mbSize(0),
     m_table(nullptr),
-    m_clusterCount(0),
-    m_entryCount(0)
+    m_mbSize(0),
+    m_numClusters(0),
+    m_numEntries(0)
 {}
 
 TranspositionTable::~TranspositionTable()
@@ -26,13 +26,13 @@ void TranspositionTable::resize(uint32_t mbSize)
 {
     if(m_mbSize == mbSize) return;
 
-    ttCluster_t* newTable = nullptr;
-    size_t clusterCount = (mbSize * 1024 * 1024) / sizeof(ttCluster_t);
-    size_t entryCount = clusterSize * clusterCount;
+    TTcluster* newTable = nullptr;
+    size_t numClusters = (mbSize * 1024 * 1024) / sizeof(TTcluster);
+    size_t numEntries = ClusterSize * numClusters;
 
     if(mbSize != 0)
     {
-        newTable = static_cast<ttCluster_t*>(Memory::pageAlignedMalloc(clusterCount * sizeof(ttCluster_t)));
+        newTable = static_cast<TTcluster*>(Memory::pageAlignedMalloc(numClusters * sizeof(TTcluster)));
 
         if(newTable == nullptr)
         {
@@ -46,12 +46,12 @@ void TranspositionTable::resize(uint32_t mbSize)
         Memory::alignedFree(m_table);
 
     m_table = newTable;
-    m_clusterCount = clusterCount;
-    m_entryCount = entryCount;
-    m_stats.maxEntries = entryCount;
+    m_numClusters = numClusters;
+    m_numEntries = numEntries;
+    m_stats.maxEntries = numEntries;
     m_mbSize = mbSize;
 
-    LOG("Resized the transpostition table to " << m_mbSize << "MB (" << m_clusterCount << " Clusters, " << m_entryCount << " Entries)")
+    LOG("Resized the transpostition table to " << m_mbSize << "MB (" << m_numClusters << " Clusters, " << m_numEntries << " Entries)")
 
     clear();
 }
@@ -65,7 +65,7 @@ void TranspositionTable::clearStats()
         .lookups      = 0LL,
         .lookupMisses = 0LL,
         .blockedReplacements = 0LL,
-        .maxEntries   = m_entryCount,
+        .maxEntries   = m_numEntries,
     };
 }
 
@@ -74,11 +74,11 @@ void TranspositionTable::clear()
     clearStats();
 
     // Set all table enties to be invalid
-    for(size_t i = 0; i < m_clusterCount; i++)
+    for(size_t i = 0; i < m_numClusters; i++)
     {
-        for(size_t j = 0; j < clusterSize; j++)
+        for(size_t j = 0; j < ClusterSize; j++)
         {
-            m_table[i].entries[j].depth = UINT8_MAX;
+            m_table[i].entries[j].depth = InvalidDepth;
             m_table[i].entries[j].hash  = 0LL;
         }
     }
@@ -86,7 +86,7 @@ void TranspositionTable::clear()
 
 inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
 {
-    return hash % m_clusterCount;
+    return hash % m_numClusters;
 }
 
 void TranspositionTable::prefetch(hash_t hash)
@@ -95,22 +95,22 @@ void TranspositionTable::prefetch(hash_t hash)
         _mm_prefetch(m_table + m_getClusterIndex(hash), _MM_HINT_T0);
 }
 
-std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
+std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
 {
     if(!m_table)
         return {};
 
-    ttCluster_t* clusterPtr = static_cast<ttCluster_t*>(__builtin_assume_aligned(m_table + m_getClusterIndex(hash), CACHE_LINE_SIZE));
-    ttCluster_t cluster = *clusterPtr;
+    TTcluster* clusterPtr = static_cast<TTcluster*>(__builtin_assume_aligned(m_table + m_getClusterIndex(hash), CACHE_LINE_SIZE));
+    TTcluster cluster = *clusterPtr;
 
     m_stats.lookups++;
 
-    for(size_t i = 0; i < clusterSize; i++)
+    for(size_t i = 0; i < ClusterSize; i++)
     {
-        ttEntry_t entry = cluster.entries[i];
-        if(entry.depth != UINT8_MAX && entry.hash == (ttEntryHash_t)hash)
+        TTEntry entry = cluster.entries[i];
+        if(entry.depth != InvalidDepth && entry.hash == hash)
         {
-            ttEntry_t retEntry = entry;
+            TTEntry retEntry = entry;
             if(Evaluator::isMateScore(entry.value))
             {
                 retEntry.value = entry.value > 0 ? entry.value - plyFromRoot : entry.value + plyFromRoot;
@@ -128,7 +128,7 @@ std::optional<ttEntry_t> TranspositionTable::get(hash_t hash, uint8_t plyFromRoo
     return {}; // Return empty optional
 }
 
-inline int8_t m_replaceScore(ttEntry_t newEntry, ttEntry_t oldEntry)
+inline int8_t m_replaceScore(TTEntry& newEntry, TTEntry& oldEntry)
 {
     return (newEntry.depth - oldEntry.depth) // Depth
            + (newEntry.generation - oldEntry.generation);
@@ -139,10 +139,11 @@ void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t dep
     if(!m_table)
         return;
 
-    ttCluster_t* cluster = &m_table[m_getClusterIndex(hash)];
-    ttEntry_t entry =
+    TTcluster* cluster = &m_table[m_getClusterIndex(hash)];
+
+    TTEntry newEntry =
     {
-        .hash = (ttEntryHash_t)hash,
+        .hash = hash,
         .value = score,
         .staticEval = staticEval,
         .depth = depth,
@@ -154,29 +155,30 @@ void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t dep
         // Padding is not set
     };
 
-    if(Evaluator::isMateScore(entry.value))
+    // Adjust the mate score based on plyFromRoot to make the score represent the mate distance from this position
+    if(Evaluator::isMateScore(newEntry.value))
     {
-        entry.value = entry.value > 0 ? entry.value + plyFromRoot : entry.value - plyFromRoot;
+        newEntry.value = newEntry.value > 0 ? newEntry.value + plyFromRoot : newEntry.value - plyFromRoot;
     }
 
-    if(Evaluator::isMateScore(entry.staticEval))
+    if(Evaluator::isMateScore(newEntry.staticEval))
     {
-        entry.staticEval = entry.staticEval > 0 ? entry.staticEval + plyFromRoot : entry.staticEval - plyFromRoot;
+        newEntry.staticEval = newEntry.staticEval > 0 ? newEntry.staticEval + plyFromRoot : newEntry.staticEval - plyFromRoot;
     }
 
     m_stats.entriesAdded++;
 
     // Check if the entry is already in the cluster
     // If so, replace it
-    for(size_t i = 0; i < clusterSize; i++)
+    for(size_t i = 0; i < ClusterSize; i++)
     {
-        ttEntry_t _entry = cluster->entries[i];
-        if(_entry.hash == entry.hash)
+        TTEntry oldEntry = cluster->entries[i];
+        if(oldEntry.hash == newEntry.hash)
         {
-            if((_entry.depth < entry.depth) || (_entry.isPv < entry.isPv))
+            if((oldEntry.depth < newEntry.depth) || (oldEntry.isPv < newEntry.isPv))
             {
                 m_stats.updates++;
-                cluster->entries[i] = entry;
+                cluster->entries[i] = newEntry;
             }
             else
             {
@@ -189,24 +191,24 @@ void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t dep
 
     // Search the cluster for an empty entry
     // Or if it can replace a position which cannot be hit again (safe replacement)
-    for(size_t i = 0; i < clusterSize; i++)
+    for(size_t i = 0; i < ClusterSize; i++)
     {
-        ttEntry_t _entry = cluster->entries[i];
-        if((_entry.depth == UINT8_MAX) || (_entry.numPieces > numPiecesRoot))
+        TTEntry oldEntry = cluster->entries[i];
+        if((oldEntry.depth == InvalidDepth) || (oldEntry.numPieces > numPiecesRoot))
         {
-            m_stats.replacements += (_entry.depth != UINT8_MAX);
-            cluster->entries[i] = entry;
+            m_stats.replacements += (oldEntry.depth != InvalidDepth);
+            cluster->entries[i] = newEntry;
             return;
         }
     }
 
     // If no empty entry is found, attempt to find a valid replacement
-    ttEntry_t *replace = nullptr;
+    TTEntry *replace = nullptr;
     int8_t bestReplaceScore = 0;
-    for(size_t i = 0; i < clusterSize; i++)
+    for(size_t i = 0; i < ClusterSize; i++)
     {
-        ttEntry_t _entry = cluster->entries[i];
-        int8_t replaceScore = m_replaceScore(entry, _entry);
+        TTEntry oldEntry = cluster->entries[i];
+        int8_t replaceScore = m_replaceScore(newEntry, oldEntry);
         if(replaceScore > bestReplaceScore)
         {
             bestReplaceScore = replaceScore;
@@ -217,7 +219,7 @@ void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t dep
     // Replace if a suitable replacement is found
     if(replace)
     {
-        *replace = entry;
+        *replace = newEntry;
         m_stats.replacements++;
     }
     else
@@ -228,7 +230,7 @@ void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t dep
 }
 
 // Note: If the table has been resized to a smaller table, the stats may not be entirely accurate.
-ttStats_t TranspositionTable::getStats()
+TTStats TranspositionTable::getStats()
 {
     return m_stats;
 }

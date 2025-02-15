@@ -103,7 +103,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
     }
 
-    std::optional<ttEntry_t> entry = m_tt.get(board.getHash(), plyFromRoot);
+    std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
     const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
     if(!isPv && entry.has_value())
     {
@@ -248,7 +248,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         return DRAW_VALUE;
 
     eval_t originalAlpha = alpha;
-    std::optional<ttEntry_t> entry = m_tt.get(board.getHash(), plyFromRoot);
+    std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
     const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
     if(!isPv && entry.has_value() && (entry->depth >= depth) && skipMove.isNull())
     {
@@ -676,7 +676,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     m_evaluator.initAccumulatorStack(board);
 
-    std::optional<ttEntry_t> ttEntry = m_tt.get(board.getHash(), 0);
+    std::optional<TTEntry> ttEntry = m_tt.get(board.getHash(), 0);
 
     if(ttEntry.has_value())
     {
