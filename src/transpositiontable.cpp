@@ -183,27 +183,24 @@ void TranspositionTable::add(eval_t score, Move bestMove, bool isPv, uint8_t dep
         }
     }
 
-    // Search the cluster for an empty entry
-    // Or if it can replace a position which cannot be hit again (safe replacement)
-    for(size_t i = 0; i < ClusterSize; i++)
-    {
-        TTEntry oldEntry = cluster->entries[i];
-        if((oldEntry.depth == InvalidDepth) || (oldEntry.numPieces > numPiecesRoot))
-        {
-            m_stats.replacements += (oldEntry.depth != InvalidDepth);
-            cluster->entries[i] = newEntry;
-            return;
-        }
-    }
-
-    // If no empty entry is found, attempt to find a valid replacement
+    // Check if the new entry can/should be placed into the cluster
+    // Find the entry with the lowest priority, and replace it if the new entry has a higher priority
     TTEntry *replace = nullptr;
     int32_t lowestPriority = newEntry.getPriority();
     for(size_t i = 0; i < ClusterSize; i++)
     {
         TTEntry* oldEntry = &cluster->entries[i];
-        int32_t priority = oldEntry->getPriority();
 
+        // Prioritize replacing empty entries
+        // Or positions which cannot be hit again (safe replacement)
+        if((oldEntry->depth == InvalidDepth) || (oldEntry->numPieces > numPiecesRoot))
+        {
+            m_stats.replacements += (oldEntry->depth != InvalidDepth);
+            *oldEntry = newEntry;
+            return;
+        }
+
+        int32_t priority = oldEntry->getPriority();
         if(priority < lowestPriority)
         {
             lowestPriority = priority;
