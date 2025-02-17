@@ -202,9 +202,9 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
             if constexpr(isPv)
             {
                 m_pvTable.updatePv(*move, plyFromRoot);
+                ttFlag = TTFlag::EXACT;
             }
             alpha = bestScore;
-            ttFlag = TTFlag::EXACT;
         }
 
         if(alpha >= beta)
@@ -567,7 +567,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     if(skipMove.isNull())
     {
-        TTFlag flag = TTFlag::EXACT;
+        TTFlag flag = isPv ? TTFlag::EXACT : flag = TTFlag::UPPER_BOUND;
         if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
         else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
