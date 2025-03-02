@@ -101,7 +101,7 @@ MoveSelector::MoveSelector(
 
     m_scoreMoves();
 
-    std::sort(m_highScoreIdxPairs, m_highScoreIdxPairs + m_numHighScoreMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+    std::stable_sort(m_highScoreIdxPairs, m_highScoreIdxPairs + m_numHighScoreMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
 }
 
 const Move* MoveSelector::getNextMove()
@@ -114,7 +114,7 @@ const Move* MoveSelector::getNextMove()
     if(m_numHighScoreMoves == 0)
     {
         m_numHighScoreMoves = 0xff; // Set the number of moves to an 'illegal' number
-        std::sort(m_lowScoreIdxPairs, m_lowScoreIdxPairs + m_numLowScoreMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+        std::stable_sort(m_lowScoreIdxPairs, m_lowScoreIdxPairs + m_numLowScoreMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
     }
 
     return m_moves + m_lowScoreIdxPairs[--m_numLowScoreMoves].index;
