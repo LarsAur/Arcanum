@@ -3,6 +3,7 @@
 #include <utils.hpp>
 #include <syzygy.hpp>
 #include <algorithm>
+#include <cmath>
 
 using namespace Arcanum;
 
@@ -567,7 +568,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     if(skipMove.isNull())
     {
-        TTFlag flag = isPv ? TTFlag::EXACT : flag = TTFlag::UPPER_BOUND;
+        TTFlag flag = isPv ? TTFlag::EXACT : TTFlag::UPPER_BOUND;
         if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
         else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 

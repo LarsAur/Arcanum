@@ -8,6 +8,7 @@
 #include <iomanip>
 #include <cmath>
 #include <random>
+#include <algorithm>
 
 namespace Arcanum
 {

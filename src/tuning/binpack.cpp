@@ -7,9 +7,13 @@ using namespace Arcanum;
 
 constexpr uint64_t MaxBufferSize = 100 * 1024 * 1024; // 100 MB
 
-BinpackParser::BinpackParser()
-{
-}
+BinpackParser::BinpackParser() :
+    m_currentChuckSize(0),
+    m_numBytesRead(0),
+    m_currentMoveTextCount(0),
+    m_numBitsInBitBuffer(0),
+    m_bitBuffer(0)
+{}
 
 bool BinpackParser::open(std::string path)
 {
@@ -23,9 +27,9 @@ bool BinpackParser::open(std::string path)
 
     m_currentChuckSize = 0;
     m_numBytesRead = 0;
-    m_bitBuffer = 0;
-    m_numBitsInBitBuffer = 0;
     m_currentMoveTextCount = 0;
+    m_numBitsInBitBuffer = 0;
+    m_bitBuffer = 0;
     return true;
 }
 
@@ -134,7 +138,7 @@ uint8_t BinpackParser::m_getNextNBits(uint8_t numBits)
     // A byte has to be read from file and added to the buffer
     if(m_numBitsInBitBuffer < numBits)
     {
-        uint8_t rbyte;
+        uint8_t rbyte = 0;
         m_readBytesFromBuffer(&rbyte, 1);
 
         // Insert the byte into the MSBs of the buffer
@@ -369,7 +373,7 @@ void BinpackParser::m_parseMove()
 
 void BinpackParser::m_parseScore()
 {
-    uint16_t uScore;
+    uint16_t uScore = 0;
     m_readBytesFromBuffer(&uScore, 2);
     uScore = m_bigToLittleEndian(uScore);
     m_currentScore = m_unsignedToSigned(uScore);
@@ -379,7 +383,7 @@ void BinpackParser::m_parsePlyAndResult()
 {
     constexpr uint16_t PlyMask = (1 << 14) - 1;
 
-    uint16_t plyAndResult;
+    uint16_t plyAndResult = 0;
     m_readBytesFromBuffer(&plyAndResult, 2);
 
     plyAndResult = m_bigToLittleEndian(plyAndResult);
@@ -403,7 +407,7 @@ void BinpackParser::m_parsePlyAndResult()
 
 void BinpackParser::m_parseRule50()
 {
-    uint16_t rule50;
+    uint16_t rule50 = 0;
     m_readBytesFromBuffer(&rule50, 2);
     m_currentBoard.m_rule50 = m_bigToLittleEndian(rule50);
 }

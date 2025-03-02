@@ -88,6 +88,10 @@ void NNUE::findDeltaFeatures(const Board& board, const Move& move, DeltaFeatures
             rookFrom = Square::A8;
             rookTo = Square::D8;
             break;
+        default:
+            rookFrom = Square::NONE;
+            rookTo   = Square::NONE;
+            ERROR("Unknown castle bit in move")
         }
 
         // Remove the rook from the old position

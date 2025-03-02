@@ -22,7 +22,7 @@ RELEASE_DEFINES += -DDISABLE_LOG
 RELEASE_DEFINES += -DDISABLE_DEBUG
 
 override CFLAGS += -std=c++17 -O3 -Wall $(DEFINES)
-LDFLAGS = --static
+LDFLAGS = --static -lstdc++ -lm
 
 ifeq ($(OS),Windows_NT)
 FILENAME = $(NAME).exe
@@ -91,7 +91,7 @@ else
 endif
 
 $(BUILDDIR)/%.o: %.cpp $(HEADERS) | $(BUILDDIR)
-	$(CXX) $(CFLAGS) $(LDFLAGS) -I$(HEADERDIR) -I$(dir $<) -c $< -o $@
+	$(CXX) $(CFLAGS) -I$(HEADERDIR) -I$(dir $<) -c $< -o $@
 
 $(BUILDDIR)/$(FILENAME): $(OBJECTS) | $(BUILDDIR)/$(DEFAULT_NNUE)
 	$(CXX) $(OBJECTS) $(CFLAGS) $(LDFLAGS) -o $@
