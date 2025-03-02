@@ -11,7 +11,7 @@ Zobrist Zobrist::zobrist = Zobrist();
 Zobrist::Zobrist()
 {
     // TODO: Should castle rights be a part of the hash
-    std::default_random_engine generator;
+    std::mt19937 generator(0);
     std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
 
     for(int i = 0; i < 6; i++)
