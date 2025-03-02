@@ -4,8 +4,6 @@
 
 using namespace Arcanum;
 
-const char* NNUE::QNNUE_MAGIC = "Arcanum QNNUE";
-
 // Calculate the feature indices of the board with the white perspective
 // To the the feature indices of the black perspective, xor the indices with 1
 uint32_t NNUE::getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pieceType, Color perspective)

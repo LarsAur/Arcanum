@@ -9,7 +9,6 @@ namespace Arcanum
     class NNUE
     {
         public:
-            static const char* QNNUE_MAGIC;
             static constexpr uint32_t FTSize  = 768;
             static constexpr uint32_t L1Size  = 512;
             static constexpr uint32_t L2Size  = 16;
