@@ -155,6 +155,11 @@ const Move* MoveSelector::getNextMove()
     return m_moves + index;
 }
 
+MoveSelector::Phase MoveSelector::getPhase() const
+{
+    return m_phase;
+}
+
 KillerMoveManager::KillerMoveManager()
 {
     clear();

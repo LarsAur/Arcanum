@@ -435,10 +435,10 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         && !Evaluator::isCloseToMate(board, bestScore)
         && !isChecked
         && quietMovesPerformed > m_lmpThresholds[isImproving][depth]
-        && move->isQuiet())
+        && moveSelector.getPhase() >= MoveSelector::Phase::LOW_SCORING_PHASE)
         {
             m_stats.lmpPrunedMoves++;
-            continue;
+            break;
         }
 
         // Generate new board and make the move

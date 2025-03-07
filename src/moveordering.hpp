@@ -64,6 +64,7 @@ namespace Arcanum
                 const Move prevMove
             );
             const Move* getNextMove();
+            Phase getPhase() const;
         private:
             struct ScoreIndex
             {
