@@ -15,11 +15,14 @@ static const uint16_t s_pieceValues[6]
     100, 500, 300, 300, 900, 1000
 };
 
-inline int32_t MoveSelector::m_getMoveScore(const Move& move)
+inline int32_t MoveSelector::m_getMoveScore(const Move& move, Phase& phase)
 {
     // Always prioritize PV moves
     if(move == m_ttMove)
     {
+        phase = TT_PHASE;
+        // Copy potential changes in the moveinfo in case it is a false ttHit
+        m_ttMove = move;
         return INT32_MAX;
     }
 
@@ -46,24 +49,41 @@ inline int32_t MoveSelector::m_getMoveScore(const Move& move)
         score += PROMOTE_BIAS + s_pieceValues[move.promotedPiece()];
     }
 
+    if(score > 0)
+    {
+        phase = HIGH_SCORING_PHASE;
+        return score;
+    }
+
+    score = m_history->get(move, m_board->getTurn());
+
+    phase = score >= 0 ? LOW_SCORING_PHASE : NEGATIVE_SCORING_PHASE;
+
     return score;
 }
 
 inline void MoveSelector::m_scoreMoves()
 {
-    m_numHighScoreMoves = 0;
-    m_numLowScoreMoves = 0;
+    for(int8_t i = 0; i < Phase::NUM_PHASES; i++)
+    {
+        m_numMovesInPhase[i] = 0;
+    }
+
+    Phase phase;
+    m_phase = NEGATIVE_SCORING_PHASE;
     for(uint8_t i = 0; i < m_numMoves; i++)
     {
-        int32_t score = m_getMoveScore(m_moves[i]);
-        if(score > 0)
-            m_highScoreIdxPairs[m_numHighScoreMoves++] = {.score = score, .index = i};
-        else
-        {
-            score = m_history->get(m_moves[i], m_board->getTurn());
-            m_lowScoreIdxPairs[m_numLowScoreMoves++] = {.score = score, .index = i};
-        }
+        // Get the score and corresponding phase of the move
+        int32_t score = m_getMoveScore(m_moves[i], phase);
 
+        // Update the current phase if an earlier phase is found
+        m_phase = std::min(phase, m_phase);
+
+        // Add the move to the corresponding phase list except if it is the TT move
+        if(phase != TT_PHASE)
+        {
+            m_scoreIndexPairs[phase][m_numMovesInPhase[phase]++] = { .score = score, .index = i };
+        }
     }
 }
 
@@ -81,13 +101,16 @@ MoveSelector::MoveSelector(
 {
     m_numMoves = numMoves;
     m_moves = moves;
+
+    // If there is only a single move, set it as the TT move to avoid scoring and sorting it
     if(m_numMoves == 1)
     {
-        m_numHighScoreMoves = 1;
-        m_highScoreIdxPairs[0].index = 0;
+        m_phase = TT_PHASE;
+        m_ttMove = m_moves[0];
         return;
     }
 
+    m_sortRequired = true;
     m_ttMove = ttMove;
     m_prevMove = prevMove;
     m_board = board;
@@ -96,28 +119,40 @@ MoveSelector::MoveSelector(
     m_history = relativeHistory;
     m_plyFromRoot = plyFromRoot;
 
-    m_bbOpponentPawnAttacks = m_board->getOpponentPawnAttacks();
-    m_bbOpponentAttacks = m_board->getOpponentAttacks();
-
     m_scoreMoves();
-
-    std::stable_sort(m_highScoreIdxPairs, m_highScoreIdxPairs + m_numHighScoreMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
 }
 
 const Move* MoveSelector::getNextMove()
 {
-    if(m_numHighScoreMoves > 0 && m_numHighScoreMoves != 0xff)
+    if(m_phase == TT_PHASE)
     {
-        return m_moves + m_highScoreIdxPairs[--m_numHighScoreMoves].index;
+        m_phase = Phase(m_phase + 1);
+        return &m_ttMove;
     }
 
-    if(m_numHighScoreMoves == 0)
+    // Move to the next phase if there are no more moves in the current phase
+    // Note that this can in theory loop infinitly or read out of bounds,
+    // if getNextMove() is called when there are no moves left
+    while (m_numMovesInPhase[m_phase] == 0)
     {
-        m_numHighScoreMoves = 0xff; // Set the number of moves to an 'illegal' number
-        std::stable_sort(m_lowScoreIdxPairs, m_lowScoreIdxPairs + m_numLowScoreMoves, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+        m_phase = Phase(m_phase + 1);
+        m_sortRequired = true;
     }
 
-    return m_moves + m_lowScoreIdxPairs[--m_numLowScoreMoves].index;
+    // Sort the moves when starting a new phase
+    if(m_sortRequired)
+    {
+        uint8_t numMoves = m_numMovesInPhase[m_phase];
+        ScoreIndex* start = m_scoreIndexPairs[m_phase];
+        ScoreIndex* end = start + numMoves;
+        std::stable_sort(start, end, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+        m_sortRequired = false;
+    }
+
+    // Get the index of the next move
+    uint8_t index = m_scoreIndexPairs[m_phase][--m_numMovesInPhase[m_phase]].index;
+
+    return m_moves + index;
 }
 
 KillerMoveManager::KillerMoveManager()

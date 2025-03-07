@@ -43,30 +43,15 @@ namespace Arcanum
 
     class MoveSelector
     {
-        private:
-            struct ScoreIndex
-            {
-                int32_t score;
-                int32_t index;
-            };
-            const Move* m_moves;
-            int m_plyFromRoot;
-            Board* m_board;
-            KillerMoveManager* m_killerMoveManager;
-            History* m_history;
-            CounterMoveManager* m_counterMoveManager;
-            uint8_t m_numMoves;
-            uint8_t m_numLowScoreMoves;
-            uint8_t m_numHighScoreMoves;
-            Move m_ttMove;
-            Move m_prevMove;
-            bitboard_t m_bbOpponentPawnAttacks;
-            bitboard_t m_bbOpponentAttacks;
-            ScoreIndex m_highScoreIdxPairs[MAX_MOVE_COUNT];
-            ScoreIndex m_lowScoreIdxPairs[MAX_MOVE_COUNT];
-            int32_t m_getMoveScore(const Move& move);
-            void m_scoreMoves();
         public:
+            enum Phase : int8_t
+            {
+                TT_PHASE = -1,
+                HIGH_SCORING_PHASE,
+                LOW_SCORING_PHASE,
+                NEGATIVE_SCORING_PHASE,
+                NUM_PHASES,
+            };
             MoveSelector(
                 const Move *moves,
                 const uint8_t numMoves,
@@ -79,5 +64,27 @@ namespace Arcanum
                 const Move prevMove
             );
             const Move* getNextMove();
+        private:
+            struct ScoreIndex
+            {
+                int32_t score;
+                int32_t index;
+            };
+            Phase m_phase;
+            const Move* m_moves;
+            int m_plyFromRoot;
+            Board* m_board;
+            KillerMoveManager* m_killerMoveManager;
+            History* m_history;
+            CounterMoveManager* m_counterMoveManager;
+            Move m_ttMove;
+            Move m_prevMove;
+            bool m_sortRequired;
+            uint8_t m_numMoves;
+            uint8_t m_numMovesInPhase[NUM_PHASES];                    // Not including TT
+            ScoreIndex m_scoreIndexPairs[NUM_PHASES][MAX_MOVE_COUNT]; // Not including TT
+            int32_t m_getMoveScore(const Move& move, Phase& phase);
+            void m_scoreMoves();
     };
+
 }
