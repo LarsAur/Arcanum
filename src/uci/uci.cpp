@@ -144,11 +144,11 @@ void UCI::go(std::istringstream& is)
         // Set isSearching before creating the thread.
         // This is to make sure it is set before returning from go.
         UCI::isSearching = true;
-        UCI::searchThread = std::thread([&] {
-            UCI::searcher.search(board, parameters);
+        UCI::searchThread = std::thread([&](SearchParameters _parameters) {
+            UCI::searcher.search(board, _parameters);
             // Set isSearching to false when the search is done in the thread
             UCI::isSearching = false;
-        });
+        }, parameters);
     }
 }
 
