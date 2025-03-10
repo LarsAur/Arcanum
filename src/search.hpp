@@ -134,6 +134,7 @@ namespace Arcanum
             Evaluator m_evaluator;
             KillerMoveManager m_killerMoveManager;
             History m_history;
+            CaptureHistory m_captureHistory;
             CounterMoveManager m_counterMoveManager;
             PvTable m_pvTable;
             SearchParameters m_searchParameters;

@@ -64,6 +64,7 @@ void Searcher::clear()
     m_generation = 0;
     m_tt.clear();
     m_history.clear();
+    m_captureHistory.clear();
     m_killerMoveManager.clear();
     m_counterMoveManager.clear();
 }
@@ -175,7 +176,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
     board.generateCaptureInfo();
     Move prevMove = m_searchStack[plyFromRoot-1].move;
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, ttMove, prevMove);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, ttMove, prevMove);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = NULL_MOVE;
     for (int i = 0; i < numMoves; i++)  {
@@ -381,7 +382,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t probBeta = beta + 300;
         if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->value < probBeta))
         {
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, ttMove, prevMove);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, ttMove, prevMove);
 
             for(uint8_t i = 0; i < numMoves; i++)
             {
@@ -420,9 +421,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
     }
 
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, ttMove, prevMove);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, ttMove, prevMove);
     uint8_t quietMovesPerformed = 0;
+    uint8_t captureMovesPerformed = 0;
     std::array<Move, MAX_MOVE_COUNT> quiets;
+    std::array<Move, MAX_MOVE_COUNT> captures;
     for (int i = 0; i < numMoves; i++)  {
         const Move* move = moveSelector.getNextMove();
 
@@ -550,6 +553,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 m_counterMoveManager.setCounter(*move, prevMove, board.getTurn());
                 m_history.updateHistory(*move, quiets, quietMovesPerformed, depth, board.getTurn());
             }
+
+            // Update capture history if the move was a capture
+            if(move->isCapture())
+            {
+                m_captureHistory.updateHistory(*move, captures, captureMovesPerformed, depth, board.getTurn());
+            }
             break;
         }
 
@@ -557,6 +566,13 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         {
             // Count and track quiet moves for LMP and History
             quiets[quietMovesPerformed++] = *move;
+        }
+
+        // Note: Capture and Quiet are not inverse as promotions can be non-capture but is not quiet
+        if(move->isCapture())
+        {
+            // Count and track capture moves for CaptureHistory
+            captures[captureMovesPerformed++] = *move;
         }
     }
 
@@ -713,7 +729,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // This is in case the move from the transposition is not 'correct' due to a miss.
         // Misses can happen if the position cannot replace another position
         // This is required to allow using results of incomplete searches
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_counterMoveManager, &board, searchBestMove, NULL_MOVE);
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, searchBestMove, NULL_MOVE);
 
         eval_t alpha = -MATE_SCORE;
         eval_t beta = MATE_SCORE;

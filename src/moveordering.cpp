@@ -92,7 +92,8 @@ MoveSelector::MoveSelector(
     const uint8_t numMoves,
     int plyFromRoot,
     KillerMoveManager* killerMoveManager,
-    History* relativeHistory,
+    History* history,
+    CaptureHistory* captureHistory,
     CounterMoveManager* counterMoveManager,
     Board *board,
     const Move ttMove = NULL_MOVE,
@@ -116,7 +117,8 @@ MoveSelector::MoveSelector(
     m_board = board;
     m_counterMoveManager = counterMoveManager;
     m_killerMoveManager = killerMoveManager;
-    m_history = relativeHistory;
+    m_history = history;
+    m_captureHistory = captureHistory;
     m_plyFromRoot = plyFromRoot;
 
     m_scoreMoves();

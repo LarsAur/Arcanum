@@ -74,7 +74,8 @@ namespace Arcanum
                 const uint8_t numMoves,
                 int plyFromRoot,
                 KillerMoveManager* killerMoveManager,
-                History* relativeHistory,
+                History* history,
+                CaptureHistory* captureHistory,
                 CounterMoveManager* counterMoveManager,
                 Board *board,
                 const Move ttMove,
@@ -94,6 +95,7 @@ namespace Arcanum
             Board* m_board;
             KillerMoveManager* m_killerMoveManager;
             History* m_history;
+            CaptureHistory* m_captureHistory;
             CounterMoveManager* m_counterMoveManager;
             Move m_ttMove;
             Move m_prevMove;
