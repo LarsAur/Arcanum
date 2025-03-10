@@ -218,7 +218,24 @@ void KillerMoveManager::clear()
 
 History::History()
 {
+    m_historyScore = new int32_t[TableSize];
+
+    if(m_historyScore == nullptr)
+    {
+        ERROR("Unable to allocate history table")
+    }
+
     clear();
+}
+
+History::~History()
+{
+    delete[] m_historyScore;
+}
+
+inline uint32_t History::m_getIndex(Color turn, square_t from, square_t to)
+{
+    return turn + 2 * (from + 64 * to);
 }
 
 inline int32_t History::m_getBonus(uint8_t depth)
@@ -240,24 +257,19 @@ void History::updateHistory(const Move& bestMove, const std::array<Move, MAX_MOV
 
 void History::m_addBonus(const Move& move, Color turn, int32_t bonus)
 {
-    m_historyScore[turn][move.from][move.to] += bonus - (m_historyScore[turn][move.from][move.to] * std::abs(bonus) / 16384);
+    uint32_t index = m_getIndex(turn, move.from, move.to);
+    m_historyScore[index] += bonus - (m_historyScore[index] * std::abs(bonus) / 16384);
 }
 
 int32_t History::get(const Move& move, Color turn)
 {
-    return m_historyScore[turn][move.from][move.to];
+    uint32_t index = m_getIndex(turn, move.from, move.to);
+    return m_historyScore[index];
 }
 
 void History::clear()
 {
-    for(int i = 0; i < 64; i++)
-    {
-        for(int j = 0; j < 64; j++)
-        {
-            m_historyScore[Color::WHITE][i][j] = 0;
-            m_historyScore[Color::BLACK][i][j] = 0;
-        }
-    }
+    memset(m_historyScore, 0, TableSize*sizeof(int32_t));
 }
 
 CaptureHistory::CaptureHistory()
