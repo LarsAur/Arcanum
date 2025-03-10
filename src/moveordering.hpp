@@ -30,6 +30,23 @@ namespace Arcanum
             void clear();
     };
 
+    class CaptureHistory
+    {
+        private:
+            static constexpr uint32_t TableSize = 2 * 64 * 64 * 6;
+            //  [MovedColor][MovedFrom][MovedTo][CapturedPiece]
+            int32_t* m_historyScore;
+            uint32_t m_getIndex(Color turn, square_t from, square_t to, Piece capture);
+            int32_t m_getBonus(uint8_t depth);
+            void m_addBonus(const Move& move, Color turn, int32_t bonus);
+        public:
+            CaptureHistory();
+            ~CaptureHistory();
+            void updateHistory(const Move& bestMove, const std::array<Move, MAX_MOVE_COUNT>& captures, uint8_t numCaptures, uint8_t depth, Color turn);
+            int32_t get(const Move& move, Color turn);
+            void clear();
+    };
+
     class CounterMoveManager
     {
         private:
