@@ -27,6 +27,7 @@ namespace Arcanum
             int32_t mateDistance;                // Mate distance in moves (not plies.) Negative if engine is being mated.
             PvTable* pvTable;                    // PV-line
             uint32_t hashfull;                   // Permills of hashtable filled
+            uint64_t tbHits;
 
             SearchInfo() :
                 depth(0),
@@ -37,7 +38,8 @@ namespace Arcanum
                 mate(0),
                 mateDistance(0),
                 pvTable(nullptr),
-                hashfull(0)
+                hashfull(0),
+                tbHits(0)
             {}
         };
 

@@ -97,7 +97,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         uint32_t tbResult = TBProbeWDL(board);
 
         if(tbResult != TB_RESULT_FAILED)
-            m_stats.tbHits++;
+            m_tbHits++;
 
         if(tbResult == TB_DRAW) return 0;
         if(tbResult == TB_WIN) return TB_MATE_SCORE - plyFromRoot;
@@ -280,7 +280,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         uint32_t tbResult = TBProbeWDL(board);
 
         if(tbResult != TB_RESULT_FAILED)
-            m_stats.tbHits++;
+            m_tbHits++;
 
         if(tbResult == TB_DRAW) return 0;
         if(tbResult == TB_WIN) return TB_MATE_SCORE - plyFromRoot;
@@ -637,6 +637,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 {
     m_stopSearch = false;
     m_numNodesSearched = 0;
+    m_tbHits = 0;
     eval_t searchScore = 0;
     eval_t staticEval = 0;
     Move searchBestMove = NULL_MOVE;
@@ -835,6 +836,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_sendUciInfo(searchScore, searchBestMove, depth, forceTBScore, wdlTB);
 
     m_stats.nodes += m_numNodesSearched;
+    m_stats.tbHits += m_tbHits;
 
     if(m_verbose)
     {
@@ -897,6 +899,7 @@ void Searcher::m_sendUciInfo(eval_t score, Move move, uint32_t depth, bool force
     info.score = score;
     info.hashfull = m_tt.permills();
     info.pvTable = &m_pvTable;
+    info.tbHits = m_tbHits;
     if(Evaluator::isRealMateScore(score))
     {
         info.mate = true;
