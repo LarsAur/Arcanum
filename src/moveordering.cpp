@@ -4,86 +4,69 @@
 
 using namespace Arcanum;
 
-#define MILLION 1000000
-#define WINNING_CAPTURE_BIAS 8 * MILLION
-#define PROMOTE_BIAS 6 * MILLION
-#define KILLER_BIAS 4 * MILLION
-#define LOSING_CAPTURE_BIAS 2 * MILLION
-
 static const uint16_t s_pieceValues[6]
 {
     100, 500, 300, 300, 900, 1000
 };
 
-inline int32_t MoveSelector::m_getMoveScore(const Move& move, Phase& phase)
-{
-    // Always prioritize PV moves
-    if(move == m_ttMove)
-    {
-        phase = TT_PHASE;
-        // Copy potential changes in the moveinfo in case it is a false ttHit
-        m_ttMove = move;
-        return INT32_MAX;
-    }
-
-    int32_t score = 0;
-
-    // If it is a capture
-    if(move.isCapture())
-    {
-        int32_t materialDelta = s_pieceValues[move.capturedPiece()] - s_pieceValues[move.movedPiece()];
-
-        // Use SEE to check for winning or losing capture
-        score += (m_board->see(move) ? WINNING_CAPTURE_BIAS : LOSING_CAPTURE_BIAS) + materialDelta;
-    }
-    else // Is not a capture move
-    {
-        if(m_killerMoveManager->contains(move, m_plyFromRoot) || m_counterMoveManager->contains(move, m_prevMove, m_board->getTurn()))
-        {
-            score += KILLER_BIAS;
-        }
-    }
-
-    if(move.isPromotion())
-    {
-        score += PROMOTE_BIAS + s_pieceValues[move.promotedPiece()];
-    }
-
-    if(score > 0)
-    {
-        phase = HIGH_SCORING_PHASE;
-        return score;
-    }
-
-    score = m_history->get(move, m_board->getTurn());
-
-    phase = score >= 0 ? LOW_SCORING_PHASE : NEGATIVE_SCORING_PHASE;
-
-    return score;
-}
-
 inline void MoveSelector::m_scoreMoves()
 {
-    for(int8_t i = 0; i < Phase::NUM_PHASES; i++)
-    {
-        m_numMovesInPhase[i] = 0;
-    }
+    m_numTTMoves = 0;
+    m_numKillers = 0;
+    m_numCounters = 0;
+    m_numCaptures = 0;
+    m_numQuiets = 0;
 
-    Phase phase;
-    m_phase = NEGATIVE_SCORING_PHASE;
+    Color turn = m_board->getTurn();
+
     for(uint8_t i = 0; i < m_numMoves; i++)
     {
-        // Get the score and corresponding phase of the move
-        int32_t score = m_getMoveScore(m_moves[i], phase);
+        const Move& move = m_moves[i];
 
-        // Update the current phase if an earlier phase is found
-        m_phase = std::min(phase, m_phase);
-
-        // Add the move to the corresponding phase list except if it is the TT move
-        if(phase != TT_PHASE)
+        // Check if the move is the TT move
+        if(move == m_ttMove)
         {
-            m_scoreIndexPairs[phase][m_numMovesInPhase[phase]++] = { .score = score, .index = i };
+            m_ttIndex = i;
+            m_numTTMoves = 1;
+            continue;
         }
+
+        if(move.isCapture() || move.isPromotion())
+        {
+            int32_t score = 0;
+
+            if(move.isCapture())
+            {
+                score += (s_pieceValues[move.capturedPiece()] - s_pieceValues[move.movedPiece()]) * 16;
+                // score += m_captureHistory->get(move, turn);
+            }
+
+            if(move.isPromotion())
+            {
+                score += s_pieceValues[move.promotedPiece()] * 16000;
+            }
+
+            m_captureScoreIndexPairs[m_numCaptures++] = { .score = score, .index = i };
+            continue;
+        }
+
+        // Quiet moves
+
+        if(m_killerMoveManager->contains(move, m_plyFromRoot))
+        {
+            m_killerIndices[m_numKillers++] = i;
+            continue;
+        }
+
+        if(m_counterMoveManager->contains(move, m_prevMove, turn))
+        {
+            m_counterIndex = i;
+            m_numCounters = 1;
+            continue;
+        }
+
+        int32_t quietScore = m_history->get(move, turn);
+        m_quietScoreIndexPairs[m_numQuiets++] = { .score = quietScore, .index = i };
     }
 }
 
@@ -102,16 +85,17 @@ MoveSelector::MoveSelector(
 {
     m_numMoves = numMoves;
     m_moves = moves;
+    m_phase = Phase::TT_PHASE;
+    m_skipQuiets = false;
 
     // If there is only a single move, set it as the TT move to avoid scoring and sorting it
     if(m_numMoves == 1)
     {
-        m_phase = TT_PHASE;
-        m_ttMove = m_moves[0];
+        m_ttIndex = 0;
+        m_numTTMoves = 1;
         return;
     }
 
-    m_sortRequired = true;
     m_ttMove = ttMove;
     m_prevMove = prevMove;
     m_board = board;
@@ -126,35 +110,86 @@ MoveSelector::MoveSelector(
 
 const Move* MoveSelector::getNextMove()
 {
-    if(m_phase == TT_PHASE)
+    switch (m_phase)
     {
-        m_phase = Phase(m_phase + 1);
-        return &m_ttMove;
+    case Phase::TT_PHASE:
+        if(m_numTTMoves > 0)
+        {
+            m_numTTMoves = 0;
+            return m_moves + m_ttIndex;
+        }
+
+    case Phase::SORT_GOOD_CAPTURE_PHASE:
+        if(m_numCaptures > 1)
+        {
+            ScoreIndex* start = m_captureScoreIndexPairs;
+            ScoreIndex* end = start + m_numCaptures;
+            std::stable_sort(start, end, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+        }
+        m_numBadCaptures = 0;
+
+    case Phase::GOOD_CAPTURES_PHASE:
+        m_phase = Phase::GOOD_CAPTURES_PHASE;
+        while(m_numCaptures > 0)
+        {
+            // If the capture is a bad capture, move it to the back of the end of the capture array to be played in the bad capture phase
+            const Move* move = m_moves + m_captureScoreIndexPairs[--m_numCaptures].index;
+            if((move->isPromotion() && (move->promotedPiece() != Piece::W_QUEEN)) || !m_board->see(*move))
+            {
+                ++m_numBadCaptures;
+                m_captureScoreIndexPairs[MAX_MOVE_COUNT - m_numBadCaptures] = m_captureScoreIndexPairs[m_numCaptures];
+            }
+            else
+            {
+                return move;
+            }
+        }
+
+    case Phase::KILLERS_PHASE:
+        m_phase = Phase::KILLERS_PHASE;
+        if(m_numKillers > 0)
+        {
+            return m_moves + m_killerIndices[--m_numKillers];
+        }
+
+    case Phase::COUNTERS_PHASE:
+        m_phase = Phase::SORT_QUIET_PHASE;
+        if(m_numCounters > 0)
+        {
+            --m_numCounters;
+            return m_moves + m_counterIndex;
+        }
+
+    case Phase::SORT_QUIET_PHASE:
+        if(m_numQuiets > 1 && !m_skipQuiets)
+        {
+            ScoreIndex* start = m_quietScoreIndexPairs;
+            ScoreIndex* end = start + m_numQuiets;
+            std::stable_sort(start, end, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+        }
+
+    case Phase::QUIETS_PHASE:
+        m_phase = Phase::QUIETS_PHASE;
+        if(m_numQuiets > 0 && !m_skipQuiets)
+        {
+            return m_moves + m_quietScoreIndexPairs[--m_numQuiets].index;
+        }
+
+    case Phase::SORT_BAD_CAPTURE_PHASE:
+        // Sorting is not required as the order is kept after sorting good moves
+        m_nextBadCapture = 0;
+
+    case Phase::BAD_CAPTURES_PHASE:
+        m_phase = Phase::BAD_CAPTURES_PHASE;
+        if(m_nextBadCapture < m_numBadCaptures)
+        {
+            m_nextBadCapture++;
+            return m_moves + m_captureScoreIndexPairs[MAX_MOVE_COUNT - m_nextBadCapture].index;
+        }
+
+    default:
+        return nullptr;
     }
-
-    // Move to the next phase if there are no more moves in the current phase
-    // Note that this can in theory loop infinitly or read out of bounds,
-    // if getNextMove() is called when there are no moves left
-    while (m_numMovesInPhase[m_phase] == 0)
-    {
-        m_phase = Phase(m_phase + 1);
-        m_sortRequired = true;
-    }
-
-    // Sort the moves when starting a new phase
-    if(m_sortRequired)
-    {
-        uint8_t numMoves = m_numMovesInPhase[m_phase];
-        ScoreIndex* start = m_scoreIndexPairs[m_phase];
-        ScoreIndex* end = start + numMoves;
-        std::stable_sort(start, end, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
-        m_sortRequired = false;
-    }
-
-    // Get the index of the next move
-    uint8_t index = m_scoreIndexPairs[m_phase][--m_numMovesInPhase[m_phase]].index;
-
-    return m_moves + index;
 }
 
 MoveSelector::Phase MoveSelector::getPhase() const

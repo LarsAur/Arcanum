@@ -65,14 +65,19 @@ namespace Arcanum
     class MoveSelector
     {
         public:
-            enum Phase : int8_t
+            enum class Phase : uint8_t
             {
-                TT_PHASE = -1,
-                HIGH_SCORING_PHASE,
-                LOW_SCORING_PHASE,
-                NEGATIVE_SCORING_PHASE,
-                NUM_PHASES,
+                TT_PHASE,
+                SORT_GOOD_CAPTURE_PHASE,
+                GOOD_CAPTURES_PHASE,
+                KILLERS_PHASE,
+                COUNTERS_PHASE,
+                SORT_QUIET_PHASE,
+                QUIETS_PHASE,
+                SORT_BAD_CAPTURE_PHASE,
+                BAD_CAPTURES_PHASE,
             };
+
             MoveSelector(
                 const Move *moves,
                 const uint8_t numMoves,
@@ -93,6 +98,7 @@ namespace Arcanum
                 int32_t score;
                 int32_t index;
             };
+
             Phase m_phase;
             const Move* m_moves;
             int m_plyFromRoot;
@@ -103,11 +109,22 @@ namespace Arcanum
             CounterMoveManager* m_counterMoveManager;
             Move m_ttMove;
             Move m_prevMove;
-            bool m_sortRequired;
             uint8_t m_numMoves;
-            uint8_t m_numMovesInPhase[NUM_PHASES];                    // Not including TT
-            ScoreIndex m_scoreIndexPairs[NUM_PHASES][MAX_MOVE_COUNT]; // Not including TT
-            int32_t m_getMoveScore(const Move& move, Phase& phase);
+
+            bool m_skipQuiets;
+            uint8_t m_numTTMoves;
+            uint8_t m_numKillers;
+            uint8_t m_numCounters;
+            uint8_t m_numCaptures;
+            uint8_t m_numBadCaptures;
+            uint8_t m_nextBadCapture;
+            uint8_t m_numQuiets;
+
+            int32_t m_ttIndex;
+            int32_t m_killerIndices[2];
+            int32_t m_counterIndex;
+            ScoreIndex m_captureScoreIndexPairs[MAX_MOVE_COUNT]; // Contains captures and promotions
+            ScoreIndex m_quietScoreIndexPairs[MAX_MOVE_COUNT];
             void m_scoreMoves();
     };
 
