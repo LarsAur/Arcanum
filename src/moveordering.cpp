@@ -38,7 +38,7 @@ inline void MoveSelector::m_scoreMoves()
             if(move.isCapture())
             {
                 score += (s_pieceValues[move.capturedPiece()] - s_pieceValues[move.movedPiece()]) * 16;
-                // score += m_captureHistory->get(move, turn);
+                score += m_captureHistory->get(move, turn);
             }
 
             if(move.isPromotion())
