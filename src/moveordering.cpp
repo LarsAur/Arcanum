@@ -324,9 +324,9 @@ CaptureHistory::~CaptureHistory()
     delete[] m_historyScore;
 }
 
-inline uint32_t CaptureHistory::m_getIndex(Color turn, square_t from, square_t to, Piece capture)
+inline uint32_t CaptureHistory::m_getIndex(Color turn, square_t to, Piece movedPiece, Piece capturedPiece)
 {
-    return turn + 2 * (from + 64 * (to + 64 * capture));
+    return turn + 2 * (to + 64 * (movedPiece + 6 * capturedPiece));
 }
 
 inline int32_t CaptureHistory::m_getBonus(uint8_t depth)
@@ -348,13 +348,13 @@ void CaptureHistory::updateHistory(const Move& bestMove, const std::array<Move, 
 
 void CaptureHistory::m_addBonus(const Move& move, Color turn, int32_t bonus)
 {
-    uint32_t index = m_getIndex(turn, move.from, move.to, move.capturedPiece());
+    uint32_t index = m_getIndex(turn, move.from, move.movedPiece(), move.capturedPiece());
     m_historyScore[index] += bonus - (m_historyScore[index] * std::abs(bonus) / 16384);
 }
 
 int32_t CaptureHistory::get(const Move& move, Color turn)
 {
-    return m_historyScore[m_getIndex(turn, move.from, move.to, move.capturedPiece())];
+    return m_historyScore[m_getIndex(turn, move.from, move.movedPiece(), move.capturedPiece())];
 }
 
 void CaptureHistory::clear()

@@ -37,10 +37,10 @@ namespace Arcanum
     class CaptureHistory
     {
         private:
-            static constexpr uint32_t TableSize = 2 * 64 * 64 * 6;
-            //  [MovedColor][MovedFrom][MovedTo][CapturedPiece]
+            static constexpr uint32_t TableSize = 2 * 64 * 6 * 6;
+            //  [MovedColor][MovedTo][MovedPiece][CapturedPiece]
             int32_t* m_historyScore;
-            uint32_t m_getIndex(Color turn, square_t from, square_t to, Piece capture);
+            uint32_t m_getIndex(Color turn, square_t to, Piece movedPiece, Piece capturedPiece);
             int32_t m_getBonus(uint8_t depth);
             void m_addBonus(const Move& move, Color turn, int32_t bonus);
         public:
