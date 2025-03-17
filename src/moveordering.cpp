@@ -11,12 +11,6 @@ static const uint16_t s_pieceValues[6]
 
 inline void MoveSelector::m_scoreMoves()
 {
-    m_numTTMoves = 0;
-    m_numKillers = 0;
-    m_numCounters = 0;
-    m_numCaptures = 0;
-    m_numQuiets = 0;
-
     Color turn = m_board->getTurn();
 
     for(uint8_t i = 0; i < m_numMoves; i++)
@@ -87,6 +81,11 @@ MoveSelector::MoveSelector(
     m_moves = moves;
     m_phase = Phase::TT_PHASE;
     m_skipQuiets = false;
+    m_numTTMoves = 0;
+    m_numKillers = 0;
+    m_numCounters = 0;
+    m_numCaptures = 0;
+    m_numQuiets = 0;
 
     // If there is only a single move, set it as the TT move to avoid scoring and sorting it
     if(m_numMoves == 1)
