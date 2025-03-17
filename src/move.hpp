@@ -93,6 +93,11 @@ namespace Arcanum
             return moveInfo & MOVE_INFO_PROMOTE_MASK;
         }
 
+        inline bool isUnderPromotion() const
+        {
+            return moveInfo & (MOVE_INFO_PROMOTE_MASK ^ Arcanum::PROMOTE_QUEEN);
+        }
+
         inline Piece promotedPiece() const
         {
             return Piece(LS1B(moveInfo & MOVE_INFO_PROMOTE_MASK) - 11);

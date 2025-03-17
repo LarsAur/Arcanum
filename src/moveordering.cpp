@@ -134,7 +134,7 @@ const Move* MoveSelector::getNextMove()
         {
             // If the capture is a bad capture, move it to the back of the end of the capture array to be played in the bad capture phase
             const Move* move = m_moves + m_captureScoreIndexPairs[--m_numCaptures].index;
-            if((move->isPromotion() && (move->promotedPiece() != Piece::W_QUEEN)) || !m_board->see(*move))
+            if(move->isUnderPromotion() || !m_board->see(*move))
             {
                 ++m_numBadCaptures;
                 m_captureScoreIndexPairs[MAX_MOVE_COUNT - m_numBadCaptures] = m_captureScoreIndexPairs[m_numCaptures];
