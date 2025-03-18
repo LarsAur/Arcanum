@@ -196,6 +196,11 @@ MoveSelector::Phase MoveSelector::getPhase() const
     return m_phase;
 }
 
+void MoveSelector::skipQuiets()
+{
+    m_skipQuiets = true;
+}
+
 KillerMoveManager::KillerMoveManager()
 {
     clear();
