@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <cstring>
+#include <sstream>
 
 #define STRINGIFY(s) #s
 #define TOSTRING(x) STRINGIFY(x)
@@ -26,37 +27,32 @@
 // Default
 #define DEFAULT_COLOR COLOR_WHITE
 
-extern std::string _logFileName;
-#ifdef PRINT_TO_FILE
-#define CREATE_LOG_FILE(_name) _logFileName = std::string(_name).append(".log"); \
-{ \
-    std::ofstream fileStream(_logFileName, std::ofstream::out | std::ofstream::trunc); \
-    if(fileStream.is_open()) \
-    { \
-        fileStream << "Created log file " << _logFileName << std::endl; \
-        fileStream.close(); \
-    } \
-    else { std::cerr << "Unable to create file " << _logFileName << std::endl; } \
-}
-#else
-    #define CREATE_LOG_FILE(_name) ;
-#endif
+// Get the current date/time. Format is YYYY-MM-DD_HH-mm-ss
+const std::string getCurrentDateTime();
+
+// Gets the path to the folder which the executable is in
+std::string getWorkPath();
+
+// Check for case insensitive string equality
+bool strEqCi(std::string a, std::string b);
+
+// Convert string to lowercase
+void toLowerCase(std::string& str);
+
+// Logs the
+void logToFile(std::string str);
 
 #define _FILE_PRINT(_str) { \
-    std::ofstream fileStream(_logFileName, std::ofstream::out | std::ofstream::app); \
-    if(fileStream.is_open()) \
-    { \
-        fileStream << _str << std::endl; \
-        fileStream.close(); \
-    } \
-    else { std::cerr << "Unable to open file " << _logFileName << std::endl; } \
+    std::stringstream ss; \
+    ss << _str; \
+    logToFile(ss.str()); \
 }
 
 // Get the file name from the full file path
 #define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
 
 #ifndef DISABLE_DEBUG
-    #ifndef PRINT_TO_FILE
+    #ifndef LOG_FILE_NAME
         #define DEBUG(_str) std::cout << DEBUG_COLOR << "[DEBUG]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
     #else
         #define DEBUG(_str) _FILE_PRINT("[DEBUG]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
@@ -66,7 +62,7 @@ extern std::string _logFileName;
 #endif
 
 #ifndef DISABLE_LOG
-    #ifndef PRINT_TO_FILE
+    #ifndef LOG_FILE_NAME
         #define LOG(_str) std::cout << LOG_COLOR << "[LOG]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
     #else
         #define LOG(_str) _FILE_PRINT("[LOG]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
@@ -76,7 +72,7 @@ extern std::string _logFileName;
 #endif
 
 #ifndef DISABLE_WARNING
-    #ifndef PRINT_TO_FILE
+    #ifndef LOG_FILE_NAME
         #define WARNING(_str) std::cout << WARNING_COLOR << "[WARNING]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
     #else
         #define WARNING(_str) _FILE_PRINT("[WARNING]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
@@ -86,7 +82,7 @@ extern std::string _logFileName;
 #endif
 
 #ifndef DISABLE_ERROR
-    #ifndef PRINT_TO_FILE
+    #ifndef LOG_FILE_NAME
         #define ERROR(_str) std::cout << ERROR_COLOR << "[ERROR]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
     #else
         #define ERROR(_str) _FILE_PRINT("[ERROR]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
@@ -107,14 +103,4 @@ extern std::string _logFileName;
     #define FAIL(_str) ;
 #endif
 
-
 #define UCI_OUT(_str) std::cout << _str << std::endl;
-
-// Gets the path to the folder which the executable is in
-std::string getWorkPath();
-
-// Check for case insensitive string equality
-bool strEqCi(std::string a, std::string b);
-
-// Convert string to lowercase
-void toLowerCase(std::string& str);

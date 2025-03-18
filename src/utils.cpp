@@ -1,5 +1,6 @@
 #include <utils.hpp>
 #include <algorithm>
+#include <time.h>
 
 #if defined(_WIN64)
 #include <Libloaderapi.h>
@@ -7,8 +8,41 @@
 #include <filesystem>
 #endif
 
-// Name of the log file used when PRINT_TO_FILE is defined
-std::string _logFileName;
+// Name of the log file used when LOG_FILE_NAME is defined
+static std::string logFileName;
+
+void logToFile(std::string str)
+{
+    // Check if an existing log file is created
+    // If not, create a unique name using the current data and time
+    if(logFileName.empty())
+    {
+        logFileName = getWorkPath()
+            .append(std::string(TOSTRING(LOG_FILE_NAME)))
+            .append("_")
+            .append(getCurrentDateTime())
+            .append(".log");
+    }
+
+    std::ofstream fileStream(logFileName, std::ofstream::out | std::ofstream::app);
+
+    if(fileStream.is_open())
+    {
+        fileStream << str << std::endl;
+        fileStream.close();
+    }
+    else { std::cerr << "Unable to open file " << logFileName << std::endl; }
+}
+
+// Get the current date/time. Format is YYYY-MM-DD_HH-mm-ss
+const std::string getCurrentDateTime() {
+    time_t now = time(0);
+    struct tm tstruct;
+    char buf[100];
+    tstruct = *localtime(&now);
+    strftime(buf, sizeof(buf), "%Y-%m-%d_%H-%M-%S", &tstruct);
+    return buf;
+}
 
 // Gets the path to the folder which the executable is in
 std::string getWorkPath()

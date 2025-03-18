@@ -10,8 +10,6 @@ using namespace Arcanum;
 
 int main(int argc, char *argv[])
 {
-    CREATE_LOG_FILE(argv[0]);
-
     BitboardLookups::generateBitboardLookups();
 
     Evaluator::nnue.load(Interface::UCI::optionNNUEPath.value);
