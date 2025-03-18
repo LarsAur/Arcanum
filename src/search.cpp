@@ -383,16 +383,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->value < probBeta))
         {
             MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, ttMove, prevMove);
-
-            for(uint8_t i = 0; i < numMoves; i++)
+            moveSelector.skipQuiets(); // Note: Killers and counters are still included
+            while(const Move* move = moveSelector.getNextMove())
             {
-                const Move* move = moveSelector.getNextMove();
-
-                if(move->isQuiet())
-                {
-                    continue;
-                }
-
                 Board newBoard = Board(board);
                 newBoard.performMove(*move);
                 m_tt.prefetch(newBoard.getHash());
