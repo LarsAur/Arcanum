@@ -179,9 +179,8 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, ttMove, prevMove);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = NULL_MOVE;
-    for (int i = 0; i < numMoves; i++)  {
-        const Move *move = moveSelector.getNextMove();
-
+    while(const Move *move = moveSelector.getNextMove())
+    {
         if(!isChecked && !board.see(*move))
             continue;
 
@@ -419,9 +418,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     uint8_t captureMovesPerformed = 0;
     std::array<Move, MAX_MOVE_COUNT> quiets;
     std::array<Move, MAX_MOVE_COUNT> captures;
-    for (int i = 0; i < numMoves; i++)  {
-        const Move* move = moveSelector.getNextMove();
-
+    int32_t moveNumber = 0;
+    while (const Move* move = moveSelector.getNextMove())
+    {
         if(*move == skipMove)
             continue;
 
@@ -434,6 +433,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         && move->isQuiet())
         {
             m_stats.lmpPrunedMoves++;
+            moveSelector.skipQuiets();
             continue;
         }
 
@@ -455,7 +455,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
         // Singular extension
         if(
-            i == 0
+            moveNumber == 0
             && skipMove.isNull()
             && extension == 0
             && depth >= 7
@@ -486,7 +486,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         m_evaluator.pushMoveToAccumulator(board, *move);
         m_searchStack[plyFromRoot].move = *move;
 
-        if(i == 0)
+        if(moveNumber == 0)
         {
             score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, !(isPv | cutnode), totalExtensions + extension);
         }
@@ -496,7 +496,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             int8_t R = 1;
             if(depth >= 3 && !move->isCapture() && !checkOrChecking && !Evaluator::isMateScore(bestScore))
             {
-                R =  m_lmrReductions[depth][i];
+                R =  m_lmrReductions[depth][moveNumber];
                 R += isWorsening;
                 R -= m_killerMoveManager.contains(*move, plyFromRoot);
                 R += cutnode;
@@ -554,6 +554,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             }
             break;
         }
+
+        moveNumber++;
 
         if(move->isQuiet())
         {
