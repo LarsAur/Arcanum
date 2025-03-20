@@ -419,6 +419,19 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     std::array<Move, MAX_MOVE_COUNT> quiets;
     std::array<Move, MAX_MOVE_COUNT> captures;
     int32_t moveNumber = 0;
+
+    // Futility pruning
+    if(!isPv
+    && depth <= 10
+    && !isChecked
+    && (staticEval + 150 * (depth + 1) <= alpha)
+    && !Evaluator::isCloseToMate(board, alpha)
+    && board.hasOfficers(board.getTurn()))
+    {
+        m_stats.futilityPrunedMoves++;
+        moveSelector.skipQuiets();
+    }
+
     while (const Move* move = moveSelector.getNextMove())
     {
         if(*move == skipMove)
