@@ -77,6 +77,7 @@ namespace Arcanum
             friend class Evaluator;
             friend class FEN;
             friend class BinpackParser;
+            friend class BinpackEncoder;
 
             // Tests if the king will be checked before adding the move
             bool m_attemptAddPseudoLegalEnpassant(Move move);
