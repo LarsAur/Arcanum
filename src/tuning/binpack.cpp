@@ -474,32 +474,24 @@ void BinpackParser::m_parseNextMoveAndScore()
         // bit in the destionations bitboard. To simplify it, we generate all legal moves on the board and check
         // if the enpassant move is legal, as this check is done in move generation
         // TODO: This can be done without generating all legal moves
+        bitboard_t bbEnpassantSquare = 0LL;
         if(attacks & m_currentBoard.m_bbEnPassantSquare)
         {
             Move* moves = m_currentBoard.getLegalMoves();
             uint8_t numMoves = m_currentBoard.getNumLegalMoves();
 
-            bool found = false;
             for(uint8_t i = 0; i < numMoves; i++)
             {
                 if(moves[i].from == from && (moves[i].moveInfo & MoveInfoBit::ENPASSANT))
                 {
-                    found = true;
+                    bbEnpassantSquare = m_currentBoard.m_bbEnPassantSquare;
                     break;
                 }
-            }
-
-            if(!found)
-            {
-                m_currentBoard.m_enPassantSquare = Square::NONE;
-                m_currentBoard.m_enPassantTarget = Square::NONE;
-                m_currentBoard.m_bbEnPassantSquare = 0LL;
-                m_currentBoard.m_bbEnPassantTarget = 0LL;
             }
         }
 
         // Attacks and enpassant squares
-        destinations |= (attacks & (m_currentBoard.m_bbColoredPieces[opponent] | m_currentBoard.m_bbEnPassantSquare));
+        destinations |= (attacks & (m_currentBoard.m_bbColoredPieces[opponent] | bbEnpassantSquare));
 
         if(RANK(from) == promotionRank)
         {
