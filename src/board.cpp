@@ -1199,6 +1199,7 @@ void Board::performMove(const Move move)
     m_kingIdx = LS1B(m_bbTypedPieces[W_KING][m_turn]);
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
     m_bbOpponentAttacks = 0LL;
+    m_numLegalMoves = 0;
 
     // Update halfmoves / 50 move rule
     if(move.isCapture() || (move.moveInfo & MoveInfoBit::PAWN_MOVE))
