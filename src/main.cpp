@@ -3,6 +3,7 @@
 #include <test/engineTest.hpp>
 #include <test/selfplayTest.hpp>
 #include <test/seeTest.hpp>
+#include <test/binpackTest.hpp>
 #include <eval.hpp>
 #include <bitboardlookups.hpp>
 
@@ -29,6 +30,7 @@ int main(int argc, char *argv[])
         if("--see-test"      == std::string(argv[i])) Benchmark::SeeTest::runSeeTest();
         if("--selfplay-test" == std::string(argv[i])) Benchmark::SelfplayTest::runSelfplayTest();
         if("--engine-test"   == std::string(argv[i])) Benchmark::EngineTest::runEngineTest();
+        if("--binpack-test" == std::string(argv[i])) Benchmark::BinpackTest::runBinpackTest();
     }
 
     return 0;
