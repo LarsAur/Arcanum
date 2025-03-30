@@ -6,15 +6,16 @@
 
 namespace Arcanum
 {
+    enum GameResult
+    {
+        BLACK_WIN = -1,
+        DRAW = 0,
+        WHITE_WIN = 1,
+    };
+
     class DataParser
     {
         public:
-            enum Result
-            {
-                BLACK_WIN = -1,
-                DRAW = 0,
-                WHITE_WIN = 1,
-            };
 
             virtual ~DataParser() = default;
             virtual bool open(std::string path) = 0;
@@ -22,7 +23,7 @@ namespace Arcanum
             virtual bool eof() = 0;
             virtual Board* getNextBoard() = 0;
             virtual eval_t getScore() = 0;
-            virtual Result getResult() = 0;
+            virtual GameResult getResult() = 0;
     };
 
     class DataLoader
@@ -36,7 +37,7 @@ namespace Arcanum
             bool eof();
             Board* getNextBoard();
             eval_t getScore();
-            DataParser::Result getResult();
+            GameResult getResult();
     };
 }
 

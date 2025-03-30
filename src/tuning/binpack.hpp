@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dataloader.hpp>
+#include <tuning/dataloader.hpp>
 #include <types.hpp>
 #include <string>
 #include <fstream>
@@ -27,7 +27,7 @@ namespace Arcanum
 
         Board m_currentBoard;
         int16_t m_currentScore;
-        DataParser::Result m_currentResult;
+        GameResult m_currentResult;
         Move m_currentMove;
         uint16_t m_currentMoveTextCount;
 
@@ -59,6 +59,6 @@ namespace Arcanum
         bool eof();
         Board* getNextBoard();
         eval_t getScore();
-        Result getResult();
+        GameResult getResult();
     };
 }

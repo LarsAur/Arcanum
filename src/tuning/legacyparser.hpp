@@ -12,7 +12,7 @@ namespace Arcanum
         private:
             std::ifstream m_ifs;
             Board m_board;
-            DataParser::Result m_result;
+            GameResult m_result;
             eval_t m_score;
         public:
             LegacyParser();
@@ -21,6 +21,6 @@ namespace Arcanum
             bool eof();
             Board* getNextBoard();
             eval_t getScore();
-            Result getResult();
+            GameResult getResult();
     };
 }

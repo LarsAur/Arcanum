@@ -61,7 +61,7 @@ eval_t BinpackParser::getScore()
     return m_currentScore;
 }
 
-DataParser::Result BinpackParser::getResult()
+GameResult BinpackParser::getResult()
 {
     return m_currentResult;
 }
@@ -393,15 +393,15 @@ void BinpackParser::m_parsePlyAndResult()
     int16_t result = m_unsignedToSigned(plyAndResult >> 14);
     if(result == 0)
     {
-        m_currentResult = DataParser::Result::DRAW;
+        m_currentResult = GameResult::DRAW;
     }
     else if(result > 0 && m_currentBoard.m_turn == WHITE)
     {
-        m_currentResult = DataParser::Result::WHITE_WIN;
+        m_currentResult = GameResult::WHITE_WIN;
     }
     else
     {
-        m_currentResult = DataParser::Result::BLACK_WIN;
+        m_currentResult = GameResult::BLACK_WIN;
     }
 }
 

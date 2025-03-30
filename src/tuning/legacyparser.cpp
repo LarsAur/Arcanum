@@ -42,7 +42,7 @@ Board* LegacyParser::getNextBoard()
     std::getline(m_ifs, cpStr);
     std::getline(m_ifs, fenStr);
 
-    m_result =  DataParser::Result(atoi(resultStr.c_str()));
+    m_result = GameResult(atoi(resultStr.c_str()));
     m_score = atoi(cpStr.c_str());
     m_board = Board(fenStr);
 
@@ -61,7 +61,7 @@ eval_t LegacyParser::getScore()
     return m_score;
 }
 
-DataParser::Result LegacyParser::getResult()
+GameResult LegacyParser::getResult()
 {
     return m_result;
 }

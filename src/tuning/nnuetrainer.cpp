@@ -262,7 +262,7 @@ inline float NNUETrainer::m_sigmoidPrime(float sigmoid)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, DataParser::Result result, float& totalLoss)
+void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResult result, float& totalLoss)
 {
     // -- Run prediction
     float out = m_predict(board);
@@ -417,7 +417,7 @@ void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t ba
         {
             Board *board = loader.getNextBoard();
             eval_t cp = loader.getScore();
-            DataParser::Result result = loader.getResult();
+            GameResult result = loader.getResult();
 
             // Run back propagation
             m_backPropagate(*board, cp, result, batchLoss);

@@ -58,7 +58,7 @@ namespace Arcanum
             void m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet);
 
             void m_applyGradient(uint32_t timestep);
-            void m_backPropagate(const Board& board, float cpTarget, DataParser::Result result, float& totalLoss);
+            void m_backPropagate(const Board& board, float cpTarget, GameResult result, float& totalLoss);
 
             void m_storeNet(std::string filename, Net& net);
             bool m_loadNet(std::string filename, Net& net);

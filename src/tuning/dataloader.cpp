@@ -49,7 +49,7 @@ namespace Arcanum
         return m_parser->getScore();
     }
 
-    DataParser::Result DataLoader::getResult()
+    GameResult DataLoader::getResult()
     {
         return m_parser->getResult();
     }

@@ -1,5 +1,4 @@
 #include <tuning/fengen.hpp>
-#include <tuning/dataloader.hpp>
 #include <fstream>
 #include <thread>
 #include <mutex>
@@ -27,7 +26,7 @@ void Fengen::m_setupMaterialDraws()
     m_materialDraws.push_back(kingsBKnight.getMaterialHash());
 }
 
-bool Fengen::m_isFinished(Board& board, Searcher& searcher, Result& result)
+bool Fengen::m_isFinished(Board& board, Searcher& searcher, GameResult& result)
 {
     auto history = searcher.getHistory();
     if(history.at(board.getHash()) > 2)
@@ -53,11 +52,11 @@ bool Fengen::m_isFinished(Board& board, Searcher& searcher, Result& result)
     {
         if(board.isChecked())
         {
-            result = (board.getTurn() == WHITE) ? Result::BLACK_WIN : Result::WHITE_WIN;
+            result = (board.getTurn() == WHITE) ? GameResult::BLACK_WIN : GameResult::WHITE_WIN;
         }
         else
         {
-            result = Result::DRAW;
+            result = GameResult::DRAW;
         }
 
         return true;
@@ -127,7 +126,7 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
             Board board = Board(startPostion);
             searcher.addBoardToHistory(board);
 
-            Result result;
+            GameResult result;
             while (!m_isFinished(board, searcher, result))
             {
                 SearchResult searchResult;
