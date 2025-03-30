@@ -90,9 +90,8 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
         return;
     }
 
-    std::ofstream outStream = std::ofstream(outputPath, std::ios::app);
-
-    if(!outStream.is_open())
+    DataStorer encoder = DataStorer();
+    if(!encoder.open(outputPath))
     {
         ERROR("Unable to open " << outputPath)
         posStream.close();
@@ -101,9 +100,12 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
 
     auto fn = [&](uint8_t id)
     {
-        std::vector<std::string> fens;
-        std::vector<eval_t> evals;
-        std::string startPostion;
+        std::string startfen;
+        std::array<Move, DataEncoder::MaxGameLength> moves;
+        std::array<eval_t, DataEncoder::MaxGameLength> scores;
+        uint32_t numMoves;
+        GameResult result;
+
         Searcher searcher = Searcher();
         searcher.setVerbose(false);
 
@@ -117,31 +119,30 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
                 break;
             }
 
-            std::getline(posStream, startPostion);
+            std::getline(posStream, startfen);
 
             readLock.unlock();
 
-            startPostion.insert(startPostion.size() - 1, "0 1");
+            startfen.insert(startfen.size() - 1, "0 1");
 
-            Board board = Board(startPostion);
+            Board board = Board(startfen);
             searcher.addBoardToHistory(board);
 
-            GameResult result;
-            while (!m_isFinished(board, searcher, result))
+            numMoves = 0;
+
+            // If there are too many moves, the game will be adjudicated to a draw
+            while (!m_isFinished(board, searcher, result) && (numMoves < DataEncoder::MaxGameLength))
             {
                 SearchResult searchResult;
                 Move move = searcher.getBestMove(board, depth, &searchResult);
 
-                // Output the evaluation from the white perspective
-                if(board.getTurn() == WHITE)
-                    evals.push_back(searchResult.eval);
-                else
-                    evals.push_back(-searchResult.eval);
-
+                // The scores are from the current perspective
+                scores[numMoves] = searchResult.eval;
+                moves[numMoves] = move;
+                numMoves++;
 
                 board.performMove(move);
                 searcher.addBoardToHistory(board);
-                fens.push_back(FEN::getFEN(board));
 
                 if(Evaluator::isMateScore(searchResult.eval))
                 {
@@ -158,26 +159,10 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
 
             writeLock.lock();
 
-            std::string strRes = std::to_string(result);
+            encoder.addGame(startfen, moves, scores, numMoves, result);
 
-            for(size_t i = 0; i < fens.size(); i++)
-            {
-                // Write result
-                outStream.write(strRes.c_str(), strRes.size());
-                outStream.write("\n", 1);
-                // Write eval
-                std::string strEval = std::to_string(evals.at(i));
-                outStream.write(strEval.c_str(), strEval.size());
-                outStream.write("\n", 1);
-                // Write FEN
-                outStream.write(fens.at(i).c_str(), fens.at(i).size());
-                outStream.write("\n", 1);
-            }
-
-            outStream.flush();
-
-            fenCount += fens.size();
-            if((fenCount % 1000) < ((fenCount - fens.size()) % 1000)  )
+            fenCount += numMoves + 1; // Num moves + startfen
+            if((fenCount % 1000) < ((fenCount - numMoves - 1) % 1000)  )
             {
                 LOG(fenCount << " fens\t" << 1000000.0f / msTimer.getMs() << " fens/sec\t" << 100 * fenCount / numFens << "%")
                 msTimer.start();
@@ -186,8 +171,6 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
 
             searcher.clearHistory();
             searcher.clear();
-            fens.clear();
-            evals.clear();
         }
     };
 
@@ -200,4 +183,7 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
     {
         threads.at(i).join();
     }
+
+    encoder.close();
+    LOG("Finished generating FENs")
 }
