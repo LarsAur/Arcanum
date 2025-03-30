@@ -4,6 +4,9 @@
 
 namespace Arcanum
 {
+
+    // -- Data Loader
+
     DataLoader::DataLoader() : m_parser(nullptr)
     {
 
@@ -52,5 +55,49 @@ namespace Arcanum
     GameResult DataLoader::getResult()
     {
         return m_parser->getResult();
+    }
+
+    // -- Data Storer
+
+    DataStorer::DataStorer() : m_encoder(nullptr)
+    {
+
+    }
+
+    bool DataStorer::open(std::string path)
+    {
+        if(path.find(".binpack") != std::string::npos)
+        {
+            m_encoder = std::make_unique<BinpackEncoder>();
+            LOG("Loading binpack file: " << path)
+        }
+        else if(path.find(".txt") != std::string::npos)
+        {
+            WARNING("Missing legacy encoder")
+        }
+        else{
+            ERROR("Unsupported file format: " << path)
+            return false;
+        }
+
+        return m_encoder->open(path);
+    }
+
+    void DataStorer::close()
+    {
+        m_encoder->close();
+    }
+
+    // Encode a game and write it to file
+    // The scores are from the current turns perspective
+    void DataStorer::addGame(
+        std::string startfen,
+        std::array<Move, DataEncoder::MaxGameLength>& moves,
+        std::array<eval_t, DataEncoder::MaxGameLength>& scores,
+        uint32_t numMoves,
+        GameResult result
+    )
+    {
+        m_encoder->addGame(startfen, moves, scores, numMoves, result);
     }
 }

@@ -57,4 +57,21 @@ namespace Arcanum
             eval_t getScore();
             GameResult getResult();
     };
+
+    class DataStorer
+    {
+        private:
+            std::unique_ptr<DataEncoder> m_encoder;
+        public:
+            DataStorer();
+            bool open(std::string path);
+            void close();
+            void addGame(
+                std::string startfen,
+                std::array<Move, DataEncoder::MaxGameLength>& moves,
+                std::array<eval_t, DataEncoder::MaxGameLength>& scores,
+                uint32_t numMoves,
+                GameResult result
+            );
+    };
 }
