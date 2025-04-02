@@ -72,13 +72,34 @@ bool Fengen::m_isFinished(Board& board, Searcher& searcher, GameResult& result)
     return false;
 }
 
-void Fengen::start(std::string startPosPath, std::string outputPath, size_t numFens, uint8_t numThreads, uint32_t depth)
+void Fengen::start(std::string startPosPath, std::string outputPath, size_t numFens, uint8_t numThreads, uint32_t depth, uint32_t movetime, uint32_t nodes)
 {
     std::vector<std::thread> threads;
     std::mutex readLock;
     std::mutex writeLock;
     size_t fenCount = 0LL;
     Timer msTimer = Timer();
+
+    // Set search parameters
+    SearchParameters searchParams = SearchParameters();
+
+    if(movetime > 0)
+    {
+        searchParams.useTime = true;
+        searchParams.msTime = movetime;
+    }
+
+    if(depth > 0)
+    {
+        searchParams.useDepth = true;
+        searchParams.depth = depth;
+    }
+
+    if(nodes > 0)
+    {
+        searchParams.useNodes = true;
+        searchParams.nodes = nodes;
+    }
 
     msTimer.start();
 
@@ -134,7 +155,7 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
             while (!m_isFinished(board, searcher, result) && (numMoves < DataEncoder::MaxGameLength))
             {
                 SearchResult searchResult;
-                Move move = searcher.getBestMove(board, depth, &searchResult);
+                Move move = searcher.search(board, searchParams, &searchResult);
 
                 // The scores are from the current perspective
                 scores[numMoves] = searchResult.eval;

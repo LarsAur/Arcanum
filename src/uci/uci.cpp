@@ -223,7 +223,9 @@ void UCI::fengen(std::istringstream& is)
     std::string outputPath   = ""; // Output path
     uint32_t numFens         = 0;  // Number of fens to generate
     uint32_t numThreads      = 0;  // Number of threads
-    uint32_t depth           = 0;  // Search depth
+    uint32_t depth           = 0;  // Max search depth. Unused if 0
+    uint32_t movetime        = 0;  // Max search time (ms). Unused if 0
+    uint32_t nodes           = 0;  // Max nodes to search. Unused if 0
 
     std::string token;
     while(is >> token)
@@ -234,18 +236,20 @@ void UCI::fengen(std::istringstream& is)
         else if(token == "numfens")    is >> numFens;
         else if(token == "numthreads") is >> numThreads;
         else if(token == "depth")      is >> depth;
+        else if(token == "movetime")   is >> movetime;
+        else if(token == "nodes")      is >> nodes;
         else WARNING("Unknown token: " << token)
     }
 
     // Validate input
     if(numFens <= 0)    { ERROR("Number of fens cannot be 0 or less")    return; }
     if(numThreads <= 0) { ERROR("Number of threads cannot be 0 or less") return; }
-    if(depth <= 0)      { ERROR("Search depth cannot be 0 or less")      return; }
     if(startPosPath == "") { ERROR("Path to list positions cannot be empty") return; }
     if(outputPath   == "") { ERROR("Output path cannot be empty")            return; }
+    if(depth == 0 && movetime == 0 && nodes == 0) { ERROR("Search depth, movetime and nodes cannot be 0 at the same time") return; }
 
     Fengen fengen;
-    fengen.start(startPosPath, outputPath, numFens, numThreads, depth);
+    fengen.start(startPosPath, outputPath, numFens, numThreads, depth, movetime, nodes);
 }
 
 void UCI::train(std::istringstream& is)
