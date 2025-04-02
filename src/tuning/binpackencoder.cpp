@@ -12,7 +12,7 @@ BinpackEncoder::BinpackEncoder()
 
 bool BinpackEncoder::open(std::string path)
 {
-    m_ofs.open(path, std::ios::binary);
+    m_ofs.open(path, std::ios::binary | std::ios::app);
 
     if(!m_ofs.is_open())
     {
