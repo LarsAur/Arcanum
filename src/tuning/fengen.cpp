@@ -127,9 +127,7 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
         uint32_t numMoves;
         GameResult result;
 
-        Searcher searcher = Searcher();
-        searcher.setVerbose(false);
-
+        Searcher searchers[2] = {Searcher(false), Searcher(false)};
         while (true)
         {
             readLock.lock();
@@ -147,15 +145,16 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
             startfen.insert(startfen.size() - 1, "0 1");
 
             Board board = Board(startfen);
-            searcher.addBoardToHistory(board);
+            searchers[0].addBoardToHistory(board);
+            searchers[1].addBoardToHistory(board);
 
             numMoves = 0;
 
             // If there are too many moves, the game will be adjudicated to a draw
-            while (!m_isFinished(board, searcher, result) && (numMoves < DataEncoder::MaxGameLength))
+            while (!m_isFinished(board, searchers[board.getTurn()], result) && (numMoves < DataEncoder::MaxGameLength))
             {
                 SearchResult searchResult;
-                Move move = searcher.search(board, searchParams, &searchResult);
+                Move move = searchers[board.getTurn()].search(board, searchParams, &searchResult);
 
                 // The scores are from the current perspective
                 scores[numMoves] = searchResult.eval;
@@ -163,7 +162,8 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
                 numMoves++;
 
                 board.performMove(move);
-                searcher.addBoardToHistory(board);
+                searchers[0].addBoardToHistory(board);
+                searchers[1].addBoardToHistory(board);
 
                 if(Evaluator::isMateScore(searchResult.eval))
                 {
@@ -190,8 +190,10 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
             }
             writeLock.unlock();
 
-            searcher.clearHistory();
-            searcher.clear();
+            searchers[0].clearHistory();
+            searchers[1].clearHistory();
+            searchers[0].clear();
+            searchers[1].clear();
         }
     };
 
