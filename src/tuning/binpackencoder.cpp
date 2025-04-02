@@ -3,7 +3,7 @@
 using namespace Arcanum;
 
 // Threshold for when chunks are written to file
-constexpr uint64_t TargetChunkSize = 10 * 1024 * 1024; // 10 MB
+constexpr uint64_t TargetChunkSize = 1 * 1024 * 1024; // 1 MB
 
 BinpackEncoder::BinpackEncoder()
 {
