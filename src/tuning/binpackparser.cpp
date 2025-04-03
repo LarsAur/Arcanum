@@ -281,7 +281,7 @@ void BinpackParser::m_parsePos()
                     m_currentBoard.m_enPassantTarget = occIndex;
 
                     // Square moved to when capturing
-                    m_currentBoard.m_bbEnPassantSquare = bbOcc << 8;
+                    m_currentBoard.m_bbEnPassantSquare = bbOcc >> 8;
                     m_currentBoard.m_enPassantSquare = occIndex - 8;
 
                     m_currentBoard.m_pieces[occIndex] = W_PAWN;
@@ -295,7 +295,7 @@ void BinpackParser::m_parsePos()
                     m_currentBoard.m_enPassantTarget = occIndex;
 
                     // Square moved to when capturing
-                    m_currentBoard.m_bbEnPassantSquare = bbOcc >> 8;
+                    m_currentBoard.m_bbEnPassantSquare = bbOcc << 8;
                     m_currentBoard.m_enPassantSquare = occIndex + 8;
 
                     m_currentBoard.m_pieces[occIndex] = B_PAWN;
