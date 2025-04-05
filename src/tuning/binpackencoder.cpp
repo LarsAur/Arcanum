@@ -231,11 +231,11 @@ void BinpackEncoder::m_writePos(Board& board)
             ) ? 13 : PieceToNibble[Piece::W_ROOK];
             break;
 
-            case Piece::B_ROOK:
+        case Piece::B_ROOK:
             nibble = (
-               ((square == Square::A8) && (board.getCastleRights() & CastleRights::BLACK_KING_SIDE))
-            || ((square == Square::H8) && (board.getCastleRights() & CastleRights::BLACK_QUEEN_SIDE))
-            ) ? 14 : PieceToNibble[Piece::B_ROOK];
+               ((square == Square::H8) && (board.getCastleRights() & CastleRights::BLACK_KING_SIDE))
+            || ((square == Square::A8) && (board.getCastleRights() & CastleRights::BLACK_QUEEN_SIDE))
+        ) ? 14 : PieceToNibble[Piece::B_ROOK];
             break;
 
         // Blacks king nibble is selected based on whos turn it is
