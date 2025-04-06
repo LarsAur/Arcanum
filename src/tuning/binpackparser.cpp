@@ -425,6 +425,29 @@ void BinpackParser::m_parseMovetextCount()
 // https://github.com/Sopel97/chess_pos_db/blob/master/docs/bcgn/variable_length.md
 void BinpackParser::m_parseNextMoveAndScore()
 {
+    #ifdef VERIFY_BINPACK
+    {
+        // Check if the move is legal in the position
+        Move* moves = m_currentBoard.getLegalMoves();
+        uint8_t numMoves = m_currentBoard.getNumLegalMoves();
+        bool found = false;
+        for(uint8_t i = 0; i < numMoves; i++)
+        {
+            if(moves[i] == m_currentMove)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if(!found)
+        {
+            ERROR("Unable to find move " << m_currentMove << " in " << m_currentBoard.fen())
+            exit(-1);
+        }
+    }
+    #endif
+
     // Perform the current move before parsing the next
     m_currentBoard.performMove(m_currentMove);
 
