@@ -127,7 +127,10 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
         uint32_t numMoves;
         GameResult result;
 
+        readLock.lock();
         Searcher searchers[2] = {Searcher(false), Searcher(false)};
+        readLock.unlock();
+
         while (true)
         {
             readLock.lock();
