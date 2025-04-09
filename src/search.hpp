@@ -127,7 +127,6 @@ namespace Arcanum
             std::unordered_map<hash_t, uint8_t, HashFunction> m_gameHistory;
             TranspositionTable m_tt;
             SearchStackElement m_searchStack[MAX_SEARCH_PLY];
-            std::vector<hash_t> m_knownEndgameMaterialDraws;
             uint8_t m_lmrReductions[MAX_SEARCH_DEPTH][MAX_MOVE_COUNT];
             uint32_t m_lmpThresholds[2][MAX_SEARCH_DEPTH];
             Timer m_timer;

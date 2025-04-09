@@ -10,22 +10,6 @@
 
 using namespace Arcanum;
 
-void Fengen::m_setupMaterialDraws()
-{
-    // Setup a table of known endgame draws based on material
-    // This is based on: https://www.chess.com/terms/draw-chess
-    Board kings = Board("K1k5/8/8/8/8/8/8/8 w - - 0 1");
-    Board kingsWBishop = Board("K1k1B3/8/8/8/8/8/8/8 w - - 0 1");
-    Board kingsBBishop = Board("K1k1b3/8/8/8/8/8/8/8 w - - 0 1");
-    Board kingsWKnight = Board("K1k1N3/8/8/8/8/8/8/8 w - - 0 1");
-    Board kingsBKnight = Board("K1k1n3/8/8/8/8/8/8/8 w - - 0 1");
-    m_materialDraws.push_back(kings.getMaterialHash());
-    m_materialDraws.push_back(kingsWBishop.getMaterialHash());
-    m_materialDraws.push_back(kingsBBishop.getMaterialHash());
-    m_materialDraws.push_back(kingsWKnight.getMaterialHash());
-    m_materialDraws.push_back(kingsBKnight.getMaterialHash());
-}
-
 bool Fengen::m_isFinished(Board& board, Searcher& searcher, GameResult& result)
 {
     auto history = searcher.getHistory();
@@ -35,16 +19,10 @@ bool Fengen::m_isFinished(Board& board, Searcher& searcher, GameResult& result)
         return true;
     }
 
-    if(board.getNumPieces() <= 3)
+    if(board.isMaterialDraw())
     {
-        for(auto it = m_materialDraws.begin(); it != m_materialDraws.end(); it++)
-        {
-            if(*it == board.getMaterialHash())
-            {
-                result = DRAW;
-                return true;
-            }
-        }
+        result = DRAW;
+        return true;
     }
 
     board.getLegalMoves();

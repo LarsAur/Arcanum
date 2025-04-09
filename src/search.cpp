@@ -16,19 +16,6 @@ Searcher::Searcher(bool verbose)
     m_stats = SearchStats();
     m_generation = 0;
 
-    // Setup a table of known endgame draws based on material
-    // This is based on: https://www.chess.com/terms/draw-chess
-    Board kings = Board("K1k5/8/8/8/8/8/8/8 w - - 0 1");
-    Board kingsWBishop = Board("K1k1B3/8/8/8/8/8/8/8 w - - 0 1");
-    Board kingsBBishop = Board("K1k1b3/8/8/8/8/8/8/8 w - - 0 1");
-    Board kingsWKnight = Board("K1k1N3/8/8/8/8/8/8/8 w - - 0 1");
-    Board kingsBKnight = Board("K1k1n3/8/8/8/8/8/8/8 w - - 0 1");
-    m_knownEndgameMaterialDraws.push_back(kings.getMaterialHash());
-    m_knownEndgameMaterialDraws.push_back(kingsWBishop.getMaterialHash());
-    m_knownEndgameMaterialDraws.push_back(kingsBBishop.getMaterialHash());
-    m_knownEndgameMaterialDraws.push_back(kingsWKnight.getMaterialHash());
-    m_knownEndgameMaterialDraws.push_back(kingsBKnight.getMaterialHash());
-
     // Initialize the LMR reduction lookup table
     for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
         for(uint8_t m = 0; m < MAX_MOVE_COUNT; m++)
@@ -621,24 +608,14 @@ inline bool Searcher::m_isDraw(const Board& board, uint8_t plyFromRoot) const
         return true;
     }
 
-    if(board.getNumPieces() <= 3)
-    {
-        for(auto it = m_knownEndgameMaterialDraws.begin(); it != m_knownEndgameMaterialDraws.end(); it++)
-        {
-            if(*it == board.getMaterialHash())
-            {
-                return true;
-            }
-        }
-    }
-
     // Check for 50 move rule
     if(board.getHalfMoves() >= 100)
     {
         return true;
     }
 
-    return false;
+    // Check material draw
+    return board.isMaterialDraw();
 }
 
 Move Searcher::getBestMove(Board& board, int depth, SearchResult* searchResult)

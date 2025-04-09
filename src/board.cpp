@@ -1556,3 +1556,47 @@ std::string Board::fen() const
 {
     return FEN::getFEN(*this);
 }
+
+// Checks if the position is a draw based on the number of pieces of each type
+// Returns true if it is impossible to create a checkmate
+bool Board::isMaterialDraw() const
+{
+    uint8_t numPieces = CNTSBITS(m_bbAllPieces);
+
+    // Quick exit if the number of pieces is greater than 4
+    if(numPieces > 4)
+        return false;
+
+    // King vs King
+    if(numPieces == 2)
+    {
+        return true;
+    }
+
+    // King vs King + minor piece (knight or bishop)
+    if(numPieces == 3)
+    {
+        bitboard_t bbMinors = (
+            m_bbTypedPieces[Piece::W_KNIGHT][Color::WHITE] |
+            m_bbTypedPieces[Piece::W_KNIGHT][Color::BLACK] |
+            m_bbTypedPieces[Piece::W_BISHOP][Color::WHITE] |
+            m_bbTypedPieces[Piece::W_BISHOP][Color::BLACK]
+        );
+
+        // Return true if the last piece is a knight or bishop.
+        return bbMinors != 0;
+    }
+
+    // King + Bishop vs King + Bishop
+    // Bishops have to be on the same colored square
+    if(numPieces == 4)
+    {
+        constexpr bitboard_t DarkSquares = 0xAA55AA55AA55AA55LL;
+        const bitboard_t wBishops = m_bbTypedPieces[Piece::W_BISHOP][Color::WHITE];
+        const bitboard_t bBishops = m_bbTypedPieces[Piece::W_BISHOP][Color::BLACK];
+
+        return (wBishops && bBishops) && (!(wBishops & DarkSquares) == !(bBishops & DarkSquares));
+    }
+
+    return false;
+}
