@@ -10,7 +10,7 @@
 
 using namespace Arcanum;
 
-bool Fengen::m_isFinished(Board& board, Searcher& searcher, GameResult& result)
+bool Fengen::m_isFinished(Board& board, Searcher& searcher, GameResult& result) const
 {
     auto history = searcher.getHistory();
     if(history.at(board.getHash()) > 2)
@@ -48,6 +48,43 @@ bool Fengen::m_isFinished(Board& board, Searcher& searcher, GameResult& result)
     }
 
     return false;
+}
+
+bool Fengen::m_isAdjudicated(Board& board, uint32_t ply, std::array<eval_t, DataEncoder::MaxGameLength>& scores, GameResult& result) const
+{
+    constexpr uint32_t DrawPly   = 40;
+    constexpr uint32_t DrawScore = 10;
+    constexpr uint32_t DrawScoreRepeats = 8; // 4 times from each side
+
+    // Adjudicate the game as a draw if it is too long
+    if(ply >= DataEncoder::MaxGameLength - 1)
+    {
+        result = GameResult::DRAW;
+        return true;
+    }
+
+    // Adjudicate the game if the score is close to zero for long enough
+    // This will also catch draws from tablebase
+    bool isDraw = false;
+    if(DrawPly > 40)
+    {
+        isDraw = true;
+        for(uint32_t i = ply - DrawScoreRepeats - 1; i < ply; i++)
+        {
+            if(std::abs(scores[i]) > DrawScore)
+            {
+                isDraw = false;
+                break;
+            }
+        }
+    }
+
+    if(isDraw)
+    {
+        result = GameResult::DRAW;
+    }
+
+    return isDraw;
 }
 
 void Fengen::start(std::string startPosPath, std::string outputPath, size_t numFens, uint8_t numThreads, uint32_t depth, uint32_t movetime, uint32_t nodes)
@@ -136,7 +173,7 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
             numMoves = 0;
 
             // If there are too many moves, the game will be adjudicated to a draw
-            while (!m_isFinished(board, searchers[board.getTurn()], result) && (numMoves < DataEncoder::MaxGameLength))
+            while (!m_isFinished(board, searchers[board.getTurn()], result) && !m_isAdjudicated(board, numMoves, scores, result))
             {
                 SearchResult searchResult;
                 Move move = searchers[board.getTurn()].search(board, searchParams, &searchResult);
@@ -150,15 +187,11 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
                 searchers[0].addBoardToHistory(board);
                 searchers[1].addBoardToHistory(board);
 
-                if(Evaluator::isMateScore(searchResult.eval))
+                // If a real mate is found, we can terminate the search.
+                // The positions in the mating line will not be added to the games
+                if(Evaluator::isRealMateScore(searchResult.eval))
                 {
                     result = searchResult.eval > 0 ? (board.getTurn() == WHITE ? BLACK_WIN : WHITE_WIN) : (board.getTurn() == WHITE ? WHITE_WIN : BLACK_WIN);
-                    break;
-                }
-                // If no mate is found and there are few enough pieces, it must be a draw
-                else if(TB_LARGEST >= (int) CNTSBITS(board.getColoredPieces(WHITE) | board.getColoredPieces(BLACK)))
-                {
-                    result = DRAW;
                     break;
                 }
             }
