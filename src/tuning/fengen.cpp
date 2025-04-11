@@ -113,6 +113,7 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
         {
             readLock.lock();
 
+            posStream.peek();
             if(posStream.eof() || fenCount > numFens)
             {
                 readLock.unlock();
