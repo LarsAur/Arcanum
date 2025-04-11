@@ -109,6 +109,9 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
         Searcher searchers[2] = {Searcher(false), Searcher(false)};
         readLock.unlock();
 
+        searchers[0].resizeTT(8);
+        searchers[1].resizeTT(8);
+
         while (true)
         {
             readLock.lock();
