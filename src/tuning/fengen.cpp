@@ -164,9 +164,11 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
 
             readLock.unlock();
 
-            startfen.insert(startfen.size() - 1, "0 1");
+            // Parse the board in relaxed mode and get the fen from the board
+            // this is in case the edp does not provide move-clocks
+            Board board = Board(startfen, false);
+            startfen = board.fen();
 
-            Board board = Board(startfen);
             searchers[0].addBoardToHistory(board);
             searchers[1].addBoardToHistory(board);
 
