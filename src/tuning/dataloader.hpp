@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <array>
 #include <board.hpp>
 
 namespace Arcanum
