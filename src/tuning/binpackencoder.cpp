@@ -149,6 +149,8 @@ void BinpackEncoder::m_writeBytesToBuffer(void* src, uint32_t numBytes)
 
 void BinpackEncoder::m_writeBlock()
 {
+    DEBUG("Writing chunk: " << m_buffer.size() << " Bytes")
+
     // Write chunk header
     m_ofs.write("BINP", 4);
 
@@ -158,6 +160,8 @@ void BinpackEncoder::m_writeBlock()
 
     // Write chunk
     m_ofs.write(m_buffer.data(), m_buffer.size());
+    // Flush the chunk immediatly in case encoding is canceled without closing
+    m_ofs.flush();
 
     // Reset chunk data
     // Note capacity is left unchanged
