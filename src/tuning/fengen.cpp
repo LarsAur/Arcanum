@@ -87,7 +87,7 @@ bool Fengen::m_isAdjudicated(Board& board, uint32_t ply, std::array<eval_t, Data
     return isDraw;
 }
 
-void Fengen::start(std::string startPosPath, std::string outputPath, size_t numFens, uint8_t numThreads, uint32_t depth, uint32_t movetime, uint32_t nodes)
+void Fengen::start(FengenParameters params)
 {
     std::vector<std::thread> threads;
     std::mutex readLock;
@@ -98,38 +98,27 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
     // Set search parameters
     SearchParameters searchParams = SearchParameters();
 
-    if(movetime > 0)
-    {
-        searchParams.useTime = true;
-        searchParams.msTime = movetime;
-    }
-
-    if(depth > 0)
-    {
-        searchParams.useDepth = true;
-        searchParams.depth = depth;
-    }
-
-    if(nodes > 0)
-    {
-        searchParams.useNodes = true;
-        searchParams.nodes = nodes;
-    }
+    searchParams.useTime    = params.movetime > 0;
+    searchParams.msTime     = params.movetime;
+    searchParams.useDepth   = params.depth > 0;
+    searchParams.depth      = params.depth;
+    searchParams.useNodes   = params.nodes > 0;
+    searchParams.nodes      = params.nodes;
 
     msTimer.start();
 
-    std::ifstream posStream = std::ifstream(startPosPath);
+    std::ifstream posStream = std::ifstream(params.startposPath);
 
     if(!posStream.is_open())
     {
-        ERROR("Unable to open " << startPosPath)
+        ERROR("Unable to open " << params.startposPath)
         return;
     }
 
     DataStorer encoder = DataStorer();
-    if(!encoder.open(outputPath))
+    if(!encoder.open(params.outputPath))
     {
-        ERROR("Unable to open " << outputPath)
+        ERROR("Unable to open " << params.outputPath)
         posStream.close();
         return;
     }
@@ -154,7 +143,7 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
             readLock.lock();
 
             posStream.peek();
-            if(posStream.eof() || fenCount > numFens)
+            if(posStream.eof() || fenCount > params.numFens)
             {
                 readLock.unlock();
                 break;
@@ -205,7 +194,7 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
             fenCount += numMoves + 1; // Num moves + startfen
             if((fenCount % 1000) < ((fenCount - numMoves - 1) % 1000)  )
             {
-                LOG(fenCount << " fens\t" << 1000000.0f / msTimer.getMs() << " fens/sec\t" << 100 * fenCount / numFens << "%")
+                LOG(fenCount << " fens\t" << 1000000.0f / msTimer.getMs() << " fens/sec\t" << 100 * fenCount / params.numFens << "%")
                 msTimer.start();
             }
             writeLock.unlock();
@@ -217,12 +206,12 @@ void Fengen::start(std::string startPosPath, std::string outputPath, size_t numF
         }
     };
 
-    for(uint32_t i = 0; i < numThreads; i++)
+    for(uint32_t i = 0; i < params.numThreads; i++)
     {
         threads.push_back(std::thread(fn, i));
     }
 
-    for(uint32_t i = 0; i < numThreads; i++)
+    for(uint32_t i = 0; i < params.numThreads; i++)
     {
         threads.at(i).join();
     }
