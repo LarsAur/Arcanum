@@ -232,6 +232,7 @@ void UCI::fengen(std::istringstream& is)
         else if(token == "depth")      is >> params.depth;
         else if(token == "movetime")   is >> params.movetime;
         else if(token == "nodes")      is >> params.nodes;
+        else if(token == "offset")     is >> params.offset;
         else WARNING("Unknown token: " << token)
     }
 
@@ -329,7 +330,10 @@ void UCI::help()
     UCI_OUT("\toutput <path>                       - Path to the output file")
     UCI_OUT("\tnumfens <numfens>                   - Number of FENs to generate")
     UCI_OUT("\tnumthreads <numthreads>             - Number of threads to use")
-    UCI_OUT("\tdepth <depth>                       - Search depth")
+    UCI_OUT("\t[depth <depth>]                     - Max search depth")
+    UCI_OUT("\t[nodes <nodes>]                     - Max searched nodes")
+    UCI_OUT("\t[movetime <movetime>]               - Max searchtime (ms)")
+    UCI_OUT("\t[offset <offset>]                   - Offset in lines to start reading from positions file")
     UCI_OUT("\nFor more details, check out https://www.wbec-ridderkerk.nl/html/UCIProtocol.html")
 }
 

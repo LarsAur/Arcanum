@@ -93,6 +93,7 @@ void Fengen::start(FengenParameters params)
     std::mutex readLock;
     std::mutex writeLock;
     size_t fenCount = 0LL;
+    size_t gameCount = 0LL;
     Timer msTimer = Timer();
 
     // Set search parameters
@@ -115,6 +116,14 @@ void Fengen::start(FengenParameters params)
         return;
     }
 
+    // Forward to the startposition given by offset
+    LOG("Forwarding to startposition " << params.offset)
+    for(size_t i = 0; i < params.offset; i++)
+    {
+        std::string unusedFen;
+        std::getline(posStream, unusedFen);
+    }
+
     DataStorer encoder = DataStorer();
     if(!encoder.open(params.outputPath))
     {
@@ -123,7 +132,7 @@ void Fengen::start(FengenParameters params)
         return;
     }
 
-    auto fn = [&](uint8_t id)
+    auto fn = [&]()
     {
         std::string startfen;
         std::array<Move, DataEncoder::MaxGameLength> moves;
@@ -150,7 +159,6 @@ void Fengen::start(FengenParameters params)
             }
 
             std::getline(posStream, startfen);
-
             readLock.unlock();
 
             // Parse the board in relaxed mode and get the fen from the board
@@ -189,12 +197,18 @@ void Fengen::start(FengenParameters params)
 
             writeLock.lock();
 
+            gameCount++;
             encoder.addGame(startfen, moves, scores, numMoves, result);
 
             fenCount += numMoves + 1; // Num moves + startfen
             if((fenCount % 1000) < ((fenCount - numMoves - 1) % 1000)  )
             {
-                LOG(fenCount << " fens\t" << 1000000.0f / msTimer.getMs() << " fens/sec\t" << 100 * fenCount / params.numFens << "%")
+                LOG(
+                    fenCount << " fens " <<
+                    1000000.0f / msTimer.getMs() << " fens/sec " <<
+                    100 * fenCount / params.numFens << "% " <<
+                    gameCount << " games (offset: " << gameCount + params.offset << ")"
+                )
                 msTimer.start();
             }
             writeLock.unlock();
@@ -208,7 +222,7 @@ void Fengen::start(FengenParameters params)
 
     for(uint32_t i = 0; i < params.numThreads; i++)
     {
-        threads.push_back(std::thread(fn, i));
+        threads.push_back(std::thread(fn));
     }
 
     for(uint32_t i = 0; i < params.numThreads; i++)

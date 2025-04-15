@@ -12,6 +12,7 @@ namespace Arcanum
     {
         std::string startposPath; // Path to EDP file containing start positions
         std::string outputPath;   // Path to the output file
+        size_t offset;            // Start offset in the startpos EDP file
         size_t numFens;           // Number of FENs to generate
         uint32_t numThreads;      // Number of threads to use
         uint32_t depth;           // Max depth to search to. Unused if 0
@@ -21,6 +22,7 @@ namespace Arcanum
         FengenParameters() :
         startposPath(""),
         outputPath(""),
+        offset(0),
         numFens(0),
         numThreads(0),
         depth(0),
