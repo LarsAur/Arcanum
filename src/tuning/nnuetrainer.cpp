@@ -418,6 +418,27 @@ void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t ba
             Board *board = loader.getNextBoard();
             eval_t cp = loader.getScore();
             GameResult result = loader.getResult();
+            Move move = loader.getMove();
+
+            // Filter capture moves
+            // Move is null move if the move is not available
+            if(!move.isNull() && move.isCapture())
+            {
+                continue;
+            }
+
+            // Filter positions which are checked
+            if(board->isChecked())
+            {
+                continue;
+            }
+
+            // Filter positions with only one legal move
+            board->getLegalMoves();
+            if(board->getNumLegalMoves() == 1)
+            {
+                continue;
+            }
 
             // Run back propagation
             m_backPropagate(*board, cp, result, batchLoss);
