@@ -47,6 +47,11 @@ namespace Arcanum
         return m_parser->getNextBoard();
     }
 
+    Move DataLoader::getMove()
+    {
+        return m_parser->getMove();
+    }
+
     eval_t DataLoader::getScore()
     {
         return m_parser->getScore();

@@ -56,6 +56,11 @@ Board* BinpackParser::getNextBoard()
     return &m_currentBoard;
 }
 
+Move BinpackParser::getMove()
+{
+    return m_currentMove;
+}
+
 eval_t BinpackParser::getScore()
 {
     return m_currentScore;

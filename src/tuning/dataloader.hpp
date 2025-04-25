@@ -24,6 +24,7 @@ namespace Arcanum
             virtual void close() = 0;
             virtual bool eof() = 0;
             virtual Board* getNextBoard() = 0;
+            virtual Move getMove() = 0;
             virtual eval_t getScore() = 0;
             virtual GameResult getResult() = 0;
     };
@@ -55,8 +56,10 @@ namespace Arcanum
             void close();
             bool eof();
             Board* getNextBoard();
+            Move getMove();
             eval_t getScore();
             GameResult getResult();
+
     };
 
     class DataStorer

@@ -59,6 +59,7 @@ namespace Arcanum
         void close();
         bool eof();
         Board* getNextBoard();
+        Move getMove();
         eval_t getScore();
         GameResult getResult();
     };

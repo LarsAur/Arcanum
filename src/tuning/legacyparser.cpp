@@ -56,6 +56,13 @@ Board* LegacyParser::getNextBoard()
     return &m_board;
 }
 
+Move LegacyParser::getMove()
+{
+    // This format does not store the move
+    // thus a null move is returned.
+    return NULL_MOVE;
+}
+
 eval_t LegacyParser::getScore()
 {
     return m_score;
