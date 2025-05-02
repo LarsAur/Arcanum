@@ -142,10 +142,9 @@ void Fengen::start(FengenParameters params)
 
         readLock.lock();
         Searcher searchers[2] = {Searcher(false), Searcher(false)};
-        readLock.unlock();
-
         searchers[0].resizeTT(8);
         searchers[1].resizeTT(8);
+        readLock.unlock();
 
         while (true)
         {
