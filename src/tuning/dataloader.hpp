@@ -4,16 +4,10 @@
 #include <memory>
 #include <array>
 #include <board.hpp>
+#include <types.hpp>
 
 namespace Arcanum
 {
-    enum GameResult
-    {
-        BLACK_WIN = -1,
-        DRAW = 0,
-        WHITE_WIN = 1,
-    };
-
     // Virtual class to represent a parser to read chess games
     class DataParser
     {
