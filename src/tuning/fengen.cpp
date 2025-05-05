@@ -1,4 +1,5 @@
 #include <tuning/fengen.hpp>
+#include <tuning/gamerunner.hpp>
 #include <fstream>
 #include <thread>
 #include <mutex>
@@ -9,83 +10,6 @@
 #include <timer.hpp>
 
 using namespace Arcanum;
-
-bool Fengen::m_isFinished(Board& board, Searcher& searcher, GameResult& result) const
-{
-    auto history = searcher.getHistory();
-    if(history.at(board.getHash()) > 2)
-    {
-        result = DRAW;
-        return true;
-    }
-
-    if(board.isMaterialDraw())
-    {
-        result = DRAW;
-        return true;
-    }
-
-    board.getLegalMoves();
-    if(board.getNumLegalMoves() == 0)
-    {
-        if(board.isChecked())
-        {
-            result = (board.getTurn() == WHITE) ? GameResult::BLACK_WIN : GameResult::WHITE_WIN;
-        }
-        else
-        {
-            result = GameResult::DRAW;
-        }
-
-        return true;
-    }
-
-    // Check for 50 move rule
-    if(board.getHalfMoves() >= 100)
-    {
-        result = DRAW;
-        return true;
-    }
-
-    return false;
-}
-
-bool Fengen::m_isAdjudicated(Board& board, uint32_t ply, std::array<eval_t, DataEncoder::MaxGameLength>& scores, GameResult& result) const
-{
-    constexpr uint32_t DrawPly   = 40;
-    constexpr uint32_t DrawScore = 10;
-    constexpr uint32_t DrawScoreRepeats = 8; // 4 times from each side
-
-    // Adjudicate the game as a draw if it is too long
-    if(ply >= DataEncoder::MaxGameLength - 1)
-    {
-        result = GameResult::DRAW;
-        return true;
-    }
-
-    // Adjudicate the game if the score is close to zero for long enough
-    // This will also catch draws from tablebase
-    bool isDraw = false;
-    if(DrawPly > 40)
-    {
-        isDraw = true;
-        for(uint32_t i = ply - DrawScoreRepeats - 1; i < ply; i++)
-        {
-            if(std::abs(scores[i]) > DrawScore)
-            {
-                isDraw = false;
-                break;
-            }
-        }
-    }
-
-    if(isDraw)
-    {
-        result = GameResult::DRAW;
-    }
-
-    return isDraw;
-}
 
 void Fengen::start(FengenParameters params)
 {
@@ -135,16 +59,24 @@ void Fengen::start(FengenParameters params)
     auto fn = [&]()
     {
         std::string startfen;
-        std::array<Move, DataEncoder::MaxGameLength> moves;
-        std::array<eval_t, DataEncoder::MaxGameLength> scores;
-        uint32_t numMoves;
+        std::vector<Move> moves;
+        std::vector<eval_t> scores;
         GameResult result;
+        GameRunner runner;
 
         readLock.lock();
+        moves.reserve(300);
+        scores.reserve(300);
         Searcher searchers[2] = {Searcher(false), Searcher(false)};
         searchers[0].resizeTT(8);
         searchers[1].resizeTT(8);
         readLock.unlock();
+
+        runner.setSearchers(&searchers[0], &searchers[1]);
+        runner.setDrawAdjudication(true, 10, 10, 40);
+        runner.setResignAdjudication(false);
+        runner.setMoveLimit(300);
+        runner.setSearchParameters(searchParams);
 
         while (true)
         {
@@ -164,43 +96,17 @@ void Fengen::start(FengenParameters params)
             // this is in case the edp does not provide move-clocks
             Board board = Board(startfen, false);
             startfen = board.fen();
-
-            searchers[0].addBoardToHistory(board);
-            searchers[1].addBoardToHistory(board);
-
-            numMoves = 0;
-
-            // If there are too many moves, the game will be adjudicated to a draw
-            while (!m_isFinished(board, searchers[board.getTurn()], result) && !m_isAdjudicated(board, numMoves, scores, result))
-            {
-                SearchResult searchResult;
-                Move move = searchers[board.getTurn()].search(board, searchParams, &searchResult);
-
-                // The scores are from the current perspective
-                scores[numMoves] = searchResult.eval;
-                moves[numMoves] = move;
-                numMoves++;
-
-                board.performMove(move);
-                searchers[0].addBoardToHistory(board);
-                searchers[1].addBoardToHistory(board);
-
-                // If a real mate is found, we can terminate the search.
-                // The positions in the mating line will not be added to the games
-                if(Evaluator::isRealMateScore(searchResult.eval))
-                {
-                    result = searchResult.eval > 0 ? (board.getTurn() == WHITE ? BLACK_WIN : WHITE_WIN) : (board.getTurn() == WHITE ? WHITE_WIN : BLACK_WIN);
-                    break;
-                }
-            }
+            // Play the game and record the moves, scores and result of the game
+            runner.play(board, &moves, &scores, &result);
 
             writeLock.lock();
-
             gameCount++;
-            encoder.addGame(startfen, moves, scores, numMoves, result);
 
-            fenCount += numMoves + 1; // Num moves + startfen
-            if((fenCount % 1000) < ((fenCount - numMoves - 1) % 1000)  )
+            // Store the game using the selected encoding
+            encoder.addGame(startfen, moves, scores, result);
+
+            fenCount += moves.size() + 1; // Num moves + startfen
+            if((fenCount % 1000) < ((fenCount - moves.size() - 1) % 1000)  )
             {
                 LOG(
                     fenCount << " fens " <<
@@ -212,6 +118,8 @@ void Fengen::start(FengenParameters params)
             }
             writeLock.unlock();
 
+            moves.clear();
+            scores.clear();
             searchers[0].clearHistory();
             searchers[1].clearHistory();
             searchers[0].clear();

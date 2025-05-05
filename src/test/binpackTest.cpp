@@ -11,32 +11,32 @@ using namespace Arcanum;
 
 constexpr char filename[] = "test_binpack.binpack";
 
-template<uint32_t NumChunkGames>
 bool compareChunkAfterEncodeDecode(
-    std::array<std::string, NumChunkGames> fens,
-    std::array<std::array<Move, Arcanum::BinpackEncoder::MaxGameLength>, NumChunkGames> moves,
-    std::array<std::array<eval_t, Arcanum::BinpackEncoder::MaxGameLength>, NumChunkGames> scores,
-    std::array<uint32_t, NumChunkGames> numMoves,
-    std::array<GameResult, NumChunkGames> result
+    std::vector<std::string> fens,
+    std::vector<std::vector<Move>> moves,
+    std::vector<std::vector<eval_t>> scores,
+    std::vector<GameResult> results
 )
 {
     BinpackEncoder encoder;
     BinpackParser parser;
+    const uint32_t numGames = results.size();
 
     encoder.open(filename);
-    for(uint32_t i = 0; i < NumChunkGames; i++)
+    for(uint32_t i = 0; i < numGames; i++)
     {
-        encoder.addGame(fens[i], moves[i], scores[i], numMoves[i], result[i]);
+        encoder.addGame(fens[i], moves[i], scores[i], results[i]);
     }
     encoder.close();
 
     bool pass = true;
     parser.open(filename);
 
-    for(uint32_t i = 0; i < NumChunkGames; i++)
+    for(uint32_t i = 0; i < numGames; i++)
     {
         Board encodedBoard = Board(fens[i]);
-        for(uint32_t j = 0; j < numMoves[i]; j++)
+        const uint32_t numMoves = moves.size();
+        for(uint32_t j = 0; j < numMoves; j++)
         {
             Board *parsedBoard = parser.getNextBoard();
 
@@ -47,10 +47,10 @@ bool compareChunkAfterEncodeDecode(
                 break;
             }
 
-            if(parser.getResult() != result[i])
+            if(parser.getResult() != results[i])
             {
                 pass = false;
-                FAIL("BinpackTest: Result[" << i << "]" << parser.getResult() << " != " << result[i])
+                FAIL("BinpackTest: Result[" << i << "]" << parser.getResult() << " != " << results[i])
                 break;
             }
 
@@ -82,9 +82,8 @@ bool compareChunkAfterEncodeDecode(
 
 bool compareAfterEncodeDecode(
     std::string fen,
-    std::array<Move, Arcanum::BinpackEncoder::MaxGameLength>& moves,
-    std::array<eval_t, Arcanum::BinpackEncoder::MaxGameLength>& scores,
-    uint32_t numMoves,
+    std::vector<Move>& moves,
+    std::vector<eval_t>& scores,
     GameResult result
 )
 {
@@ -92,13 +91,13 @@ bool compareAfterEncodeDecode(
     BinpackParser parser;
 
     encoder.open(filename);
-    encoder.addGame(fen, moves, scores, numMoves, result);
+    encoder.addGame(fen, moves, scores, result);
     encoder.close();
 
     bool pass = true;
     parser.open(filename);
     Board encodedBoard = Board(fen);
-    for(uint32_t i = 0; i < numMoves; i++)
+    for(uint32_t i = 0; i < moves.size(); i++)
     {
         Board *parsedBoard = parser.getNextBoard();
 
@@ -138,9 +137,8 @@ bool compareAfterEncodeDecode(
 
 void generateRandomGame(
     std::string& fen,
-    std::array<Move, Arcanum::BinpackEncoder::MaxGameLength>& moves,
-    std::array<eval_t, Arcanum::BinpackEncoder::MaxGameLength>& scores,
-    uint32_t& numMoves,
+    std::vector<Move>& moves,
+    std::vector<eval_t>& scores,
     GameResult& result,
     std::mt19937& generator
 )
@@ -152,7 +150,6 @@ void generateRandomGame(
     Board board = Board(FEN::startpos);
 
     result = GameResult::DRAW;
-    numMoves = 0;
 
     while(board.hasLegalMove())
     {
@@ -164,14 +161,12 @@ void generateRandomGame(
         Move move = legalMoves[distributionU64(generator) % numLegalMoves];
         eval_t score = distributionI16(generator);
 
-        moves[numMoves] = move;
-        scores[numMoves] = score;
+        moves.push_back(move);
+        scores.push_back(score);
 
         board.performMove(move);
 
-        numMoves++;
-
-        if(numMoves >= Arcanum::BinpackEncoder::MaxGameLength)
+        if(moves.size() >= 300)
         {
             break;
         }
@@ -192,9 +187,8 @@ void generateRandomGame(
 
 void generatePlayedGame(
     std::string& fen,
-    std::array<Move, Arcanum::BinpackEncoder::MaxGameLength>& moves,
-    std::array<eval_t, Arcanum::BinpackEncoder::MaxGameLength>& scores,
-    uint32_t& numMoves,
+    std::vector<Move>& moves,
+    std::vector<eval_t>& scores,
     GameResult& result
 )
 {
@@ -204,7 +198,6 @@ void generatePlayedGame(
     Board board = Board(FEN::startpos);
 
     result = GameResult::DRAW;
-    numMoves = 0;
 
     while(board.hasLegalMove() && (searcher.getHistory().find(board.getHash()) == searcher.getHistory().end()))
     {
@@ -213,14 +206,12 @@ void generatePlayedGame(
         SearchResult searchResult;
         Move move = searcher.getBestMove(board, 10, &searchResult);
 
-        moves[numMoves] = move;
-        scores[numMoves] = searchResult.eval;
+        moves.push_back(move);
+        scores.push_back(searchResult.eval);
 
         board.performMove(move);
 
-        numMoves++;
-
-        if(numMoves >= Arcanum::BinpackEncoder::MaxGameLength)
+        if(moves.size() >= 300)
         {
             break;
         }
@@ -245,16 +236,15 @@ void BinpackTest::runBinpackTest()
 
     {
         std::string fen;
-        std::array<Move, Arcanum::BinpackEncoder::MaxGameLength> moves;
-        std::array<eval_t, Arcanum::BinpackEncoder::MaxGameLength> scores;
-        uint32_t numMoves;
+        std::vector<Move> moves;
+        std::vector<eval_t> scores;
         GameResult result;
 
         // -- Play a game and try to encode and decode it.
 
         LOG("Testing played game")
-        generatePlayedGame(fen, moves, scores, numMoves, result);
-        if(!compareAfterEncodeDecode(fen, moves, scores, numMoves, result))
+        generatePlayedGame(fen, moves, scores, result);
+        if(!compareAfterEncodeDecode(fen, moves, scores, result))
         {
             FAIL("Error encountered when encoding and decoding played game using binpack")
             //TODO: Log fen, result and moves.
@@ -270,9 +260,8 @@ void BinpackTest::runBinpackTest()
     {
         constexpr uint32_t NumRandomGames = 10000;
         std::string fen;
-        std::array<Move, Arcanum::BinpackEncoder::MaxGameLength> moves;
-        std::array<eval_t, Arcanum::BinpackEncoder::MaxGameLength> scores;
-        uint32_t numMoves;
+        std::vector<Move> moves;
+        std::vector<eval_t> scores;
         GameResult result;
         std::mt19937 generator(0);
 
@@ -280,14 +269,17 @@ void BinpackTest::runBinpackTest()
         LOG("Testing " << NumRandomGames << " random games")
         for(uint32_t i = 0; i < NumRandomGames; i++)
         {
-            generateRandomGame(fen, moves, scores, numMoves, result, generator);
-            if(!compareAfterEncodeDecode(fen, moves, scores, numMoves, result))
+            generateRandomGame(fen, moves, scores, result, generator);
+            if(!compareAfterEncodeDecode(fen, moves, scores, result))
             {
                 pass = false;
                 FAIL("Error encountered when encoding and decoding random game using binpack")
                 //TODO: Log fen, result and moves.
                 break;
             }
+
+            moves.clear();
+            scores.clear();
 
             if(i % (NumRandomGames / 10) == 0)
             {
@@ -305,20 +297,19 @@ void BinpackTest::runBinpackTest()
 
     {
         constexpr uint32_t NumChunkGames = 10;
-        std::array<std::string, NumChunkGames> fens;
-        std::array<std::array<Move, Arcanum::BinpackEncoder::MaxGameLength>, NumChunkGames> moves;
-        std::array<std::array<eval_t, Arcanum::BinpackEncoder::MaxGameLength>, NumChunkGames> scores;
-        std::array<uint32_t, NumChunkGames> numMoves;
-        std::array<GameResult, NumChunkGames> result;
+        std::vector<std::string> fens;
+        std::vector<std::vector<Move>> moves;
+        std::vector<std::vector<eval_t>> scores;
+        std::vector<GameResult> results;
         std::mt19937 generator(0);
 
         LOG("Testing binpack chunks")
         for(uint32_t i = 0; i < NumChunkGames; i++)
         {
-            generateRandomGame(fens[i], moves[i], scores[i], numMoves[i], result[i], generator);
+            generateRandomGame(fens[i], moves[i], scores[i], results[i], generator);
         }
 
-        if(!compareChunkAfterEncodeDecode<NumChunkGames>(fens, moves, scores, numMoves, result))
+        if(!compareChunkAfterEncodeDecode(fens, moves, scores, results))
         {
             FAIL("Error encountered when encoding and decoding chunks using binpack")
             //TODO: Log fen, result and moves.

@@ -2,7 +2,7 @@
 
 #include <string>
 #include <memory>
-#include <array>
+#include <vector>
 #include <board.hpp>
 #include <types.hpp>
 
@@ -27,15 +27,13 @@ namespace Arcanum
     class DataEncoder
     {
         public:
-        static constexpr uint32_t MaxGameLength = 300;
         virtual ~DataEncoder() = default;
         virtual bool open(std::string path) = 0;
         virtual void close() = 0;
         virtual void addGame(
             std::string startfen,
-            std::array<Move, DataEncoder::MaxGameLength>& moves,
-            std::array<eval_t, DataEncoder::MaxGameLength>& scores,
-            uint32_t numMoves,
+            std::vector<Move>& moves,
+            std::vector<eval_t>& scores,
             GameResult result
         ) = 0;
     };
@@ -66,9 +64,8 @@ namespace Arcanum
             void close();
             void addGame(
                 std::string startfen,
-                std::array<Move, DataEncoder::MaxGameLength>& moves,
-                std::array<eval_t, DataEncoder::MaxGameLength>& scores,
-                uint32_t numMoves,
+                std::vector<Move>& moves,
+                std::vector<eval_t>& scores,
                 GameResult result
             );
     };

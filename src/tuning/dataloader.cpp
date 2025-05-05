@@ -97,12 +97,11 @@ namespace Arcanum
     // The scores are from the current turns perspective
     void DataStorer::addGame(
         std::string startfen,
-        std::array<Move, DataEncoder::MaxGameLength>& moves,
-        std::array<eval_t, DataEncoder::MaxGameLength>& scores,
-        uint32_t numMoves,
+        std::vector<Move>& moves,
+        std::vector<eval_t>& scores,
         GameResult result
     )
     {
-        m_encoder->addGame(startfen, moves, scores, numMoves, result);
+        m_encoder->addGame(startfen, moves, scores, result);
     }
 }

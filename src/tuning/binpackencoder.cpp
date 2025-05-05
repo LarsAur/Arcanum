@@ -38,18 +38,11 @@ void BinpackEncoder::close()
 
 void BinpackEncoder::addGame(
     std::string startfen,
-    std::array<Move, DataEncoder::MaxGameLength>& moves,
-    std::array<eval_t, DataEncoder::MaxGameLength>& scores,
-    uint32_t numMoves,
+    std::vector<Move>& moves,
+    std::vector<eval_t>& scores,
     GameResult result
 )
 {
-    if(numMoves > DataEncoder::MaxGameLength)
-    {
-        WARNING("Number of moves to encode is larger than the maximum game length")
-        return;
-    }
-
     // Write the chunk/block if it is larger than the target chunk size
     if(m_buffer.size() >= TargetChunkSize)
     {
@@ -59,7 +52,7 @@ void BinpackEncoder::addGame(
     Board board = Board(startfen);
     // Write chain (stem + movetextcount)
     m_writeStem(board, moves[0], scores[0], result);
-    m_writeMovetextCount(numMoves);
+    m_writeMovetextCount(moves.size());
 
     // Perform the first move
     board.performMove(moves[0]);
@@ -68,7 +61,7 @@ void BinpackEncoder::addGame(
     m_bitBuffer = 0;
 
     // Write all remaining moves and scores
-    for(uint32_t i = 1; i < numMoves; i++)
+    for(uint32_t i = 1; i < moves.size(); i++)
     {
         m_writeEncodedMove(board, moves[i]);
         m_writeVEncodedScore(scores[i-1], scores[i]);

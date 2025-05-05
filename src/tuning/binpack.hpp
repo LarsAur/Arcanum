@@ -97,9 +97,8 @@ namespace Arcanum
             void close();
             void addGame(
                 std::string startfen,
-                std::array<Move, DataEncoder::MaxGameLength>& moves,
-                std::array<eval_t, DataEncoder::MaxGameLength>& scores,
-                uint32_t numMoves,
+                std::vector<Move>& moves,
+                std::vector<eval_t>& scores,
                 GameResult result
             );
     };

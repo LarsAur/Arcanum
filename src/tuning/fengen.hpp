@@ -32,10 +32,7 @@ namespace Arcanum
     };
 
     class Fengen{
-        private:
-        bool m_isFinished(Board& board, Searcher& searcher, GameResult& result) const;
-        bool m_isAdjudicated(Board& board, uint32_t ply, std::array<eval_t, DataEncoder::MaxGameLength>& scores, GameResult& result) const;
         public:
-        void start(FengenParameters params);
+        static void start(FengenParameters params);
     };
 }
