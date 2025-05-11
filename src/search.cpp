@@ -326,7 +326,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             if(staticEval - 300 * depth  >= beta)
             {
                 m_stats.reverseFutilityCutoffs++;
-                return staticEval;
+                return (staticEval + beta) / 2;
             }
         }
 
