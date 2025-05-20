@@ -19,7 +19,7 @@ Searcher::Searcher(bool verbose)
     // Initialize the LMR reduction lookup table
     for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
         for(uint8_t m = 0; m < MAX_MOVE_COUNT; m++)
-            m_lmrReductions[d][m] = static_cast<uint8_t>(1 + (std::log2(m) * std::log2(d) / 4));
+            m_lmrReductions[d][m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 4));
 
     // Initialize the LMP threshold lookup table
     for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
@@ -486,38 +486,43 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         m_evaluator.pushMoveToAccumulator(board, *move);
         m_searchStack[plyFromRoot].move = *move;
 
+        int32_t newDepth = depth + extension - 1;
+        totalExtensions += extension;
+
         if(moveNumber == 0)
         {
-            score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, !(isPv | cutnode), totalExtensions + extension);
+            score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, newDepth, plyFromRoot + 1, !(isPv | cutnode), totalExtensions);
         }
         else
         {
             // Late move reduction (LMR)
-            int8_t R = 1;
+            int8_t R = 0;
             if(depth >= 3 && !move->isCapture() && !checkOrChecking && !Evaluator::isMateScore(bestScore))
             {
                 R =  m_lmrReductions[depth][moveNumber];
                 R += isWorsening;
                 R -= m_killerMoveManager.contains(*move, plyFromRoot);
                 R += cutnode;
-                R = std::max(int8_t(1), R);
+                R = std::max(int8_t(0), R);
             }
 
-            score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth + extension - R, plyFromRoot + 1, !cutnode, totalExtensions + extension);
-            m_stats.researchesRequired += score > alpha && (isPv || R > 1);
+            int32_t reducedDepth = newDepth - R;
+
+            score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, reducedDepth, plyFromRoot + 1, !cutnode, totalExtensions);
+            m_stats.researchesRequired += score > alpha && (isPv || newDepth > reducedDepth);
             m_stats.nullWindowSearches += 1;
 
             // Potential research of LMR returns a score > alpha
-            if(score > alpha && R > 1)
+            if(score > alpha && newDepth > reducedDepth)
             {
-                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth + extension - 1 , plyFromRoot + 1, !cutnode, totalExtensions + extension);
+                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, newDepth, plyFromRoot + 1, !cutnode, totalExtensions);
                 m_stats.researchesRequired += score > alpha && isPv;
                 m_stats.nullWindowSearches += 1;
             }
 
             if(score > alpha && isPv)
             {
-                score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, depth + extension - 1, plyFromRoot + 1, false, totalExtensions + extension);
+                score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, newDepth, plyFromRoot + 1, false, totalExtensions);
             }
         }
 
