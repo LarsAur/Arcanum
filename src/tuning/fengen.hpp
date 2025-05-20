@@ -11,6 +11,7 @@ namespace Arcanum
     struct FengenParameters
     {
         std::string startposPath; // Path to EDP file containing start positions
+        uint32_t    numRandomMoves; // Number of random moves at the beginning of the game
         std::string outputPath;   // Path to the output file
         size_t offset;            // Start offset in the startpos EDP file
         size_t numFens;           // Number of FENs to generate
@@ -21,6 +22,7 @@ namespace Arcanum
 
         FengenParameters() :
         startposPath(""),
+        numRandomMoves(0),
         outputPath(""),
         offset(0),
         numFens(0),

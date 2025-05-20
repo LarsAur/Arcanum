@@ -4,6 +4,7 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <random>
 #include <search.hpp>
 #include <syzygy.hpp>
 #include <fen.hpp>
@@ -19,6 +20,7 @@ void Fengen::start(FengenParameters params)
     size_t fenCount = 0LL;
     size_t gameCount = 0LL;
     Timer msTimer = Timer();
+    bool readInputPositions = !params.startposPath.empty();
 
     // Set search parameters
     SearchParameters searchParams = SearchParameters();
@@ -32,20 +34,25 @@ void Fengen::start(FengenParameters params)
 
     msTimer.start();
 
-    std::ifstream posStream = std::ifstream(params.startposPath);
+    std::ifstream posStream;
 
-    if(!posStream.is_open())
+    if(readInputPositions)
     {
-        ERROR("Unable to open " << params.startposPath)
-        return;
-    }
+        posStream.open(params.startposPath);
 
-    // Forward to the startposition given by offset
-    LOG("Forwarding to startposition " << params.offset)
-    for(size_t i = 0; i < params.offset; i++)
-    {
-        std::string unusedFen;
-        std::getline(posStream, unusedFen);
+        if(!posStream.is_open())
+        {
+            ERROR("Unable to open " << params.startposPath)
+            return;
+        }
+
+        // Forward to the startposition given by offset
+        LOG("Forwarding to startposition " << params.offset)
+        for(size_t i = 0; i < params.offset; i++)
+        {
+            std::string unusedFen;
+            std::getline(posStream, unusedFen);
+        }
     }
 
     DataStorer encoder = DataStorer();
@@ -56,13 +63,15 @@ void Fengen::start(FengenParameters params)
         return;
     }
 
-    auto fn = [&]()
+    auto fn = [&](uint32_t id)
     {
         std::string startfen;
         std::vector<Move> moves;
         std::vector<eval_t> scores;
         GameResult result;
         GameRunner runner;
+        std::uniform_int_distribution<uint8_t> randDist(0, 255);
+        std::mt19937 randGen(time(nullptr) + id);
 
         readLock.lock();
         moves.reserve(300);
@@ -80,22 +89,61 @@ void Fengen::start(FengenParameters params)
 
         while (true)
         {
-            readLock.lock();
+            Board board;
 
-            posStream.peek();
-            if(posStream.eof() || fenCount > params.numFens)
+            // Read starting positions from input file
+            if(readInputPositions)
             {
+                readLock.lock();
+
+                posStream.peek();
+                if(posStream.eof() || fenCount > params.numFens)
+                {
+                    readLock.unlock();
+                    break;
+                }
+
+                std::getline(posStream, startfen);
                 readLock.unlock();
-                break;
+
+                // Parse the board in relaxed mode and get the fen from the board
+                // this is in case the edp does not provide move-clocks
+                board = Board(startfen, false);
+            }
+            else
+            {
+                board = Board(FEN::startpos);
             }
 
-            std::getline(posStream, startfen);
-            readLock.unlock();
+            // Apply random moves to the starting position
+            // If the position at some point contains a checkmate, the position is re-randomized
+            while(true)
+            {
+                Board randomBoard = Board(board);
+                bool randomized = true;
+                for(uint32_t i = 0; i < params.numRandomMoves; i++)
+                {
+                    Move* moves = randomBoard.getLegalMoves();
+                    uint8_t numMoves = randomBoard.getNumLegalMoves();
+                    randomBoard.generateCaptureInfo();
+                    uint8_t randIndex = randDist(randGen) % numMoves;
+                    randomBoard.performMove(moves[randIndex]);
+                    if(!randomBoard.hasLegalMove())
+                    {
+                        randomized = false;
+                        break;
+                    }
+                }
 
-            // Parse the board in relaxed mode and get the fen from the board
-            // this is in case the edp does not provide move-clocks
-            Board board = Board(startfen, false);
+                if(randomized)
+                {
+                    board = Board(randomBoard);
+                    break;
+                }
+            }
+
             startfen = board.fen();
+
             // Play the game and record the moves, scores and result of the game
             runner.play(board, &moves, &scores, &result);
 
@@ -129,7 +177,7 @@ void Fengen::start(FengenParameters params)
 
     for(uint32_t i = 0; i < params.numThreads; i++)
     {
-        threads.push_back(std::thread(fn));
+        threads.push_back(std::thread(fn, i));
     }
 
     for(uint32_t i = 0; i < params.numThreads; i++)

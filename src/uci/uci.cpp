@@ -226,6 +226,7 @@ void UCI::fengen(std::istringstream& is)
     {
         toLowerCase(token);
         if     (token == "positions")  is >> params.startposPath;
+        else if(token == "numrandommoves") is >> params.numRandomMoves;
         else if(token == "output")     is >> params.outputPath;
         else if(token == "numfens")    is >> params.numFens;
         else if(token == "numthreads") is >> params.numThreads;
@@ -241,15 +242,14 @@ void UCI::fengen(std::istringstream& is)
     { ERROR("Number of fens cannot be 0 or less")    return; }
     if(params.numThreads <= 0) 
     { ERROR("Number of threads cannot be 0 or less") return; }
-    if(params.startposPath == "") 
-    { ERROR("Path to list positions cannot be empty") return; }
+    if(params.startposPath == "" && params.numRandomMoves == 0)
+    { ERROR("numrandommoves cannot be 0 when there is no path to edp file with starting positions") return; }
     if(params.outputPath   == "")
     { ERROR("Output path cannot be empty")            return; }
     if(params.depth == 0 && params.movetime == 0 && params.nodes == 0) 
     { ERROR("Search depth, movetime and nodes cannot be 0 at the same time") return; }
 
-    Fengen fengen;
-    fengen.start(params);
+    Fengen::start(params);
 }
 
 void UCI::train(std::istringstream& is)
@@ -327,6 +327,7 @@ void UCI::help()
     UCI_OUT("\t[input <path>]                      - Path to the input net to continue training. Net is randomized if not set")
     UCI_OUT("fengen                                - Generate FENs used to train the NNUE")
     UCI_OUT("\tpositions <path>                    - Path to a file containing a list of stating positions")
+    UCI_OUT("\tnumrandommoves <nummoves>           - Number of random moves from the starting position")
     UCI_OUT("\toutput <path>                       - Path to the output file")
     UCI_OUT("\tnumfens <numfens>                   - Number of FENs to generate")
     UCI_OUT("\tnumthreads <numthreads>             - Number of threads to use")
