@@ -117,6 +117,8 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
+    m_killerMoveManager.clearPly(plyFromRoot + 1);
+
     eval_t staticEval;
     if(entry.has_value())
     {
@@ -273,6 +275,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(tbResult == TB_WIN) return TB_MATE_SCORE - plyFromRoot;
         if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
     }
+
+    m_killerMoveManager.clearPly(plyFromRoot + 1);
 
     eval_t bestScore = -MATE_SCORE;
     Move bestMove = NULL_MOVE;
@@ -733,6 +737,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // If the window becomes too large, continue using mate score as alpha/beta
         if(useAspAlpha) alpha = searchScore - aspirationWindowAlpha;
         if(useAspBeta)  beta  = searchScore + aspirationWindowBeta;
+
+        m_killerMoveManager.clearPly(1);
 
         for (int i = 0; i < numMoves; i++)  {
             const Move *move = moveSelector.getNextMove();

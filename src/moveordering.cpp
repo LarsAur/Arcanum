@@ -244,6 +244,20 @@ bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
     return false;
 }
 
+void KillerMoveManager::clearPly(uint8_t plyFromRoot)
+{
+    if(plyFromRoot >= KILLER_MOVES_MAX_PLY)
+    {
+        WARNING("Cannot clear for killer move at " << unsigned(plyFromRoot) << " plyFromRoot")
+        return;
+    }
+
+    for(int j = 0; j < 2; j++)
+    {
+        m_killerMoves[plyFromRoot][j] = NULL_MOVE;
+    }
+}
+
 void KillerMoveManager::clear()
 {
     for(int i = 0; i < KILLER_MOVES_MAX_PLY; i++)
