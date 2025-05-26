@@ -24,8 +24,8 @@ Searcher::Searcher(bool verbose)
     // Initialize the LMP threshold lookup table
     for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
     {
-        m_lmpThresholds[0][d] = 2 + 1 * d * d;
-        m_lmpThresholds[1][d] = 4 + 2 * d * d;
+        m_lmpThresholds[0][d] = 1.5f + 0.5f * d * d;
+        m_lmpThresholds[1][d] = 3.0f + 1.5f * d * d;
     }
 
     m_verbose = verbose;
@@ -433,7 +433,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if( !isPv
         && !Evaluator::isCloseToMate(board, bestScore)
         && !isChecked
-        && quietMovesPerformed > m_lmpThresholds[isImproving][depth]
+        && (quietMovesPerformed + captureMovesPerformed) > m_lmpThresholds[isImproving][depth]
         && move->isQuiet())
         {
             m_stats.lmpPrunedMoves++;
