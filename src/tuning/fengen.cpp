@@ -22,6 +22,8 @@ void Fengen::start(FengenParameters params)
     Timer msTimer = Timer();
     bool readInputPositions = !params.startposPath.empty();
 
+    uint64_t results[3] = {0, 0, 0};
+
     // Set search parameters
     SearchParameters searchParams = SearchParameters();
 
@@ -149,6 +151,7 @@ void Fengen::start(FengenParameters params)
 
             writeLock.lock();
             gameCount++;
+            results[result + 1]++;
 
             // Store the game using the selected encoding
             encoder.addGame(startfen, moves, scores, result);
@@ -160,7 +163,8 @@ void Fengen::start(FengenParameters params)
                     fenCount << " fens " <<
                     1000000.0f / msTimer.getMs() << " fens/sec " <<
                     100 * fenCount / params.numFens << "% " <<
-                    gameCount << " games (offset: " << gameCount + params.offset << ")"
+                    gameCount << " games (offset: " << gameCount + params.offset << ") " <<
+                    "Results: W: " << results[2] << " B: " << results[0] << " D: " << results[1]
                 )
                 msTimer.start();
             }
