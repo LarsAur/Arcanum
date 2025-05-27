@@ -128,7 +128,7 @@ bool GameRunner::m_isDrawAdjudicated()
     // Check if there are any moves in the repeat-window with
     // an absolute value larger than the draw adjudication score
     bool adjudicate = true;
-    for(uint32_t i = 0; i < m_resignAdjudicationRepeats; i++)
+    for(uint32_t i = 0; i < m_drawAdjudicationRepeats; i++)
     {
         uint32_t index = m_evals->size() - i - 1;
         if(std::abs(m_evals->at(index)) > m_drawAdjudicationScore)
