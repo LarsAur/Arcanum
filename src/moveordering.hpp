@@ -94,6 +94,8 @@ namespace Arcanum
             const Move* getNextMove();
             Phase getPhase() const;
             void skipQuiets();
+            bool isSkippingQuiets();
+            uint8_t getNumQuietMoves();
         private:
             struct ScoreIndex
             {

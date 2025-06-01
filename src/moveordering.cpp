@@ -196,6 +196,16 @@ MoveSelector::Phase MoveSelector::getPhase() const
     return m_phase;
 }
 
+bool MoveSelector::isSkippingQuiets()
+{
+    return m_skipQuiets;
+}
+
+uint8_t MoveSelector::getNumQuietMoves()
+{
+    return m_numQuiets;
+}
+
 void MoveSelector::skipQuiets()
 {
     m_skipQuiets = true;

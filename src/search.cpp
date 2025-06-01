@@ -473,16 +473,17 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             continue;
 
         // Late move pruning (LMP)
-        // Skip quiet moves after having tried a certain number of quiet moves
+        // Skip quiet moves after having tried a certain number of moves
         if( !isPv
         && !Evaluator::isCloseToMate(board, bestScore)
         && !isChecked
-        && (quietMovesPerformed + captureMovesPerformed) > m_lmpThresholds[isImproving][depth]
-        && move->isQuiet())
+        && !moveSelector.isSkippingQuiets()
+        && (quietMovesPerformed + captureMovesPerformed) >= m_lmpThresholds[isImproving][depth])
         {
-            m_stats.lmpPrunedMoves++;
             moveSelector.skipQuiets();
-            continue;
+
+            // Track the number of quiet moves skipped
+            m_stats.lmpPrunedMoves += moveSelector.getNumQuietMoves() - quietMovesPerformed;
         }
 
         // Generate new board and make the move
