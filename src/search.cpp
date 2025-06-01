@@ -85,11 +85,33 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         uint32_t tbResult = TBProbeWDL(board);
 
         if(tbResult != TB_RESULT_FAILED)
+        {
             m_tbHits++;
+            eval_t tbScore;
+            TTFlag tbFlag;
 
-        if(tbResult == TB_DRAW) return 0;
-        if(tbResult == TB_WIN) return TB_MATE_SCORE - plyFromRoot;
-        if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
+            switch (tbResult)
+            {
+            case TB_WIN:
+                tbFlag = TTFlag::LOWER_BOUND;
+                tbScore = TB_MATE_SCORE - plyFromRoot;
+                break;
+            case TB_LOSS:
+                tbFlag = TTFlag::UPPER_BOUND;
+                tbScore = -TB_MATE_SCORE + plyFromRoot;
+                break;
+            default: // TB_DRAW
+                tbFlag = TTFlag::EXACT;
+                tbScore = DRAW_VALUE;
+            }
+
+            if((tbFlag == TTFlag::EXACT) || (tbFlag == TTFlag::LOWER_BOUND ? tbScore >= beta : tbScore <= alpha))
+            {
+                // TODO: Might be some bad effects of using tbScore as static eval. Add some value for unknown score.
+                m_tt.add(tbScore, NULL_MOVE, isPv, 0, plyFromRoot, tbScore, tbFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+                return tbScore;
+            }
+        }
     }
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
@@ -269,11 +291,33 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         uint32_t tbResult = TBProbeWDL(board);
 
         if(tbResult != TB_RESULT_FAILED)
+        {
             m_tbHits++;
+            eval_t tbScore;
+            TTFlag tbFlag;
 
-        if(tbResult == TB_DRAW) return 0;
-        if(tbResult == TB_WIN) return TB_MATE_SCORE - plyFromRoot;
-        if(tbResult == TB_LOSS) return -TB_MATE_SCORE + plyFromRoot;
+            switch (tbResult)
+            {
+            case TB_WIN:
+                tbFlag = TTFlag::LOWER_BOUND;
+                tbScore = TB_MATE_SCORE - plyFromRoot;
+                break;
+            case TB_LOSS:
+                tbFlag = TTFlag::UPPER_BOUND;
+                tbScore = -TB_MATE_SCORE + plyFromRoot;
+                break;
+            default: // TB_DRAW
+                tbFlag = TTFlag::EXACT;
+                tbScore = DRAW_VALUE;
+            }
+
+            if((tbFlag == TTFlag::EXACT) || (tbFlag == TTFlag::LOWER_BOUND ? tbScore >= beta : tbScore <= alpha))
+            {
+                // TODO: Might be some bad effects of using tbScore as static eval. Add some value for unknown score.
+                m_tt.add(tbScore, NULL_MOVE, isPv, depth, plyFromRoot, tbScore, tbFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+                return tbScore;
+            }
+        }
     }
 
     m_killerMoveManager.clearPly(plyFromRoot + 1);
