@@ -53,6 +53,7 @@ namespace Arcanum
         uint64_t failedRazorCutoffs;
         uint64_t reverseFutilityCutoffs;
         uint64_t lmpPrunedMoves;
+        uint64_t historyPrunedMoves;
         uint64_t singularExtensions;
         uint64_t failedSingularExtensions;
         uint64_t probCuts;
@@ -79,6 +80,7 @@ namespace Arcanum
             failedRazorCutoffs(0),
             reverseFutilityCutoffs(0),
             lmpPrunedMoves(0),
+            historyPrunedMoves(0),
             singularExtensions(0),
             failedSingularExtensions(0),
             probCuts(0),

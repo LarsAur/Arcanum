@@ -486,6 +486,23 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             m_stats.lmpPrunedMoves += moveSelector.getNumQuietsLeft();
         }
 
+        // Prune quiet positions with low history scores
+        // Note that we keep counter moves and killer moves
+        // in case they have a low history score
+        if(depth < 4
+        && move->isQuiet()
+        && (m_history.get(*move, board.getTurn()) < (-3000 * depth))
+        && !m_killerMoveManager.contains(*move, plyFromRoot)
+        && !m_counterMoveManager.contains(*move, prevMove, board.getTurn())
+        && (moveNumber != 0))
+        {
+            moveSelector.skipQuiets();
+            // Track the number of quiet moves skipped
+            // +1 as this move is skipped as well
+            m_stats.historyPrunedMoves += moveSelector.getNumQuietsLeft() + 1;
+            continue;
+        }
+
         // Generate new board and make the move
         Board newBoard = Board(board);
         newBoard.performMove(*move);
@@ -1008,6 +1025,7 @@ void Searcher::logStats()
     ss << "\nFailed Razor Cutoffs:      " << m_stats.failedRazorCutoffs;
     ss << "\nReverseFutilityCutoffs:    " << m_stats.reverseFutilityCutoffs;
     ss << "\nLate Pruned Moves:         " << m_stats.lmpPrunedMoves;
+    ss << "\nHistory Pruned Moves:      " << m_stats.historyPrunedMoves;
     ss << "\nSingular Extensions:       " << m_stats.singularExtensions;
     ss << "\nFailed Singular Extensions:" << m_stats.failedSingularExtensions;
     ss << "\nProbCuts:                  " << m_stats.probCuts;
