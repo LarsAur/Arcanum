@@ -95,7 +95,7 @@ namespace Arcanum
             Phase getPhase() const;
             void skipQuiets();
             bool isSkippingQuiets();
-            uint8_t getNumQuietMoves();
+            uint8_t getNumQuietsLeft();
         private:
             struct ScoreIndex
             {

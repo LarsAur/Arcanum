@@ -201,7 +201,9 @@ bool MoveSelector::isSkippingQuiets()
     return m_skipQuiets;
 }
 
-uint8_t MoveSelector::getNumQuietMoves()
+// Returns the number of quiet moves left in the move selector
+// This exludes TT, killers and counters
+uint8_t MoveSelector::getNumQuietsLeft()
 {
     return m_numQuiets;
 }

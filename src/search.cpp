@@ -478,12 +478,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         && !Evaluator::isCloseToMate(board, bestScore)
         && !isChecked
         && !moveSelector.isSkippingQuiets()
-        && (quietMovesPerformed + captureMovesPerformed) >= m_lmpThresholds[isImproving][depth])
+        && moveNumber >= m_lmpThresholds[isImproving][depth])
         {
             moveSelector.skipQuiets();
 
             // Track the number of quiet moves skipped
-            m_stats.lmpPrunedMoves += moveSelector.getNumQuietMoves() - quietMovesPerformed;
+            m_stats.lmpPrunedMoves += moveSelector.getNumQuietsLeft();
         }
 
         // Generate new board and make the move
