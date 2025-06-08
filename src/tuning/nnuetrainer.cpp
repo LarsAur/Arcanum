@@ -407,6 +407,7 @@ void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t ba
 
         uint64_t epochPosCount = 0LL;
         uint64_t batchPosCount = 0LL;
+        uint64_t batchBucketCount[NNUE::NumOutputBuckets] = {0};
         float epochLoss = 0.0f;
         float batchLoss = 0.0f;
 
@@ -443,11 +444,27 @@ void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t ba
             // Run back propagation
             m_backPropagate(*board, cp, result, batchLoss);
 
+            // Count the number of positions and number of positions in each bucket
             batchPosCount++;
+            batchBucketCount[NNUE::getOutputBucket(*board)]++;
 
             if((batchPosCount % batchSize == 0) || loader.eof())
             {
-                NET_UNARY_OP(m_gradient, scale(1.0f / batchPosCount))
+                // Scale the gradient based on the number of batches
+                // to avoid diluting the the L1 and L2 values
+                // scale them based on the number of positions in the corresponding bucket.
+                m_gradient.ftWeights.scale(1.0f / batchPosCount);
+                m_gradient.ftBiases .scale(1.0f / batchPosCount);
+                for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
+                {
+                    if(batchBucketCount[i] == 0) continue;
+
+                    m_gradient.l1Weights[i].scale(1.0f / batchBucketCount[i]);
+                    m_gradient.l1Biases [i].scale(1.0f / batchBucketCount[i]);
+                    m_gradient.l2Weights[i].scale(1.0f / batchBucketCount[i]);
+                    m_gradient.l2Biases [i].scale(1.0f / batchBucketCount[i]);
+                    batchBucketCount[i] = 0;
+                }
 
                 m_applyGradient(epoch);
 
