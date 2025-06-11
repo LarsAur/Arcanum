@@ -394,27 +394,42 @@ void CaptureHistory::clear()
 
 CounterMoveManager::CounterMoveManager()
 {
+    m_counterMoves = new Move[TableSize];
+
+    if(m_counterMoves == nullptr)
+    {
+        ERROR("Unable to allocate counter move table")
+    }
+
     clear();
+}
+
+CounterMoveManager::~CounterMoveManager()
+{
+    delete[] m_counterMoves;
+}
+
+inline uint32_t CounterMoveManager::m_getIndex(Color turn, square_t prevFrom, square_t prevTo)
+{
+    return turn + 2 * (prevFrom + 64 * prevTo);
 }
 
 void CounterMoveManager::setCounter(const Move& counterMove, const Move& prevMove, Color turn)
 {
-    m_counterMoves[turn][prevMove.from][prevMove.to] = counterMove;
+    uint32_t index = m_getIndex(turn, prevMove.from, prevMove.to);
+    m_counterMoves[index] = counterMove;
 }
 
 bool CounterMoveManager::contains(const Move& move, const Move& prevMove, Color turn)
 {
-    return m_counterMoves[turn][prevMove.from][prevMove.to] == move;
+    uint32_t index = m_getIndex(turn, prevMove.from, prevMove.to);
+    return m_counterMoves[index] == move;
 }
 
 void CounterMoveManager::clear()
 {
-    for(int i = 0; i < 64; i++)
+    for(int i = 0; i < TableSize; i++)
     {
-        for(int j = 0; j < 64; j++)
-        {
-            m_counterMoves[Color::WHITE][i][j] = NULL_MOVE;
-            m_counterMoves[Color::BLACK][i][j] = NULL_MOVE;
-        }
+        m_counterMoves[i] = NULL_MOVE;
     }
 }
