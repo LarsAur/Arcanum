@@ -259,6 +259,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     if(m_isDraw(board, plyFromRoot))
         return DRAW_VALUE;
 
+    // Mate distance pruning
+    alpha = std::max(alpha, eval_t(plyFromRoot - MATE_SCORE));
+    beta = std::min(beta, eval_t(MATE_SCORE - plyFromRoot - 1));
+    if (alpha >= beta)
+      return alpha;
+
     eval_t originalAlpha = alpha;
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
     const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
