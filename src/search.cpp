@@ -536,7 +536,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             && entry->depth >= depth - 2
             && !Evaluator::isMateScore(entry->value))
         {
-            eval_t seBeta = entry->value - 3 * depth;
+            eval_t seBeta = entry->value - 3 * (depth / 2);
             uint8_t seDepth = (depth - 1) / 2;
             eval_t seScore = m_alphaBeta<false>(board, seBeta - 1, seBeta, seDepth, plyFromRoot, cutnode, totalExtensions, *move);
 
