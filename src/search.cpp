@@ -292,7 +292,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     }
 
     // Table base probe
-    if(board.getNumPieces() <= TB_LARGEST && board.getHalfMoves() == 0)
+    if(board.getNumPieces() <= TB_LARGEST && board.getHalfMoves() == 0 && skipMove.isNull())
     {
         uint32_t tbResult = TBProbeWDL(board);
 
@@ -367,7 +367,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     };
 
     // Internal Iterative Reductions
-    if(isPv && depth >= 5 && !entry.has_value() && !isChecked)
+    if(isPv && depth >= 5 && !entry.has_value() && !isChecked && skipMove.isNull())
     {
         depth--;
     }
@@ -527,11 +527,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
         // Singular extension
         if(
-            moveNumber == 0
-            && skipMove.isNull()
+            skipMove.isNull()
             && extension == 0
+            && numMoves > 1
             && depth >= 7
             && entry.has_value()
+            && *move == ttMove
             && entry->flags != TTFlag::UPPER_BOUND
             && entry->depth >= depth - 2
             && !Evaluator::isMateScore(entry->value))
