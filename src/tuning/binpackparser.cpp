@@ -500,7 +500,8 @@ void BinpackParser::m_parseNextMoveAndScore()
         // SF Binpacks does not include the enpassant square if the move would cause the king to become checked
         // Thus we have to invalidate the enpassant square if this is the case to not end up with an additional
         // bit in the destionations bitboard. To simplify it, we generate all legal moves on the board and check
-        // if the enpassant move is legal, as this check is done in move generation
+        // if an enpassant move is legal, as this check is done in move generation
+        // Note that the legal enpassant move does not be the move currently being parsed.
         // TODO: This can be done without generating all legal moves
         bitboard_t bbEnpassantSquare = 0LL;
         if(attacks & m_currentBoard.m_bbEnPassantSquare)
@@ -510,7 +511,7 @@ void BinpackParser::m_parseNextMoveAndScore()
 
             for(uint8_t i = 0; i < numMoves; i++)
             {
-                if(moves[i].from == from && (moves[i].moveInfo & MoveInfoBit::ENPASSANT))
+                if(moves[i].isEnpassant())
                 {
                     bbEnpassantSquare = m_currentBoard.m_bbEnPassantSquare;
                     break;
