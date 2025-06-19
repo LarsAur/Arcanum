@@ -36,17 +36,14 @@ namespace Arcanum
             {
                 Matrix<NNUE::L1Size, NNUE::FTSize> ftWeights;
                 Matrix<NNUE::L1Size, 1>            ftBiases;
-                Matrix<NNUE::L2Size, NNUE::L1Size> l1Weights[NNUE::NumOutputBuckets];
-                Matrix<NNUE::L2Size, 1>            l1Biases[NNUE::NumOutputBuckets];
-                Matrix<1, NNUE::L2Size>            l2Weights[NNUE::NumOutputBuckets];
-                Matrix<1, 1>                       l2Biases[NNUE::NumOutputBuckets];
+                Matrix<1, NNUE::L1Size>            l1Weights[NNUE::NumOutputBuckets];
+                Matrix<1, 1>                       l1Biases[NNUE::NumOutputBuckets];
             };
 
             // Intermediate results in the net
             struct Trace
             {
                 Matrix<NNUE::L1Size, 1> acc;
-                Matrix<NNUE::L2Size, 1> l1Out;
                 Matrix<1, 1>            out;
             };
 

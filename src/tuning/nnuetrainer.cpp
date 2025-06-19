@@ -20,8 +20,6 @@ for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++) \
 { \
 _net1.l1Weights[i]._op(_net2.l1Weights[i]); \
 _net1.l1Biases [i]._op(_net2.l1Biases [i]); \
-_net1.l2Weights[i]._op(_net2.l2Weights[i]); \
-_net1.l2Biases [i]._op(_net2.l2Biases [i]); \
 }
 
 #define NET_UNARY_OP(_net1, _op) \
@@ -31,8 +29,6 @@ for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++) \
 { \
 _net1.l1Weights[i]._op; \
 _net1.l1Biases [i]._op; \
-_net1.l2Weights[i]._op; \
-_net1.l2Biases [i]._op; \
 }
 
 const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE v5";
@@ -153,7 +149,7 @@ void NNUETrainer::m_storeNet(std::string filename, Net& net)
     time_t now = time(0);
     tm *gmt = gmtime(&now);
     std::string utcstr = asctime(gmt);
-    std::string arch = "768->8x(512->16->1) Quantizable";
+    std::string arch = "768->1024->1 Quantizable";
     std::string metadata = utcstr + arch;
     uint32_t metaSize = metadata.size();
     stream.write((char*) &metaSize, sizeof(uint32_t));
@@ -224,17 +220,13 @@ void NNUETrainer::randomizeNet()
     LOG("Randomizing NNUETrainer")
     m_net.ftWeights.heRandomize();
     m_net.l1Weights[0].heRandomize();
-    m_net.l2Weights[0].heRandomize();
     m_net.ftBiases.setZero();
     m_net.l1Biases[0].setZero();
-    m_net.l2Biases[0].setZero();
 
     for(uint32_t i = 1; i < NNUE::NumOutputBuckets; i++)
     {
         m_net.l1Weights[i].copy(m_net.l1Weights[0]);
-        m_net.l2Weights[i].copy(m_net.l2Weights[0]);
         m_net.l1Biases[i].copy(m_net.l1Biases[0]);
-        m_net.l2Biases[i].copy(m_net.l2Biases[0]);
     }
 }
 
@@ -243,8 +235,7 @@ float NNUETrainer::m_predict(const Board& board)
     uint32_t bucket = NNUE::getOutputBucket(board);
     m_initAccumulator(board);
     m_trace.acc.clippedRelu(ReluClipValue);
-    feedForwardClippedReLu(m_net.l1Weights[bucket], m_net.l1Biases[bucket], m_trace.acc, m_trace.l1Out, ReluClipValue);
-    lastLevelFeedForward(m_net.l2Weights[bucket], m_net.l2Biases[bucket], m_trace.l1Out, m_trace.out);
+    lastLevelFeedForward(m_net.l1Weights[bucket], m_net.l1Biases[bucket], m_trace.acc, m_trace.out);
     return *m_trace.out.data();
 }
 
@@ -298,44 +289,31 @@ float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResul
 
     // -- Calculation of auxillery coefficients
     Matrix<NNUE::L1Size, 1> delta1(false);
-    Matrix<NNUE::L2Size, 1> delta2(false);
-    Matrix<1, 1>            delta3(false);
+    Matrix<1, 1>            delta2(false);
 
     // Calculate derivative of activation functions (Sigma prime)
-    Matrix<NNUE::L2Size, 1> L2ReLuPrime(false);
-    L2ReLuPrime.copy(m_trace.l1Out);
-    L2ReLuPrime.clippedReluPrime(ReluClipValue);
-
     Matrix<NNUE::L1Size, 1> accumulatorReLuPrime(false);
     accumulatorReLuPrime.copy(m_trace.acc);
     accumulatorReLuPrime.clippedReluPrime(ReluClipValue);
 
     // Calculate deltas (d_l = W_l+1^T * d_l+1) * sigma prime (Z_l)
 
-    delta3.set(0, 0, sigmoidPrime * lossPrime);
-
-    multiplyTransposeA(m_net.l2Weights[bucket], delta3, delta2);
-    delta2.hadamard(L2ReLuPrime);
+    delta2.set(0, 0, sigmoidPrime * lossPrime);
 
     multiplyTransposeA(m_net.l1Weights[bucket], delta2, delta1);
     delta1.hadamard(accumulatorReLuPrime);
 
     // Calculation of gradient
 
-    Matrix<1, NNUE::L2Size>            gradientL2Weights(false);
-    Matrix<NNUE::L2Size, NNUE::L1Size> gradientL1Weights(false);
+    Matrix<1, NNUE::L1Size> gradientL1Weights(false);
 
-    multiplyTransposeB(delta3, m_trace.l1Out, gradientL2Weights);
     multiplyTransposeB(delta2, m_trace.acc, gradientL1Weights);
     calcAndAccFtGradient(featureSet, delta1, m_gradient.ftWeights);
 
     // Accumulate the change
-
-    m_gradient.l2Biases[bucket].add(delta3);
     m_gradient.l1Biases[bucket].add(delta2);
     m_gradient.ftBiases.add(delta1);
     m_gradient.l1Weights[bucket].add(gradientL1Weights);
-    m_gradient.l2Weights[bucket].add(gradientL2Weights);
 
     return loss;
 }
