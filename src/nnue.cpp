@@ -244,21 +244,15 @@ void NNUE::incrementAccumulatorPerspective(Accumulator* acc, Accumulator* nextAc
 eval_t NNUE::predict(const Accumulator* acc, const Board& board)
 {
     alignas(64) int8_t clampedAcc[L1Size];
-    alignas(64) int32_t l1Out[L2Size];
+    alignas(64) int32_t l1Out[1];
 
     uint32_t bucket = getOutputBucket(board);
 
     m_clampAcc(acc->acc[board.getTurn()], clampedAcc);
 
-    m_l1AffineRelu(clampedAcc, m_net->l1Weights[bucket], m_net->l1Biases[bucket], l1Out);
+    m_l1AffineTransform(clampedAcc, m_net->l1Weights[bucket], m_net->l1Biases[bucket], l1Out);
 
-    float sum = m_net->l2Biases[bucket][0];
-    for(uint32_t i = 0; i < L2Size; i++)
-    {
-        sum += l1Out[i] * m_net->l2Weights[bucket][i];
-    }
-
-    return sum / (FTQ * LQ);
+    return *l1Out / (FTQ * LQ);
 }
 
 eval_t NNUE::predictBoard(const Board& board)
@@ -298,51 +292,35 @@ inline void NNUE::m_clampAcc(const int16_t* in, int8_t* out)
     }
 }
 
-inline void NNUE::m_l1AffineRelu(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out)
+inline void NNUE::m_l1AffineTransform(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out)
 {
     constexpr uint32_t NumInChunks  = L1Size / 32;
-    constexpr uint32_t NumOutChunks = L2Size / 8;
 
-    const __m256i zero = _mm256_setzero_si256();
-    const __m256i clip = _mm256_set1_epi32(int32_t(FTQ * LQ));
-
-    __m256i* out256 = (__m256i*) out;
     __m256i* in256  = (__m256i*) in;
     __m256i* w256   = (__m256i*) weights;
 
-    for(uint32_t i = 0; i < L2Size; i++)
+    __m256i acc = _mm256_setzero_si256();
+
+    for(uint32_t j = 0; j < NumInChunks; j++)
     {
-        __m256i acc = _mm256_setzero_si256();
+        __m256i factors8 = _mm256_load_si256(in256 + j);
+        __m256i weights8 = _mm256_load_si256(w256 + j);
 
-        for(uint32_t j = 0; j < NumInChunks; j++)
-        {
-            __m256i factors8 = _mm256_load_si256(in256 + j);
-            __m256i weights8 = _mm256_load_si256(w256 + i*NumInChunks + j);
+        __m256i sum16 = _mm256_maddubs_epi16(factors8, weights8);
 
-            __m256i sum16 = _mm256_maddubs_epi16(factors8, weights8);
+        // Extract the upper and lower part of the 16-bit vectors and convert them to 32-bit
+        __m256i sum32_1 = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(sum16, 0));
+        __m256i sum32_2 = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(sum16, 1));
 
-            // Extract the upper and lower part of the 16-bit vectors and convert them to 32-bit
-            __m256i sum32_1 = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(sum16, 0));
-            __m256i sum32_2 = _mm256_cvtepi16_epi32(_mm256_extracti128_si256(sum16, 1));
-
-            acc = _mm256_add_epi32(acc, _mm256_add_epi32(sum32_1, sum32_2));
-        }
-
-        // Horizontally add all the 32-bit values in the acc vector
-        // Two sums will accumulate in acc[0] and acc[4] where acc is a 32-bit array
-        acc = _mm256_hadd_epi32(acc, acc);
-        acc = _mm256_hadd_epi32(acc, acc);
-        int32_t* acc32 = (int32_t*) &acc;
-        out[i] = acc32[0] + acc32[4];
+        acc = _mm256_add_epi32(acc, _mm256_add_epi32(sum32_1, sum32_2));
     }
 
-    // Add the bias and apply ReLu
-    for(uint32_t i = 0; i < NumOutChunks; i++)
-    {
-        __m256i bias = _mm256_load_si256(((__m256i*)(biases) + i));
-        *(out256 + i) = _mm256_add_epi32(*(out256 + i), bias);
-        *(out256 + i) = _mm256_max_epi32(zero, _mm256_min_epi32(clip, *(out256 + i)));
-    }
+    // Horizontally add all the 32-bit values in the acc vector
+    // Two sums will accumulate in acc[0] and acc[4] where acc is a 32-bit array
+    acc = _mm256_hadd_epi32(acc, acc);
+    acc = _mm256_hadd_epi32(acc, acc);
+    int32_t* acc32 = (int32_t*) &acc;
+    *out = acc32[0] + acc32[4] + biases[0];
 }
 
 template <typename T, uint32_t rows, uint32_t cols>
@@ -394,8 +372,6 @@ void NNUE::load(const std::string filename)
     {
         quantizeTransposeMatrix(m_net->l1Weights[i], fLoader.getNet()->l1Weights[i], LQ);
         quantizeMatrix(m_net->l1Biases[i], fLoader.getNet()->l1Biases[i], LQ * FTQ);
-        quantizeMatrix(m_net->l2Weights[i], fLoader.getNet()->l2Weights[i], 1);      // Note: Float layer
-        quantizeMatrix(m_net->l2Biases[i], fLoader.getNet()->l2Biases[i], FTQ * LQ); // Note: Float layer
     }
 
     LOG("Finished loading and quantizing: " << filename)

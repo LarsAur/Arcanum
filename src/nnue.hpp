@@ -26,10 +26,8 @@ namespace Arcanum
             {
                 alignas(64) int16_t ftWeights[L1Size * FTSize];
                 alignas(64) int16_t ftBiases[L1Size];
-                alignas(64) int8_t  l1Weights[NumOutputBuckets][L2Size * L1Size];
-                alignas(64) int32_t l1Biases[NumOutputBuckets][L2Size];
-                alignas(64) float l2Weights[NumOutputBuckets][L2Size];
-                alignas(64) float l2Biases[NumOutputBuckets][1];
+                alignas(64) int8_t  l1Weights[NumOutputBuckets][1 * L1Size];
+                alignas(64) int32_t l1Biases[NumOutputBuckets][1];
             };
 
             struct DeltaFeatures
@@ -67,7 +65,7 @@ namespace Arcanum
             eval_t predictBoard(const Board& board);
         private:
             Net* m_net;
-            void m_l1AffineRelu(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out);
+            void m_l1AffineTransform(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out);
             void m_clampAcc(const int16_t* in, int8_t* out);
     };
 
