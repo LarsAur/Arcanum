@@ -413,7 +413,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             if(nullMoveScore >= beta)
             {
                 m_stats.nullMoveCutoffs++;
-                return nullMoveScore;
+                return Evaluator::isMateScore(nullMoveScore) ? beta : nullMoveScore;
             }
             m_stats.failedNullMoveCutoffs++;
         }
