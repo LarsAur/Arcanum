@@ -517,13 +517,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         bool checkOrChecking = isChecked || newBoard.isChecked();
 
 
-        // Extend search for checking moves or check avoiding moves
-        // This is to avoid horizon effect occuring by starting with a forced line
-        uint8_t extension = (
-            isChecked ||
-            ((move->moveInfo & MoveInfoBit::PAWN_MOVE) && (RANK(move->to) == 6 || RANK(move->to) == 1)) || // Pawn moved to the 7th rank
-            (numMoves == 1)
-        ) ? 1 : 0;
+        // Extend search when only a single move is available
+        uint8_t extension = numMoves == 1;
 
         // Singular extension
         if(
