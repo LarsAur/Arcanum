@@ -469,7 +469,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     && !Evaluator::isCloseToMate(board, alpha)
     && board.hasOfficers(board.getTurn()))
     {
-        m_stats.futilityPrunedMoves++;
+        m_stats.futilityPrunedMoves += moveSelector.getNumQuietsLeft();
         moveSelector.skipQuiets();
     }
 
