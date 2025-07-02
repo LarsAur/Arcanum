@@ -134,6 +134,7 @@ namespace Arcanum
             bool see(const Move& move, eval_t threshold = 0) const;
             std::string fen() const;
             bool isMaterialDraw() const;
+            bool hasEasyCapture(Color turn) const;
     };
 
     template <MoveInfoBit MoveType, bool CapturesOnly>

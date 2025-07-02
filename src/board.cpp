@@ -1552,6 +1552,50 @@ bool Board::see(const Move& move, eval_t threshold) const
     return result;
 }
 
+// Checks if the selected turn has an easy capture
+// That is, a capture where a piece can capture another piece of a larger value
+bool Board::hasEasyCapture(Color turn) const
+{
+    bitboard_t pawnAttacks = (turn == Color::WHITE) ?
+        getWhitePawnAttacks(m_bbTypedPieces[Piece::W_PAWN][Color::WHITE]) :
+        getBlackPawnAttacks(m_bbTypedPieces[Piece::W_PAWN][Color::BLACK]);
+
+    bitboard_t nonPawnPieces = (m_bbColoredPieces[turn^1] & ~m_bbTypedPieces[Piece::W_PAWN][turn^1]);
+    if(pawnAttacks & nonPawnPieces)
+    {
+        return true;
+    }
+
+    bitboard_t knightAttacks = getKnightMoves(m_bbTypedPieces[Piece::W_KNIGHT][turn]);
+    bitboard_t tmpBishops = m_bbTypedPieces[Piece::W_BISHOP][turn^1];
+    bitboard_t bishopAttacks = 0LL;
+    while (tmpBishops)
+    {
+        bishopAttacks |= getBishopMoves(m_bbAllPieces, popLS1B(&tmpBishops));
+    }
+
+    bitboard_t rooksAndQueens = m_bbTypedPieces[Piece::W_QUEEN][turn^1] | m_bbTypedPieces[Piece::W_ROOK][turn^1];
+    if(rooksAndQueens & (knightAttacks | bishopAttacks))
+    {
+        return true;
+    }
+
+    bitboard_t tmpRooks = m_bbTypedPieces[Piece::W_ROOK][turn^1];
+    bitboard_t rookAttacks = 0LL;
+    while (tmpRooks)
+    {
+        rookAttacks |= getRookMoves(m_bbAllPieces, popLS1B(&tmpRooks));
+    }
+
+    bitboard_t queens = m_bbTypedPieces[Piece::W_QUEEN][turn^1];
+    if(queens & rookAttacks)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 std::string Board::fen() const
 {
     return FEN::getFEN(*this);
