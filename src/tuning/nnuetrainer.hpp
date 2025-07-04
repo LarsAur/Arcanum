@@ -7,6 +7,19 @@
 
 namespace Arcanum
 {
+    struct TrainingParameters
+    {
+        std::string dataset;
+        std::string output;
+        uint64_t batchSize;
+        uint32_t startEpoch;
+        uint32_t endEpoch;
+        uint64_t epochSize;
+        uint64_t validationSize;
+        float alpha;  // Learning rate
+        float lambda; // Weighting between wdlTarget and cpTarget in loss function 1.0 = 100% cpTarget 0.0 = 100% wdlTarget
+    };
+
     class NNUETrainer
     {
         private:
@@ -14,7 +27,6 @@ namespace Arcanum
             static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
             static constexpr float ReluClipValue = 1.0f;
             static constexpr float SigmoidFactor = 1.0f / 400.0f;
-            static constexpr float Lambda = 1.0f; // Weighting between wdlTarget and cpTarget in loss function 1.0 = 100% cpTarget 0.0 = 100% wdlTarget
 
             static const char* NNUE_MAGIC;
 
@@ -50,6 +62,8 @@ namespace Arcanum
             Net m_gradient;
             AdamMoments m_moments;
 
+            TrainingParameters m_params;
+
             static float m_sigmoid(float v);
             static float m_sigmoidPrime(float sigmoid);
 
@@ -58,7 +72,9 @@ namespace Arcanum
             void m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet);
 
             void m_applyGradient(uint32_t timestep);
-            void m_backPropagate(const Board& board, float cpTarget, GameResult result, float& totalLoss);
+            float m_backPropagate(const Board& board, float cpTarget, GameResult result);
+            bool m_shouldFilterPosition(Board& board, Move& move, eval_t eval);
+            float m_getValidationLoss();
 
             void m_storeNet(std::string filename, Net& net);
             bool m_loadNet(std::string filename, Net& net);
@@ -68,7 +84,7 @@ namespace Arcanum
             #endif
         public:
             void randomizeNet();
-            void train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch);
+            void train(TrainingParameters params);
             bool load(std::string filename);
             void store(std::string filename);
             Net* getNet();

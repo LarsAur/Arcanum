@@ -254,31 +254,46 @@ void UCI::fengen(std::istringstream& is)
 
 void UCI::train(std::istringstream& is)
 {
-    std::string dataset    = "";    // Dataset created by fengen
-    std::string inputPath  = "";    // If randomized is not set this file will be loaded as the starting net
-    std::string outputPath = "";    // Output path (_epoch.fnnue will be added as a suffix)
-    uint32_t batchSize     = 0;     // Batch size
-    uint32_t startEpoch    = 0;     // Epoch to start at (used for naming output and ADAM time variable)
-    uint32_t endEpoch      = 0;     // Epoch to end at
+    TrainingParameters params;
+
+    // Set default values for training parameters
+    params.dataset        = "";          // Path to the dataset
+    params.output         = "";          // Path to the output net. "<epoch>.fnnue" is appended to the name
+    params.batchSize      = 20000;       // Batch size
+    params.startEpoch     = 1;           // Epoch to start at (used for naming output LR scaling)
+    params.endEpoch       = INT32_MAX;   // Epoch to end at. Runs for INT32_MAX epochs if not set.
+    params.epochSize      = 100'000'000; // Number of positions in each epoch
+    params.validationSize = 0;           // Size of the validation set
+    params.alpha          = 0.001f;      // Learning rate
+    params.lambda         = 1.0f;        // Weighting between wdlTarget and cpTarget in loss function 1.0 = 100% cpTarget 0.0 = 100% wdlTarget
+
+    std::string inputPath  = "";         // Path to the initial net. Randomized if not set
+
 
     std::string token;
     while(is >> token)
     {
         toLowerCase(token);
-        if     (token == "dataset")    is >> dataset;
-        else if(token == "input")      is >> inputPath;
-        else if(token == "output")     is >> outputPath;
-        else if(token == "batchsize")  is >> batchSize;
-        else if(token == "startepoch") is >> startEpoch;
-        else if(token == "endepoch")   is >> endEpoch;
+        if     (token == "dataset")        is >> params.dataset;
+        else if(token == "output")         is >> params.output;
+        else if(token == "batchsize")      is >> params.batchSize;
+        else if(token == "startepoch")     is >> params.startEpoch;
+        else if(token == "endepoch")       is >> params.endEpoch;
+        else if(token == "epochsize")      is >> params.epochSize;
+        else if(token == "validationsize") is >> params.validationSize;
+        else if(token == "alpha")          is >> params.alpha;
+        else if(token == "lambda")         is >> params.lambda;
+        else if(token == "input")          is >> inputPath;
         else WARNING("Unknown token: " << token)
     }
 
-    if(dataset == "") { ERROR("Path to the dataset cannot be empty") return; }
-    if(outputPath == "") { ERROR("Output path cannot be empty") return; }
-    if(batchSize <= 0) { ERROR("Batch size cannot be 0 or less") return; }
-    if(startEpoch < 1) { ERROR("Start epoch must be at least 1") return; }
-    if(endEpoch <= startEpoch) { ERROR("End epoch must be larger than the end epoch") return; }
+    if(params.dataset == "") { ERROR("Path to the dataset cannot be empty") return; }
+    if(params.output == "") { ERROR("Output path cannot be empty") return; }
+    if(params.batchSize <= 0) { ERROR("Batch size cannot be 0 or less") return; }
+    if(params.startEpoch < 1) { ERROR("Start epoch must be at least 1") return; }
+    if(params.endEpoch <= params.startEpoch) { ERROR("End epoch must be larger than the end epoch") return; }
+    if(params.epochSize <= 0) {ERROR("Epoch size has to be larger than 0") return; }
+    if((params.lambda < 0) || (params.lambda > 1)) {ERROR("Lambda has to be between 0 and 1 (inclusive)") return; }
 
     NNUETrainer trainer;
     if(inputPath == "")
@@ -290,7 +305,7 @@ void UCI::train(std::istringstream& is)
         trainer.load(inputPath);
     }
 
-    trainer.train(dataset, outputPath, batchSize, startEpoch, endEpoch);
+    trainer.train(params);
 }
 
 void UCI::help()

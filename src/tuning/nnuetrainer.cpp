@@ -262,7 +262,7 @@ inline float NNUETrainer::m_sigmoidPrime(float sigmoid)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResult result, float& totalLoss)
+float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResult result)
 {
     // -- Run prediction
     float out = m_predict(board);
@@ -280,11 +280,10 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResult
     // Calculate target
     float wdlOutput       = m_sigmoid(out);
     float wdlTargetCp     = m_sigmoid(cpTarget);
-    float target          = wdlTargetCp * Lambda + wdlTarget * (1.0f - Lambda);
+    float target          = wdlTargetCp * m_params.lambda + wdlTarget * (1.0f - m_params.lambda);
 
     // Calculate loss
     float loss            = pow(target - wdlOutput, 2);
-    totalLoss             += loss;
 
     // Calculate loss gradients
     float sigmoidPrime    = m_sigmoidPrime(wdlOutput);
@@ -337,12 +336,13 @@ void NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResult
     m_gradient.ftBiases.add(delta1);
     m_gradient.l1Weights[bucket].add(gradientL1Weights);
     m_gradient.l2Weights[bucket].add(gradientL2Weights);
+
+    return loss;
 }
 
 void NNUETrainer::m_applyGradient(uint32_t timestep)
 {
     // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
-    constexpr float alpha   = 0.01f;
     constexpr float beta1   = 0.9f;
     constexpr float beta2   = 0.999f;
     constexpr float epsilon = 1.0E-8;
@@ -363,7 +363,7 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
     // M^_t = alpha * M_t / (1 - Beta1^t)
 
     NET_BINARY_OP(m_moments.mHat, copy, m_moments.m)
-    NET_UNARY_OP(m_moments.mHat, scale(alpha / (1.0f - std::pow(beta1, timestep))))
+    NET_UNARY_OP(m_moments.mHat, scale(m_params.alpha / (1.0f - std::pow(beta1, timestep))))
 
     // v^_t = v_t / (1 - Beta2^t)
 
@@ -387,87 +387,172 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
     }
 }
 
-void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t batchSize, uint32_t startEpoch, uint32_t endEpoch)
+// Returns true if the position should be skipped / filtered out
+bool NNUETrainer::m_shouldFilterPosition(Board& board, Move& move, eval_t eval)
 {
-    // Initialize the gradients and ADAM moments
+    // Filter out very high scoring positions
+    if(std::abs(eval) > 10000)
+    {
+        return true;
+    }
+
+    // Filter capture moves
+    // Move is null move if the move is not available
+    if(!move.isNull() && move.isCapture())
+    {
+        return true;
+    }
+
+    // Filter positions which are checked
+    if(board.isChecked())
+    {
+        return true;
+    }
+
+    // Filter positions with only one legal move
+    board.getLegalMoves();
+    if(board.getNumLegalMoves() == 1)
+    {
+        return true;
+    }
+
+    return false;
+}
+
+float NNUETrainer::m_getValidationLoss()
+{
+    if(m_params.validationSize == 0)
+    {
+        return 0.0f;
+    }
+
+    DataLoader loader;
+    if(!loader.open(m_params.dataset))
+    {
+        ERROR("Unable to open validation dataset " << m_params.dataset)
+        return 0.0f;
+    }
+
+    float totalLoss = 0.0f;
+
+    uint64_t i = 0;
+    while(i < m_params.validationSize)
+    {
+        Board *board = loader.getNextBoard();
+        eval_t cp = loader.getScore();
+        Move move = loader.getMove();
+        GameResult result = loader.getResult();
+
+        if(m_shouldFilterPosition(*board, move, cp))
+        {
+            continue;
+        }
+
+        i++;
+
+        float out = m_predict(*board);
+
+        // Set Win-Draw-Loss target based on result
+        // Normalize from [-1, 1] to [0, 1]
+        float wdlTarget = (result + 1.0f) / 2.0f;
+
+        // Correct target perspective
+        if(board->getTurn() == BLACK)
+        {
+            wdlTarget = 1.0f - wdlTarget;
+        }
+
+        // Calculate target
+        float wdlOutput       = m_sigmoid(out);
+        float wdlTargetCp     = m_sigmoid(cp);
+        float target          = wdlTargetCp * m_params.lambda + wdlTarget * (1.0f - m_params.lambda);
+
+        // Calculate loss
+        float loss            = pow(target - wdlOutput, 2);
+
+        totalLoss += loss;
+    }
+
+    return totalLoss / m_params.validationSize;
+}
+
+void NNUETrainer::train(TrainingParameters params)
+{
+    m_params = params;
+
+    uint64_t timestep = 0;
+
+    // Initialize the gradients
     NET_UNARY_OP(m_gradient, setZero())
     NET_UNARY_OP(m_moments.m, setZero())
     NET_UNARY_OP(m_moments.v, setZero())
     NET_UNARY_OP(m_moments.mHat, setZero())
     NET_UNARY_OP(m_moments.vHat, setZero())
 
-    for(uint32_t epoch = startEpoch; epoch < endEpoch; epoch++)
+    DataLoader loader;
+    if(!loader.open(m_params.dataset))
     {
-        DataLoader loader;
-        if(!loader.open(dataset))
-        {
-            ERROR("Unable to open dataset " << dataset)
-            return;
-        }
+        ERROR("Unable to open dataset " << m_params.dataset)
+        return;
+    }
 
+    for(uint32_t epoch = m_params.startEpoch; epoch < m_params.endEpoch; epoch++)
+    {
         uint64_t epochPosCount = 0LL;
         uint64_t batchPosCount = 0LL;
-        uint64_t batchBucketCount[NNUE::NumOutputBuckets] = {0};
         float epochLoss = 0.0f;
         float batchLoss = 0.0f;
 
         // Clear the gradient at the start of the epoch
         NET_UNARY_OP(m_gradient, setZero())
 
-        while (!loader.eof())
+        while (epochPosCount < m_params.epochSize)
         {
+            // If the end of the dataset is reached, restart the parser
+            if(loader.eof())
+            {
+                loader.close();
+                if(!loader.open(m_params.dataset))
+                {
+                    ERROR("Unable to open dataset " << m_params.dataset)
+                    return;
+                }
+
+                // Skip the validation positions at the beginning of the dataset
+                uint64_t i = 0;
+                while(i < m_params.validationSize)
+                {
+                    Board *board = loader.getNextBoard();
+                    eval_t cp = loader.getScore();
+                    Move move = loader.getMove();
+                    i += !m_shouldFilterPosition(*board, move, cp);
+                }
+            }
+
             Board *board = loader.getNextBoard();
             eval_t cp = loader.getScore();
             GameResult result = loader.getResult();
             Move move = loader.getMove();
 
-            // Filter capture moves
-            // Move is null move if the move is not available
-            if(!move.isNull() && move.isCapture())
-            {
-                continue;
-            }
-
-            // Filter positions which are checked
-            if(board->isChecked())
-            {
-                continue;
-            }
-
-            // Filter positions with only one legal move
-            board->getLegalMoves();
-            if(board->getNumLegalMoves() == 1)
+            if(m_shouldFilterPosition(*board, move, cp))
             {
                 continue;
             }
 
             // Run back propagation
-            m_backPropagate(*board, cp, result, batchLoss);
+            batchLoss += m_backPropagate(*board, cp, result);
 
-            // Count the number of positions and number of positions in each bucket
+            // Count the number of positions in the current batch
             batchPosCount++;
-            batchBucketCount[NNUE::getOutputBucket(*board)]++;
 
-            if((batchPosCount % batchSize == 0) || loader.eof())
+            if(batchPosCount >= m_params.batchSize)
             {
-                // Scale the gradient based on the number of batches
-                // to avoid diluting the the L1 and L2 values
-                // scale them based on the number of positions in the corresponding bucket.
-                m_gradient.ftWeights.scale(1.0f / batchPosCount);
-                m_gradient.ftBiases .scale(1.0f / batchPosCount);
-                for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
-                {
-                    if(batchBucketCount[i] == 0) continue;
+                NET_UNARY_OP(m_gradient, scale(1.0f / m_params.batchSize))
 
-                    m_gradient.l1Weights[i].scale(1.0f / batchBucketCount[i]);
-                    m_gradient.l1Biases [i].scale(1.0f / batchBucketCount[i]);
-                    m_gradient.l2Weights[i].scale(1.0f / batchBucketCount[i]);
-                    m_gradient.l2Biases [i].scale(1.0f / batchBucketCount[i]);
-                    batchBucketCount[i] = 0;
-                }
+                // Note, the gradient is scaled by 1/batchSize by the function
+                m_applyGradient(++timestep);
 
-                m_applyGradient(epoch);
-
+                // Reset the gradient to 0
                 NET_UNARY_OP(m_gradient, setZero())
 
                 // Aggregate the loss and position count
@@ -483,18 +568,21 @@ void NNUETrainer::train(std::string dataset, std::string outputPath, uint64_t ba
             }
         }
 
-        // Write the epoch loss to a file
+        // Write the epoch loss and validation loss to a file
+        float validationLoss = m_getValidationLoss();
+        LOG("Validation loss: " << validationLoss)
         std::ofstream os("loss.log", std::ios::app | std::ios::out);
         std::stringstream ssLoss;
-        ssLoss << std::fixed << std::setprecision(6) << (epochLoss / float(epochPosCount)) << "\n";
+        ssLoss << std::fixed << std::setprecision(6)
+        << "Epoch loss: " << (epochLoss / float(epochPosCount))
+        << " Validation loss: " << validationLoss << "\n";
         os.write(ssLoss.str().c_str(), ssLoss.str().length());
         os.close();
 
         // Store the net for each epoch
         std::stringstream ssNnueName;
-        ssNnueName << outputPath << epoch << ".fnnue";
+        ssNnueName << m_params.output << epoch << ".fnnue";
         store(ssNnueName.str());
-        loader.close();
     }
 }
 
