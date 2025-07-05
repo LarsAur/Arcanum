@@ -402,7 +402,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
 
         // Null move search
-        if(depth > 2 && !isNullMoveSearch && staticEval >= beta && board.hasOfficers(board.getTurn()))
+        if(depth > 2 && !isNullMoveSearch && staticEval >= beta && !Evaluator::isMateScore(beta) && board.hasOfficers(board.getTurn()))
         {
             Board newBoard = Board(board);
             int R = 2 + isImproving + depth / 4;
