@@ -9,8 +9,6 @@
 #define ARCANUM_VERSION dev_build
 #endif
 
-#define NORMALIZE(_x) (eval_t((_x) / 1.75f))
-
 namespace Arcanum
 {
     namespace Interface
@@ -75,7 +73,6 @@ namespace Arcanum
                 static void sendBestMove(const Move& move);
                 static void sendInfo(const SearchInfo& info);
                 static void loop();
-                static eval_t normalize(eval_t score);
         };
     }
 }

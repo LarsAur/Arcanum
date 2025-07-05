@@ -2,6 +2,7 @@
 #include <uci/timeman.hpp>
 #include <tuning/fengen.hpp>
 #include <tuning/nnuetrainer.hpp>
+#include <uci/wdlmodel.hpp>
 #include <syzygy.hpp>
 #include <fen.hpp>
 #include <perft.hpp>
@@ -207,7 +208,15 @@ void UCI::eval()
     Evaluator evaluator;
     evaluator.initAccumulatorStack(board);
     eval_t score = evaluator.evaluate(board, 0);
-    UCI_OUT(UCI::normalize(score))
+
+    if(optionNormalizeScore.value)
+    {
+        UCI_OUT(WDLModel::getNormalizedScore(board, score))
+    }
+    else
+    {
+        UCI_OUT(score)
+    }
 }
 
 void UCI::drawboard()
@@ -410,7 +419,14 @@ void UCI::sendInfo(const SearchInfo& info)
     }
     else
     {
-        ss << " score cp " << UCI::normalize(info.score);
+        if(optionNormalizeScore.value)
+        {
+            ss << " score cp " << WDLModel::getNormalizedScore(info.board, info.score);
+        }
+        else
+        {
+            ss << " score cp " << info.score;
+        }
     }
 
     if(info.msTime > 0)
@@ -434,16 +450,4 @@ void UCI::sendBestMove(const Move& move)
         ERROR("Illegal Null-Move was reported as the best move")
 
     UCI_OUT("bestmove " << move)
-}
-
-// Normalizes the score such that a score of 100cp gives ~50% winrate
-// Score are only normalized if the 'NormalizeScore' option is set
-// Mate scores are not normalized
-eval_t UCI::normalize(eval_t score)
-{
-    if(optionNormalizeScore.value && !Evaluator::isMateScore(score))
-    {
-        return eval_t(score / 1.75f);
-    }
-    return score;
 }
