@@ -898,7 +898,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         m_tt.add(alpha, bestMove, true, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
-        m_sendUciInfo(alpha, NULL_MOVE, depth, forceTBScore, wdlTB);
+        m_sendUciInfo(board, alpha, NULL_MOVE, depth, forceTBScore, wdlTB);
 
         // End early if checkmate is found
         if(Evaluator::isRealMateScore(searchScore))
@@ -910,7 +910,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             break;
     }
 
-    m_sendUciInfo(searchScore, searchBestMove, depth, forceTBScore, wdlTB);
+    m_sendUciInfo(board, searchScore, searchBestMove, depth, forceTBScore, wdlTB);
 
     m_stats.nodes += m_numNodesSearched;
     m_stats.tbHits += m_tbHits;
@@ -959,7 +959,7 @@ bool Searcher::m_shouldStop()
     return false;
 }
 
-void Searcher::m_sendUciInfo(eval_t score, Move move, uint32_t depth, bool forceTBScore, uint8_t wdlTB)
+void Searcher::m_sendUciInfo(const Board& board, eval_t score, Move move, uint32_t depth, bool forceTBScore, uint8_t wdlTB)
 {
     if(!m_verbose)
     {
@@ -977,6 +977,7 @@ void Searcher::m_sendUciInfo(eval_t score, Move move, uint32_t depth, bool force
     info.hashfull = m_tt.permills();
     info.pvTable = &m_pvTable;
     info.tbHits = m_tbHits;
+    info.board = board;
     if(Evaluator::isRealMateScore(score))
     {
         info.mate = true;

@@ -26,6 +26,7 @@ namespace Arcanum
             PvTable* pvTable;                    // PV-line
             uint32_t hashfull;                   // Permills of hashtable filled
             uint64_t tbHits;
+            Board board;
 
             SearchInfo() :
                 depth(0),
@@ -69,6 +70,7 @@ namespace Arcanum
                 static StringOption optionNNUEPath;
                 static SpinOption   optionMoveOverhead;
                 static CheckOption  optionNormalizeScore;
+                static CheckOption  optionShowWDL;
 
                 static void sendBestMove(const Move& move);
                 static void sendInfo(const SearchInfo& info);

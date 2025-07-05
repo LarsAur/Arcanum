@@ -23,6 +23,7 @@ StringOption UCI::optionSyzygyPath   = StringOption("SyzygyPath", "<empty>", []{
 StringOption UCI::optionNNUEPath     = StringOption("NNUEPath", TOSTRING(DEFAULT_NNUE), []{ Evaluator::nnue.load(UCI::optionNNUEPath.value); });
 SpinOption   UCI::optionMoveOverhead = SpinOption("MoveOverhead", 10, 0, 5000);
 CheckOption  UCI::optionNormalizeScore = CheckOption("NormalizeScore", true);
+CheckOption  UCI::optionShowWDL      = CheckOption("UCI_ShowWDL", false);
 
 void UCI::listUCI()
 {
@@ -427,6 +428,12 @@ void UCI::sendInfo(const SearchInfo& info)
         {
             ss << " score cp " << info.score;
         }
+    }
+
+    if(optionShowWDL.value)
+    {
+        WDL wdl = WDLModel::getExpectedWDL(info.board, info.score);
+        ss << " wdl " << wdl.win << " " << wdl.draw << " " << wdl.loss;
     }
 
     if(info.msTime > 0)
