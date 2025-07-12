@@ -79,6 +79,9 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     if(m_isDraw(board, plyFromRoot))
         return DRAW_VALUE;
 
+    eval_t bestScore = -MATE_SCORE;
+    eval_t maxScore = MATE_SCORE;
+
     // Table base probe
     if(board.getNumPieces() <= TB_LARGEST && board.getHalfMoves() == 0)
     {
@@ -110,6 +113,16 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
                 // TODO: Might be some bad effects of using tbScore as static eval. Add some value for unknown score.
                 m_tt.add(tbScore, NULL_MOVE, isPv, 0, plyFromRoot, tbScore, tbFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
                 return tbScore;
+            }
+
+            if(tbFlag == TTFlag::LOWER_BOUND)
+            {
+                bestScore = tbScore;
+                alpha = std::max(alpha, tbScore);
+            }
+            else
+            {
+                maxScore = tbScore;
             }
         }
     }
@@ -152,7 +165,6 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         staticEval = m_evaluator.evaluate(board, plyFromRoot);
     }
 
-    eval_t bestScore = -MATE_SCORE;
     bool isChecked = board.isChecked();
 
     if(!isChecked)
@@ -230,6 +242,8 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
+    bestScore = std::min(bestScore, maxScore);
+
     m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
     return bestScore;
@@ -266,6 +280,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
       return alpha;
 
     eval_t originalAlpha = alpha;
+    eval_t bestScore = -MATE_SCORE;
+    eval_t maxScore = MATE_SCORE;
+
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
     const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
     if(!isPv && entry.has_value() && (entry->depth >= depth) && skipMove.isNull())
@@ -323,12 +340,21 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 m_tt.add(tbScore, NULL_MOVE, isPv, depth, plyFromRoot, tbScore, tbFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
                 return tbScore;
             }
+
+            if(tbFlag == TTFlag::LOWER_BOUND)
+            {
+                bestScore = tbScore;
+                alpha = std::max(alpha, tbScore);
+            }
+            else
+            {
+                maxScore = tbScore;
+            }
         }
     }
 
     m_killerMoveManager.clearPly(plyFromRoot + 1);
 
-    eval_t bestScore = -MATE_SCORE;
     Move bestMove = NULL_MOVE;
     Move* moves = nullptr;
     uint8_t numMoves = 0;
@@ -650,6 +676,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     {
         return 0;
     }
+
+    bestScore = std::min(bestScore, maxScore);
 
     if(skipMove.isNull())
     {
