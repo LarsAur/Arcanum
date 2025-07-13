@@ -428,7 +428,7 @@ bool CounterMoveManager::contains(const Move& move, const Move& prevMove, Color 
 
 void CounterMoveManager::clear()
 {
-    for(int i = 0; i < TableSize; i++)
+    for(uint32_t i = 0; i < TableSize; i++)
     {
         m_counterMoves[i] = NULL_MOVE;
     }
