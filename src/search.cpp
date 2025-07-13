@@ -486,7 +486,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     uint8_t captureMovesPerformed = 0;
     std::array<Move, MAX_MOVE_COUNT> quiets;
     std::array<Move, MAX_MOVE_COUNT> captures;
-    int32_t moveNumber = 0;
+    uint32_t moveNumber = 0;
 
     // Futility pruning
     if(!isPv
