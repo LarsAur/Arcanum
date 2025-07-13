@@ -1,4 +1,7 @@
 #include <uci/wdlmodel.hpp>
+#include <algorithm>
+#include <cmath>
+#include <tuple>
 
 using namespace Arcanum;
 
