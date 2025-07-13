@@ -166,7 +166,7 @@ void BinpackEncoder::m_writeStem(Board& board, Move& move, eval_t score, GameRes
     m_writePos(board);
     m_writeMove(move);
     m_writeScore(score);
-    m_writePlyAndResult(result, board.getTurn());
+    m_writePlyAndResult(result, board.getTurn(), board.getFullMoves());
     m_writeRule50(board.getHalfMoves());
 }
 
@@ -299,9 +299,13 @@ void BinpackEncoder::m_writeScore(eval_t score)
     m_writeBytesToBuffer(&uScore, 2);
 }
 
-void BinpackEncoder::m_writePlyAndResult(GameResult result, Color turn)
+void BinpackEncoder::m_writePlyAndResult(GameResult result, Color turn, uint16_t fullmove)
 {
-    int16_t plyBits = 0; // TODO: Add game ply (Number of plys in the game)
+    constexpr uint16_t PlyMask = (1 << 14) - 1;
+
+    // Calculate the number of plys based on full moves.
+    // Note that full moves starts at 1 and an additional ply is performed when it is blacks turn
+    int16_t plyBits = 2 * (fullmove - 1) + (turn == Color::BLACK);
 
     int16_t resultBits = -1; // Resultbit is -1 if current turn is losing
     if(result == GameResult::DRAW)
@@ -315,7 +319,7 @@ void BinpackEncoder::m_writePlyAndResult(GameResult result, Color turn)
         resultBits = 1;
     }
 
-    uint16_t plyAndResult = (m_signedToUnsigned(resultBits) << 14) | plyBits;
+    uint16_t plyAndResult = (m_signedToUnsigned(resultBits) << 14) | (plyBits & PlyMask);
     uint16_t data = m_littleToBigEndian(plyAndResult);
     m_writeBytesToBuffer(&data, 2);
 }

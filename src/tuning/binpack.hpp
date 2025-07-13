@@ -79,7 +79,7 @@ namespace Arcanum
             void m_writePos(Board& board);
             void m_writeMove(Move& move);
             void m_writeScore(eval_t score);
-            void m_writePlyAndResult(GameResult result, Color turn);
+            void m_writePlyAndResult(GameResult result, Color turn, uint16_t fullmove);
             void m_writeRule50(uint8_t rule50);
             void m_writeMovetextCount(uint32_t numMoves);
             void m_writeEncodedMove(Board& board, Move& move);

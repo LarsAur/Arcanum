@@ -395,6 +395,8 @@ void BinpackParser::m_parsePlyAndResult()
 
     uint16_t ply = plyAndResult & PlyMask;
 
+    m_currentBoard.m_fullMoves = (ply / 2) + 1;
+
     int16_t result = m_unsignedToSigned(plyAndResult >> 14);
     if(result == 0)
     {
