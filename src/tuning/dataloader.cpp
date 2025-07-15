@@ -78,7 +78,8 @@ namespace Arcanum
         }
         else if(path.find(".txt") != std::string::npos)
         {
-            WARNING("Missing legacy encoder")
+            m_encoder = std::make_unique<LegacyEncoder>();
+            LOG("Loading legacy file: " << path)
         }
         else{
             ERROR("Unsupported file format: " << path)

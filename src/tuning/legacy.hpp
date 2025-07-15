@@ -24,4 +24,20 @@ namespace Arcanum
             eval_t getScore();
             GameResult getResult();
     };
+
+    class LegacyEncoder : public DataEncoder
+    {
+        private:
+            std::ofstream m_ofs;
+        public:
+            LegacyEncoder();
+            bool open(std::string path);
+            void close();
+            void addGame(
+                const Board& startBoard,
+                std::vector<Move>& moves,
+                std::vector<eval_t>& scores,
+                GameResult result
+            );
+    };
 }
