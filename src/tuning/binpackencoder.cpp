@@ -37,7 +37,7 @@ void BinpackEncoder::close()
 }
 
 void BinpackEncoder::addGame(
-    std::string startfen,
+    const Board& startBoard,
     std::vector<Move>& moves,
     std::vector<eval_t>& scores,
     GameResult result
@@ -49,7 +49,7 @@ void BinpackEncoder::addGame(
         m_writeBlock();
     }
 
-    Board board = Board(startfen);
+    Board board = Board(startBoard);
     // Write chain (stem + movetextcount)
     m_writeStem(board, moves[0], scores[0], result);
     m_writeMovetextCount(moves.size());

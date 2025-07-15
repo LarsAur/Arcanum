@@ -144,8 +144,6 @@ void Fengen::start(FengenParameters params)
                 }
             }
 
-            startfen = board.fen();
-
             // Play the game and record the moves, scores and result of the game
             runner.play(board, &moves, &scores, &result);
 
@@ -154,7 +152,7 @@ void Fengen::start(FengenParameters params)
             results[result + 1]++;
 
             // Store the game using the selected encoding
-            encoder.addGame(startfen, moves, scores, result);
+            encoder.addGame(board, moves, scores, result);
 
             fenCount += moves.size() + 1; // Num moves + startfen
             if((fenCount % 1000) < ((fenCount - moves.size() - 1) % 1000)  )

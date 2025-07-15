@@ -31,7 +31,7 @@ namespace Arcanum
         virtual bool open(std::string path) = 0;
         virtual void close() = 0;
         virtual void addGame(
-            std::string startfen,
+            const Board& startBoard,
             std::vector<Move>& moves,
             std::vector<eval_t>& scores,
             GameResult result
@@ -51,7 +51,6 @@ namespace Arcanum
             Move getMove();
             eval_t getScore();
             GameResult getResult();
-
     };
 
     class DataStorer
@@ -63,7 +62,7 @@ namespace Arcanum
             bool open(std::string path);
             void close();
             void addGame(
-                std::string startfen,
+                const Board& startBoard,
                 std::vector<Move>& moves,
                 std::vector<eval_t>& scores,
                 GameResult result

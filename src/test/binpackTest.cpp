@@ -89,14 +89,14 @@ bool compareAfterEncodeDecode(
 {
     BinpackEncoder encoder;
     BinpackParser parser;
+    Board encodedBoard = Board(fen);
 
     encoder.open(filename);
-    encoder.addGame(fen, moves, scores, result);
+    encoder.addGame(encodedBoard, moves, scores, result);
     encoder.close();
 
     bool pass = true;
     parser.open(filename);
-    Board encodedBoard = Board(fen);
     for(uint32_t i = 0; i < moves.size(); i++)
     {
         Board *parsedBoard = parser.getNextBoard();

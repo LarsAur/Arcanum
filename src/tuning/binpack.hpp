@@ -96,7 +96,7 @@ namespace Arcanum
             bool open(std::string path);
             void close();
             void addGame(
-                std::string startfen,
+                const Board& startBoard,
                 std::vector<Move>& moves,
                 std::vector<eval_t>& scores,
                 GameResult result

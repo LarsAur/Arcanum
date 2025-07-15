@@ -96,12 +96,12 @@ namespace Arcanum
     // Encode a game and write it to file
     // The scores are from the current turns perspective
     void DataStorer::addGame(
-        std::string startfen,
+        const Board& startBoard,
         std::vector<Move>& moves,
         std::vector<eval_t>& scores,
         GameResult result
     )
     {
-        m_encoder->addGame(startfen, moves, scores, result);
+        m_encoder->addGame(startBoard, moves, scores, result);
     }
 }
