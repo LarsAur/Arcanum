@@ -1,5 +1,5 @@
 #include <tuning/dataloader.hpp>
-#include <tuning/legacyparser.hpp>
+#include <tuning/legacy.hpp>
 #include <tuning/binpack.hpp>
 
 namespace Arcanum

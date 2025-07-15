@@ -1,4 +1,4 @@
-#include <tuning/legacyparser.hpp>
+#include <tuning/legacy.hpp>
 #include <fen.hpp>
 
 using namespace Arcanum;
