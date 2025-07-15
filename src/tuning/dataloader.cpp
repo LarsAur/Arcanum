@@ -94,6 +94,18 @@ namespace Arcanum
         m_encoder->close();
     }
 
+    // Encode a position and write it to file
+    // The scores are from the current turns perspective
+    void DataStorer::addPosition(
+        const Board& board,
+        const Move& move,
+        eval_t score,
+        GameResult result
+    )
+    {
+        m_encoder->addPosition(board, move, score, result);
+    }
+
     // Encode a game and write it to file
     // The scores are from the current turns perspective
     void DataStorer::addGame(

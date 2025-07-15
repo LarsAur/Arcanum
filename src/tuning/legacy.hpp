@@ -33,6 +33,12 @@ namespace Arcanum
             LegacyEncoder();
             bool open(std::string path);
             void close();
+            void addPosition(
+                const Board& board,
+                const Move& move,
+                eval_t score,
+                GameResult result
+            );
             void addGame(
                 const Board& startBoard,
                 std::vector<Move>& moves,

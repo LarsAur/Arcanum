@@ -30,6 +30,12 @@ namespace Arcanum
         virtual ~DataEncoder() = default;
         virtual bool open(std::string path) = 0;
         virtual void close() = 0;
+        virtual void addPosition(
+            const Board& board,
+            const Move& move,
+            eval_t score,
+            GameResult result
+        ) = 0;
         virtual void addGame(
             const Board& startBoard,
             std::vector<Move>& moves,
@@ -61,6 +67,12 @@ namespace Arcanum
             DataStorer();
             bool open(std::string path);
             void close();
+            void addPosition(
+                const Board& board,
+                const Move& move,
+                eval_t score,
+                GameResult result
+            );
             void addGame(
                 const Board& startBoard,
                 std::vector<Move>& moves,

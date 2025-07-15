@@ -25,6 +25,22 @@ void LegacyEncoder::close()
     m_ofs.close();
 }
 
+void LegacyEncoder::addPosition(
+    const Board& board,
+    const Move& move,
+    eval_t score,
+    GameResult result
+)
+{
+    // Flip the score if it is blacks turn
+    // The score is stored from whites perspective
+    score = board.getTurn() == Color::WHITE ? score : -score;
+
+    m_ofs << result << "\n";
+    m_ofs << score << "\n";
+    m_ofs << board.fen() << "\n";
+}
+
 void LegacyEncoder::addGame(
     const Board& startBoard,
     std::vector<Move>& moves,

@@ -91,10 +91,21 @@ namespace Arcanum
             uint16_t m_littleToBigEndian(uint16_t little);
             uint16_t m_signedToUnsigned(int16_t s);
             void m_writeBytesToBuffer(void* src, uint32_t numBytes);
+
+            // These vectors are used to allow addPosition() to call addGame()
+            // without having to allocate a new vector every time.
+            std::vector<Move> m_reservedMoveVector;
+            std::vector<eval_t> m_reservedScoreVector;
         public:
             BinpackEncoder();
             bool open(std::string path);
             void close();
+            void addPosition(
+                const Board& board,
+                const Move& move,
+                eval_t score,
+                GameResult result
+            );
             void addGame(
                 const Board& startBoard,
                 std::vector<Move>& moves,

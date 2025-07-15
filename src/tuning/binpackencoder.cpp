@@ -36,6 +36,20 @@ void BinpackEncoder::close()
     m_ofs.close();
 }
 
+void BinpackEncoder::addPosition(
+    const Board& board,
+    const Move& move,
+    eval_t score,
+    GameResult result
+)
+{
+    m_reservedMoveVector.push_back(move);
+    m_reservedScoreVector.push_back(score);
+    addGame(board, m_reservedMoveVector, m_reservedScoreVector, result);
+    m_reservedMoveVector.clear();
+    m_reservedScoreVector.clear();
+}
+
 void BinpackEncoder::addGame(
     const Board& startBoard,
     std::vector<Move>& moves,
