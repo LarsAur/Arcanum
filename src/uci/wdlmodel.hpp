@@ -1,3 +1,5 @@
+#pragma once
+
 #include <eval.hpp>
 #include <types.hpp>
 
