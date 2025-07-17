@@ -72,7 +72,8 @@ bool GameRunner::m_isResignAdjudicated()
     for(uint32_t i = 0; i < m_resignAdjudicationRepeats; i++)
     {
         uint32_t index = m_evals->size() - i - 1;
-        if(std::abs(m_evals->at(index)) < m_resignAdjudicationScore)
+        uint32_t absEval = std::abs(m_evals->at(index));
+        if(absEval < m_resignAdjudicationScore)
         {
             resign = false;
             break;
@@ -131,7 +132,8 @@ bool GameRunner::m_isDrawAdjudicated()
     for(uint32_t i = 0; i < m_drawAdjudicationRepeats; i++)
     {
         uint32_t index = m_evals->size() - i - 1;
-        if(std::abs(m_evals->at(index)) > m_drawAdjudicationScore)
+        uint32_t absEval = std::abs(m_evals->at(index));
+        if(absEval > m_drawAdjudicationScore)
         {
             adjudicate = false;
             break;
