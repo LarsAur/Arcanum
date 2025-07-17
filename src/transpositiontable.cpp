@@ -14,7 +14,8 @@ TranspositionTable::TranspositionTable() :
     m_table(nullptr),
     m_mbSize(0),
     m_numClusters(0),
-    m_numEntries(0)
+    m_numEntries(0),
+    m_stats(TTStats(0))
 {}
 
 TranspositionTable::~TranspositionTable()
@@ -58,15 +59,7 @@ void TranspositionTable::resize(uint32_t mbSize)
 
 void TranspositionTable::clearStats()
 {
-    m_stats = {
-        .entriesAdded = 0LL,
-        .replacements = 0LL,
-        .updates      = 0LL,
-        .lookups      = 0LL,
-        .lookupMisses = 0LL,
-        .blockedReplacements = 0LL,
-        .maxEntries   = m_numEntries,
-    };
+    m_stats = TTStats(m_numEntries);
 }
 
 void TranspositionTable::clear()

@@ -40,7 +40,9 @@ inline void MoveSelector::m_scoreMoves()
                 score += s_pieceValues[move.promotedPiece()] * 16000;
             }
 
-            m_captureScoreIndexPairs[m_numCaptures++] = { .score = score, .index = i };
+            m_captureScoreIndexPairs[m_numCaptures].score = score;
+            m_captureScoreIndexPairs[m_numCaptures].index = i;
+            m_numCaptures++;
             continue;
         }
 
@@ -60,7 +62,9 @@ inline void MoveSelector::m_scoreMoves()
         }
 
         int32_t quietScore = m_history->get(move, turn);
-        m_quietScoreIndexPairs[m_numQuiets++] = { .score = quietScore, .index = i };
+        m_quietScoreIndexPairs[m_numQuiets].score = quietScore;
+        m_quietScoreIndexPairs[m_numQuiets].index = i;
+        m_numQuiets++;
     }
 }
 

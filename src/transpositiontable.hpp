@@ -46,6 +46,17 @@ namespace Arcanum
         uint64_t lookupMisses;
         uint64_t blockedReplacements;
         uint64_t maxEntries;
+
+        TTStats(uint64_t maxEntries) :
+            entriesAdded(0),
+            replacements(0),
+            updates(0),
+            blockedUpdates(0),
+            lookups(0),
+            lookupMisses(0),
+            blockedReplacements(0),
+            maxEntries(maxEntries)
+        {};
     };
 
     class TranspositionTable

@@ -191,11 +191,9 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     }
 
     // Push the board on the search stack
-    m_searchStack[plyFromRoot] = {
-        .hash = board.getHash(),
-        .staticEval = staticEval,
-        .move = NULL_MOVE,
-    };
+    m_searchStack[plyFromRoot].hash       = board.getHash();
+    m_searchStack[plyFromRoot].staticEval = staticEval;
+    m_searchStack[plyFromRoot].move       = NULL_MOVE;
 
     board.generateCaptureInfo();
     Move prevMove = m_searchStack[plyFromRoot-1].move;
@@ -387,11 +385,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     bool isNullMoveSearch = prevMove.isNull();
 
     // Push the board on the search stack
-    m_searchStack[plyFromRoot] = {
-        .hash = board.getHash(),
-        .staticEval = staticEval,
-        .move = NULL_MOVE,
-    };
+    m_searchStack[plyFromRoot].hash       = board.getHash();
+    m_searchStack[plyFromRoot].staticEval = staticEval;
+    m_searchStack[plyFromRoot].move       = NULL_MOVE;
 
     // Internal Iterative Reductions
     if(isPv && depth >= 5 && !entry.has_value() && !isChecked && skipMove.isNull())
@@ -794,11 +790,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         staticEval = m_evaluator.evaluate(board, 0);
     }
 
-    m_searchStack[0] = {
-        .hash = board.getHash(),
-        .staticEval = staticEval,
-        .move = NULL_MOVE,
-    };
+    // Initialize the search stack by pushing the initial board
+    m_searchStack[0].hash       = board.getHash();
+    m_searchStack[0].staticEval = staticEval;
+    m_searchStack[0].move       = NULL_MOVE;
 
     uint32_t depth = 0;
     while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
