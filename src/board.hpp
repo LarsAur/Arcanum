@@ -100,6 +100,7 @@ namespace Arcanum
             Board();
             Board(const Board& board);
             Board(const std::string fen, bool strict = true);
+            Board& operator=(const Board& other) = default;
             void performMove(const Move move);
             void generateCaptureInfo();
             Move generateMoveWithInfo(square_t from, square_t to, uint32_t promoteInfo);
