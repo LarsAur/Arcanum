@@ -21,7 +21,7 @@ RELEASE_DEFINES += -DLOG_FILE_NAME=$(NAME)
 RELEASE_DEFINES += -DDISABLE_LOG
 RELEASE_DEFINES += -DDISABLE_DEBUG
 
-override CFLAGS += -std=c++17 -O3 -Wall $(DEFINES)
+override CFLAGS += -std=c++17 -O3 -Wall -Wextra -pedantic $(DEFINES)
 LDFLAGS = --static -lstdc++ -lm
 
 ifeq ($(OS),Windows_NT)
