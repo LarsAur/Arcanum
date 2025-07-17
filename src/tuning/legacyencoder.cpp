@@ -32,6 +32,8 @@ void LegacyEncoder::addPosition(
     GameResult result
 )
 {
+    (void) move; // Unused in legacy format
+
     // Flip the score if it is blacks turn
     // The score is stored from whites perspective
     score = board.getTurn() == Color::WHITE ? score : -score;

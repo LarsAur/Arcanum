@@ -105,6 +105,7 @@ namespace Arcanum
 
                 virtual void set(std::string str)
                 {
+                    (void) str; // Unused for button option
                     m_callback();
                 }
 
