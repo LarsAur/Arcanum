@@ -121,6 +121,7 @@ const Move* MoveSelector::getNextMove()
             m_numTTMoves = 0;
             return m_moves + m_ttIndex;
         }
+        [[fallthrough]];
 
     case Phase::SORT_GOOD_CAPTURE_PHASE:
         if(m_numCaptures > 1)
@@ -130,6 +131,7 @@ const Move* MoveSelector::getNextMove()
             std::stable_sort(start, end, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
         }
         m_numBadCaptures = 0;
+        [[fallthrough]];
 
     case Phase::GOOD_CAPTURES_PHASE:
         m_phase = Phase::GOOD_CAPTURES_PHASE;
@@ -147,6 +149,7 @@ const Move* MoveSelector::getNextMove()
                 return move;
             }
         }
+        [[fallthrough]];
 
     case Phase::KILLERS_PHASE:
         m_phase = Phase::KILLERS_PHASE;
@@ -154,6 +157,7 @@ const Move* MoveSelector::getNextMove()
         {
             return m_moves + m_killerIndices[--m_numKillers];
         }
+        [[fallthrough]];
 
     case Phase::COUNTERS_PHASE:
         m_phase = Phase::SORT_QUIET_PHASE;
@@ -162,6 +166,7 @@ const Move* MoveSelector::getNextMove()
             --m_numCounters;
             return m_moves + m_counterIndex;
         }
+        [[fallthrough]];
 
     case Phase::SORT_QUIET_PHASE:
         if(m_numQuiets > 1 && !m_skipQuiets)
@@ -170,6 +175,7 @@ const Move* MoveSelector::getNextMove()
             ScoreIndex* end = start + m_numQuiets;
             std::stable_sort(start, end, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
         }
+        [[fallthrough]];
 
     case Phase::QUIETS_PHASE:
         m_phase = Phase::QUIETS_PHASE;
@@ -177,10 +183,12 @@ const Move* MoveSelector::getNextMove()
         {
             return m_moves + m_quietScoreIndexPairs[--m_numQuiets].index;
         }
+        [[fallthrough]];
 
     case Phase::SORT_BAD_CAPTURE_PHASE:
         // Sorting is not required as the order is kept after sorting good moves
         m_nextBadCapture = 0;
+        [[fallthrough]];
 
     case Phase::BAD_CAPTURES_PHASE:
         m_phase = Phase::BAD_CAPTURES_PHASE;
@@ -189,6 +197,7 @@ const Move* MoveSelector::getNextMove()
             m_nextBadCapture++;
             return m_moves + m_captureScoreIndexPairs[MAX_MOVE_COUNT - m_nextBadCapture].index;
         }
+        [[fallthrough]];
 
     default:
         return nullptr;
