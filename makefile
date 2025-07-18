@@ -1,4 +1,4 @@
-NAME ?= Arcanum
+ENGINENAME ?= Arcanum
 VERSION ?= dev_build
 BUILDDIR ?= build
 RELEASEDIR ?= releases
@@ -17,7 +17,7 @@ DEFINES += -DARCANUM_VERSION=$(VERSION)
 DEFINES += -DDEFAULT_NNUE=$(DEFAULT_NNUE)
 DEFINES += -DENABLE_INCBIN # Remove to disable using incbin for DEFAULT_NNUE
 
-RELEASE_DEFINES += -DLOG_FILE_NAME=$(NAME)
+RELEASE_DEFINES += -DLOG_FILE_NAME=$(ENGINENAME)
 RELEASE_DEFINES += -DDISABLE_LOG
 RELEASE_DEFINES += -DDISABLE_DEBUG
 
@@ -25,9 +25,9 @@ override CFLAGS += -std=c++17 -O3 -Wall -Wextra -pedantic $(DEFINES)
 LDFLAGS = --static -lstdc++ -lm
 
 ifeq ($(OS),Windows_NT)
-FILENAME = $(NAME).exe
+FILENAME = $(ENGINENAME).exe
 else
-FILENAME = $(NAME)
+FILENAME = $(ENGINENAME)
 endif
 
 rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
