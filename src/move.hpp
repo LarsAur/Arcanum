@@ -162,5 +162,29 @@ namespace Arcanum
 
     } Move;
 
+    struct PackedMove
+    {
+        uint16_t _info; // 2 = Promotion bits | 6 bits = from | 6 bits = to
+
+        PackedMove(){};
+        PackedMove(uint16_t info) :
+            _info(info)
+        {}
+
+        explicit PackedMove(const Move& move)
+        {
+            uint16_t promotionBits = LS1B((move.moveInfo >> 12) & 0xf) & 0b11;
+            _info = (promotionBits << 12) | (move.from << 6) | move.to;
+        }
+
+        bool operator==(const Move& move) const
+        {
+            PackedMove packed(move);
+
+            return packed._info == _info;
+        }
+    };
+
+    #define PACKED_NULL_MOVE PackedMove(0)
     #define NULL_MOVE Move(0,0)
 }

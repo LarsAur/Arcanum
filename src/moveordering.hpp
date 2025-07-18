@@ -92,7 +92,7 @@ namespace Arcanum
                 CaptureHistory* captureHistory,
                 CounterMoveManager* counterMoveManager,
                 Board *board,
-                const Move ttMove,
+                const PackedMove ttMove,
                 const Move prevMove
             );
             const Move* getNextMove();
@@ -115,7 +115,7 @@ namespace Arcanum
             History* m_history;
             CaptureHistory* m_captureHistory;
             CounterMoveManager* m_counterMoveManager;
-            Move m_ttMove;
+            PackedMove m_ttMove;
             Move m_prevMove;
             uint8_t m_numMoves;
 

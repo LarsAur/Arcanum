@@ -16,23 +16,82 @@ namespace Arcanum
 
     struct TTEntry
     {
-        hash_t hash;
-        eval_t value;
-        eval_t staticEval;
-        uint8_t depth;     // Depth == UINT8_MAX is invalid
-        TTFlag flags;
+        static constexpr uint8_t InvalidDepth = UINT8_MAX;
+
+        // Note: For the hash, the LSB does not matter as much as hashes
+        // placed in the same cluster will have the same LSBs of the hash
+        // In fact, for the smallest non-zero TT (1MB) the 15 LSBs will match in each cluster
+        static constexpr hash_t HashMask = 0xFFFFFFFFFFFFC000;
+        static constexpr hash_t PvMask   = 0x1;
+        static constexpr hash_t NumPiecesMask = 0b111110;
+
+        uint8_t depth;
         uint8_t generation;
-        // Number of pieces on the board
-        // If the root has less pieces, this position can never be reached, and can safely be replaced.
-        uint8_t numPieces;
-        Move bestMove;     // It would also be possible to pack this data into 6 bytes. For now it is 8
-        uint8_t isPv;
-        uint8_t _padding; // These bytes are free and can be used for something later
+        eval_t eval;
+        eval_t staticEval;
+        uint16_t _flagAndPackedMove; // 2 bits = TT Flag | 14 bits = PackedMove info
+        hash_t _hashNpAndIsPv; // 50 bits hash | 5 bits numPieces-2 | 1 bit isPv
+
+        TTEntry(
+            hash_t hash,
+            Move move,
+            eval_t eval,
+            eval_t staticEval,
+            uint8_t depth,
+            uint8_t generation,
+            uint8_t numPieces,
+            bool isPv,
+            TTFlag flag
+        ) :
+            depth(depth),
+            generation(generation),
+            eval(eval),
+            staticEval(staticEval)
+        {
+            PackedMove packedMove(move);
+            _flagAndPackedMove = (static_cast<uint8_t>(flag) << 14) | packedMove._info;
+            _hashNpAndIsPv = (hash & HashMask) | (static_cast<hash_t>(numPieces-2) << 1) | static_cast<hash_t>(isPv);
+        }
 
         // Returns how valuable it is to keep the entry in TT
         inline int32_t getPriority() const
         {
             return depth + generation;
+        }
+
+        inline PackedMove getPackedMove() const
+        {
+            return PackedMove(_flagAndPackedMove & 0x3FFF);
+        }
+
+        inline hash_t getHash() const
+        {
+            return _hashNpAndIsPv & HashMask;
+        }
+
+        inline TTFlag getTTFlag() const
+        {
+            return TTFlag((_flagAndPackedMove >> 14) & 0b11);
+        }
+
+        inline uint8_t getNumPieces() const
+        {
+            return static_cast<uint8_t>((_hashNpAndIsPv & NumPiecesMask) >> 1) + 2;
+        }
+
+        inline bool isPv() const
+        {
+            return _hashNpAndIsPv & PvMask;
+        }
+
+        inline bool isValid() const
+        {
+            return depth != InvalidDepth;
+        }
+
+        inline void invalidate()
+        {
+            depth = InvalidDepth;
         }
     };
 
@@ -62,18 +121,17 @@ namespace Arcanum
     class TranspositionTable
     {
         private:
-            // Make each cluster fit into CACHE_LINE_SIZE bytes
-            static constexpr uint32_t ClusterSize = CACHE_LINE_SIZE / sizeof(TTEntry);
-            static constexpr uint32_t ClusterPaddingBytes = CACHE_LINE_SIZE - ClusterSize * sizeof(TTEntry);
-            static constexpr uint8_t InvalidDepth = UINT8_MAX;
-
-            struct TTcluster
+            // Make each cluster fit into NumClusterBytes bytes
+            static constexpr uint32_t NumClusterBytes = 32;
+            static constexpr uint32_t NumClusterEntries = NumClusterBytes / sizeof(TTEntry);
+            struct TTCluster
             {
-                TTEntry entries[ClusterSize];
-                uint8_t padding[ClusterPaddingBytes];
+                TTEntry entries[NumClusterEntries];
             };
 
-            TTcluster* m_table;
+            static_assert(sizeof(TTCluster) == NumClusterBytes, "The size of TTCluster is not correct. Padding might be needed");
+
+            TTCluster* m_table;
             uint32_t m_mbSize;
             size_t m_numClusters;
             size_t m_numEntries;
@@ -84,8 +142,8 @@ namespace Arcanum
             ~TranspositionTable();
 
             void prefetch(hash_t hash);
-            std::optional<TTEntry>get(hash_t hash, uint8_t plyFromRoot);
-            void add(eval_t score, Move bestMove, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash);
+            std::optional<TTEntry> get(hash_t hash, uint8_t plyFromRoot);
+            void add(eval_t score, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash);
             void resize(uint32_t mbSize);
             void clear();
             void clearStats();

@@ -128,26 +128,26 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     }
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
-    const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
+    const PackedMove ttMove = entry.has_value() ? entry->getPackedMove() : PACKED_NULL_MOVE;
     if(!isPv && entry.has_value())
     {
-        switch (entry->flags)
+        switch (entry->getTTFlag())
         {
         case TTFlag::EXACT:
             m_stats.exactTTValuesUsed++;
-            return entry->value;
+            return entry->eval;
         case TTFlag::LOWER_BOUND:
-            if(entry->value >= beta)
+            if(entry->eval >= beta)
             {
                 m_stats.lowerTTValuesUsed++;
-                return entry->value;
+                return entry->eval;
             }
             break;
         case TTFlag::UPPER_BOUND:
-            if(entry->value <= alpha)
+            if(entry->eval <= alpha)
             {
                 m_stats.upperTTValuesUsed++;
-                return entry->value;
+                return entry->eval;
             }
         }
     }
@@ -282,26 +282,26 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     eval_t maxScore = MATE_SCORE;
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
-    const Move ttMove = entry.has_value() ? entry->bestMove : NULL_MOVE;
+    const PackedMove ttMove = entry.has_value() ? entry->getPackedMove() : PACKED_NULL_MOVE;
     if(!isPv && entry.has_value() && (entry->depth >= depth) && skipMove.isNull())
     {
-        switch (entry->flags)
+        switch (entry->getTTFlag())
         {
         case TTFlag::EXACT:
             m_stats.exactTTValuesUsed++;
-            return entry->value;
+            return entry->eval;
         case TTFlag::LOWER_BOUND:
-            if(entry->value >= beta)
+            if(entry->eval >= beta)
             {
                 m_stats.lowerTTValuesUsed++;
-                return entry->value;
+                return entry->eval;
             }
             break;
         case TTFlag::UPPER_BOUND:
-            if(entry->value <= alpha)
+            if(entry->eval <= alpha)
             {
                 m_stats.upperTTValuesUsed++;
-                return entry->value;
+                return entry->eval;
             }
         }
     }
@@ -443,7 +443,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
         // ProbCut
         eval_t probBeta = beta + 300;
-        if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->value < probBeta))
+        if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->eval < probBeta))
         {
             MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, ttMove, prevMove);
             moveSelector.skipQuiets(); // Note: Killers and counters are still included
@@ -550,12 +550,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             && numMoves > 1
             && depth >= 7
             && entry.has_value()
-            && *move == ttMove
-            && entry->flags != TTFlag::UPPER_BOUND
+            && ttMove == *move
+            && entry->getTTFlag() != TTFlag::UPPER_BOUND
             && entry->depth >= depth - 2
-            && !Evaluator::isMateScore(entry->value))
+            && !Evaluator::isMateScore(entry->eval))
         {
-            eval_t seBeta = entry->value - 3 * (depth / 2);
+            eval_t seBeta = entry->eval - 3 * (depth / 2);
             uint8_t seDepth = (depth - 1) / 2;
             eval_t seScore = m_alphaBeta<false>(board, seBeta - 1, seBeta, seDepth, plyFromRoot, cutnode, totalExtensions, *move);
 
@@ -781,12 +781,24 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     if(ttEntry.has_value())
     {
-        searchBestMove = ttEntry->bestMove;
+        PackedMove ttMove = ttEntry->getPackedMove();
         staticEval = ttEntry->staticEval;
+
+        // We have to check that the move from TT is legal,
+        // and find the matching non-packed move.
+        // This is to avoid returning an illegal move in this position
+        // in case the search ends in the first iteration
+        for(uint8_t i = 0; i < numMoves; i++)
+        {
+            if(ttMove == moves[i])
+            {
+                searchBestMove = moves[i];
+                break;
+            }
+        }
     }
     else
     {
-        searchBestMove = NULL_MOVE;
         staticEval = m_evaluator.evaluate(board, 0);
     }
 
@@ -811,7 +823,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // This is in case the move from the transposition is not 'correct' due to a miss.
         // Misses can happen if the position cannot replace another position
         // This is required to allow using results of incomplete searches
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, searchBestMove, NULL_MOVE);
+        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, PackedMove(searchBestMove), NULL_MOVE);
 
         eval_t alpha = -MATE_SCORE;
         eval_t beta = MATE_SCORE;
