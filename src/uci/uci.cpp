@@ -17,7 +17,7 @@ Board       UCI::board(FEN::startpos);
 Searcher    UCI::searcher;
 std::vector<Option*> Option::options;
 
-SpinOption   UCI::optionHash         = SpinOption("Hash", 32, 0, 8196, []{ UCI::searcher.resizeTT(UCI::optionHash.value); });
+SpinOption   UCI::optionHash         = SpinOption("Hash", 32, 0, 2048, []{ UCI::searcher.resizeTT(UCI::optionHash.value); });
 ButtonOption UCI::optionClearHash    = ButtonOption("ClearHash", []{ UCI::searcher.clear(); });
 StringOption UCI::optionSyzygyPath   = StringOption("SyzygyPath", "<empty>", []{ TBInit(UCI::optionSyzygyPath.value); });
 StringOption UCI::optionNNUEPath     = StringOption("NNUEPath", TOSTRING(DEFAULT_NNUE), []{ Evaluator::nnue.load(UCI::optionNNUEPath.value); });
