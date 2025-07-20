@@ -252,7 +252,7 @@ eval_t NNUE::predict(const Accumulator* acc, const Board& board)
 
     m_l1AffineTransform(clampedAcc, m_net->l1Weights[bucket], m_net->l1Biases[bucket], l1Out);
 
-    return *l1Out / (FTQ * LQ);
+    return *l1Out * NetworkScale / (FTQ * LQ);
 }
 
 eval_t NNUE::predictBoard(const Board& board)

@@ -236,7 +236,7 @@ float NNUETrainer::m_predict(const Board& board)
     m_initAccumulator(board);
     m_trace.acc.clippedRelu(ReluClipValue);
     lastLevelFeedForward(m_net.l1Weights[bucket], m_net.l1Biases[bucket], m_trace.acc, m_trace.out);
-    return *m_trace.out.data();
+    return *m_trace.out.data() * NNUE::NetworkScale;
 }
 
 inline float NNUETrainer::m_sigmoid(float v)
