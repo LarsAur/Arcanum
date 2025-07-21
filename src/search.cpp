@@ -927,12 +927,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // Send UCI info
         m_sendUciInfo(board, alpha, NULL_MOVE, depth, forceTBScore, wdlTB);
 
-        // End early if checkmate is found
-        if(Evaluator::isRealMateScore(searchScore))
-        {
-            break;
-        }
-
         if(depth >= MAX_SEARCH_DEPTH - 1)
             break;
     }
