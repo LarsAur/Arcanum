@@ -480,7 +480,9 @@ void NNUETrainer::train(TrainingParameters params)
 {
     m_params = params;
 
-    uint64_t timestep = 0;
+    // Calculate the initial timestep and alpha based on the starting epoch.
+    uint64_t timestep = m_params.startEpoch * m_params.epochSize / m_params.batchSize;
+    m_params.alpha = m_params.alpha * std::pow(m_params.gamma, m_params.startEpoch / m_params.gammaSteps);
 
     // Initialize the gradients
     NET_UNARY_OP(m_gradient, setZero())
@@ -549,7 +551,6 @@ void NNUETrainer::train(TrainingParameters params)
             {
                 NET_UNARY_OP(m_gradient, scale(1.0f / m_params.batchSize))
 
-                // Note, the gradient is scaled by 1/batchSize by the function
                 m_applyGradient(++timestep);
 
                 // Reset the gradient to 0
@@ -566,6 +567,12 @@ void NNUETrainer::train(TrainingParameters params)
                 batchPosCount = 0;
                 batchLoss = 0.0f;
             }
+        }
+
+        // Apply gamma scaling
+        if((epoch != 0) && (epoch % m_params.gammaSteps == 0))
+        {
+            m_params.alpha *= m_params.gamma;
         }
 
         // Write the epoch loss and validation loss to a file

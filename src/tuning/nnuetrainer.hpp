@@ -14,10 +14,12 @@ namespace Arcanum
         uint64_t batchSize;
         uint32_t startEpoch;
         uint32_t endEpoch;
-        uint64_t epochSize;
+        uint64_t epochSize; // How often the net is saved and how gamma is applied. The whole dataset is used independent of "epochSize"
         uint64_t validationSize;
         float alpha;  // Learning rate
         float lambda; // Weighting between wdlTarget and cpTarget in loss function 1.0 = 100% cpTarget 0.0 = 100% wdlTarget
+        float gamma;  // Scaling for learning rate. Applied every gammaSteps epoch. alpha = alpha * gamma. Set to 1 to disable
+        uint32_t gammaSteps; // Number of epochs between applying gamma.
     };
 
     class NNUETrainer
