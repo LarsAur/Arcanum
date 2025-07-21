@@ -767,14 +767,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
     }
 
-    // If only one move is available, search it at depth 1 to not waist time
-    // but still give it a score and pv-line
-    if(numMoves == 1)
-    {
-        m_searchParameters.depth = 1;
-        m_searchParameters.useDepth = true;
-    }
-
     m_evaluator.initAccumulatorStack(board);
 
     std::optional<TTEntry> ttEntry = m_tt.get(board.getHash(), 0);
