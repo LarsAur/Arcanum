@@ -925,13 +925,18 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         m_tt.add(alpha, bestMove, true, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
-        m_sendUciInfo(board, alpha, NULL_MOVE, depth, forceTBScore, wdlTB);
+        m_sendUciInfo(board, alpha, depth, forceTBScore, wdlTB);
 
         if(depth >= MAX_SEARCH_DEPTH - 1)
             break;
     }
 
-    m_sendUciInfo(board, searchScore, searchBestMove, depth, forceTBScore, wdlTB);
+    m_sendUciInfo(board, searchScore, depth, forceTBScore, wdlTB);
+
+    if(m_verbose)
+    {
+        Interface::UCI::sendBestMove(searchBestMove);
+    }
 
     m_stats.nodes += m_numNodesSearched;
     m_stats.tbHits += m_tbHits;
@@ -980,7 +985,7 @@ bool Searcher::m_shouldStop()
     return false;
 }
 
-void Searcher::m_sendUciInfo(const Board& board, eval_t score, Move move, uint32_t depth, bool forceTBScore, uint8_t wdlTB)
+void Searcher::m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, bool forceTBScore, uint8_t wdlTB)
 {
     if(!m_verbose)
     {
@@ -1015,10 +1020,6 @@ void Searcher::m_sendUciInfo(const Board& board, eval_t score, Move move, uint32
     }
 
     Interface::UCI::sendInfo(info);
-    if(!move.isNull())
-    {
-        Interface::UCI::sendBestMove(move);
-    }
 }
 
 SearchStats Searcher::getStats()

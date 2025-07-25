@@ -150,7 +150,7 @@ namespace Arcanum
 
             bool m_isDraw(const Board& board, uint8_t plyFromRoot) const;
             bool m_shouldStop();
-            void m_sendUciInfo(const Board& board, eval_t score, Move move, uint32_t depth, bool forceTBScore, uint8_t wdlTB);
+            void m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, bool forceTBScore, uint8_t wdlTB);
 
             template <bool isPv>
             eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove = NULL_MOVE);
