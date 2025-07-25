@@ -144,7 +144,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
             }
             break;
         case TTFlag::UPPER_BOUND:
-            if(entry->eval <= alpha)
+            if(entry->eval < alpha)
             {
                 m_stats.upperTTValuesUsed++;
                 return entry->eval;
@@ -298,7 +298,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             }
             break;
         case TTFlag::UPPER_BOUND:
-            if(entry->eval <= alpha)
+            if(entry->eval < alpha)
             {
                 m_stats.upperTTValuesUsed++;
                 return entry->eval;
