@@ -211,15 +211,18 @@ void NNUE::incrementAccumulatorPerspective(Accumulator* acc, Accumulator* nextAc
     __m256i* acc256     = (__m256i*) acc->acc[perspective];
     __m256i* nextAcc256 = (__m256i*) nextAcc->acc[perspective];
 
-    // TODO: The copy can be merged into the first add or subtract
-
     // Copy from the old accumulator to the new accumulator
-    for(uint32_t i = 0; i < NumChunks; i++)
+    // And add the first added feature.
+    // This can be done as moves always adds and removes at least one feature
     {
-        *(nextAcc256 + i) = _mm256_load_si256(acc256 + i);
+        uint32_t findex = deltaFeatures.added[perspective][0];
+        for(uint32_t j = 0; j < NumChunks; j++)
+        {
+            *(nextAcc256 + j) = _mm256_add_epi16(*(acc256 + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[findex*L1Size])) + j));
+        }
     }
 
-    for(uint32_t i = 0; i < deltaFeatures.numAdded; i++)
+    for(uint32_t i = 1; i < deltaFeatures.numAdded; i++)
     {
         uint32_t findex = deltaFeatures.added[perspective][i];
         for(uint32_t j = 0; j < NumChunks; j++)
