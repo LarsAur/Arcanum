@@ -205,7 +205,7 @@ void NNUETrainer::m_initAccumulator(const Board& board)
 
     for(uint32_t i = 0; i < featureSet.numFeatures; i++)
     {
-        uint32_t findex = featureSet.features[i];
+        uint16_t findex = featureSet.features[i];
         for(uint32_t j = 0; j < numRegs; j++)
         {
             __m256 weights = _mm256_load_ps(weightsPtr + RegSize*j + findex*RegSize*numRegs);

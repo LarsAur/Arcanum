@@ -37,24 +37,24 @@ namespace Arcanum
             {
                 uint8_t numAdded;
                 uint8_t numRemoved;
-                uint32_t added[2][2];   // First index is the perspective
-                uint32_t removed[2][2]; // First index is the perspective
+                uint16_t added[2][2];   // First index is the perspective
+                uint16_t removed[2][2]; // First index is the perspective
             };
 
             struct FeatureSet
             {
                 uint8_t numFeatures;
-                uint32_t features[32];
+                uint16_t features[32];
             };
 
             struct FullFeatureSet
             {
                 uint8_t numFeatures;
-                uint32_t features[2][32];
+                uint16_t features[2][32];
             };
 
             static uint32_t getOutputBucket(const Board& board);
-            static uint32_t getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pieceType, Color perspective);
+            static uint16_t getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pieceType, Color perspective);
             static void findDeltaFeatures(const Board& board, const Move& move, DeltaFeatures& delta);
             static void findFullFeatureSet(const Board& board, FullFeatureSet& featureSet);
 

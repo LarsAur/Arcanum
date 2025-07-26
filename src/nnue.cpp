@@ -6,14 +6,14 @@ using namespace Arcanum;
 
 // Calculate the feature indices of the board with the white perspective
 // To the the feature indices of the black perspective, xor the indices with 1
-uint32_t NNUE::getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pieceType, Color perspective)
+uint16_t NNUE::getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pieceType, Color perspective)
 {
     if(pieceColor == BLACK)
     {
         pieceSquare = ((7 - RANK(pieceSquare)) << 3) | FILE(pieceSquare);
     }
 
-    return (((uint32_t(pieceType) << 6) | uint32_t(pieceSquare)) << 1) | (pieceColor ^ perspective);
+    return (((uint16_t(pieceType) << 6) | uint16_t(pieceSquare)) << 1) | (pieceColor ^ perspective);
 }
 
 uint32_t NNUE::getOutputBucket(const Board& board)
@@ -113,8 +113,8 @@ void NNUE::findFullFeatureSet(const Board& board, FullFeatureSet& featureSet)
             while(pieces)
             {
                 square_t pieceSquare = popLS1B(&pieces);
-                uint32_t wfindex = getFeatureIndex(pieceSquare, Color(color), Piece(type), Color::WHITE);
-                uint32_t bfindex = getFeatureIndex(pieceSquare, Color(color), Piece(type), Color::BLACK);
+                uint16_t wfindex = getFeatureIndex(pieceSquare, Color(color), Piece(type), Color::WHITE);
+                uint16_t bfindex = getFeatureIndex(pieceSquare, Color(color), Piece(type), Color::BLACK);
                 featureSet.features[Color::WHITE][featureSet.numFeatures]   = wfindex;
                 featureSet.features[Color::BLACK][featureSet.numFeatures++] = bfindex;
             }
