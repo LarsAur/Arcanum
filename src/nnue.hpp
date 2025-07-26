@@ -63,6 +63,7 @@ namespace Arcanum
             void load(const std::string filename);
             void initializeAccumulator(Accumulator* acc, const Board& board);
             void incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Board& board, const Move& move);
+            void incrementAccumulatorPerspective(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective);
             eval_t predict(const Accumulator* acc, const Board& board);
             eval_t predictBoard(const Board& board);
         private:

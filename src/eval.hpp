@@ -14,9 +14,17 @@ namespace Arcanum
     class Evaluator
     {
         private:
-            uint32_t m_accumulatorStackPointer;
-            std::vector<NNUE::Accumulator*> m_accumulatorStack;
+            struct AccumulatorUpdateInfo
+            {
+                bool updated[2];
+                NNUE::DeltaFeatures deltaFeatures;
+            };
 
+            uint32_t m_accumulatorStackIndex;
+            std::vector<NNUE::Accumulator*> m_accumulatorStack;
+            std::vector<AccumulatorUpdateInfo> m_accumulatorUpdates;
+
+            void m_propagateAccumulatorUpdates(Color perspective);
         public:
             // Returns true if the score is a mate score not from the TB
             static bool isRealMateScore(eval_t eval);

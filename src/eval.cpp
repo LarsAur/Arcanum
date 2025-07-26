@@ -10,7 +10,7 @@ NNUE Evaluator::nnue = NNUE();
 
 Evaluator::Evaluator()
 {
-    m_accumulatorStackPointer = 0;
+    m_accumulatorStackIndex = 0;
 }
 
 Evaluator::~Evaluator()
@@ -24,49 +24,60 @@ Evaluator::~Evaluator()
 void Evaluator::initAccumulatorStack(const Board& board)
 {
     if(m_accumulatorStack.empty())
+    {
         m_accumulatorStack.push_back(new NNUE::Accumulator);
+        m_accumulatorUpdates.push_back({});
+    }
 
-    m_accumulatorStackPointer = 0;
+    m_accumulatorStackIndex = 0;
     nnue.initializeAccumulator(m_accumulatorStack[0], board);
+    m_accumulatorUpdates[0].updated[Color::WHITE] = true;
+    m_accumulatorUpdates[0].updated[Color::BLACK] = true;
 }
 
 void Evaluator::pushMoveToAccumulator(const Board& board, const Move& move)
 {
-    if(m_accumulatorStack.size() == m_accumulatorStackPointer + 1)
+    if(m_accumulatorStack.size() == m_accumulatorStackIndex + 1)
     {
         m_accumulatorStack.push_back(new NNUE::Accumulator);
+        m_accumulatorUpdates.push_back({});
     }
 
-    nnue.incrementAccumulator(
-        m_accumulatorStack[m_accumulatorStackPointer],
-        m_accumulatorStack[m_accumulatorStackPointer+1],
-        board,
-        move
-    );
+    // Calculate the NNUE deltas
+    m_accumulatorUpdates[m_accumulatorStackIndex + 1].updated[Color::WHITE] = false;
+    m_accumulatorUpdates[m_accumulatorStackIndex + 1].updated[Color::BLACK] = false;
+    NNUE::findDeltaFeatures(board, move, m_accumulatorUpdates[m_accumulatorStackIndex + 1].deltaFeatures);
 
-    m_accumulatorStackPointer++;
+    m_accumulatorStackIndex++;
+}
 
-    #ifdef VERIFY_NNUE_INCR
-    Board newBoard = Board(board);
-    newBoard.performMove(move);
-    eval_t e1 = nnue.predict(m_accumulatorStack[m_accumulatorStackPointer], newBoard.m_turn);
-    eval_t e2 = nnue.predictBoard(newBoard);
-    // Check if the difference is larger than one,
-    // This is because the net using floating point may accumulate some error
-    // because of this, an error of up to 1 is acceptable
-    if(std::abs(e1 - e2) > 1)
+void Evaluator::m_propagateAccumulatorUpdates(Color perspective)
+{
+    // Find a root where the accumulator is updated by walking the stack
+    uint32_t rootIndex = m_accumulatorStackIndex;
+    while(!m_accumulatorUpdates[rootIndex].updated[perspective])
     {
-        DEBUG(e1 << "  " << e2)
-        LOG(unsigned(move.from) << " " << unsigned(move.to) << " Type: " << MOVED_PIECE(move.moveInfo) << " Capture: " << CAPTURED_PIECE(move.moveInfo) << " Castle: " << CASTLE_SIDE(move.moveInfo) << " Enpassant " << (move.moveInfo & MoveInfoBit::ENPASSANT))
-        DEBUG(FEN::toString(newBoard))
-        exit(-1);
+        rootIndex--;
     }
-    #endif
+
+    // Propagate the updates to each accumulator down from the root
+    while(rootIndex < m_accumulatorStackIndex)
+    {
+        nnue.incrementAccumulatorPerspective(
+            m_accumulatorStack[rootIndex],
+            m_accumulatorStack[rootIndex + 1],
+            m_accumulatorUpdates[rootIndex + 1].deltaFeatures,
+            perspective
+        );
+
+        m_accumulatorUpdates[rootIndex + 1].updated[perspective] = true;
+        rootIndex++;
+    }
 }
 
 void Evaluator::popMoveFromAccumulator()
 {
-    m_accumulatorStackPointer--;
+    m_accumulatorStackIndex--;
 }
 
 bool Evaluator::isRealMateScore(eval_t eval)
@@ -103,5 +114,6 @@ eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
         return 0;
     };
 
-    return nnue.predict(m_accumulatorStack[m_accumulatorStackPointer], board);
+    m_propagateAccumulatorUpdates(board.getTurn());
+    return nnue.predict(m_accumulatorStack[m_accumulatorStackIndex], board);
 }
