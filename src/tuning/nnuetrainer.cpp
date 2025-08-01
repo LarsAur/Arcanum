@@ -31,7 +31,7 @@ _net1.l1Weights[i]._op; \
 _net1.l1Biases [i]._op; \
 }
 
-const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE v5";
+const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE v6";
 
 bool NNUETrainer::load(std::string filename)
 {
