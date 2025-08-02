@@ -432,6 +432,8 @@ void BinpackParser::m_parseMovetextCount()
 // https://github.com/Sopel97/chess_pos_db/blob/master/docs/bcgn/variable_length.md
 void BinpackParser::m_parseNextMoveAndScore()
 {
+    constexpr uint8_t PromotionFromRanks[2] = {6, 1};
+
     #ifdef VERIFY_BINPACK
     {
         // Check if the move is legal in the position
@@ -471,35 +473,11 @@ void BinpackParser::m_parseNextMoveAndScore()
 
     if(type == W_PAWN)
     {
-        bitboard_t destinations;
-        uint8_t promotionRank;
-        bitboard_t attacks;
+        uint8_t promotionRank = PromotionFromRanks[m_currentBoard.m_turn];
+        bitboard_t attacks = getPawnAttacks(bbFrom, m_currentBoard.m_turn);
+        bitboard_t destinations = getPawnMoves(bbFrom, m_currentBoard.m_turn) & ~m_currentBoard.m_bbAllPieces;
+        destinations |= getPawnDoubleMoves(bbFrom, m_currentBoard.m_turn, m_currentBoard.m_bbAllPieces);
 
-        if(m_currentBoard.m_turn == WHITE)
-        {
-            promotionRank = 6;
-            // Forward move and potential double forward move
-            // Note that destination for the first forward move is used to generate the double forward move
-            // This gives us the check for the first square in the double move
-            destinations = getPawnMoves(bbFrom, Color::WHITE) & ~m_currentBoard.m_bbAllPieces;
-            if(RANK(from) == 1) destinations |= getPawnMoves(destinations, Color::WHITE) & ~m_currentBoard.m_bbAllPieces;
-
-            // Attacks and enpassant squares
-            attacks = getPawnAttacks(bbFrom, Color::WHITE);
-        }
-        else
-        {
-            promotionRank = 1;
-            // Forward move and potential double forward move
-            // Note that destination for the first forward move is used to generate the double forward move
-            // This gives us the check for the first square in the double move
-            destinations = getPawnMoves(bbFrom, Color::BLACK) & ~m_currentBoard.m_bbAllPieces;
-            if(RANK(from) == 6) destinations |= getPawnMoves(destinations, Color::BLACK) & ~m_currentBoard.m_bbAllPieces;
-
-            attacks = getPawnAttacks(bbFrom, Color::BLACK);
-        }
-
-        // SF Binpacks does not include the enpassant square if the move would cause the king to become checked
         // Thus we have to invalidate the enpassant square if this is the case to not end up with an additional
         // bit in the destionations bitboard. To simplify it, we generate all legal moves on the board and check
         // if an enpassant move is legal, as this check is done in move generation

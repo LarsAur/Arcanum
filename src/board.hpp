@@ -269,8 +269,8 @@ namespace Arcanum
             }
 
             // Double move
-            bitboard_t doubleMoves       = m_turn == WHITE ? (pawns << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & ~(m_bbAllPieces) : (pawns >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & ~(m_bbAllPieces);
-            bitboard_t doubleMovesOrigin = m_turn == WHITE ? doubleMoves >> 16 : doubleMoves << 16;
+            bitboard_t doubleMoves       = getPawnDoubleMoves(pawns, m_turn, m_bbAllPieces);
+            bitboard_t doubleMovesOrigin = getPawnDoubleBackwardsMoves(doubleMoves, m_turn);
             while (doubleMoves)
             {
                 int target = popLS1B(&doubleMoves);

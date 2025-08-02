@@ -11,15 +11,15 @@ namespace Arcanum
     static inline bitboard_t getPawnAttacksLeft(const bitboard_t bitboard, Color color)
     {
         constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
-        constexpr static uint8_t shift[2] = {7, 55};
-        return ROTL((bitboard & nAFile), shift[color]);
+        constexpr static uint8_t Shift[2] = {7, 55};
+        return ROTL((bitboard & nAFile), Shift[color]);
     }
 
     static inline bitboard_t getPawnAttacksRight(const bitboard_t bitboard, Color color)
     {
         constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
-        constexpr static uint8_t shift[2] = {9, 57};
-        return ROTL((bitboard & nHFile), shift[color]);
+        constexpr static uint8_t Shift[2] = {9, 57};
+        return ROTL((bitboard & nHFile), Shift[color]);
     }
 
     static inline bitboard_t getPawnAttacks(const bitboard_t bitboard, Color color)
@@ -29,8 +29,26 @@ namespace Arcanum
 
     static inline bitboard_t getPawnMoves(const bitboard_t bitboard, Color color)
     {
-        constexpr static uint8_t shift[2] = {8, 56};
-        return ROTL(bitboard, shift[color]);
+        constexpr static uint8_t Shift[2] = {8, 56};
+        return ROTL(bitboard, Shift[color]);
+    }
+
+    static inline bitboard_t getPawnDoubleMoves(const bitboard_t bitboard, Color color, const bitboard_t allPiecesBitboard)
+    {
+        constexpr static uint8_t Shift1[2] = { 8, 56};
+        constexpr static uint8_t Shift2[2] = {16, 48};
+
+        // Mask for initial rank of pawns to be allowed to perform double move
+        constexpr static bitboard_t RankMask[2] = {0x000000000000FF00LL, 0x00FF000000000000LL};
+
+        bitboard_t freeSquares = ~allPiecesBitboard;
+        return ROTL(bitboard & RankMask[color], Shift2[color]) & ROTL(freeSquares, Shift1[color]) & freeSquares;
+    }
+
+    static inline bitboard_t getPawnDoubleBackwardsMoves(const bitboard_t bitboard, Color color)
+    {
+        constexpr uint8_t Shift[2] = {48, 16};
+        return ROTL(bitboard, Shift[color]);
     }
 
     static inline bitboard_t getKnightMoves(const uint8_t knightIdx)

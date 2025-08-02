@@ -328,7 +328,8 @@ Move* Board::getLegalMovesFromCheck()
     // -- The attacking piece is a sliding piece (Rook, Bishop or Queen)
 
     // Create a blocking mask, consisting of all squares in which pieces can move to block attackers
-    bitboard_t blockingMask = attackers | getBetweens(attackerIdx, m_kingIdx);
+    bitboard_t blockingBetweenMask = getBetweens(attackerIdx, m_kingIdx);
+    bitboard_t blockingMask = attackers | blockingBetweenMask;
 
     // Queen moves
     bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
@@ -392,8 +393,7 @@ Move* Board::getLegalMovesFromCheck()
     bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
 
     bitboard_t pawnMoves, pawnMovesOrigin;
-    pawnMoves = getPawnMoves(pawns, m_turn);
-    pawnMoves &= blockingMask & ~attackers;
+    pawnMoves = getPawnMoves(pawns, m_turn) & blockingBetweenMask;
     pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
 
     bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin;
@@ -476,8 +476,8 @@ Move* Board::getLegalMovesFromCheck()
     }
 
     // Double move
-    bitboard_t doubleMoves       = m_turn == WHITE ? (pawns << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & (blockingMask & ~attackers) : (pawns >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & (blockingMask & ~attackers);
-    bitboard_t doubleMovesOrigin = m_turn == WHITE ? doubleMoves >> 16 : doubleMoves << 16;
+    bitboard_t doubleMoves       = getPawnDoubleMoves(pawns, m_turn, m_bbAllPieces) & blockingBetweenMask;
+    bitboard_t doubleMovesOrigin = getPawnDoubleBackwardsMoves(doubleMoves, m_turn);
     while (doubleMoves)
     {
         int target = popLS1B(&doubleMoves);
@@ -677,8 +677,8 @@ bool Board::hasLegalMove()
 
     // NOTE: Double moves have to be checked, as they could block a check
     // Double move
-    bitboard_t doubleMoves       = m_turn == WHITE ? (pawns << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & ~(m_bbAllPieces) : (pawns >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & ~(m_bbAllPieces);
-    bitboard_t doubleMovesOrigin = m_turn == WHITE ? doubleMoves >> 16 : doubleMoves << 16;
+    bitboard_t doubleMoves       = getPawnDoubleMoves(pawns, m_turn, m_bbAllPieces);
+    bitboard_t doubleMovesOrigin = getPawnDoubleBackwardsMoves(doubleMoves, m_turn);
     while (doubleMoves)
     {
         int target = popLS1B(&doubleMoves);
@@ -787,7 +787,8 @@ bool Board::hasLegalMoveFromCheck()
     // -- The attacking piece is a sliding piece (Rook, Bishop or Queen)
 
     // Create a blocking mask, consisting of all squares in which pieces can move to block attackers
-    bitboard_t blockingMask = attackers | getBetweens(m_kingIdx, attackerIdx);
+    bitboard_t blockingBetweenMask = getBetweens(m_kingIdx, attackerIdx);
+    bitboard_t blockingMask = attackers | blockingBetweenMask;
 
     // Queen moves
     bitboard_t queens = m_bbTypedPieces[W_QUEEN][m_turn];
@@ -851,8 +852,7 @@ bool Board::hasLegalMoveFromCheck()
     bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
 
     bitboard_t pawnMoves, pawnMovesOrigin;
-    pawnMoves = getPawnMoves(pawns, m_turn);
-    pawnMoves &= blockingMask & ~attackers;
+    pawnMoves = getPawnMoves(pawns, m_turn) & blockingBetweenMask;
     pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
 
     bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin;
@@ -896,8 +896,8 @@ bool Board::hasLegalMoveFromCheck()
     }
 
     // Double move
-    bitboard_t doubleMoves       = m_turn == WHITE ? (pawns << 16) & 0xff000000 & ~(m_bbAllPieces << 8) & (blockingMask & ~attackers) : (pawns >> 16) & 0xff00000000 & ~(m_bbAllPieces >> 8) & (blockingMask & ~attackers);
-    bitboard_t doubleMovesOrigin = m_turn == WHITE ? doubleMoves >> 16 : doubleMoves << 16;
+    bitboard_t doubleMoves       = getPawnDoubleMoves(pawns, m_turn, m_bbAllPieces) & blockingBetweenMask;
+    bitboard_t doubleMovesOrigin = getPawnDoubleBackwardsMoves(doubleMoves, m_turn);
     while (doubleMoves)
     {
         int target = popLS1B(&doubleMoves);
