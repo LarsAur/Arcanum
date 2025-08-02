@@ -11,6 +11,13 @@ namespace Arcanum
     typedef int16_t eval_t;
     typedef uint8_t square_t;
 
+    enum Color
+    {
+        WHITE,
+        BLACK,
+        NUM_COLORS,
+    };
+
     enum GameResult
     {
         BLACK_WIN = -1,

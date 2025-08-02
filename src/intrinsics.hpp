@@ -111,4 +111,9 @@ namespace Arcanum
         #error "Missing implementation of PEXT"
     #endif
     }
+
+    inline uint64_t ROTL(uint64_t v, uint8_t shift)
+    {
+        return _rotl64(v, shift);
+    }
 }

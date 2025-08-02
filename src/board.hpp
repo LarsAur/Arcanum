@@ -10,13 +10,6 @@ namespace Arcanum
 {
     constexpr uint8_t MAX_MOVE_COUNT = 218;
 
-    typedef enum Color
-    {
-        WHITE,
-        BLACK,
-        NUM_COLORS,
-    } Color;
-
     typedef enum CastleRights : uint8_t
     {
         WHITE_KING_SIDE = 1,
@@ -186,40 +179,22 @@ namespace Arcanum
     __attribute__((always_inline))
     inline void Board::m_generatePawnMoves()
     {
+        Color opponent = Color(m_turn^1);
+
         bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
+
         bitboard_t pawnMoves, pawnMovesOrigin;
-        if(m_turn == WHITE)
-        {
-            pawnMoves= getWhitePawnMoves(pawns);
-            pawnMoves &= ~m_bbAllPieces;
-            pawnMovesOrigin = getBlackPawnMoves(pawnMoves);
-        }
-        else
-        {
-            pawnMoves= getBlackPawnMoves(pawns);
-            pawnMoves &= ~m_bbAllPieces;
-            pawnMovesOrigin = getWhitePawnMoves(pawnMoves);
-        }
+        pawnMoves = getPawnMoves(pawns, m_turn);
+        pawnMoves &= ~m_bbAllPieces;
+        pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
 
         bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin;
-        if(m_turn == WHITE)
-        {
-            pawnAttacksLeft = getWhitePawnAttacksLeft(pawns);
-            pawnAttacksRight = getWhitePawnAttacksRight(pawns);
-            pawnAttacksLeft  &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-            pawnAttacksRight &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-            pawnAttacksLeftOrigin = pawnAttacksLeft >> 7;
-            pawnAttacksRightOrigin = pawnAttacksRight >> 9;
-        }
-        else
-        {
-            pawnAttacksLeft = getBlackPawnAttacksLeft(pawns);
-            pawnAttacksRight = getBlackPawnAttacksRight(pawns);
-            pawnAttacksLeft  &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-            pawnAttacksRight &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-            pawnAttacksLeftOrigin = pawnAttacksLeft << 9;
-            pawnAttacksRightOrigin = pawnAttacksRight << 7;
-        }
+        pawnAttacksLeft = getPawnAttacksLeft(pawns, m_turn);
+        pawnAttacksRight = getPawnAttacksRight(pawns, m_turn);
+        pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare);
+        pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare);
+        pawnAttacksLeftOrigin = getPawnAttacksRight(pawnAttacksLeft, opponent);
+        pawnAttacksRightOrigin = getPawnAttacksLeft(pawnAttacksRight, opponent);
 
         while (pawnAttacksLeft)
         {

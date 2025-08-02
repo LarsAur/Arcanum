@@ -228,11 +228,7 @@ Move* Board::getLegalMovesFromCheck()
 
     // -- Pawns
     bitboard_t opponentPawns = m_bbTypedPieces[W_PAWN][opponent];
-    bitboard_t kingPawnAttacks;
-    if(m_turn == Color::WHITE)
-        kingPawnAttacks = getWhitePawnAttacks(bbKing);
-    else
-        kingPawnAttacks = getBlackPawnAttacks(bbKing);
+    bitboard_t kingPawnAttacks = getPawnAttacks(bbKing, m_turn);
     bitboard_t pawnAttackers = opponentPawns & kingPawnAttacks;
 
     // -- Knight
@@ -276,12 +272,8 @@ Move* Board::getLegalMovesFromCheck()
             m_attemptAddPseudoLegalMove(Move(popLS1B(&capturingKnights), attackerIdx, MoveInfoBit::KNIGHT_MOVE));
 
         // -- Pawn captures
-        bitboard_t capturingPawns;
-        if(m_turn == Color::WHITE)
-            capturingPawns = getBlackPawnAttacks(attackers);
-        else
-            capturingPawns = getWhitePawnAttacks(attackers);
-        capturingPawns = m_bbTypedPieces[W_PAWN][m_turn] & capturingPawns;
+        bitboard_t capturingPawns = getPawnAttacks(attackers, opponent);
+        capturingPawns &= m_bbTypedPieces[W_PAWN][m_turn];
         while (capturingPawns)
         {
             square_t pawnIdx = popLS1B(&capturingPawns);
@@ -305,11 +297,8 @@ Move* Board::getLegalMovesFromCheck()
 
         // -- Enpassant
         // If There is an enpassant square and the king is in check, the enpassant pawn must be the pawn making the check
-        if(m_turn == Color::WHITE)
-            capturingPawns = getBlackPawnAttacks(m_bbEnPassantSquare);
-        else
-            capturingPawns = getWhitePawnAttacks(m_bbEnPassantSquare);
-        capturingPawns = m_bbTypedPieces[W_PAWN][m_turn] & capturingPawns;
+        capturingPawns = getPawnAttacks(m_bbEnPassantSquare, opponent);
+        capturingPawns &= m_bbTypedPieces[W_PAWN][m_turn];
         while(capturingPawns)
         {
             m_attemptAddPseudoLegalEnpassant(Move(popLS1B(&capturingPawns), m_enPassantSquare, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::PAWN_MOVE | MoveInfoBit::ENPASSANT));
@@ -401,39 +390,19 @@ Move* Board::getLegalMovesFromCheck()
 
     // Pawn moves
     bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
+
     bitboard_t pawnMoves, pawnMovesOrigin;
-    if(m_turn == WHITE)
-    {
-        pawnMoves= getWhitePawnMoves(pawns);
-        pawnMoves &= blockingMask & ~attackers;
-        pawnMovesOrigin = getBlackPawnMoves(pawnMoves);
-    }
-    else
-    {
-        pawnMoves= getBlackPawnMoves(pawns);
-        pawnMoves &= blockingMask & ~attackers;
-        pawnMovesOrigin = getWhitePawnMoves(pawnMoves);
-    }
+    pawnMoves = getPawnMoves(pawns, m_turn);
+    pawnMoves &= blockingMask & ~attackers;
+    pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
 
     bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin;
-    if(m_turn == WHITE)
-    {
-        pawnAttacksLeft = getWhitePawnAttacksLeft(pawns);
-        pawnAttacksRight = getWhitePawnAttacksRight(pawns);
-        pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
-        pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
-        pawnAttacksLeftOrigin = pawnAttacksLeft >> 7;
-        pawnAttacksRightOrigin = pawnAttacksRight >> 9;
-    }
-    else
-    {
-        pawnAttacksLeft = getBlackPawnAttacksLeft(pawns);
-        pawnAttacksRight = getBlackPawnAttacksRight(pawns);
-        pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
-        pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
-        pawnAttacksLeftOrigin = pawnAttacksLeft << 9;
-        pawnAttacksRightOrigin = pawnAttacksRight << 7;
-    }
+    pawnAttacksLeft = getPawnAttacksLeft(pawns, m_turn);
+    pawnAttacksRight = getPawnAttacksRight(pawns, m_turn);
+    pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
+    pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
+    pawnAttacksLeftOrigin = getPawnAttacksRight(pawnAttacksLeft, opponent);
+    pawnAttacksRightOrigin = getPawnAttacksLeft(pawnAttacksRight, opponent);
 
     while (pawnAttacksLeft)
     {
@@ -645,6 +614,8 @@ bool Board::hasLegalMove()
 
     m_findPinnedPieces();
 
+    Color opponent = Color(m_turn^1);
+
     // King moves
     // Create bitboard for where the king would be attacked
     bitboard_t opponentAttacks = getOpponentAttacks();
@@ -661,39 +632,19 @@ bool Board::hasLegalMove()
 
     // Pawn moves
     bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
+
     bitboard_t pawnMoves, pawnMovesOrigin;
-    if(m_turn == WHITE)
-    {
-        pawnMoves= getWhitePawnMoves(pawns);
-        pawnMoves &= ~m_bbAllPieces;
-        pawnMovesOrigin = getBlackPawnMoves(pawnMoves);
-    }
-    else
-    {
-        pawnMoves= getBlackPawnMoves(pawns);
-        pawnMoves &= ~m_bbAllPieces;
-        pawnMovesOrigin = getWhitePawnMoves(pawnMoves);
-    }
+    pawnMoves = getPawnMoves(pawns, m_turn);
+    pawnMoves &= ~m_bbAllPieces;
+    pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
 
     bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin;
-    if(m_turn == WHITE)
-    {
-        pawnAttacksLeft = getWhitePawnAttacksLeft(pawns);
-        pawnAttacksRight = getWhitePawnAttacksRight(pawns);
-        pawnAttacksLeft  &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-        pawnAttacksRight &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-        pawnAttacksLeftOrigin = pawnAttacksLeft >> 7;
-        pawnAttacksRightOrigin = pawnAttacksRight >> 9;
-    }
-    else
-    {
-        pawnAttacksLeft = getBlackPawnAttacksLeft(pawns);
-        pawnAttacksRight = getBlackPawnAttacksRight(pawns);
-        pawnAttacksLeft  &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-        pawnAttacksRight &= m_bbColoredPieces[m_turn ^ 1] | m_bbEnPassantSquare;
-        pawnAttacksLeftOrigin = pawnAttacksLeft << 9;
-        pawnAttacksRightOrigin = pawnAttacksRight << 7;
-    }
+    pawnAttacksLeft = getPawnAttacksLeft(pawns, m_turn);
+    pawnAttacksRight = getPawnAttacksRight(pawns, m_turn);
+    pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare);
+    pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare);
+    pawnAttacksLeftOrigin = getPawnAttacksRight(pawnAttacksLeft, opponent);
+    pawnAttacksRightOrigin = getPawnAttacksLeft(pawnAttacksRight, opponent);
 
     while (pawnAttacksLeft)
     {
@@ -753,11 +704,7 @@ bool Board::hasLegalMoveFromCheck()
 
     // -- Pawns
     bitboard_t opponentPawns = m_bbTypedPieces[W_PAWN][opponent];
-    bitboard_t kingPawnAttacks;
-    if(m_turn == Color::WHITE)
-        kingPawnAttacks = getWhitePawnAttacks(bbKing);
-    else
-        kingPawnAttacks = getBlackPawnAttacks(bbKing);
+    bitboard_t kingPawnAttacks = getPawnAttacks(bbKing, m_turn);
     bitboard_t pawnAttackers = opponentPawns & kingPawnAttacks;
 
     // -- Knight
@@ -797,12 +744,8 @@ bool Board::hasLegalMoveFromCheck()
             if(m_isLegalMove(Move(popLS1B(&capturingKnights), attackerIdx, MoveInfoBit::KNIGHT_MOVE))) return true;
 
         // -- Pawn captures
-        bitboard_t capturingPawns;
-        if(m_turn == Color::WHITE)
-            capturingPawns = getBlackPawnAttacks(attackers);
-        else
-            capturingPawns = getWhitePawnAttacks(attackers);
-        capturingPawns = m_bbTypedPieces[W_PAWN][m_turn] & capturingPawns;
+        bitboard_t capturingPawns = getPawnAttacks(attackers, opponent);
+        capturingPawns &= m_bbTypedPieces[W_PAWN][m_turn];
         while (capturingPawns)
         {
             square_t pawnIdx = popLS1B(&capturingPawns);
@@ -812,11 +755,8 @@ bool Board::hasLegalMoveFromCheck()
 
         // -- Enpassant
         // If There is an enpassant square and the king is in check, the enpassant pawn must be the pawn making the check
-        if(m_turn == Color::WHITE)
-            capturingPawns = getBlackPawnAttacks(m_bbEnPassantSquare);
-        else
-            capturingPawns = getWhitePawnAttacks(m_bbEnPassantSquare);
-        capturingPawns = m_bbTypedPieces[W_PAWN][m_turn] & capturingPawns;
+        capturingPawns = getPawnAttacks(m_bbEnPassantSquare, opponent);
+        capturingPawns &= m_bbTypedPieces[W_PAWN][m_turn];
         if(capturingPawns)
         {
             bool added = m_isLegalEnpassant(Move(LS1B(capturingPawns), m_enPassantSquare, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::PAWN_MOVE | MoveInfoBit::ENPASSANT));
@@ -909,39 +849,19 @@ bool Board::hasLegalMoveFromCheck()
 
     // Pawn moves
     bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
+
     bitboard_t pawnMoves, pawnMovesOrigin;
-    if(m_turn == WHITE)
-    {
-        pawnMoves= getWhitePawnMoves(pawns);
-        pawnMoves &= blockingMask & ~attackers;
-        pawnMovesOrigin = getBlackPawnMoves(pawnMoves);
-    }
-    else
-    {
-        pawnMoves= getBlackPawnMoves(pawns);
-        pawnMoves &= blockingMask & ~attackers;
-        pawnMovesOrigin = getWhitePawnMoves(pawnMoves);
-    }
+    pawnMoves = getPawnMoves(pawns, m_turn);
+    pawnMoves &= blockingMask & ~attackers;
+    pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
 
     bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin;
-    if(m_turn == WHITE)
-    {
-        pawnAttacksLeft = getWhitePawnAttacksLeft(pawns);
-        pawnAttacksRight = getWhitePawnAttacksRight(pawns);
-        pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
-        pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
-        pawnAttacksLeftOrigin = pawnAttacksLeft >> 7;
-        pawnAttacksRightOrigin = pawnAttacksRight >> 9;
-    }
-    else
-    {
-        pawnAttacksLeft = getBlackPawnAttacksLeft(pawns);
-        pawnAttacksRight = getBlackPawnAttacksRight(pawns);
-        pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
-        pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
-        pawnAttacksLeftOrigin = pawnAttacksLeft << 9;
-        pawnAttacksRightOrigin = pawnAttacksRight << 7;
-    }
+    pawnAttacksLeft = getPawnAttacksLeft(pawns, m_turn);
+    pawnAttacksRight = getPawnAttacksRight(pawns, m_turn);
+    pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
+    pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare) & blockingMask;
+    pawnAttacksLeftOrigin = getPawnAttacksRight(pawnAttacksLeft, opponent);
+    pawnAttacksRightOrigin = getPawnAttacksLeft(pawnAttacksRight, opponent);
 
     while (pawnAttacksLeft)
     {
@@ -1299,8 +1219,8 @@ bitboard_t Board::getOpponentAttacks()
 
 bitboard_t Board::getOpponentPawnAttacks()
 {
-    bitboard_t attacks = m_turn == BLACK ? getWhitePawnAttacks(m_bbTypedPieces[W_PAWN][WHITE]) : getBlackPawnAttacks(m_bbTypedPieces[W_PAWN][BLACK]);
-    return attacks;
+    Color opponent = Color(m_turn^1);
+    return getPawnAttacks(m_bbTypedPieces[W_PAWN][opponent], opponent);
 }
 
 bitboard_t Board::getTypedPieces(Piece type, Color color) const
@@ -1342,7 +1262,7 @@ bool Board::isChecked()
 
     // Pawns
     // Get the position of potentially attacking pawns
-    bitboard_t pawnAttackPositions = m_turn == WHITE ? getWhitePawnAttacks(bbKing) : getBlackPawnAttacks(bbKing);
+    bitboard_t pawnAttackPositions = getPawnAttacks(bbKing, m_turn);
     if(pawnAttackPositions & m_bbTypedPieces[W_PAWN][opponent])
     {
         m_checkedCache = CheckedCacheState::CHECKED;
@@ -1425,8 +1345,8 @@ bitboard_t Board::attackersTo(const square_t square, bitboard_t occupancy) const
     attackers |= getBishopMoves(occupancy, square) & (bishops | queens);
     attackers |= getKingMoves(square) & kings;
 
-    attackers |= getBlackPawnAttacks(1LL << square) & m_bbTypedPieces[Piece::W_PAWN][Color::WHITE];
-    attackers |= getWhitePawnAttacks(1LL << square) & m_bbTypedPieces[Piece::W_PAWN][Color::BLACK];
+    attackers |= getPawnAttacks(1LL << square, Color::BLACK) & m_bbTypedPieces[Piece::W_PAWN][Color::WHITE];
+    attackers |= getPawnAttacks(1LL << square, Color::WHITE) & m_bbTypedPieces[Piece::W_PAWN][Color::BLACK];
 
     return attackers;
 }
@@ -1556,9 +1476,7 @@ bool Board::see(const Move& move, eval_t threshold) const
 // That is, a capture where a piece can capture another piece of a larger value
 bool Board::hasEasyCapture(Color turn) const
 {
-    bitboard_t pawnAttacks = (turn == Color::WHITE) ?
-        getWhitePawnAttacks(m_bbTypedPieces[Piece::W_PAWN][Color::WHITE]) :
-        getBlackPawnAttacks(m_bbTypedPieces[Piece::W_PAWN][Color::BLACK]);
+    bitboard_t pawnAttacks = getPawnAttacks(m_bbTypedPieces[Piece::W_PAWN][turn], turn);
 
     bitboard_t nonPawnPieces = (m_bbColoredPieces[turn^1] & ~m_bbTypedPieces[Piece::W_PAWN][turn^1]);
     if(pawnAttacks & nonPawnPieces)

@@ -372,11 +372,11 @@ void BinpackEncoder::m_writeEncodedMove(Board& board, Move& move)
             // Forward move and potential double forward move
             // Note that destination for the first forward move is used to generate the double forward move
             // This gives us the check for the first square in the double move
-            destinations = getWhitePawnMoves(bbFrom) & ~board.m_bbAllPieces;
-            if(RANK(move.from) == 1) destinations |= getWhitePawnMoves(destinations) & ~board.m_bbAllPieces;
+            destinations = getPawnMoves(bbFrom, Color::WHITE) & ~board.m_bbAllPieces;
+            if(RANK(move.from) == 1) destinations |= getPawnMoves(destinations, Color::WHITE) & ~board.m_bbAllPieces;
 
             // Attacks and enpassant squares
-            attacks = getWhitePawnAttacks(bbFrom);
+            attacks = getPawnAttacks(bbFrom, Color::WHITE);
         }
         else
         {
@@ -384,10 +384,10 @@ void BinpackEncoder::m_writeEncodedMove(Board& board, Move& move)
             // Forward move and potential double forward move
             // Note that destination for the first forward move is used to generate the double forward move
             // This gives us the check for the first square in the double move
-            destinations = getBlackPawnMoves(bbFrom) & ~board.m_bbAllPieces;
-            if(RANK(move.from) == 6) destinations |= getBlackPawnMoves(destinations) & ~board.m_bbAllPieces;
+            destinations = getPawnMoves(bbFrom, Color::BLACK) & ~board.m_bbAllPieces;
+            if(RANK(move.from) == 6) destinations |= getPawnMoves(destinations, Color::BLACK) & ~board.m_bbAllPieces;
 
-            attacks = getBlackPawnAttacks(bbFrom);
+            attacks = getPawnAttacks(bbFrom, Color::BLACK);
         }
 
         // SF Binpacks does not include the enpassant square if the move would cause the king to become checked

@@ -1,69 +1,36 @@
 #pragma once
 
 #include <intrinsics.hpp>
+#include <types.hpp>
 #include <bitboardlookups.hpp>
 #include <string>
 
 namespace Arcanum
 {
-    static inline bitboard_t getWhitePawnAttacks(const bitboard_t bitboard)
+
+    static inline bitboard_t getPawnAttacksLeft(const bitboard_t bitboard, Color color)
     {
         constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
-        constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
-        bitboard_t pawnAttacks = ((bitboard & nHFile) << 9) | ((bitboard & nAFile) << 7);
-        return pawnAttacks;
+        constexpr static uint8_t shift[2] = {7, 55};
+        return ROTL((bitboard & nAFile), shift[color]);
     }
 
-    static inline bitboard_t getWhitePawnAttacksLeft(const bitboard_t bitboard)
-    {
-        constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
-        return ((bitboard & nAFile) << 7);
-    }
-
-    static inline bitboard_t getWhitePawnAttacksRight(const bitboard_t bitboard)
+    static inline bitboard_t getPawnAttacksRight(const bitboard_t bitboard, Color color)
     {
         constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
-        return ((bitboard & nHFile) << 9);
+        constexpr static uint8_t shift[2] = {9, 57};
+        return ROTL((bitboard & nHFile), shift[color]);
     }
 
-    static inline bitboard_t getBlackPawnAttacks(const bitboard_t bitboard)
+    static inline bitboard_t getPawnAttacks(const bitboard_t bitboard, Color color)
     {
-        constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
-        constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
-        bitboard_t pawnAttacks = ((bitboard & nHFile) >> 7) | ((bitboard & nAFile) >> 9);
-        return pawnAttacks;
+        return getPawnAttacksLeft(bitboard, color) | getPawnAttacksRight(bitboard, color);
     }
 
-    static inline bitboard_t getBlackPawnAttacksLeft(const bitboard_t bitboard)
+    static inline bitboard_t getPawnMoves(const bitboard_t bitboard, Color color)
     {
-        constexpr static bitboard_t nAFile = ~0x0101010101010101;  // Every square except the A file
-        return ((bitboard & nAFile) >> 9);
-    }
-
-    static inline bitboard_t getBlackPawnAttacksRight(const bitboard_t bitboard)
-    {
-        constexpr static bitboard_t nHFile = ~0x8080808080808080;  // Every square except the H file
-        return ((bitboard & nHFile) >> 7);
-    }
-
-    static inline bitboard_t getWhitePawnMoves(const bitboard_t bitboard)
-    {
-        return bitboard << 8;
-    }
-
-    static inline bitboard_t getWhitePawnMove(const uint8_t pawnIdx)
-    {
-        return (0b1LL << pawnIdx) << 8;
-    }
-
-    static inline bitboard_t getBlackPawnMoves(const bitboard_t bitboard)
-    {
-        return bitboard >> 8;
-    }
-
-    static inline bitboard_t getBlackPawnMove(const uint8_t pawnIdx)
-    {
-        return (0b1LL << pawnIdx) >> 8;
+        constexpr static uint8_t shift[2] = {8, 56};
+        return ROTL(bitboard, shift[color]);
     }
 
     static inline bitboard_t getKnightMoves(const uint8_t knightIdx)

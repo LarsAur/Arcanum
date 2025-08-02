@@ -45,7 +45,7 @@
 #define PYRRHIC_LSB(x)                   (Arcanum::LS1B(x))
 #define PYRRHIC_POPLSB(x)                (Arcanum::popLS1B(x))
 
-#define PYRRHIC_PAWN_ATTACKS(sq, c)      (c == 1 ? Arcanum::getWhitePawnAttacks(1LL << (sq)) : Arcanum::getBlackPawnAttacks(1LL << (sq)))
+#define PYRRHIC_PAWN_ATTACKS(sq, c)      (Arcanum::getPawnAttacks(1LL << (sq), Arcanum::Color((c)^1)))
 #define PYRRHIC_KNIGHT_ATTACKS(sq)       (Arcanum::getKnightMoves(sq))
 #define PYRRHIC_BISHOP_ATTACKS(sq, occ)  (Arcanum::getBishopMoves(occ, sq))
 #define PYRRHIC_ROOK_ATTACKS(sq, occ)    (Arcanum::getRookMoves(occ, sq))
