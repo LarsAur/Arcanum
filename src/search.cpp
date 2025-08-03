@@ -555,6 +555,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             && entry->depth >= depth - 2
             && !Evaluator::isMateScore(entry->eval))
         {
+            m_stats.singularExtensionAttempts++;
+
             eval_t seBeta = entry->eval - 3 * (depth / 2);
             uint8_t seDepth = (depth - 1) / 2;
             eval_t seScore = m_alphaBeta<false>(board, seBeta - 1, seBeta, seDepth, plyFromRoot, cutnode, totalExtensions, *move);
@@ -563,10 +565,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             {
                 extension++;
                 m_stats.singularExtensions++;
-            }
-            else
-            {
-                m_stats.failedSingularExtensions++;
             }
         }
 
@@ -1053,7 +1051,7 @@ void Searcher::logStats()
     ss << "\nLate Pruned Moves:         " << m_stats.lmpPrunedMoves;
     ss << "\nHistory Pruned Moves:      " << m_stats.historyPrunedMoves;
     ss << "\nSingular Extensions:       " << m_stats.singularExtensions;
-    ss << "\nFailed Singular Extensions:" << m_stats.failedSingularExtensions;
+    ss << "\nSingular Extensions Tests: " << m_stats.singularExtensionAttempts;
     ss << "\nProbCuts:                  " << m_stats.probCuts;
     ss << "\nProbCut Quiet Searches:    " << m_stats.probCutQSearches;
     ss << "\nProbCut Searches:          " << m_stats.probCutSearches;
@@ -1064,7 +1062,7 @@ void Searcher::logStats()
     ss << "\nRe-Searches:          " << (float) (100 * m_stats.researchesRequired) / m_stats.nullWindowSearches << "%";
     ss << "\nNull-Move Cutoffs:    " << (float) (100 * m_stats.nullMoveCutoffs) / (m_stats.nullMoveCutoffs + m_stats.failedNullMoveCutoffs) << "%";
     ss << "\nRazor Cutoffs:        " << (float) (100 * m_stats.razorCutoffs) / (m_stats.razorCutoffs + m_stats.failedRazorCutoffs) << "%";
-    ss << "\nSingular Extension    " << (float) (100 * m_stats.singularExtensions) / (m_stats.failedSingularExtensions + m_stats.failedSingularExtensions) << "%";
+    ss << "\nSingular Extension    " << (float) (100 * m_stats.singularExtensions) / (m_stats.singularExtensionAttempts) << "%";
     ss << "\nProbCuts              " << (float) (100 * m_stats.probCuts) / (m_stats.probCuts + m_stats.failedProbCuts) << "%";
     ss << "\nProbCut QSearches     " << (float) (100 * m_stats.probCuts) / m_stats.probCutQSearches << "%";
     ss << "\nProbCut Searches      " << (float) (100 * m_stats.probCuts) / m_stats.probCutSearches << "%";
