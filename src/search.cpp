@@ -566,6 +566,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 extension++;
                 m_stats.singularExtensions++;
             }
+            else if(!isPv && seBeta >= beta && !Evaluator::isMateScore(seScore))
+            {
+                m_stats.singularExtensionCuts++;
+                return seBeta;
+            }
         }
 
         // Limit the number of extensions
@@ -1052,6 +1057,7 @@ void Searcher::logStats()
     ss << "\nHistory Pruned Moves:      " << m_stats.historyPrunedMoves;
     ss << "\nSingular Extensions:       " << m_stats.singularExtensions;
     ss << "\nSingular Extensions Tests: " << m_stats.singularExtensionAttempts;
+    ss << "\nSingular Extensions Cuts:  " << m_stats.singularExtensionCuts;
     ss << "\nProbCuts:                  " << m_stats.probCuts;
     ss << "\nProbCut Quiet Searches:    " << m_stats.probCutQSearches;
     ss << "\nProbCut Searches:          " << m_stats.probCutSearches;

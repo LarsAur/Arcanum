@@ -56,6 +56,7 @@ namespace Arcanum
         uint64_t historyPrunedMoves;
         uint64_t singularExtensions;
         uint64_t singularExtensionAttempts;
+        uint32_t singularExtensionCuts;
         uint64_t probCuts;
         uint64_t probCutQSearches;
         uint64_t probCutSearches;
@@ -83,6 +84,7 @@ namespace Arcanum
             historyPrunedMoves(0),
             singularExtensions(0),
             singularExtensionAttempts(0),
+            singularExtensionCuts(0),
             probCuts(0),
             probCutQSearches(0),
             probCutSearches(0),
