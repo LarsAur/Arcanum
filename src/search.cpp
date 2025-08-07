@@ -855,6 +855,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
                     restartSearch = true;
                     aspirationWindowAlpha += aspirationWindowAlpha;
                     m_evaluator.popMoveFromAccumulator();
+                    m_stats.aspirationAlphaFails++;
                     break;
                 }
             }
@@ -878,6 +879,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             {
                 restartSearch = true;
                 aspirationWindowBeta += aspirationWindowBeta;
+                m_stats.aspirationBetaFails++;
                 break;
             }
 
@@ -1062,6 +1064,8 @@ void Searcher::logStats()
     ss << "\nProbCut Quiet Searches:    " << m_stats.probCutQSearches;
     ss << "\nProbCut Searches:          " << m_stats.probCutSearches;
     ss << "\nFailed ProbCuts:           " << m_stats.failedProbCuts;
+    ss << "\nAspiration Alpha Fails:    " << m_stats.aspirationAlphaFails;
+    ss << "\nAspiration Beta Fails:     " << m_stats.aspirationBetaFails;
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";
