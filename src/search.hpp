@@ -63,6 +63,7 @@ namespace Arcanum
         uint64_t failedProbCuts;
         uint64_t aspirationAlphaFails;
         uint64_t aspirationBetaFails;
+        uint64_t quietSeeCuts;
 
         SearchStats() :
             nodes(0),
@@ -92,7 +93,8 @@ namespace Arcanum
             probCutSearches(0),
             failedProbCuts(0),
             aspirationAlphaFails(0),
-            aspirationBetaFails(0)
+            aspirationBetaFails(0),
+            quietSeeCuts(0)
         {};
 
     } SearchStats;

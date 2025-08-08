@@ -203,7 +203,10 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     while(const Move *move = moveSelector.getNextMove())
     {
         if(!isChecked && !board.see(*move))
+        {
+            m_stats.quietSeeCuts++;
             continue;
+        }
 
         Board newBoard = Board(board);
         newBoard.performMove(*move);
@@ -1064,6 +1067,7 @@ void Searcher::logStats()
     ss << "\nProbCut Quiet Searches:    " << m_stats.probCutQSearches;
     ss << "\nProbCut Searches:          " << m_stats.probCutSearches;
     ss << "\nFailed ProbCuts:           " << m_stats.failedProbCuts;
+    ss << "\nQuiet SEE Cuts:            " << m_stats.quietSeeCuts;
     ss << "\nAspiration Alpha Fails:    " << m_stats.aspirationAlphaFails;
     ss << "\nAspiration Beta Fails:     " << m_stats.aspirationBetaFails;
     ss << "\n";
