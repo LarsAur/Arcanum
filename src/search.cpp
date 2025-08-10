@@ -80,52 +80,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         return DRAW_VALUE;
 
     eval_t bestScore = -MATE_SCORE;
-    eval_t maxScore = MATE_SCORE;
 
-    // Table base probe
-    if(board.getNumPieces() <= TB_LARGEST && board.getHalfMoves() == 0)
-    {
-        uint32_t tbResult = TBProbeWDL(board);
-
-        if(tbResult != TB_RESULT_FAILED)
-        {
-            m_tbHits++;
-            eval_t tbScore;
-            TTFlag tbFlag;
-
-            switch (tbResult)
-            {
-            case TB_WIN:
-                tbFlag = TTFlag::LOWER_BOUND;
-                tbScore = TB_MATE_SCORE - plyFromRoot;
-                break;
-            case TB_LOSS:
-                tbFlag = TTFlag::UPPER_BOUND;
-                tbScore = -TB_MATE_SCORE + plyFromRoot;
-                break;
-            default: // TB_DRAW
-                tbFlag = TTFlag::EXACT;
-                tbScore = DRAW_VALUE;
-            }
-
-            if((tbFlag == TTFlag::EXACT) || (tbFlag == TTFlag::LOWER_BOUND ? tbScore >= beta : tbScore <= alpha))
-            {
-                // TODO: Might be some bad effects of using tbScore as static eval. Add some value for unknown score.
-                m_tt.add(tbScore, NULL_MOVE, isPv, 0, plyFromRoot, tbScore, tbFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
-                return tbScore;
-            }
-
-            if(tbFlag == TTFlag::LOWER_BOUND)
-            {
-                bestScore = tbScore;
-                alpha = std::max(alpha, tbScore);
-            }
-            else
-            {
-                maxScore = tbScore;
-            }
-        }
-    }
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
     const PackedMove ttMove = entry.has_value() ? entry->getPackedMove() : PACKED_NULL_MOVE;
@@ -242,8 +197,6 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
             break;
         }
     }
-
-    bestScore = std::min(bestScore, maxScore);
 
     m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
