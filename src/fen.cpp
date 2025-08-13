@@ -372,7 +372,6 @@ bool FEN::setFEN(Board& board, const std::string fen, bool strict)
     Zobrist::zobrist.getHashs(board, board.m_hash, board.m_pawnHash, board.m_materialHash);
 
     // Set cache to unknown
-    board.m_checkedCache = Board::CheckedCacheState::UNKNOWN;
     board.m_moveset = Board::MoveSet::NOT_GENERATED;
     board.m_captureInfoGenerated = Board::MoveSet::NOT_GENERATED;
     board.m_kingIdx = LS1B(board.m_bbTypedPieces[W_KING][board.m_turn]);

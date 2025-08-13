@@ -34,7 +34,6 @@ Board::Board()
         }
     }
 
-    m_checkedCache = CheckedCacheState::UNKNOWN;
     m_moveset = MoveSet::NOT_GENERATED;
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_bbOpponentAttacks = 0LL;
@@ -82,7 +81,6 @@ Board::Board(const Board& board)
     m_bbTypedPieces[W_QUEEN][BLACK]     = board.m_bbTypedPieces[W_QUEEN][BLACK];
     m_bbTypedPieces[W_KING][BLACK]      = board.m_bbTypedPieces[W_KING][BLACK];
 
-    m_checkedCache = board.m_checkedCache;
     m_moveset = MoveSet::NOT_GENERATED; // Moves are not copied over
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_kingIdx = board.m_kingIdx;
@@ -1112,7 +1110,6 @@ void Board::performMove(const Move move)
 
     Zobrist::zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, m_hash, m_pawnHash, m_materialHash);
 
-    m_checkedCache = CheckedCacheState::UNKNOWN;
     m_moveset = MoveSet::NOT_GENERATED;
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_turn = opponent;
@@ -1252,52 +1249,45 @@ square_t Board::getEnpassantTarget() const
 
 bool Board::isChecked()
 {
-    // Return cached value is available
-    if(m_checkedCache != CheckedCacheState::UNKNOWN)
-        return m_checkedCache;
+    return m_bbTypedPieces[W_KING][m_turn] & getOpponentAttacks();
 
-    bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];
-    square_t kingIdx = LS1B(bbKing);
-    Color opponent = Color(m_turn ^ 1);
+    // bitboard_t bbKing = m_bbTypedPieces[W_KING][m_turn];
+    // square_t kingIdx = LS1B(bbKing);
+    // Color opponent = Color(m_turn ^ 1);
 
-    // Pawns
-    // Get the position of potentially attacking pawns
-    bitboard_t pawnAttackPositions = getPawnAttacks(bbKing, m_turn);
-    if(pawnAttackPositions & m_bbTypedPieces[W_PAWN][opponent])
-    {
-        m_checkedCache = CheckedCacheState::CHECKED;
-        return true;
-    }
+    // // Pawns
+    // // Get the position of potentially attacking pawns
+    // bitboard_t pawnAttackPositions = getPawnAttacks(bbKing, m_turn);
+    // if(pawnAttackPositions & m_bbTypedPieces[W_PAWN][opponent])
+    // {
+    //     return true;
+    // }
 
-    // Knights
-    bitboard_t knightAttackPositions = getKnightMoves(kingIdx);
-    if(knightAttackPositions & m_bbTypedPieces[W_KNIGHT][opponent])
-    {
-        m_checkedCache = CheckedCacheState::CHECKED;
-        return true;
-    }
+    // // Knights
+    // bitboard_t knightAttackPositions = getKnightMoves(kingIdx);
+    // if(knightAttackPositions & m_bbTypedPieces[W_KNIGHT][opponent])
+    // {
+    //     return true;
+    // }
 
-    // Bishop or Queen
-    bitboard_t queenAndBishops = m_bbTypedPieces[W_QUEEN][opponent] | m_bbTypedPieces[W_BISHOP][opponent];
-    bitboard_t diagonalAttacks = getBishopMoves(m_bbAllPieces, kingIdx);
+    // // Bishop or Queen
+    // bitboard_t queenAndBishops = m_bbTypedPieces[W_QUEEN][opponent] | m_bbTypedPieces[W_BISHOP][opponent];
+    // bitboard_t diagonalAttacks = getBishopMoves(m_bbAllPieces, kingIdx);
 
-    if(diagonalAttacks & queenAndBishops)
-    {
-        m_checkedCache = CheckedCacheState::CHECKED;
-        return true;
-    }
+    // if(diagonalAttacks & queenAndBishops)
+    // {
+    //     return true;
+    // }
 
-    // Rook or Queen
-    bitboard_t queenAndRooks   = m_bbTypedPieces[W_QUEEN][opponent] | m_bbTypedPieces[W_ROOK][opponent];
-    bitboard_t straightAttacks = getRookMoves(m_bbAllPieces, kingIdx);
-    if(straightAttacks & queenAndRooks)
-    {
-        m_checkedCache = CheckedCacheState::CHECKED;
-        return true;
-    }
+    // // Rook or Queen
+    // bitboard_t queenAndRooks   = m_bbTypedPieces[W_QUEEN][opponent] | m_bbTypedPieces[W_ROOK][opponent];
+    // bitboard_t straightAttacks = getRookMoves(m_bbAllPieces, kingIdx);
+    // if(straightAttacks & queenAndRooks)
+    // {
+    //     return true;
+    // }
 
-    m_checkedCache = CheckedCacheState::NOT_CHECKED;
-    return false;
+    // return false;
 }
 
 

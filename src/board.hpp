@@ -57,15 +57,6 @@ namespace Arcanum
             MoveSet m_moveset; // Which set moves are generated
             MoveSet m_captureInfoGenerated;
 
-            // Values are assigned so that checked = true and not_checked = false
-            enum CheckedCacheState
-            {
-                UNKNOWN=-1,
-                NOT_CHECKED=0,
-                CHECKED=1,
-            };
-            CheckedCacheState m_checkedCache;
-
             friend class Zobrist;
             friend class Evaluator;
             friend class FEN;
