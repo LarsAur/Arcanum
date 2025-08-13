@@ -179,92 +179,107 @@ namespace Arcanum
     __attribute__((always_inline))
     inline void Board::m_generatePawnMoves()
     {
+        constexpr bitboard_t PromotionSquares = 0xff000000000000ffLL;
+
         Color opponent = Color(m_turn^1);
 
         bitboard_t pawns = m_bbTypedPieces[W_PAWN][m_turn];
+        bitboard_t bbAttacks, bbOrigins;
 
-        bitboard_t pawnMoves, pawnMovesOrigin;
-        pawnMoves = getPawnMoves(pawns, m_turn);
-        pawnMoves &= ~m_bbAllPieces;
-        pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
-
-        bitboard_t pawnAttacksLeft, pawnAttacksRight, pawnAttacksLeftOrigin, pawnAttacksRightOrigin;
-        pawnAttacksLeft = getPawnAttacksLeft(pawns, m_turn);
-        pawnAttacksRight = getPawnAttacksRight(pawns, m_turn);
-        pawnAttacksLeft  &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare);
-        pawnAttacksRight &= (m_bbColoredPieces[opponent] | m_bbEnPassantSquare);
-        pawnAttacksLeftOrigin = getPawnAttacksRight(pawnAttacksLeft, opponent);
-        pawnAttacksRightOrigin = getPawnAttacksLeft(pawnAttacksRight, opponent);
-
-        while (pawnAttacksLeft)
+        // Left attacks without promotion
+        bbAttacks = getPawnAttacksLeft(pawns, m_turn) & m_bbColoredPieces[opponent] & ~PromotionSquares;
+        bbOrigins = getPawnAttacksRight(bbAttacks, opponent);
+        while (bbAttacks)
         {
-            square_t target = popLS1B(&pawnAttacksLeft);
-            square_t pawnIdx = popLS1B(&pawnAttacksLeftOrigin);
+            square_t target = popLS1B(&bbAttacks);
+            square_t pawnIdx = popLS1B(&bbOrigins);
+            m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
+        }
 
-            if((0b1LL << target) & 0xff000000000000ffLL)
+        // Left attacks with promotion
+        bbAttacks = getPawnAttacksLeft(pawns, m_turn) & m_bbColoredPieces[opponent] & PromotionSquares;
+        bbOrigins = getPawnAttacksRight(bbAttacks, opponent);
+        while (bbAttacks)
+        {
+            square_t target = popLS1B(&bbAttacks);
+            square_t pawnIdx = popLS1B(&bbOrigins);
+            // If one promotion move is legal, all are legal
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
+            if(added)
             {
-                // If one promotion move is legal, all are legal
-                bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-                if(added)
-                {
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_KNIGHT);
-                }
-            }
-            else
-            {
-                // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
-                Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-                m_attemptAddPseudoLegalEnpassant(move);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_KNIGHT);
             }
         }
 
-        while (pawnAttacksRight)
+        // Right attacks without promotion
+        bbAttacks = getPawnAttacksRight(pawns, m_turn) & m_bbColoredPieces[opponent] & ~PromotionSquares;
+        bbOrigins = getPawnAttacksLeft(bbAttacks, opponent);
+        while (bbAttacks)
         {
-            square_t target = popLS1B(&pawnAttacksRight);
-            square_t pawnIdx = popLS1B(&pawnAttacksRightOrigin);
+            square_t target = popLS1B(&bbAttacks);
+            square_t pawnIdx = popLS1B(&bbOrigins);
+            m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
+        }
 
-            if((0b1LL << target) & 0xff000000000000ffLL)
+        // Right attacks with promotions
+        bbAttacks = getPawnAttacksRight(pawns, m_turn) & m_bbColoredPieces[opponent] & PromotionSquares;
+        bbOrigins = getPawnAttacksLeft(bbAttacks, opponent);
+        while (bbAttacks)
+        {
+            square_t target = popLS1B(&bbAttacks);
+            square_t pawnIdx = popLS1B(&bbOrigins);
+            // If one promotion move is legal, all are legal
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
+            if(added)
             {
-                // If one promotion move is legal, all are legal
-                bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-                if(added)
-                {
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_KNIGHT);
-                }
-            }
-            else
-            {
-                // Note: The captured piece in enpassant cannot uncover a check, except if the king is on the side of both the attacking and captured pawn while there is a rook/queen in the same rank
-                Move move = Move(pawnIdx, target, (target == m_enPassantSquare) ? (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE) : MoveInfoBit::PAWN_MOVE);
-                m_attemptAddPseudoLegalEnpassant(move);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_KNIGHT);
             }
         }
 
-        if constexpr(!CapturesOnly) {
-            // Forward move
+        // Enpassant
+        if(m_bbEnPassantSquare)
+        {
+            bitboard_t enpassantAttackers = getPawnAttacks(m_bbEnPassantSquare, opponent) & pawns;
+            while (enpassantAttackers)
+            {
+                square_t pawnIdx = popLS1B(&enpassantAttackers);
+                m_attemptAddPseudoLegalEnpassant(Move(pawnIdx, m_enPassantSquare, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::ENPASSANT | MoveInfoBit::PAWN_MOVE));
+            }
+        }
+
+        if constexpr(!CapturesOnly)
+        {
+            bitboard_t pawnMoves, pawnMovesOrigin;
+
+            // Forward moves without promotion
+            pawnMoves = getPawnMoves(pawns, m_turn) & ~m_bbAllPieces & ~PromotionSquares;
+            pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
+            while(pawnMoves)
+            {
+                square_t target = popLS1B(&pawnMoves);
+                square_t pawnIdx = popLS1B(&pawnMovesOrigin);
+                m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
+            }
+
+            // Forward moves with promotion
+            pawnMoves = getPawnMoves(pawns, m_turn) & ~m_bbAllPieces & PromotionSquares;
+            pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
             while(pawnMoves)
             {
                 square_t target = popLS1B(&pawnMoves);
                 square_t pawnIdx = popLS1B(&pawnMovesOrigin);
 
-                if((0b1LL << target) & 0xff000000000000ffLL)
+                // If one promotion move is legal, all are legal
+                bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
+                if(added)
                 {
-                    // If one promotion move is legal, all are legal
-                    bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-                    if(added)
-                    {
-                        m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
-                        m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
-                        m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_KNIGHT);
-                    }
-                }
-                else
-                {
-                    m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
+                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
+                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
+                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_KNIGHT);
                 }
             }
 
