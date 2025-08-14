@@ -157,7 +157,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     Move bestMove = NULL_MOVE;
     while(const Move *move = moveSelector.getNextMove())
     {
-        if(!isChecked && !board.see(*move))
+        if(!isChecked && !move->isPromotion() && !board.see(*move))
         {
             m_stats.quietSeeCuts++;
             continue;

@@ -196,7 +196,7 @@ namespace Arcanum
             square_t pawnIdx = popLS1B(&bbOrigins);
             // If one promotion move is legal, all are legal
             bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-            if(added)
+            if(!CapturesOnly && added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
@@ -223,7 +223,7 @@ namespace Arcanum
             square_t pawnIdx = popLS1B(&bbOrigins);
             // If one promotion move is legal, all are legal
             bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-            if(added)
+            if(!CapturesOnly && added)
             {
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
                 m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
@@ -242,10 +242,26 @@ namespace Arcanum
             }
         }
 
+        // Forward moves with promotion
+        bitboard_t pawnMoves = getPawnMoves(pawns, m_turn) & ~m_bbAllPieces & PromotionSquares;
+        bitboard_t pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
+        while(pawnMoves)
+        {
+            square_t target = popLS1B(&pawnMoves);
+            square_t pawnIdx = popLS1B(&pawnMovesOrigin);
+
+            // If one promotion move is legal, all are legal
+            bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
+            if(!CapturesOnly && added)
+            {
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
+                m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_KNIGHT);
+            }
+        }
+
         if constexpr(!CapturesOnly)
         {
-            bitboard_t pawnMoves, pawnMovesOrigin;
-
             // Forward moves without promotion
             pawnMoves = getPawnMoves(pawns, m_turn) & ~m_bbAllPieces & ~PromotionSquares;
             pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
@@ -256,23 +272,6 @@ namespace Arcanum
                 m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
             }
 
-            // Forward moves with promotion
-            pawnMoves = getPawnMoves(pawns, m_turn) & ~m_bbAllPieces & PromotionSquares;
-            pawnMovesOrigin = getPawnMoves(pawnMoves, opponent);
-            while(pawnMoves)
-            {
-                square_t target = popLS1B(&pawnMoves);
-                square_t pawnIdx = popLS1B(&pawnMovesOrigin);
-
-                // If one promotion move is legal, all are legal
-                bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-                if(added)
-                {
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
-                    m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_KNIGHT);
-                }
-            }
 
             // Double move
             bitboard_t doubleMoves       = getPawnDoubleMoves(pawns, m_turn, m_bbAllPieces);
