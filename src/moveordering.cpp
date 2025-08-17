@@ -18,10 +18,9 @@ inline void MoveSelector::m_scoreMoves()
         const Move& move = m_moves[i];
 
         // Check if the move is the TT move
-        if(m_ttMove == move)
+        if(m_packedTTMove == move)
         {
-            m_ttIndex = i;
-            m_numTTMoves = 1;
+            m_ttMove = &m_moves[i];
             continue;
         }
 
@@ -40,8 +39,8 @@ inline void MoveSelector::m_scoreMoves()
                 score += s_pieceValues[move.promotedPiece()] * 16000;
             }
 
-            m_captureScoreIndexPairs[m_numCaptures].score = score;
-            m_captureScoreIndexPairs[m_numCaptures].index = i;
+            m_captureMovesAndScores[m_numCaptures].score = score;
+            m_captureMovesAndScores[m_numCaptures].move = &m_moves[i];
             m_numCaptures++;
             continue;
         }
@@ -50,20 +49,19 @@ inline void MoveSelector::m_scoreMoves()
 
         if(m_killerMoveManager->contains(move, m_plyFromRoot))
         {
-            m_killerIndices[m_numKillers++] = i;
+            m_killers[m_numKillers++] = &m_moves[i];
             continue;
         }
 
         if(m_counterMoveManager->contains(move, m_prevMove, turn))
         {
-            m_counterIndex = i;
-            m_numCounters = 1;
+            m_counter = &m_moves[i];
             continue;
         }
 
         int32_t quietScore = m_history->get(move, turn);
-        m_quietScoreIndexPairs[m_numQuiets].score = quietScore;
-        m_quietScoreIndexPairs[m_numQuiets].index = i;
+        m_quietMovesAndScores[m_numQuiets].score = quietScore;
+        m_quietMovesAndScores[m_numQuiets].move = &m_moves[i];
         m_numQuiets++;
     }
 }
@@ -85,21 +83,22 @@ MoveSelector::MoveSelector(
     m_moves = moves;
     m_phase = Phase::TT_PHASE;
     m_skipQuiets = false;
-    m_numTTMoves = 0;
+    m_ttMove = nullptr;
+    m_counter = nullptr;
     m_numKillers = 0;
-    m_numCounters = 0;
     m_numCaptures = 0;
     m_numQuiets = 0;
+    m_numBadCaptures = 0;
+    m_nextBadCapture = 0;
 
     // If there is only a single move, set it as the TT move to avoid scoring and sorting it
     if(m_numMoves == 1)
     {
-        m_ttIndex = 0;
-        m_numTTMoves = 1;
+        m_ttMove = &m_moves[0];
         return;
     }
 
-    m_ttMove = ttMove;
+    m_packedTTMove = ttMove;
     m_prevMove = prevMove;
     m_board = board;
     m_counterMoveManager = counterMoveManager;
@@ -116,33 +115,23 @@ const Move* MoveSelector::getNextMove()
     switch (m_phase)
     {
     case Phase::TT_PHASE:
-        if(m_numTTMoves > 0)
+        if(m_ttMove)
         {
-            m_numTTMoves = 0;
-            return m_moves + m_ttIndex;
+            m_phase = Phase::GOOD_CAPTURES_PHASE;
+            return m_ttMove;
         }
-        [[fallthrough]];
-
-    case Phase::SORT_GOOD_CAPTURE_PHASE:
-        if(m_numCaptures > 1)
-        {
-            ScoreIndex* start = m_captureScoreIndexPairs;
-            ScoreIndex* end = start + m_numCaptures;
-            std::stable_sort(start, end, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
-        }
-        m_numBadCaptures = 0;
         [[fallthrough]];
 
     case Phase::GOOD_CAPTURES_PHASE:
         m_phase = Phase::GOOD_CAPTURES_PHASE;
         while(m_numCaptures > 0)
         {
+            MoveAndScore moveAndScore = popBestMoveAndScore(m_captureMovesAndScores, m_numCaptures--);
             // If the capture is a bad capture, move it to the back of the end of the capture array to be played in the bad capture phase
-            const Move* move = m_moves + m_captureScoreIndexPairs[--m_numCaptures].index;
+            const Move* move = moveAndScore.move;
             if(move->isUnderPromotion() || !m_board->see(*move))
             {
-                ++m_numBadCaptures;
-                m_captureScoreIndexPairs[MAX_MOVE_COUNT - m_numBadCaptures] = m_captureScoreIndexPairs[m_numCaptures];
+                m_badCaptureMovesAndScores[m_numBadCaptures++] = moveAndScore;
             }
             else
             {
@@ -155,25 +144,15 @@ const Move* MoveSelector::getNextMove()
         m_phase = Phase::KILLERS_PHASE;
         if(m_numKillers > 0)
         {
-            return m_moves + m_killerIndices[--m_numKillers];
+            return m_killers[--m_numKillers];
         }
         [[fallthrough]];
 
     case Phase::COUNTERS_PHASE:
-        m_phase = Phase::SORT_QUIET_PHASE;
-        if(m_numCounters > 0)
+        if(m_counter)
         {
-            --m_numCounters;
-            return m_moves + m_counterIndex;
-        }
-        [[fallthrough]];
-
-    case Phase::SORT_QUIET_PHASE:
-        if(m_numQuiets > 1 && !m_skipQuiets)
-        {
-            ScoreIndex* start = m_quietScoreIndexPairs;
-            ScoreIndex* end = start + m_numQuiets;
-            std::stable_sort(start, end, [](const ScoreIndex& o1, const ScoreIndex& o2){ return o1.score < o2.score; });
+            m_phase = Phase::QUIETS_PHASE;
+            return m_counter;
         }
         [[fallthrough]];
 
@@ -181,27 +160,41 @@ const Move* MoveSelector::getNextMove()
         m_phase = Phase::QUIETS_PHASE;
         if(m_numQuiets > 0 && !m_skipQuiets)
         {
-            return m_moves + m_quietScoreIndexPairs[--m_numQuiets].index;
+            MoveAndScore moveAndScore = popBestMoveAndScore(m_quietMovesAndScores, m_numQuiets--);
+            return moveAndScore.move;
         }
-        [[fallthrough]];
-
-    case Phase::SORT_BAD_CAPTURE_PHASE:
-        // Sorting is not required as the order is kept after sorting good moves
-        m_nextBadCapture = 0;
         [[fallthrough]];
 
     case Phase::BAD_CAPTURES_PHASE:
         m_phase = Phase::BAD_CAPTURES_PHASE;
         if(m_nextBadCapture < m_numBadCaptures)
         {
-            m_nextBadCapture++;
-            return m_moves + m_captureScoreIndexPairs[MAX_MOVE_COUNT - m_nextBadCapture].index;
+            return m_badCaptureMovesAndScores[m_nextBadCapture++].move;
         }
         [[fallthrough]];
 
     default:
         return nullptr;
     }
+}
+
+MoveSelector::MoveAndScore MoveSelector::popBestMoveAndScore(MoveAndScore* list, uint8_t numElements)
+{
+    MoveAndScore *best = list;
+    for(uint8_t i = 1; i < numElements; i++)
+    {
+        if(best->score < list[i].score)
+        {
+            best = &list[i];
+        }
+    }
+
+    // Overwrite the best element with the last
+    // to pop the element off the list
+    MoveAndScore tmp = *best;
+    *best = list[numElements - 1];
+
+    return tmp;
 }
 
 MoveSelector::Phase MoveSelector::getPhase() const

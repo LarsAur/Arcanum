@@ -73,13 +73,10 @@ namespace Arcanum
             enum class Phase : uint8_t
             {
                 TT_PHASE,
-                SORT_GOOD_CAPTURE_PHASE,
                 GOOD_CAPTURES_PHASE,
                 KILLERS_PHASE,
                 COUNTERS_PHASE,
-                SORT_QUIET_PHASE,
                 QUIETS_PHASE,
-                SORT_BAD_CAPTURE_PHASE,
                 BAD_CAPTURES_PHASE,
             };
 
@@ -100,12 +97,15 @@ namespace Arcanum
             void skipQuiets();
             bool isSkippingQuiets();
             uint8_t getNumQuietsLeft();
-        private:
-            struct ScoreIndex
+
+            private:
+            struct MoveAndScore
             {
+                const Move* move;
                 int32_t score;
-                int32_t index;
             };
+
+            static MoveAndScore popBestMoveAndScore(MoveAndScore* list, uint8_t numElements);
 
             Phase m_phase;
             const Move* m_moves;
@@ -115,24 +115,23 @@ namespace Arcanum
             History* m_history;
             CaptureHistory* m_captureHistory;
             CounterMoveManager* m_counterMoveManager;
-            PackedMove m_ttMove;
+            PackedMove m_packedTTMove;
             Move m_prevMove;
             uint8_t m_numMoves;
 
             bool m_skipQuiets;
-            uint8_t m_numTTMoves;
             uint8_t m_numKillers;
-            uint8_t m_numCounters;
             uint8_t m_numCaptures;
             uint8_t m_numBadCaptures;
             uint8_t m_nextBadCapture;
             uint8_t m_numQuiets;
 
-            int32_t m_ttIndex;
-            int32_t m_killerIndices[2];
-            int32_t m_counterIndex;
-            ScoreIndex m_captureScoreIndexPairs[MAX_MOVE_COUNT]; // Contains captures and promotions
-            ScoreIndex m_quietScoreIndexPairs[MAX_MOVE_COUNT];
+            const Move* m_ttMove;
+            const Move* m_killers[2];
+            const Move* m_counter;
+            MoveAndScore m_captureMovesAndScores[MAX_MOVE_COUNT]; // Contains captures and promotions
+            MoveAndScore m_badCaptureMovesAndScores[MAX_MOVE_COUNT]; // Contains captures and promotions
+            MoveAndScore m_quietMovesAndScores[MAX_MOVE_COUNT];
             void m_scoreMoves();
     };
 
