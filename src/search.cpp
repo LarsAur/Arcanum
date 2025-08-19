@@ -763,94 +763,98 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     {
         depth++;
 
+        eval_t alpha;
+        eval_t beta;
+        Move bestMove;
+
         eval_t aspirationWindowAlpha = 25;
         eval_t aspirationWindowBeta  = 25;
+        bool rerun = true;
 
-        searchStart:
-        // Reset seldepth for each depth interation
-        m_seldepth = 0;
+        while(rerun && !m_stopSearch)
+        {
+            rerun = false;
 
-        // The local variable for the best move from the previous iteration is used by the move selector.
-        // This is in case the move from the transposition is not 'correct' due to a miss.
-        // Misses can happen if the position cannot replace another position
-        // This is required to allow using results of incomplete searches
-        MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, PackedMove(searchBestMove), NULL_MOVE);
+            bestMove = NULL_MOVE;
 
-        eval_t alpha = -MATE_SCORE;
-        eval_t beta = MATE_SCORE;
-        Move bestMove = NULL_MOVE;
+            // Reset seldepth for each depth interation
+            m_seldepth = 0;
 
-        // Aspiration window
-        bool restartSearch = false;
-        bool useAspAlpha = depth > 5 && searchScore < 900 && aspirationWindowAlpha < 600;
-        bool useAspBeta = depth > 5 && searchScore < 900 && aspirationWindowBeta < 600;
+            // The local variable for the best move from the previous iteration is used by the move selector.
+            // This is in case the move from the transposition is not 'correct' due to a miss.
+            // Misses can happen if the position cannot replace another position
+            // This is required to allow using results of incomplete searches
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, PackedMove(searchBestMove), NULL_MOVE);
 
-        // If the window becomes too large, continue using mate score as alpha/beta
-        if(useAspAlpha) alpha = searchScore - aspirationWindowAlpha;
-        if(useAspBeta)  beta  = searchScore + aspirationWindowBeta;
+            // Aspiration window
+            // Stop using aspiration if the search score or window size is too high
+            bool useAspAlpha = depth > 5 && searchScore < 900 && aspirationWindowAlpha < 600;
+            bool useAspBeta  = depth > 5 && searchScore < 900 && aspirationWindowBeta < 600;
+            alpha = useAspAlpha ? (searchScore - aspirationWindowAlpha) : -MATE_SCORE;
+            beta  = useAspBeta  ? (searchScore + aspirationWindowBeta ) : MATE_SCORE;
 
-        m_killerMoveManager.clearPly(1);
+            m_killerMoveManager.clearPly(1);
 
-        for (int i = 0; i < numMoves; i++)  {
-            const Move *move = moveSelector.getNextMove();
-            Board newBoard = Board(board);
-            newBoard.performMove(*move);
-            m_tt.prefetch(newBoard.getHash());
-            m_evaluator.pushMoveToAccumulator(board, *move);
-            m_searchStack[0].move = *move;
-
-            eval_t score;
-            if(i == 0)
+            for (int i = 0; i < numMoves; i++)
             {
-                score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
+                const Move *move = moveSelector.getNextMove();
+                Board newBoard = Board(board);
+                newBoard.performMove(*move);
+                m_tt.prefetch(newBoard.getHash());
+                m_evaluator.pushMoveToAccumulator(board, *move);
+                m_searchStack[0].move = *move;
 
-                // Aspiration window
-                // Check if the score is lower than alpha for the first move
-                if(useAspAlpha && score <= alpha)
+                eval_t score;
+                if(i == 0)
                 {
-                    restartSearch = true;
-                    aspirationWindowAlpha += aspirationWindowAlpha;
-                    m_evaluator.popMoveFromAccumulator();
-                    m_stats.aspirationAlphaFails++;
+                    score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
+
+                    // Aspiration window
+                    // Check if the score is lower than alpha for the first move
+                    if(useAspAlpha && score <= alpha)
+                    {
+                        rerun = true;
+                        aspirationWindowAlpha += aspirationWindowAlpha;
+                        m_evaluator.popMoveFromAccumulator();
+                        m_stats.aspirationAlphaFails++;
+                        break;
+                    }
+                }
+                else
+                {
+                    score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth - 1, 1, true, 0);
+
+                    if(score > alpha)
+                    {
+                        score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
+                    }
+                }
+
+                m_evaluator.popMoveFromAccumulator();
+
+                if(m_shouldStop())
+                {
                     break;
                 }
-            }
-            else
-            {
-                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, depth - 1, 1, true, 0);
+
+                // Check if the score was outside the aspiration window
+                // It is important to break before the best move is assigned,
+                // to avoid returning a move which is outside the window when search is stopped
+                if(useAspBeta && (score >= beta))
+                {
+                    rerun = true;
+                    aspirationWindowBeta += aspirationWindowBeta;
+                    m_stats.aspirationBetaFails++;
+                    break;
+                }
 
                 if(score > alpha)
-                    score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
+                {
+                    m_pvTable.updatePv(*move, 0);
+                    alpha = score;
+                    bestMove = *move;
+                }
             }
-
-            m_evaluator.popMoveFromAccumulator();
-
-            if(m_shouldStop())
-                break;
-
-            // Check if the score was outside the aspiration window
-            // It is important to break before the best move is assigned,
-            // to avoid returning a move which is outside the window when search is stopped
-            if(useAspBeta && (score >= beta))
-            {
-                restartSearch = true;
-                aspirationWindowBeta += aspirationWindowBeta;
-                m_stats.aspirationBetaFails++;
-                break;
-            }
-
-            if(score > alpha)
-            {
-                m_pvTable.updatePv(*move, 0);
-                alpha = score;
-                bestMove = *move;
-            }
-        }
-
-        // Restart search if the score fell outside of the aspiration window
-        if(!m_stopSearch && restartSearch)
-        {
-            goto searchStart;
         }
 
         // The move found can be used even if search is canceled, if we search the previously best move first
@@ -864,32 +868,37 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // Stop search from writing to TT
-        // If search is stopped, corrigate depth to the depth from the previous iterations
         if(m_stopSearch)
         {
-            if(depth == 1) WARNING("Not enough time to finish first iteration of search")
-
-            // If the search is so short that no score is calculated for any moves.
-            // The first available move is returned to avoid returning a null move
-            if(searchBestMove.isNull())
+            if(depth == 1)
             {
-                WARNING("Not enough time to find the value of any moves. Returning the first move with score 0")
-                searchBestMove = moves[0];
-                searchScore = 0;
+                WARNING("Search was stopped before completing the first depth iteration")
             }
 
-            depth--;
+            // Reduce the depth to match the depth of the last complete iteration
+            depth = std::max(1u, depth - 1);
             break;
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt.add(alpha, bestMove, true, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
+        m_tt.add(searchScore, bestMove, true, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
-        m_sendUciInfo(board, alpha, depth, forceTBScore, wdlTB);
+        m_sendUciInfo(board, searchScore, depth, forceTBScore, wdlTB);
 
         if(depth >= MAX_SEARCH_DEPTH - 1)
+        {
             break;
+        }
+    }
+
+    // If the search is so short that no score is calculated for any moves.
+    // The first available move is returned to avoid returning a null move
+    if(searchBestMove.isNull())
+    {
+        WARNING("Search was stopped before any moves could be evaluated. Returning the first move with score 0")
+        searchBestMove = moves[0];
+        searchScore = 0;
     }
 
     m_sendUciInfo(board, searchScore, depth, forceTBScore, wdlTB);
