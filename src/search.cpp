@@ -18,8 +18,19 @@ Searcher::Searcher(bool verbose)
 
     // Initialize the LMR reduction lookup table
     for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
+    {
         for(uint8_t m = 0; m < MAX_MOVE_COUNT; m++)
-            m_lmrReductions[d][m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 4));
+        {
+            if((d == 0) || (m == 0))
+            {
+                m_lmrReductions[d][m] = 0;
+            }
+            else
+            {
+                m_lmrReductions[d][m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 4));
+            }
+        }
+    }
 
     // Initialize the LMP threshold lookup table
     for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
@@ -494,7 +505,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         m_tt.prefetch(newBoard.getHash());
         eval_t score;
         bool checkOrChecking = isChecked || newBoard.isChecked();
-
 
         // Extend search when only a single move is available
         uint8_t extension = numMoves == 1;
