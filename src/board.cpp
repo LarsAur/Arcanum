@@ -1474,7 +1474,13 @@ bool Board::hasEasyCapture(Color turn) const
         return true;
     }
 
-    bitboard_t knightAttacks = getKnightMoves(m_bbTypedPieces[Piece::W_KNIGHT][turn]);
+    bitboard_t tmpKnights = m_bbTypedPieces[Piece::W_KNIGHT][turn];
+    bitboard_t knightAttacks = 0LL;
+    while (tmpKnights)
+    {
+        knightAttacks |= getKnightMoves(popLS1B(&tmpKnights));
+    }
+
     bitboard_t tmpBishops = m_bbTypedPieces[Piece::W_BISHOP][turn^1];
     bitboard_t bishopAttacks = 0LL;
     while (tmpBishops)
