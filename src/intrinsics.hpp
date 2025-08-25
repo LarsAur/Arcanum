@@ -114,6 +114,10 @@ namespace Arcanum
 
     inline uint64_t ROTL(uint64_t v, uint8_t shift)
     {
-        return _rotl64(v, shift);
+        #ifdef __linux__
+            return _lrotl(v, shift);
+        #else
+            return _rotl64(v, shift);
+        #endif
     }
 }
