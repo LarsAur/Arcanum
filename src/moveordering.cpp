@@ -39,8 +39,8 @@ inline void MoveSelector::m_scoreMoves()
                 score += s_pieceValues[move.promotedPiece()] * 16000;
             }
 
-            m_captureMovesAndScores[m_numCaptures].score = score;
-            m_captureMovesAndScores[m_numCaptures].move = &m_moves[i];
+            m_movesAndScores[m_numCaptures].score = score;
+            m_movesAndScores[m_numCaptures].move = &m_moves[i];
             m_numCaptures++;
             continue;
         }
@@ -60,10 +60,14 @@ inline void MoveSelector::m_scoreMoves()
         }
 
         int32_t quietScore = m_history->get(move, turn);
-        m_quietMovesAndScores[m_numQuiets].score = quietScore;
-        m_quietMovesAndScores[m_numQuiets].move = &m_moves[i];
         m_numQuiets++;
+        m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].score = quietScore;
+        m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].move = &m_moves[i];
     }
+
+    m_captureMovesAndScores = &m_movesAndScores[0];
+    m_quietMovesAndScores   = &m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets];
+    m_badCaptureMovesAndScores = &m_movesAndScores[m_numCaptures];
 }
 
 MoveSelector::MoveSelector(

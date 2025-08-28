@@ -129,9 +129,11 @@ namespace Arcanum
             const Move* m_ttMove;
             const Move* m_killers[2];
             const Move* m_counter;
-            MoveAndScore m_captureMovesAndScores[MAX_MOVE_COUNT]; // Contains captures and promotions
-            MoveAndScore m_badCaptureMovesAndScores[MAX_MOVE_COUNT]; // Contains captures and promotions
-            MoveAndScore m_quietMovesAndScores[MAX_MOVE_COUNT];
+
+            MoveAndScore m_movesAndScores[MAX_MOVE_COUNT];
+            MoveAndScore* m_captureMovesAndScores;
+            MoveAndScore* m_badCaptureMovesAndScores;
+            MoveAndScore* m_quietMovesAndScores;
             void m_scoreMoves();
     };
 
