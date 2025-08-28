@@ -225,7 +225,19 @@ void MoveSelector::skipQuiets()
 
 KillerMoveManager::KillerMoveManager()
 {
+    m_killerMoves = new Move[TableSize];
+
+    if(m_killerMoves == nullptr)
+    {
+        ERROR("Unable to allocate killer moves table")
+    }
+
     clear();
+}
+
+KillerMoveManager::~KillerMoveManager()
+{
+    delete[] m_killerMoves;
 }
 
 // Have to check if the move is not a capture move before adding it to the killer move list
@@ -240,14 +252,15 @@ void KillerMoveManager::add(Move move, uint8_t plyFromRoot)
     }
 
     // The move do not need to be added if it already exists in the table
-    if(move == m_killerMoves[plyFromRoot][0] || move == m_killerMoves[plyFromRoot][1])
+    if(move == m_killerMoves[m_getIndex(plyFromRoot, 0)]
+    || move == m_killerMoves[m_getIndex(plyFromRoot, 1)])
     {
         return;
     }
 
     // Implementation of a queue with only 2 elements
-    m_killerMoves[plyFromRoot][1] = m_killerMoves[plyFromRoot][0];
-    m_killerMoves[plyFromRoot][0] = move;
+    m_killerMoves[m_getIndex(plyFromRoot, 1)] = m_killerMoves[m_getIndex(plyFromRoot, 0)];
+    m_killerMoves[m_getIndex(plyFromRoot, 0)] = move;
 }
 
 bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
@@ -258,7 +271,8 @@ bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
         return false;
     }
 
-    if(move == m_killerMoves[plyFromRoot][0] || move == m_killerMoves[plyFromRoot][1])
+    if(move == m_killerMoves[m_getIndex(plyFromRoot, 0)]
+    || move == m_killerMoves[m_getIndex(plyFromRoot, 1)])
     {
         return true;
     }
@@ -276,18 +290,20 @@ void KillerMoveManager::clearPly(uint8_t plyFromRoot)
 
     for(int j = 0; j < 2; j++)
     {
-        m_killerMoves[plyFromRoot][j] = NULL_MOVE;
+        m_killerMoves[m_getIndex(plyFromRoot, j)] = NULL_MOVE;
     }
+}
+
+inline uint32_t KillerMoveManager::m_getIndex(uint8_t plyFromRoot, uint8_t offset) const
+{
+    return (2 * plyFromRoot) + offset;
 }
 
 void KillerMoveManager::clear()
 {
-    for(int i = 0; i < KILLER_MOVES_MAX_PLY; i++)
+    for(uint32_t i = 0; i < TableSize; i++)
     {
-        for(int j = 0; j < 2; j++)
-        {
-            m_killerMoves[i][j] = NULL_MOVE;
-        }
+        m_killerMoves[i] = NULL_MOVE;
     }
 }
 
