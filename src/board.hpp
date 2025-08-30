@@ -12,10 +12,10 @@ namespace Arcanum
 
     typedef enum CastleRights : uint8_t
     {
-        WHITE_KING_SIDE = 1,
-        WHITE_QUEEN_SIDE = 2,
-        BLACK_KING_SIDE = 4,
-        BLACK_QUEEN_SIDE = 8,
+        WHITE_QUEEN_SIDE = 1,
+        WHITE_KING_SIDE = 2,
+        BLACK_QUEEN_SIDE = 4,
+        BLACK_KING_SIDE = 8,
     } CastleRights;
 
     class Board

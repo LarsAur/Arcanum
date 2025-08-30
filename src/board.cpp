@@ -521,12 +521,12 @@ Move* Board::getLegalMoves()
     }
 
     // Castle
-    static constexpr bitboard_t whiteQueenCastlePieceMask   = 0x0ELL;
-    static constexpr bitboard_t whiteQueenCastleAttackMask  = 0x0CLL;
-    static constexpr bitboard_t whiteKingCastleMask         = 0x60LL;
-    static constexpr bitboard_t blackQueenCastlePieceMask   = 0x0E00000000000000LL;
-    static constexpr bitboard_t blackQueenCastleAttackMask  = 0x0C00000000000000LL;
-    static constexpr bitboard_t blackKingCastleMask         = 0x6000000000000000LL;
+    static constexpr bitboard_t WhiteQueenCastlePieceMask   = 0x0ELL;
+    static constexpr bitboard_t WhiteQueenCastleAttackMask  = 0x0CLL;
+    static constexpr bitboard_t WhiteKingCastleMask         = 0x60LL;
+    static constexpr bitboard_t BlackQueenCastlePieceMask   = 0x0E00000000000000LL;
+    static constexpr bitboard_t BlackQueenCastleAttackMask  = 0x0C00000000000000LL;
+    static constexpr bitboard_t BlackKingCastleMask         = 0x6000000000000000LL;
 
     // The following code assumes that the king is not in check
     // It works by checking that the squares which the rook and the king moves over are free,
@@ -537,22 +537,22 @@ Move* Board::getLegalMoves()
     if(m_turn == WHITE)
     {
         if(m_castleRights & CastleRights::WHITE_QUEEN_SIDE)
-            if(!(m_bbAllPieces & whiteQueenCastlePieceMask) && !(opponentAttacks & whiteQueenCastleAttackMask))
-                m_legalMoves[m_numLegalMoves++] = Move(4, 2, MoveInfoBit::CASTLE_WHITE_QUEEN | MoveInfoBit::KING_MOVE);
+            if(!(m_bbAllPieces & WhiteQueenCastlePieceMask) && !(opponentAttacks & WhiteQueenCastleAttackMask))
+                m_legalMoves[m_numLegalMoves++] = Move(Square::E1, Square::C1, MoveInfoBit::CASTLE_WHITE_QUEEN | MoveInfoBit::KING_MOVE);
 
         if(m_castleRights & CastleRights::WHITE_KING_SIDE)
-            if(!((m_bbAllPieces | opponentAttacks) & whiteKingCastleMask))
-                m_legalMoves[m_numLegalMoves++] = Move(4, 6, MoveInfoBit::CASTLE_WHITE_KING | MoveInfoBit::KING_MOVE);
+            if(!((m_bbAllPieces | opponentAttacks) & WhiteKingCastleMask))
+                m_legalMoves[m_numLegalMoves++] = Move(Square::E1, Square::G1, MoveInfoBit::CASTLE_WHITE_KING | MoveInfoBit::KING_MOVE);
     }
     else
     {
         if(m_castleRights & CastleRights::BLACK_QUEEN_SIDE)
-            if(!(m_bbAllPieces & blackQueenCastlePieceMask) && !(opponentAttacks & blackQueenCastleAttackMask))
-                m_legalMoves[m_numLegalMoves++] = Move(60, 58, MoveInfoBit::CASTLE_BLACK_QUEEN | MoveInfoBit::KING_MOVE);
+            if(!(m_bbAllPieces & BlackQueenCastlePieceMask) && !(opponentAttacks & BlackQueenCastleAttackMask))
+                m_legalMoves[m_numLegalMoves++] = Move(Square::E8, Square::C8, MoveInfoBit::CASTLE_BLACK_QUEEN | MoveInfoBit::KING_MOVE);
 
         if(m_castleRights & CastleRights::BLACK_KING_SIDE)
-            if(!((m_bbAllPieces | opponentAttacks) & blackKingCastleMask))
-                m_legalMoves[m_numLegalMoves++] = Move(60, 62, MoveInfoBit::CASTLE_BLACK_KING | MoveInfoBit::KING_MOVE);
+            if(!((m_bbAllPieces | opponentAttacks) & BlackKingCastleMask))
+                m_legalMoves[m_numLegalMoves++] = Move(Square::E8, Square::G8, MoveInfoBit::CASTLE_BLACK_KING | MoveInfoBit::KING_MOVE);
     }
 
     return m_legalMoves;
@@ -992,42 +992,27 @@ void Board::performMove(const Move move)
     bitboard_t bbFrom = 0b1LL << move.from;
     bitboard_t bbTo = 0b1LL << move.to;
 
+    // Update the rook position in the case of castling
     if(move.isCastle())
     {
-        if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
-        {
-            m_bbTypedPieces[W_ROOK][WHITE] = (m_bbTypedPieces[W_ROOK][WHITE] & ~0x01LL) | 0x08LL;
-            m_bbColoredPieces[WHITE] = (m_bbColoredPieces[WHITE] & ~0x01LL) | 0x08LL;
-            m_bbAllPieces = (m_bbAllPieces & ~0x01LL) | 0x08LL;
-            m_pieces[Square::D1] = W_ROOK;
-            m_pieces[Square::A1] = NO_PIECE;
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
-        {
-            m_bbTypedPieces[W_ROOK][WHITE] = (m_bbTypedPieces[W_ROOK][WHITE] & ~0x80LL) | 0x20LL;
-            m_bbColoredPieces[WHITE] = (m_bbColoredPieces[WHITE] & ~0x80LL) | 0x20LL;
-            m_bbAllPieces = (m_bbAllPieces & ~0x80LL) | 0x20LL;
-            m_pieces[Square::F1] = W_ROOK;
-            m_pieces[Square::H1] = NO_PIECE;
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
-        {
-            m_bbTypedPieces[W_ROOK][BLACK] = (m_bbTypedPieces[W_ROOK][BLACK] & ~0x0100000000000000LL) | 0x0800000000000000LL;
-            m_bbColoredPieces[BLACK] = (m_bbColoredPieces[BLACK] & ~0x0100000000000000LL) | 0x0800000000000000LL;
-            m_bbAllPieces = (m_bbAllPieces & ~0x0100000000000000LL) | 0x0800000000000000LL;
-            m_pieces[Square::D8] = B_ROOK;
-            m_pieces[Square::A8] = NO_PIECE;
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
-        {
-            m_bbTypedPieces[W_ROOK][BLACK] = (m_bbTypedPieces[W_ROOK][BLACK] & ~0x8000000000000000LL) | 0x2000000000000000LL;
-            m_bbColoredPieces[BLACK] = (m_bbColoredPieces[BLACK] & ~0x8000000000000000LL) | 0x2000000000000000LL;
-            m_bbAllPieces = (m_bbAllPieces & ~0x8000000000000000LL) | 0x2000000000000000LL;
-            m_pieces[Square::F8] = B_ROOK;
-            m_pieces[Square::H8] = NO_PIECE;
-        }
+        //                                            White Queen, White King, Black Queen, Black King
+        static constexpr square_t CastleRookFrom[4] = {Square::A1, Square::H1, Square::A8, Square::H8};
+        static constexpr square_t CastleRookTo[4]   = {Square::D1, Square::F1, Square::D8, Square::F8};
+
+        CastleIndex castleIndex = move.castleIndex();
+        square_t rookFrom = CastleRookFrom[castleIndex];
+        square_t rookTo   = CastleRookTo[castleIndex];
+        bitboard_t bbRookFrom = 1LL << rookFrom;
+        bitboard_t bbRookTo   = 1LL << rookTo;
+
+        m_bbTypedPieces[W_ROOK][m_turn] = (m_bbTypedPieces[W_ROOK][m_turn] & ~bbRookFrom) | bbRookTo;
+        m_bbColoredPieces[m_turn] = (m_bbColoredPieces[m_turn] & ~bbRookFrom) | bbRookTo;
+        m_bbAllPieces = (m_bbAllPieces & ~bbRookFrom) | bbRookTo;
+        m_pieces[rookTo] = m_pieces[rookFrom];
+        m_pieces[rookFrom] = Piece::NO_PIECE;
     }
 
+    // Invalidate castle rights
     if(move.moveInfo & MoveInfoBit::KING_MOVE)
     {
         if(m_turn == WHITE)
@@ -1120,9 +1105,13 @@ void Board::performMove(const Move move)
 
     // Update halfmoves / 50 move rule
     if(move.isCapture() || (move.moveInfo & MoveInfoBit::PAWN_MOVE))
+    {
         m_rule50 = 0;
+    }
     else
+    {
         m_rule50++;
+    }
 }
 
 void Board::performNullMove()

@@ -29,6 +29,14 @@ namespace Arcanum
         CAPTURE_QUEEN       = 1048576,
     };
 
+    enum CastleIndex
+    {
+        CASTLE_WHITE_QUEEN_INDEX = 0,
+        CASTLE_WHITE_KING_INDEX  = 1,
+        CASTLE_BLACK_QUEEN_INDEX = 2,
+        CASTLE_BLACK_KING_INDEX  = 3
+    };
+
     typedef enum Piece : uint8_t
     {
         W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING,
@@ -36,10 +44,10 @@ namespace Arcanum
         NO_PIECE,
     } Piece;
 
-    #define MOVE_INFO_MOVE_MASK     (Arcanum::PAWN_MOVE | Arcanum::ROOK_MOVE | Arcanum::KNIGHT_MOVE | Arcanum::BISHOP_MOVE | Arcanum::QUEEN_MOVE | Arcanum::KING_MOVE)
-    #define MOVE_INFO_CASTLE_MASK   (Arcanum::CASTLE_WHITE_QUEEN | Arcanum::CASTLE_WHITE_KING | Arcanum::CASTLE_BLACK_QUEEN | Arcanum::CASTLE_BLACK_KING)
-    #define MOVE_INFO_PROMOTE_MASK  (Arcanum::PROMOTE_ROOK | Arcanum::PROMOTE_KNIGHT | Arcanum::PROMOTE_BISHOP | Arcanum::PROMOTE_QUEEN)
-    #define MOVE_INFO_CAPTURE_MASK  (Arcanum::CAPTURE_PAWN | Arcanum::CAPTURE_ROOK | Arcanum::CAPTURE_KNIGHT | Arcanum::CAPTURE_BISHOP | Arcanum::CAPTURE_QUEEN)
+    #define MOVE_INFO_MOVE_MASK     (MoveInfoBit::PAWN_MOVE | MoveInfoBit::ROOK_MOVE | MoveInfoBit::KNIGHT_MOVE | MoveInfoBit::BISHOP_MOVE | MoveInfoBit::QUEEN_MOVE | MoveInfoBit::KING_MOVE)
+    #define MOVE_INFO_CASTLE_MASK   (MoveInfoBit::CASTLE_WHITE_QUEEN | MoveInfoBit::CASTLE_WHITE_KING | MoveInfoBit::CASTLE_BLACK_QUEEN | MoveInfoBit::CASTLE_BLACK_KING)
+    #define MOVE_INFO_PROMOTE_MASK  (MoveInfoBit::PROMOTE_ROOK | MoveInfoBit::PROMOTE_KNIGHT | MoveInfoBit::PROMOTE_BISHOP | MoveInfoBit::PROMOTE_QUEEN)
+    #define MOVE_INFO_CAPTURE_MASK  (MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::CAPTURE_ROOK | MoveInfoBit::CAPTURE_KNIGHT | MoveInfoBit::CAPTURE_BISHOP | MoveInfoBit::CAPTURE_QUEEN)
 
     #define MOVED_PIECE(_moveInfo)    ((_moveInfo) & MOVE_INFO_MOVE_MASK)
     #define CASTLE_SIDE(_moveInfo)    ((_moveInfo) & MOVE_INFO_CASTLE_MASK)
@@ -95,7 +103,7 @@ namespace Arcanum
 
         inline bool isUnderPromotion() const
         {
-            return moveInfo & (MOVE_INFO_PROMOTE_MASK ^ Arcanum::PROMOTE_QUEEN);
+            return moveInfo & (MOVE_INFO_PROMOTE_MASK ^ MoveInfoBit::PROMOTE_QUEEN);
         }
 
         inline Piece promotedPiece() const
@@ -121,6 +129,11 @@ namespace Arcanum
         inline bool isCastle() const
         {
             return moveInfo & MOVE_INFO_CASTLE_MASK;
+        }
+
+        inline CastleIndex castleIndex() const
+        {
+            return CastleIndex(LS1B(moveInfo & MOVE_INFO_CASTLE_MASK) - 8);
         }
 
         // Move is not a capture or promotion
