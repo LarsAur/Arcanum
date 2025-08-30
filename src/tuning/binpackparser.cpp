@@ -199,7 +199,7 @@ void BinpackParser::m_parseStem()
 // https://github.com/Sopel97/nnue_data_compress/blob/master/src/chess/Position.h#L1166
 void BinpackParser::m_parsePos()
 {
-    constexpr Piece PieceMap[12] = {W_PAWN, B_PAWN, W_KNIGHT, B_KNIGHT, W_BISHOP, B_BISHOP, W_ROOK, B_ROOK, W_QUEEN, B_QUEEN, W_KING, B_KING};
+    constexpr static Piece PieceMap[12] = {W_PAWN, B_PAWN, W_KNIGHT, B_KNIGHT, W_BISHOP, B_BISHOP, W_ROOK, B_ROOK, W_QUEEN, B_QUEEN, W_KING, B_KING};
     constexpr uint32_t PosByteSize = 24;
 
     unsigned char data[PosByteSize];
@@ -350,7 +350,7 @@ void BinpackParser::m_parsePos()
 // https://github.com/Sopel97/nnue_data_compress/blob/master/src/chess/Chess.h#L1044
 void BinpackParser::m_parseMove()
 {
-    constexpr MoveInfoBit PromoteMap[4] = {MoveInfoBit::PROMOTE_KNIGHT, MoveInfoBit::PROMOTE_BISHOP, MoveInfoBit::PROMOTE_ROOK, MoveInfoBit::PROMOTE_QUEEN};
+    constexpr static MoveInfoBit PromoteMap[4] = {MoveInfoBit::PROMOTE_KNIGHT, MoveInfoBit::PROMOTE_BISHOP, MoveInfoBit::PROMOTE_ROOK, MoveInfoBit::PROMOTE_QUEEN};
     char data[2];
     m_readBytesFromBuffer(data, 2);
 
@@ -432,7 +432,7 @@ void BinpackParser::m_parseMovetextCount()
 // https://github.com/Sopel97/chess_pos_db/blob/master/docs/bcgn/variable_length.md
 void BinpackParser::m_parseNextMoveAndScore()
 {
-    constexpr uint8_t PromotionFromRanks[2] = {6, 1};
+    constexpr static uint8_t PromotionFromRanks[2] = {6, 1};
 
     #ifdef VERIFY_BINPACK
     {
@@ -504,7 +504,7 @@ void BinpackParser::m_parseNextMoveAndScore()
 
         if(RANK(from) == promotionRank)
         {
-            constexpr MoveInfoBit PromoteMap[4] = {MoveInfoBit::PROMOTE_KNIGHT, MoveInfoBit::PROMOTE_BISHOP, MoveInfoBit::PROMOTE_ROOK, MoveInfoBit::PROMOTE_QUEEN};
+            constexpr static MoveInfoBit PromoteMap[4] = {MoveInfoBit::PROMOTE_KNIGHT, MoveInfoBit::PROMOTE_BISHOP, MoveInfoBit::PROMOTE_ROOK, MoveInfoBit::PROMOTE_QUEEN};
 
             // Note: The destination count is multiplied by 4 to account for all promotion types
             uint8_t destIndexBitCount = m_getMinRepBits(4 * CNTSBITS(destinations) - 1);

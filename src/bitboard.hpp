@@ -47,7 +47,7 @@ namespace Arcanum
 
     static inline bitboard_t getPawnDoubleBackwardsMoves(const bitboard_t bitboard, Color color)
     {
-        constexpr uint8_t Shift[2] = {48, 16};
+        constexpr static uint8_t Shift[2] = {48, 16};
         return ROTL(bitboard, Shift[color]);
     }
 

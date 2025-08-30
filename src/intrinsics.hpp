@@ -43,7 +43,7 @@ namespace Arcanum
          * @return index (0..63) of least significant one bit
          */
 
-        constexpr square_t popLS1B_index64[64] = {
+        constexpr static square_t popLS1B_index64[64] = {
             0, 47,  1, 56, 48, 27,  2, 60,
             57, 49, 41, 37, 28, 16,  3, 61,
             54, 58, 35, 52, 50, 42, 21, 44,
@@ -76,7 +76,7 @@ namespace Arcanum
          * @return index (0..63) of least significant one bit
          */
 
-        constexpr square_t popLS1B_index64[64] = {
+        constexpr static square_t popLS1B_index64[64] = {
             0, 47,  1, 56, 48, 27,  2, 60,
             57, 49, 41, 37, 28, 16,  3, 61,
             54, 58, 35, 52, 50, 42, 21, 44,

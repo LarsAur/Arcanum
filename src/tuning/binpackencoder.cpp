@@ -188,7 +188,7 @@ void BinpackEncoder::m_writePos(Board& board)
 {
     // Inverse of the PieceMap in m_parsePos in BinpackParser
     // W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING, B_PAWN, B_ROOK, B_KNIGHT, B_BISHOP, B_QUEEN, B_KING
-    constexpr uint8_t PieceToNibble[12] = {0, 6, 2, 4, 8, 10, 1, 7, 3, 5, 9, 11};
+    constexpr static uint8_t PieceToNibble[12] = {0, 6, 2, 4, 8, 10, 1, 7, 3, 5, 9, 11};
 
     constexpr uint32_t PosByteSize = 24;
 
@@ -279,7 +279,7 @@ void BinpackEncoder::m_writePos(Board& board)
 void BinpackEncoder::m_writeMove(Move& move)
 {
     // Rook, Knight, Bishop, Queen
-    constexpr uint8_t PromotionToBits[4] = {0b10, 0b00, 0b01, 0b11};
+    constexpr static uint8_t PromotionToBits[4] = {0b10, 0b00, 0b01, 0b11};
     char data[2];
 
     CompressedMoveType type = CompressedMoveType::NORMAL;
@@ -352,7 +352,7 @@ void BinpackEncoder::m_writeMovetextCount(uint32_t numMoves)
 
 void BinpackEncoder::m_writeEncodedMove(Board& board, Move& move)
 {
-    constexpr uint8_t PromotionFromRanks[2] = {6, 1};
+    constexpr static uint8_t PromotionFromRanks[2] = {6, 1};
 
     bitboard_t occupancy = board.getColoredPieces(board.getTurn());
 
@@ -398,7 +398,7 @@ void BinpackEncoder::m_writeEncodedMove(Board& board, Move& move)
         {
             // Lookup for promoted piece to index
             // Note pawn promotion is not possible thus -1
-            constexpr int8_t PromoteIndex[5] = {-1, 2, 0, 1, 3};
+            constexpr static int8_t PromoteIndex[5] = {-1, 2, 0, 1, 3};
 
             // Note: The destination count is multiplied by 4 to account for all promotion types
             uint8_t numBits = m_getMinRepBits(4 * CNTSBITS(destinations) - 1);
