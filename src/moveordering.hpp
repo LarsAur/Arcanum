@@ -34,7 +34,7 @@ namespace Arcanum
         public:
             History();
             ~History();
-            void updateHistory(const Move& bestMove, const std::array<Move, MAX_MOVE_COUNT>& quiets, uint8_t numQuiets, uint8_t depth, Color turn);
+            void updateHistory(const Move& bestMove, const Move* quiets, uint8_t numQuiets, uint8_t depth, Color turn);
             int32_t get(const Move& move, Color turn);
             void clear();
     };
@@ -51,7 +51,7 @@ namespace Arcanum
         public:
             CaptureHistory();
             ~CaptureHistory();
-            void updateHistory(const Move& bestMove, const std::array<Move, MAX_MOVE_COUNT>& captures, uint8_t numCaptures, uint8_t depth, Color turn);
+            void updateHistory(const Move& bestMove, const Move* captures, uint8_t numCaptures, uint8_t depth, Color turn);
             int32_t get(const Move& move, Color turn);
             void clear();
     };

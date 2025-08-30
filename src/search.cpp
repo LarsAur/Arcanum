@@ -447,8 +447,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, ttMove, prevMove);
     uint8_t quietMovesPerformed = 0;
     uint8_t captureMovesPerformed = 0;
-    std::array<Move, MAX_MOVE_COUNT> quiets;
-    std::array<Move, MAX_MOVE_COUNT> captures;
+    Move performedMoves[MAX_MOVE_COUNT];
     uint32_t moveNumber = 0;
 
     // Futility pruning
@@ -609,13 +608,13 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             {
                 m_killerMoveManager.add(*move, plyFromRoot);
                 m_counterMoveManager.setCounter(*move, prevMove, board.getTurn());
-                m_history.updateHistory(*move, quiets, quietMovesPerformed, depth, board.getTurn());
+                m_history.updateHistory(*move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, depth, board.getTurn());
             }
 
             // Update capture history if the move was a capture
             if(move->isCapture())
             {
-                m_captureHistory.updateHistory(*move, captures, captureMovesPerformed, depth, board.getTurn());
+                m_captureHistory.updateHistory(*move, &performedMoves[0], captureMovesPerformed, depth, board.getTurn());
             }
             break;
         }
@@ -625,14 +624,17 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(move->isQuiet())
         {
             // Count and track quiet moves for LMP and History
-            quiets[quietMovesPerformed++] = *move;
+            // Quiets are added from the back
+            quietMovesPerformed++;
+            performedMoves[MAX_MOVE_COUNT - quietMovesPerformed] = *move;
         }
 
         // Note: Capture and Quiet are not inverse as promotions can be non-capture but is not quiet
         if(move->isCapture())
         {
             // Count and track capture moves for CaptureHistory
-            captures[captureMovesPerformed++] = *move;
+            // Captures are added from the front
+            performedMoves[captureMovesPerformed++] = *move;
         }
     }
 

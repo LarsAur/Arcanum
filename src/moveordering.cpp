@@ -334,7 +334,7 @@ inline int32_t History::m_getBonus(uint8_t depth)
     return std::min(2000, 16 * depth * depth);
 }
 
-void History::updateHistory(const Move& bestMove, const std::array<Move, MAX_MOVE_COUNT>& quiets, uint8_t numQuiets, uint8_t depth, Color turn)
+void History::updateHistory(const Move& bestMove, const Move* quiets, uint8_t numQuiets, uint8_t depth, Color turn)
 {
     int32_t bonus = m_getBonus(depth);
 
@@ -390,7 +390,7 @@ inline int32_t CaptureHistory::m_getBonus(uint8_t depth)
     return std::min(2000, 16 * depth * depth);
 }
 
-void CaptureHistory::updateHistory(const Move& bestMove, const std::array<Move, MAX_MOVE_COUNT>& captures, uint8_t numCaptures, uint8_t depth, Color turn)
+void CaptureHistory::updateHistory(const Move& bestMove, const Move* captures, uint8_t numCaptures, uint8_t depth, Color turn)
 {
     int32_t bonus = m_getBonus(depth);
 
