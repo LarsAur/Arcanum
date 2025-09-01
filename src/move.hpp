@@ -73,7 +73,7 @@ namespace Arcanum
         square_t to;
         uint32_t moveInfo;
 
-        Move(){};
+        Move() = default;
         Move(square_t _from, square_t _to, uint32_t _moveInfo = 0)
         {
             from = _from;
@@ -179,7 +179,7 @@ namespace Arcanum
     {
         uint16_t _info; // 2 = Promotion bits | 6 bits = from | 6 bits = to
 
-        PackedMove(){};
+        PackedMove() = default;
         PackedMove(uint16_t info) :
             _info(info)
         {}
