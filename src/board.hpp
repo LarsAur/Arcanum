@@ -304,15 +304,16 @@ namespace Arcanum
     template <MoveInfoBit MoveType>
     inline bool Board::m_hasMove()
     {
+        static_assert(MoveType != MoveInfoBit::PAWN_MOVE);
+        static_assert(MoveType != MoveInfoBit::KING_MOVE);
+
         Piece type;
         switch (MoveType)
         {
-            case MoveInfoBit::PAWN_MOVE:   type = W_PAWN;   break;
             case MoveInfoBit::ROOK_MOVE:   type = W_ROOK;   break;
             case MoveInfoBit::KNIGHT_MOVE: type = W_KNIGHT; break;
             case MoveInfoBit::BISHOP_MOVE: type = W_BISHOP; break;
             case MoveInfoBit::QUEEN_MOVE:  type = W_QUEEN;  break;
-            case MoveInfoBit::KING_MOVE:   type = W_KING;   break;
         }
 
         bitboard_t pieces = m_bbTypedPieces[type][m_turn];
@@ -320,26 +321,29 @@ namespace Arcanum
         while (pieces)
         {
             square_t pieceIdx = popLS1B(&pieces);
-            bitboard_t moves;
+            bitboard_t targets;
             switch (MoveType)
             {
-                case MoveInfoBit::PAWN_MOVE:    return false;
-                case MoveInfoBit::ROOK_MOVE:    moves = getRookMoves(m_bbAllPieces, pieceIdx);   break;
-                case MoveInfoBit::KNIGHT_MOVE:  moves = getKnightMoves(pieceIdx);                break;
-                case MoveInfoBit::BISHOP_MOVE:  moves = getBishopMoves(m_bbAllPieces, pieceIdx); break;
-                case MoveInfoBit::QUEEN_MOVE:   moves = getQueenMoves(m_bbAllPieces, pieceIdx);  break;
-                case MoveInfoBit::KING_MOVE:    return false;
+                case MoveInfoBit::ROOK_MOVE:   targets = getRookMoves(m_bbAllPieces, pieceIdx);   break;
+                case MoveInfoBit::KNIGHT_MOVE: targets = getKnightMoves(pieceIdx);                break;
+                case MoveInfoBit::BISHOP_MOVE: targets = getBishopMoves(m_bbAllPieces, pieceIdx); break;
+                case MoveInfoBit::QUEEN_MOVE:  targets = getQueenMoves(m_bbAllPieces, pieceIdx);  break;
             }
 
             // Filter the allowed target squares
-            moves &= ~m_bbColoredPieces[m_turn];  // All squares except own pieces
+            targets &= ~m_bbColoredPieces[m_turn];  // All squares except own pieces
 
-            while(moves)
+            // Check if the piece is a blocker
+            // Note: In theory, the blockers and non-blockers could be separated into
+            // two loops, by using m_blockers[m_turn] as a mask. For some reason,
+            // creating two loops seems to be a bit slower, so we continue to check if each piece is a blocker
+            if((1LL << pieceIdx) & m_blockers[m_turn])
             {
-                square_t target = popLS1B(&moves);
-                if(m_isLegalMove(Move(pieceIdx, target, MoveType)))
-                    return true;
+                square_t pinnerIdx = m_pinnerBlockerIdxPairs[pieceIdx];
+                targets &= getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx);
             }
+
+            return targets;
         }
 
         return false;
