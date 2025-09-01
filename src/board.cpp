@@ -900,16 +900,7 @@ bool Board::hasLegalMove()
         if(m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE))) return true;
     }
 
-    // NOTE: Double moves have to be checked, as they could block a check
-    // Double move
-    bitboard_t doubleMoves       = getPawnDoubleMoves(pawns, m_turn, m_bbAllPieces);
-    bitboard_t doubleMovesOrigin = getPawnDoubleBackwardsMoves(doubleMoves, m_turn);
-    while (doubleMoves)
-    {
-        int target = popLS1B(&doubleMoves);
-        int pawnIdx = popLS1B(&doubleMovesOrigin);
-        if(m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::DOUBLE_MOVE | MoveInfoBit::PAWN_MOVE))) return true;
-    }
+    // NOTE: It is not required to check for double moves as they are only legal if a normal forward move is allowed when the king is not checked.
 
     // NOTE: It is not required to check for castling as it is only legal if the king can already move
 
