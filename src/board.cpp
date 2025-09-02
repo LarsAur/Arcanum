@@ -841,13 +841,6 @@ bool Board::hasLegalMove()
 
     Color opponent = Color(m_turn^1);
 
-    // King moves
-    // Create bitboard for where the king would be attacked
-    bitboard_t opponentAttacks = getOpponentAttacks();
-    bitboard_t kMoves = getKingMoves(m_kingIdx);
-    kMoves &= ~(m_bbColoredPieces[m_turn] | opponentAttacks);
-    if(kMoves) return true;
-
     // Note: The ordering can matter for performance
     // Try the cheapest moves to generate first
     if(m_hasMove<MoveInfoBit::KNIGHT_MOVE>()) return true;
@@ -899,6 +892,13 @@ bool Board::hasLegalMove()
         // It is not required to check if the move is promotion, we only require to know if the piece can be moved
         if(m_isLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE))) return true;
     }
+
+    // King moves
+    // Create bitboard for where the king would be attacked
+    bitboard_t opponentAttacks = getOpponentAttacks();
+    bitboard_t kMoves = getKingMoves(m_kingIdx);
+    kMoves &= ~(m_bbColoredPieces[m_turn] | opponentAttacks);
+    if(kMoves) return true;
 
     // NOTE: It is not required to check for double moves as they are only legal if a normal forward move is allowed when the king is not checked.
 
