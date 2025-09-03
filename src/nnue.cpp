@@ -206,38 +206,87 @@ void NNUE::incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Bo
 
 void NNUE::incrementAccumulatorPerspective(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective)
 {
+    uint8_t funcIndex = deltaFeatures.numRemoved << 2 | deltaFeatures.numAdded;
+
+    switch(funcIndex)
+    {
+        case 0b0101:
+            m_accAddSub(acc, nextAcc, deltaFeatures, perspective);
+            break;
+        case 0b1001:
+            m_accAddSubSub(acc, nextAcc, deltaFeatures, perspective);
+            break;
+        case 0b1010:
+            m_accAddAddSubSub(acc, nextAcc, deltaFeatures, perspective);
+            break;
+        default:
+            ERROR("No matching function for incrementing accumulator perspective: Remove: " << deltaFeatures.numRemoved << " Add: " << deltaFeatures.numAdded)
+    }
+}
+
+void NNUE::m_accAddSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective)
+{
     constexpr uint32_t NumChunks = L1Size / 16;
 
     __m256i* acc256     = (__m256i*) acc->acc[perspective];
     __m256i* nextAcc256 = (__m256i*) nextAcc->acc[perspective];
 
-    // Copy from the old accumulator to the new accumulator
-    // And add the first added feature.
-    // This can be done as moves always adds and removes at least one feature
-    {
-        uint32_t findex = deltaFeatures.added[perspective][0];
-        for(uint32_t j = 0; j < NumChunks; j++)
-        {
-            *(nextAcc256 + j) = _mm256_add_epi16(*(acc256 + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[findex*L1Size])) + j));
-        }
-    }
+    __m256i* ftAddBase0 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.added[perspective][0]*L1Size]));
+    __m256i* ftSubBase0 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.removed[perspective][0]*L1Size]));
 
-    for(uint32_t i = 1; i < deltaFeatures.numAdded; i++)
+    for(uint32_t i = 0; i < NumChunks; i++)
     {
-        uint32_t findex = deltaFeatures.added[perspective][i];
-        for(uint32_t j = 0; j < NumChunks; j++)
-        {
-            *(nextAcc256 + j) = _mm256_add_epi16(*(nextAcc256 + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[findex*L1Size])) + j));
-        }
+        // Copy from the old accumulator to the new accumulator and add the first feature.
+        *(nextAcc256 + i) = _mm256_add_epi16(*(acc256 + i), _mm256_load_si256(ftAddBase0 + i));
+        // Subtract
+        *(nextAcc256 + i) = _mm256_sub_epi16(*(nextAcc256 + i), _mm256_load_si256(ftSubBase0 + i));
     }
+}
 
-    for(uint32_t i = 0; i < deltaFeatures.numRemoved; i++)
+void NNUE::m_accAddSubSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective)
+{
+    constexpr uint32_t NumChunks = L1Size / 16;
+
+    __m256i* acc256     = (__m256i*) acc->acc[perspective];
+    __m256i* nextAcc256 = (__m256i*) nextAcc->acc[perspective];
+
+    __m256i* ftAddBase0 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.added[perspective][0]*L1Size]));
+    __m256i* ftSubBase0 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.removed[perspective][0]*L1Size]));
+    __m256i* ftSubBase1 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.removed[perspective][1]*L1Size]));
+
+    for(uint32_t i = 0; i < NumChunks; i++)
     {
-        uint32_t findex = deltaFeatures.removed[perspective][i];
-        for(uint32_t j = 0; j < NumChunks; j++)
-        {
-            *(nextAcc256 + j) = _mm256_sub_epi16(*(nextAcc256 + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[findex*L1Size])) + j));
-        }
+        // Copy from the old accumulator to the new accumulator and add the first feature.
+        *(nextAcc256 + i) = _mm256_add_epi16(*(acc256 + i), _mm256_load_si256(ftAddBase0 + i));
+        // Subtract
+        *(nextAcc256 + i) = _mm256_sub_epi16(*(nextAcc256 + i), _mm256_load_si256(ftSubBase0 + i));
+        // Subtract
+        *(nextAcc256 + i) = _mm256_sub_epi16(*(nextAcc256 + i), _mm256_load_si256(ftSubBase1 + i));
+    }
+}
+
+void NNUE::m_accAddAddSubSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective)
+{
+    constexpr uint32_t NumChunks = L1Size / 16;
+
+    __m256i* acc256     = (__m256i*) acc->acc[perspective];
+    __m256i* nextAcc256 = (__m256i*) nextAcc->acc[perspective];
+
+    __m256i* ftAddBase0 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.added[perspective][0]*L1Size]));
+    __m256i* ftAddBase1 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.added[perspective][1]*L1Size]));
+    __m256i* ftSubBase0 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.removed[perspective][0]*L1Size]));
+    __m256i* ftSubBase1 = ((__m256i*) (&m_net->ftWeights[deltaFeatures.removed[perspective][1]*L1Size]));
+
+    for(uint32_t i = 0; i < NumChunks; i++)
+    {
+        // Copy from the old accumulator to the new accumulator and add the first feature.
+        *(nextAcc256 + i) = _mm256_add_epi16(*(acc256 + i), _mm256_load_si256(ftAddBase0 + i));
+        // Add
+        *(nextAcc256 + i) = _mm256_add_epi16(*(nextAcc256 + i), _mm256_load_si256(ftAddBase1 + i));
+        // Subtract
+        *(nextAcc256 + i) = _mm256_sub_epi16(*(nextAcc256 + i), _mm256_load_si256(ftSubBase0 + i));
+        // Subtract
+        *(nextAcc256 + i) = _mm256_sub_epi16(*(nextAcc256 + i), _mm256_load_si256(ftSubBase1 + i));
     }
 }
 

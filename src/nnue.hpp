@@ -66,6 +66,9 @@ namespace Arcanum
             eval_t predictBoard(const Board& board);
         private:
             Net* m_net;
+            void m_accAddSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective);
+            void m_accAddSubSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective);
+            void m_accAddAddSubSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective);
             void m_l1AffineTransform(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out);
             void m_clampAcc(const int16_t* in, int8_t* out);
     };
