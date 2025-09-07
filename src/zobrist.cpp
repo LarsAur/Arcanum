@@ -58,24 +58,24 @@ void Zobrist::getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_
     materialHash = 0LL;
 
     // Pawns
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_PAWN][WHITE], W_PAWN, WHITE);
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_PAWN][BLACK], W_PAWN, BLACK);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::PAWN][Color::WHITE], Piece::PAWN, Color::WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::PAWN][Color::BLACK], Piece::PAWN, Color::BLACK);
     pawnHash = hash;
     // Rooks
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_ROOK][WHITE], W_ROOK, WHITE);
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_ROOK][BLACK], W_ROOK, BLACK);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::ROOK][Color::WHITE], Piece::ROOK, Color::WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::ROOK][Color::BLACK], Piece::ROOK, Color::BLACK);
     // Knights
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_KNIGHT][WHITE], W_KNIGHT, WHITE);
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_KNIGHT][BLACK], W_KNIGHT, BLACK);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::KNIGHT][Color::WHITE], Piece::KNIGHT, Color::WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::KNIGHT][Color::BLACK], Piece::KNIGHT, Color::BLACK);
     // Bishops
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_BISHOP][WHITE], W_BISHOP, WHITE);
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_BISHOP][BLACK], W_BISHOP, BLACK);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::BISHOP][Color::WHITE], Piece::BISHOP, Color::WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::BISHOP][Color::BLACK], Piece::BISHOP, Color::BLACK);
     // Queens
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_QUEEN][WHITE], W_QUEEN, WHITE);
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_QUEEN][BLACK], W_QUEEN, BLACK);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::QUEEN][Color::WHITE], Piece::QUEEN, Color::WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::QUEEN][Color::BLACK], Piece::QUEEN, Color::BLACK);
     // Kings
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_KING][WHITE], W_KING, WHITE);
-    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[W_KING][BLACK], W_KING, BLACK);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::KING][Color::WHITE], Piece::KING, Color::WHITE);
+    m_addAllPieces(hash, materialHash, board.m_bbTypedPieces[Piece::KING][Color::BLACK], Piece::KING, Color::BLACK);
 
     if(board.m_turn == BLACK)
     {
@@ -93,11 +93,11 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     if(move.isPromotion())
     {
         Piece promoteType = move.promotedPiece();
-        uint8_t pawnCount = CNTSBITS(board.m_bbTypedPieces[W_PAWN][board.m_turn]);
+        uint8_t pawnCount = CNTSBITS(board.m_bbTypedPieces[Piece::PAWN][board.m_turn]);
         uint8_t promoteCount = CNTSBITS(board.m_bbTypedPieces[promoteType][board.m_turn]) - 1;
-        hash ^= m_tables[W_PAWN][board.m_turn][move.from] ^ m_tables[promoteType][board.m_turn][move.to];
-        pawnHash ^= m_tables[W_PAWN][board.m_turn][move.from];
-        materialHash ^= m_tables[promoteType][board.m_turn][promoteCount] ^ m_tables[W_PAWN][board.m_turn][pawnCount];
+        hash ^= m_tables[Piece::PAWN][board.m_turn][move.from] ^ m_tables[promoteType][board.m_turn][move.to];
+        pawnHash ^= m_tables[Piece::PAWN][board.m_turn][move.from];
+        materialHash ^= m_tables[promoteType][board.m_turn][promoteCount] ^ m_tables[Piece::PAWN][board.m_turn][pawnCount];
     }
     else
     {
@@ -112,19 +112,19 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     {
         if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
         {
-            hash ^= m_tables[W_ROOK][WHITE][Square::A1] ^ m_tables[W_ROOK][WHITE][Square::D1];
+            hash ^= m_tables[Piece::ROOK][WHITE][Square::A1] ^ m_tables[Piece::ROOK][WHITE][Square::D1];
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
         {
-            hash ^= m_tables[W_ROOK][WHITE][Square::H1] ^ m_tables[W_ROOK][WHITE][Square::F1];
+            hash ^= m_tables[Piece::ROOK][WHITE][Square::H1] ^ m_tables[Piece::ROOK][WHITE][Square::F1];
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
         {
-            hash ^= m_tables[W_ROOK][BLACK][Square::A8] ^ m_tables[W_ROOK][BLACK][Square::D8];
+            hash ^= m_tables[Piece::ROOK][BLACK][Square::A8] ^ m_tables[Piece::ROOK][BLACK][Square::D8];
         }
         else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
         {
-            hash ^= m_tables[W_ROOK][BLACK][Square::H8] ^ m_tables[W_ROOK][BLACK][Square::F8];
+            hash ^= m_tables[Piece::ROOK][BLACK][Square::H8] ^ m_tables[Piece::ROOK][BLACK][Square::F8];
         }
     }
 
@@ -136,17 +136,17 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
         if(move.moveInfo & MoveInfoBit::ENPASSANT)
         {
             Arcanum::square_t oldEnPassantTarget = oldEnPassantSquare > 32 ? oldEnPassantSquare - 8 : oldEnPassantSquare + 8;
-            uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
-            hash ^= m_tables[W_PAWN][opponent][oldEnPassantTarget];
-            pawnHash ^= m_tables[W_PAWN][opponent][oldEnPassantTarget];
-            materialHash ^= m_tables[W_PAWN][opponent][count];
+            uint8_t count = CNTSBITS(board.m_bbTypedPieces[Piece::PAWN][opponent]);
+            hash ^= m_tables[Piece::PAWN][opponent][oldEnPassantTarget];
+            pawnHash ^= m_tables[Piece::PAWN][opponent][oldEnPassantTarget];
+            materialHash ^= m_tables[Piece::PAWN][opponent][count];
         }
         else if(move.moveInfo & MoveInfoBit::CAPTURE_PAWN)
         {
-            uint8_t count = CNTSBITS(board.m_bbTypedPieces[W_PAWN][opponent]);
-            hash ^= m_tables[W_PAWN][opponent][move.to];
-            pawnHash ^= m_tables[W_PAWN][opponent][move.to];
-            materialHash ^= m_tables[W_PAWN][opponent][count];
+            uint8_t count = CNTSBITS(board.m_bbTypedPieces[Piece::PAWN][opponent]);
+            hash ^= m_tables[Piece::PAWN][opponent][move.to];
+            pawnHash ^= m_tables[Piece::PAWN][opponent][move.to];
+            materialHash ^= m_tables[Piece::PAWN][opponent][count];
         }
         else
         {

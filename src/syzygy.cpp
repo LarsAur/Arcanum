@@ -32,14 +32,14 @@ bool Arcanum::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& 
     board.generateCaptureInfo();
 
     unsigned result = tb_probe_root(
-        board.getColoredPieces(WHITE),
-        board.getColoredPieces(BLACK),
-        board.getTypedPieces(W_KING,    WHITE) | board.getTypedPieces(W_KING,   BLACK),
-        board.getTypedPieces(W_QUEEN,   WHITE) | board.getTypedPieces(W_QUEEN,  BLACK),
-        board.getTypedPieces(W_ROOK,    WHITE) | board.getTypedPieces(W_ROOK,   BLACK),
-        board.getTypedPieces(W_BISHOP,  WHITE) | board.getTypedPieces(W_BISHOP, BLACK),
-        board.getTypedPieces(W_KNIGHT,  WHITE) | board.getTypedPieces(W_KNIGHT, BLACK),
-        board.getTypedPieces(W_PAWN,    WHITE) | board.getTypedPieces(W_PAWN,   BLACK),
+        board.getColoredPieces(Color::WHITE),
+        board.getColoredPieces(Color::BLACK),
+        board.getTypedPieces(Piece::KING,    Color::WHITE) | board.getTypedPieces(Piece::KING,   Color::BLACK),
+        board.getTypedPieces(Piece::QUEEN,   Color::WHITE) | board.getTypedPieces(Piece::QUEEN,  Color::BLACK),
+        board.getTypedPieces(Piece::ROOK,    Color::WHITE) | board.getTypedPieces(Piece::ROOK,   Color::BLACK),
+        board.getTypedPieces(Piece::BISHOP,  Color::WHITE) | board.getTypedPieces(Piece::BISHOP, Color::BLACK),
+        board.getTypedPieces(Piece::KNIGHT,  Color::WHITE) | board.getTypedPieces(Piece::KNIGHT, Color::BLACK),
+        board.getTypedPieces(Piece::PAWN,    Color::WHITE) | board.getTypedPieces(Piece::PAWN,   Color::BLACK),
         board.getHalfMoves(),
         board.getEnpassantSquare() == 64 ? 0 : board.getEnpassantSquare(),
         board.getTurn()^1, results
@@ -75,14 +75,14 @@ bool Arcanum::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& 
 uint32_t Arcanum::TBProbeWDL(const Board &board)
 {
     return tb_probe_wdl(
-        board.getColoredPieces(WHITE),
-        board.getColoredPieces(BLACK),
-        board.getTypedPieces(W_KING,    WHITE) | board.getTypedPieces(W_KING,   BLACK),
-        board.getTypedPieces(W_QUEEN,   WHITE) | board.getTypedPieces(W_QUEEN,  BLACK),
-        board.getTypedPieces(W_ROOK,    WHITE) | board.getTypedPieces(W_ROOK,   BLACK),
-        board.getTypedPieces(W_BISHOP,  WHITE) | board.getTypedPieces(W_BISHOP, BLACK),
-        board.getTypedPieces(W_KNIGHT,  WHITE) | board.getTypedPieces(W_KNIGHT, BLACK),
-        board.getTypedPieces(W_PAWN,    WHITE) | board.getTypedPieces(W_PAWN,   BLACK),
+        board.getColoredPieces(Color::WHITE),
+        board.getColoredPieces(Color::BLACK),
+        board.getTypedPieces(Piece::KING,    Color::WHITE) | board.getTypedPieces(Piece::KING,   Color::BLACK),
+        board.getTypedPieces(Piece::QUEEN,   Color::WHITE) | board.getTypedPieces(Piece::QUEEN,  Color::BLACK),
+        board.getTypedPieces(Piece::ROOK,    Color::WHITE) | board.getTypedPieces(Piece::ROOK,   Color::BLACK),
+        board.getTypedPieces(Piece::BISHOP,  Color::WHITE) | board.getTypedPieces(Piece::BISHOP, Color::BLACK),
+        board.getTypedPieces(Piece::KNIGHT,  Color::WHITE) | board.getTypedPieces(Piece::KNIGHT, Color::BLACK),
+        board.getTypedPieces(Piece::PAWN,    Color::WHITE) | board.getTypedPieces(Piece::PAWN,   Color::BLACK),
         board.getEnpassantSquare() == 64 ? 0 : board.getEnpassantSquare(),
         board.getTurn()^1
     );

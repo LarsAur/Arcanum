@@ -55,8 +55,8 @@ void NNUE::findDeltaFeatures(const Board& board, const Move& move, DeltaFeatures
     if(move.isEnpassant())
     {
         square_t targetSquare = board.getEnpassantTarget();
-        delta.removed[Color::WHITE][delta.numRemoved]   = getFeatureIndex(targetSquare, opponent, Piece::W_PAWN, Color::WHITE);
-        delta.removed[Color::BLACK][delta.numRemoved++] = getFeatureIndex(targetSquare, opponent, Piece::W_PAWN, Color::BLACK);
+        delta.removed[Color::WHITE][delta.numRemoved]   = getFeatureIndex(targetSquare, opponent, Piece::PAWN, Color::WHITE);
+        delta.removed[Color::BLACK][delta.numRemoved++] = getFeatureIndex(targetSquare, opponent, Piece::PAWN, Color::BLACK);
     }
     else if(move.isCapture())
     {
@@ -93,12 +93,12 @@ void NNUE::findDeltaFeatures(const Board& board, const Move& move, DeltaFeatures
         }
 
         // Remove the rook from the old position
-        delta.removed[Color::WHITE][delta.numRemoved]   = getFeatureIndex(rookFrom, turn, Piece::W_ROOK, Color::WHITE);
-        delta.removed[Color::BLACK][delta.numRemoved++] = getFeatureIndex(rookFrom, turn, Piece::W_ROOK, Color::BLACK);
+        delta.removed[Color::WHITE][delta.numRemoved]   = getFeatureIndex(rookFrom, turn, Piece::ROOK, Color::WHITE);
+        delta.removed[Color::BLACK][delta.numRemoved++] = getFeatureIndex(rookFrom, turn, Piece::ROOK, Color::BLACK);
 
         // Add the rook to the new position
-        delta.added[Color::WHITE][delta.numAdded]   = getFeatureIndex(rookTo, turn, Piece::W_ROOK, Color::WHITE);
-        delta.added[Color::BLACK][delta.numAdded++] = getFeatureIndex(rookTo, turn, Piece::W_ROOK, Color::BLACK);
+        delta.added[Color::WHITE][delta.numAdded]   = getFeatureIndex(rookTo, turn, Piece::ROOK, Color::WHITE);
+        delta.added[Color::BLACK][delta.numAdded++] = getFeatureIndex(rookTo, turn, Piece::ROOK, Color::BLACK);
     }
 }
 

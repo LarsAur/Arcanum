@@ -39,8 +39,7 @@ namespace Arcanum
 
     typedef enum Piece : uint8_t
     {
-        W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING,
-        B_PAWN, B_ROOK, B_KNIGHT, B_BISHOP, B_QUEEN, B_KING,
+        PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING,
         NO_PIECE,
     } Piece;
 

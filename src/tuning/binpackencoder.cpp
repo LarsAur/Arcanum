@@ -187,8 +187,10 @@ void BinpackEncoder::m_writeStem(Board& board, Move& move, eval_t score, GameRes
 void BinpackEncoder::m_writePos(Board& board)
 {
     // Inverse of the PieceMap in m_parsePos in BinpackParser
-    // W_PAWN, W_ROOK, W_KNIGHT, W_BISHOP, W_QUEEN, W_KING, B_PAWN, B_ROOK, B_KNIGHT, B_BISHOP, B_QUEEN, B_KING
-    constexpr static uint8_t PieceToNibble[12] = {0, 6, 2, 4, 8, 10, 1, 7, 3, 5, 9, 11};
+    constexpr static uint8_t PieceToNibble[2][6] = {
+        {0, 6, 2, 4, 8, 10}, // White: PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING
+        {1, 7, 3, 5, 9, 11}, // Black: PAWN, ROOK, KNIGHT, BISHOP, QUEEN, KING
+    };
 
     constexpr uint32_t PosByteSize = 24;
 
@@ -212,46 +214,56 @@ void BinpackEncoder::m_writePos(Board& board)
         uint8_t nibble = 0;
         square_t square = popLS1B(&occupancy);
         Piece piece = board.getPieceAt(square);
+        Color pieceColor = board.getColorAt(square);
 
         switch (piece)
         {
         // These pieces have no special cases and can be directly mapped to their nibble
-        case Piece::W_KING:
-        case Piece::W_KNIGHT:
-        case Piece::B_KNIGHT:
-        case Piece::W_BISHOP:
-        case Piece::B_BISHOP:
-        case Piece::W_QUEEN:
-        case Piece::B_QUEEN:
-            nibble = PieceToNibble[piece];
+        case Piece::KNIGHT:
+        case Piece::BISHOP:
+        case Piece::QUEEN:
+            nibble = PieceToNibble[pieceColor][piece];
             break;
-
         // For pawns, check if there is an enpassant square behind them
-        case Piece::W_PAWN:
-            nibble = (board.m_enPassantSquare == square - 8) ? 12 : PieceToNibble[Piece::W_PAWN];
-            break;
-        case Piece::B_PAWN:
-            nibble = (board.m_enPassantSquare == square + 8) ? 12 : PieceToNibble[Piece::B_PAWN];
+        case Piece::PAWN:
+            if(pieceColor == Color::WHITE)
+            {
+                nibble = (board.m_enPassantSquare == square - 8) ? 12 : PieceToNibble[Color::WHITE][Piece::PAWN];
+            }
+            else
+            {
+                nibble = (board.m_enPassantSquare == square + 8) ? 12 : PieceToNibble[Color::BLACK][Piece::PAWN];
+            }
             break;
 
         // For rooks, castle rights have to be checked
-        case Piece::W_ROOK:
-            nibble = (
-               ((square == Square::H1) && (board.getCastleRights() & CastleRights::WHITE_KING_SIDE))
-            || ((square == Square::A1) && (board.getCastleRights() & CastleRights::WHITE_QUEEN_SIDE))
-            ) ? 13 : PieceToNibble[Piece::W_ROOK];
-            break;
-
-        case Piece::B_ROOK:
-            nibble = (
-               ((square == Square::H8) && (board.getCastleRights() & CastleRights::BLACK_KING_SIDE))
-            || ((square == Square::A8) && (board.getCastleRights() & CastleRights::BLACK_QUEEN_SIDE))
-        ) ? 14 : PieceToNibble[Piece::B_ROOK];
+        case Piece::ROOK:
+            if(pieceColor == Color::WHITE)
+            {
+                nibble = (
+                    ((square == Square::H1) && (board.getCastleRights() & CastleRights::WHITE_KING_SIDE))
+                    || ((square == Square::A1) && (board.getCastleRights() & CastleRights::WHITE_QUEEN_SIDE))
+                ) ? 13 : PieceToNibble[Color::WHITE][Piece::ROOK];
+            }
+            else
+            {
+                nibble = (
+                    ((square == Square::H8) && (board.getCastleRights() & CastleRights::BLACK_KING_SIDE))
+                    || ((square == Square::A8) && (board.getCastleRights() & CastleRights::BLACK_QUEEN_SIDE))
+                ) ? 14 : PieceToNibble[Color::BLACK][Piece::ROOK];
+            }
             break;
 
         // Blacks king nibble is selected based on whos turn it is
-        case Piece::B_KING:
-            nibble = (board.getTurn() == Color::BLACK) ? 15 : PieceToNibble[Piece::B_KING];
+        case Piece::KING:
+            if(pieceColor == Color::WHITE)
+            {
+                nibble = PieceToNibble[Color::WHITE][piece];
+            }
+            else
+            {
+                nibble = (board.getTurn() == Color::BLACK) ? 15 : PieceToNibble[Color::BLACK][Piece::KING];
+            }
             break;
 
         default:
@@ -362,7 +374,7 @@ void BinpackEncoder::m_writeEncodedMove(Board& board, Move& move)
     uint8_t fromIndex = CNTSBITS(occupancy & (bbFrom - 1));
     m_writeNbits(fromIndex, fromBitCount);
 
-    if(move.movedPiece() == W_PAWN)
+    if(move.movedPiece() == Piece::PAWN)
     {
         uint8_t promotionRank = PromotionFromRanks[board.getTurn()];
         bitboard_t attacks = getPawnAttacks(bbFrom, board.getTurn());
@@ -419,7 +431,7 @@ void BinpackEncoder::m_writeEncodedMove(Board& board, Move& move)
             m_writeNbits(moveIndex, numBits);
         }
     }
-    else if(move.movedPiece() == W_KING)
+    else if(move.movedPiece() == Piece::KING)
     {
         bitboard_t moves = getKingMoves(move.from) & ~board.getColoredPieces(board.getTurn());
 
@@ -453,16 +465,16 @@ void BinpackEncoder::m_writeEncodedMove(Board& board, Move& move)
         bitboard_t moves;
         switch (move.movedPiece())
         {
-        case W_ROOK:
+        case Piece::ROOK:
             moves = getRookMoves(board.m_bbAllPieces, move.from);
             break;
-        case W_KNIGHT:
+        case Piece::KNIGHT:
             moves = getKnightMoves(move.from);
             break;
-        case W_BISHOP:
+        case Piece::BISHOP:
             moves = getBishopMoves(board.m_bbAllPieces, move.from);
             break;
-        case W_QUEEN:
+        case Piece::QUEEN:
             moves = getQueenMoves(board.m_bbAllPieces, move.from);
             break;
         default:

@@ -199,7 +199,7 @@ void BinpackParser::m_parseStem()
 // https://github.com/Sopel97/nnue_data_compress/blob/master/src/chess/Position.h#L1166
 void BinpackParser::m_parsePos()
 {
-    constexpr static Piece PieceMap[12] = {W_PAWN, B_PAWN, W_KNIGHT, B_KNIGHT, W_BISHOP, B_BISHOP, W_ROOK, B_ROOK, W_QUEEN, B_QUEEN, W_KING, B_KING};
+    constexpr static Piece PieceMap[12] = {PAWN, PAWN, KNIGHT, KNIGHT, BISHOP, BISHOP, ROOK, ROOK, QUEEN, QUEEN, KING, KING};
     constexpr uint32_t PosByteSize = 24;
 
     unsigned char data[PosByteSize];
@@ -263,19 +263,12 @@ void BinpackParser::m_parsePos()
 
             // Map the nibble value to the piece value used by Arcanum
             Piece piece = PieceMap[nibble];
+            Color pieceColor = Color(nibble & 1);
 
             m_currentBoard.m_pieces[occIndex] = piece;
 
-            // Separate the color and type of the piece
-            Color color = WHITE;
-            if(piece >= B_PAWN)
-            {
-                piece = Piece(piece - B_PAWN);
-                color = BLACK;
-            }
-
-            m_currentBoard.m_bbTypedPieces[piece][color] |= bbOcc;
-            m_currentBoard.m_bbColoredPieces[color] |= bbOcc;
+            m_currentBoard.m_bbTypedPieces[piece][pieceColor] |= bbOcc;
+            m_currentBoard.m_bbColoredPieces[pieceColor] |= bbOcc;
             }
             break;
             case 12: // 12 : pawn with ep square behind (white or black, depending on rank)
@@ -289,9 +282,9 @@ void BinpackParser::m_parsePos()
                     m_currentBoard.m_bbEnPassantSquare = bbOcc >> 8;
                     m_currentBoard.m_enPassantSquare = occIndex - 8;
 
-                    m_currentBoard.m_pieces[occIndex] = W_PAWN;
-                    m_currentBoard.m_bbTypedPieces[W_PAWN][WHITE] |= bbOcc;
-                    m_currentBoard.m_bbColoredPieces[WHITE] |= bbOcc;
+                    m_currentBoard.m_pieces[occIndex] = Piece::PAWN;
+                    m_currentBoard.m_bbTypedPieces[Piece::PAWN][Color::WHITE] |= bbOcc;
+                    m_currentBoard.m_bbColoredPieces[Color::WHITE] |= bbOcc;
                 }
                 else // Black pawn
                 {
@@ -303,9 +296,9 @@ void BinpackParser::m_parsePos()
                     m_currentBoard.m_bbEnPassantSquare = bbOcc << 8;
                     m_currentBoard.m_enPassantSquare = occIndex + 8;
 
-                    m_currentBoard.m_pieces[occIndex] = B_PAWN;
-                    m_currentBoard.m_bbTypedPieces[W_PAWN][BLACK] |= bbOcc;
-                    m_currentBoard.m_bbColoredPieces[BLACK] |= bbOcc;
+                    m_currentBoard.m_pieces[occIndex] = Piece::PAWN;
+                    m_currentBoard.m_bbTypedPieces[Piece::PAWN][Color::BLACK] |= bbOcc;
+                    m_currentBoard.m_bbColoredPieces[Color::BLACK] |= bbOcc;
                 }
 
             break;
@@ -318,9 +311,9 @@ void BinpackParser::m_parsePos()
                 {
                     m_currentBoard.m_castleRights |= CastleRights::WHITE_KING_SIDE;
                 }
-                m_currentBoard.m_pieces[occIndex] = W_ROOK;
-                m_currentBoard.m_bbTypedPieces[W_ROOK][WHITE] |= bbOcc;
-                m_currentBoard.m_bbColoredPieces[WHITE] |= bbOcc;
+                m_currentBoard.m_pieces[occIndex] = Piece::ROOK;
+                m_currentBoard.m_bbTypedPieces[Piece::ROOK][Color::WHITE] |= bbOcc;
+                m_currentBoard.m_bbColoredPieces[Color::WHITE] |= bbOcc;
             break;
             case 14: // 14 : black rook with coresponding castling rights
                 if(occIndex == Square::A8)
@@ -331,19 +324,19 @@ void BinpackParser::m_parsePos()
                 {
                     m_currentBoard.m_castleRights |= CastleRights::BLACK_KING_SIDE;
                 }
-                m_currentBoard.m_pieces[occIndex] = B_ROOK;
-                m_currentBoard.m_bbTypedPieces[W_ROOK][BLACK] |= bbOcc;
-                m_currentBoard.m_bbColoredPieces[BLACK] |= bbOcc;
+                m_currentBoard.m_pieces[occIndex] = Piece::ROOK;
+                m_currentBoard.m_bbTypedPieces[Piece::ROOK][Color::BLACK] |= bbOcc;
+                m_currentBoard.m_bbColoredPieces[Color::BLACK] |= bbOcc;
             break;
             case 15: // 15 : black king and black is side to move
-                m_currentBoard.m_pieces[occIndex] = B_KING;
-                m_currentBoard.m_bbTypedPieces[W_KING][BLACK] |= bbOcc;
-                m_currentBoard.m_bbColoredPieces[BLACK] |= bbOcc;
-                m_currentBoard.m_turn = BLACK;
+                m_currentBoard.m_pieces[occIndex] = Piece::KING;
+                m_currentBoard.m_bbTypedPieces[Piece::KING][Color::BLACK] |= bbOcc;
+                m_currentBoard.m_bbColoredPieces[Color::BLACK] |= bbOcc;
+                m_currentBoard.m_turn = Color::BLACK;
             break;
         }
 
-        m_currentBoard.m_kingIdx = LS1B(m_currentBoard.m_bbTypedPieces[W_KING][m_currentBoard.m_turn]);
+        m_currentBoard.m_kingIdx = LS1B(m_currentBoard.m_bbTypedPieces[Piece::KING][m_currentBoard.m_turn]);
     }
 }
 
@@ -362,13 +355,10 @@ void BinpackParser::m_parseMove()
     // Note: In the binpack format castling moves can have the rook square as the target
     // I.e. A1, H1, A8 and H8 not the targets used by Arcanum which is C1, G1, C8 and G8
     // We thus have to detect castling moves here and convert them to the Arcanum format
-    if(m_currentBoard.m_pieces[from] == W_KING && from == Square::E1)
+    if((m_currentBoard.getPieceAt(from) == Piece::KING) && ((from == Square::E1) || (from == Square::E8)))
     {
         if(to == Square::A1) to = Square::C1;
         if(to == Square::H1) to = Square::G1;
-    }
-    else if(m_currentBoard.m_pieces[from] == B_KING && from == Square::E8)
-    {
         if(to == Square::A8) to = Square::C8;
         if(to == Square::H8) to = Square::G8;
     }
@@ -468,10 +458,10 @@ void BinpackParser::m_parseNextMoveAndScore()
     square_t to;
     square_t from = m_getNthSetBitIndex(occupancy, occBbIndex);
     bitboard_t bbFrom = 1LL << from;
-    Piece type = Piece((m_currentBoard.m_pieces[from] % B_PAWN));
+    Piece type = m_currentBoard.getPieceAt(from);
     Color opponent = Color(m_currentBoard.m_turn^1);
 
-    if(type == W_PAWN)
+    if(type == Piece::PAWN)
     {
         uint8_t promotionRank = PromotionFromRanks[m_currentBoard.m_turn];
         bitboard_t attacks = getPawnAttacks(bbFrom, m_currentBoard.m_turn);
@@ -525,7 +515,7 @@ void BinpackParser::m_parseNextMoveAndScore()
             to = m_getNthSetBitIndex(destinations, moveId);
         }
     }
-    else if(type == W_KING)
+    else if(type == Piece::KING)
     {
         bitboard_t moves = getKingMoves(from) & ~m_currentBoard.m_bbColoredPieces[m_currentBoard.m_turn];
 
@@ -561,16 +551,16 @@ void BinpackParser::m_parseNextMoveAndScore()
         bitboard_t moves;
         switch (type)
         {
-        case W_ROOK:
+        case Piece::ROOK:
             moves = getRookMoves(m_currentBoard.m_bbAllPieces, from);
             break;
-        case W_KNIGHT:
+        case Piece::KNIGHT:
             moves = getKnightMoves(from);
             break;
-        case W_BISHOP:
+        case Piece::BISHOP:
             moves = getBishopMoves(m_currentBoard.m_bbAllPieces, from);
             break;
-        case W_QUEEN:
+        case Piece::QUEEN:
             moves = getQueenMoves(m_currentBoard.m_bbAllPieces, from);
             break;
         default:

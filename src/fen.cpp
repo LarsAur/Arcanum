@@ -82,32 +82,31 @@ bool FEN::m_setPosition(Board& board, std::istringstream& is)
         board.m_bbColoredPieces[color] |= bbSquare;
         board.m_bbAllPieces |= bbSquare;
 
-        uint8_t pieceColorDelta = (Piece::B_PAWN - Piece::W_PAWN) * color;
         switch (chr)
         {
         case 'p':
-            board.m_bbTypedPieces[Piece::W_PAWN][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_PAWN + pieceColorDelta);
+            board.m_bbTypedPieces[Piece::PAWN][color] |= bbSquare;
+            board.m_pieces[square] = Piece::PAWN;
             break;
-        case 'r':
-            board.m_bbTypedPieces[Piece::W_ROOK][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_ROOK + pieceColorDelta);
+            case 'r':
+            board.m_bbTypedPieces[Piece::ROOK][color] |= bbSquare;
+            board.m_pieces[square] = Piece::ROOK;
             break;
-        case 'n':
-            board.m_bbTypedPieces[Piece::W_KNIGHT][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_KNIGHT + pieceColorDelta);
+            case 'n':
+            board.m_bbTypedPieces[Piece::KNIGHT][color] |= bbSquare;
+            board.m_pieces[square] = Piece::KNIGHT;
             break;
-        case 'b':
-            board.m_bbTypedPieces[Piece::W_BISHOP][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_BISHOP + pieceColorDelta);
+            case 'b':
+            board.m_bbTypedPieces[Piece::BISHOP][color] |= bbSquare;
+            board.m_pieces[square] = Piece::BISHOP;
             break;
-        case 'k':
-            board.m_bbTypedPieces[Piece::W_KING][color] = bbSquare;
-            board.m_pieces[square] = Piece(W_KING + pieceColorDelta);
+            case 'k':
+            board.m_bbTypedPieces[Piece::KING][color] = bbSquare;
+            board.m_pieces[square] = Piece::KING;
             break;
-        case 'q':
-            board.m_bbTypedPieces[Piece::W_QUEEN][color] |= bbSquare;
-            board.m_pieces[square] = Piece(W_QUEEN + pieceColorDelta);
+            case 'q':
+            board.m_bbTypedPieces[Piece::QUEEN][color] |= bbSquare;
+            board.m_pieces[square] = Piece::QUEEN;
             break;
         default:
             ERROR("Unknown piece: " << chr << " in FEN string")
@@ -204,10 +203,10 @@ bool FEN::m_setCastleRights(Board& board, std::istringstream& is, bool strict)
     // If not in strict mode, fix the castle rights and return true
     // If in strict mode, fail the parsing
     uint8_t prev = board.m_castleRights;
-    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~CastleRights::WHITE_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[W_ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~CastleRights::WHITE_QUEEN_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~CastleRights::BLACK_KING_SIDE;
-    if(board.m_bbTypedPieces[W_KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[W_ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~CastleRights::BLACK_QUEEN_SIDE;
+    if(board.m_bbTypedPieces[Piece::KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[Piece::ROOK][WHITE] & (1LL << Square::H1)) == 0) board.m_castleRights &= ~CastleRights::WHITE_KING_SIDE;
+    if(board.m_bbTypedPieces[Piece::KING][WHITE] != (1LL << Square::E1) || (board.m_bbTypedPieces[Piece::ROOK][WHITE] & (1LL << Square::A1)) == 0) board.m_castleRights &= ~CastleRights::WHITE_QUEEN_SIDE;
+    if(board.m_bbTypedPieces[Piece::KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[Piece::ROOK][BLACK] & (1LL << Square::H8)) == 0) board.m_castleRights &= ~CastleRights::BLACK_KING_SIDE;
+    if(board.m_bbTypedPieces[Piece::KING][BLACK] != (1LL << Square::E8) || (board.m_bbTypedPieces[Piece::ROOK][BLACK] & (1LL << Square::A8)) == 0) board.m_castleRights &= ~CastleRights::BLACK_QUEEN_SIDE;
 
     if(strict && prev != board.m_castleRights)
     {
@@ -374,7 +373,7 @@ bool FEN::setFEN(Board& board, const std::string fen, bool strict)
     // Set cache to unknown
     board.m_moveset = Board::MoveSet::NOT_GENERATED;
     board.m_captureInfoGenerated = Board::MoveSet::NOT_GENERATED;
-    board.m_kingIdx = LS1B(board.m_bbTypedPieces[W_KING][board.m_turn]);
+    board.m_kingIdx = LS1B(board.m_bbTypedPieces[Piece::KING][board.m_turn]);
     board.m_bbOpponentAttacks = 0LL;
 
     return success;
@@ -388,22 +387,23 @@ std::string FEN::getFEN(const Board& board)
     {
         for(int file = 0; file < 8; file++)
         {
+            square_t square = SQUARE(file, rank);
+
             char c = '\0';
-            switch (board.m_pieces[file + rank * 8])
+            switch (board.m_pieces[square])
             {
             case NO_PIECE: emptyCnt++; break;
-            case W_PAWN:    c = 'P'; break;
-            case W_ROOK:    c = 'R'; break;
-            case W_KNIGHT:  c = 'N'; break;
-            case W_BISHOP:  c = 'B'; break;
-            case W_QUEEN:   c = 'Q'; break;
-            case W_KING:    c = 'K'; break;
-            case B_PAWN:    c = 'p'; break;
-            case B_ROOK:    c = 'r'; break;
-            case B_KNIGHT:  c = 'n'; break;
-            case B_BISHOP:  c = 'b'; break;
-            case B_QUEEN:   c = 'q'; break;
-            case B_KING:    c = 'k'; break;
+            case Piece::PAWN:    c = 'P'; break;
+            case Piece::ROOK:    c = 'R'; break;
+            case Piece::KNIGHT:  c = 'N'; break;
+            case Piece::BISHOP:  c = 'B'; break;
+            case Piece::QUEEN:   c = 'Q'; break;
+            case Piece::KING:    c = 'K'; break;
+            }
+
+            if(board.getColorAt(square) == Color::BLACK)
+            {
+                c = std::tolower(c);
             }
 
             if(c != '\0')
@@ -453,29 +453,29 @@ std::string FEN::toString(const Board& board)
         for(int x = 0; x < 8; x++)
         {
             bitboard_t mask = (1LL << ((y << 3) | x));
-            if(board.m_bbTypedPieces[W_PAWN][WHITE] & mask)
+            if(board.m_bbTypedPieces[Piece::PAWN][WHITE] & mask)
                 ss << "P ";
-            else if(board.m_bbTypedPieces[W_ROOK][WHITE] & mask)
+            else if(board.m_bbTypedPieces[Piece::ROOK][WHITE] & mask)
                 ss << "R ";
-            else if(board.m_bbTypedPieces[W_KNIGHT][WHITE] & mask)
+            else if(board.m_bbTypedPieces[Piece::KNIGHT][WHITE] & mask)
                 ss << "N ";
-            else if(board.m_bbTypedPieces[W_BISHOP][WHITE] & mask)
+            else if(board.m_bbTypedPieces[Piece::BISHOP][WHITE] & mask)
                 ss << "B ";
-            else if(board.m_bbTypedPieces[W_QUEEN][WHITE] & mask)
+            else if(board.m_bbTypedPieces[Piece::QUEEN][WHITE] & mask)
                 ss << "Q ";
-            else if(board.m_bbTypedPieces[W_KING][WHITE] & mask)
+            else if(board.m_bbTypedPieces[Piece::KING][WHITE] & mask)
                 ss << "K ";
-            else if(board.m_bbTypedPieces[W_PAWN][BLACK] & mask)
+            else if(board.m_bbTypedPieces[Piece::PAWN][BLACK] & mask)
                 ss << "p ";
-            else if(board.m_bbTypedPieces[W_ROOK][BLACK] & mask)
+            else if(board.m_bbTypedPieces[Piece::ROOK][BLACK] & mask)
                 ss << "r ";
-            else if(board.m_bbTypedPieces[W_KNIGHT][BLACK] & mask)
+            else if(board.m_bbTypedPieces[Piece::KNIGHT][BLACK] & mask)
                 ss << "n ";
-            else if(board.m_bbTypedPieces[W_BISHOP][BLACK] & mask)
+            else if(board.m_bbTypedPieces[Piece::BISHOP][BLACK] & mask)
                 ss << "b ";
-            else if(board.m_bbTypedPieces[W_QUEEN][BLACK] & mask)
+            else if(board.m_bbTypedPieces[Piece::QUEEN][BLACK] & mask)
                 ss << "q ";
-            else if(board.m_bbTypedPieces[W_KING][BLACK] & mask)
+            else if(board.m_bbTypedPieces[Piece::KING][BLACK] & mask)
                 ss << "k ";
             else
                 ss << (((x + y) % 2 == 0) ? COLOR_GREEN : COLOR_WHITE) << ". " << COLOR_WHITE;

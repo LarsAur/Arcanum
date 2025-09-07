@@ -15,11 +15,11 @@ uint32_t WDLModel::m_getMaterialCount(const Board& board)
 
     for(uint8_t i = 0; i < 2; i++)
     {
-        material += 1 * CNTSBITS(board.getTypedPieces(Piece::W_PAWN, Color(i)));
-        material += 5 * CNTSBITS(board.getTypedPieces(Piece::W_ROOK, Color(i)));
-        material += 3 * CNTSBITS(board.getTypedPieces(Piece::W_BISHOP, Color(i)));
-        material += 3 * CNTSBITS(board.getTypedPieces(Piece::W_KNIGHT, Color(i)));
-        material += 9 * CNTSBITS(board.getTypedPieces(Piece::W_QUEEN, Color(i)));
+        material += 1 * CNTSBITS(board.getTypedPieces(Piece::PAWN, Color(i)));
+        material += 5 * CNTSBITS(board.getTypedPieces(Piece::ROOK, Color(i)));
+        material += 3 * CNTSBITS(board.getTypedPieces(Piece::BISHOP, Color(i)));
+        material += 3 * CNTSBITS(board.getTypedPieces(Piece::KNIGHT, Color(i)));
+        material += 9 * CNTSBITS(board.getTypedPieces(Piece::QUEEN, Color(i)));
     }
 
     return material;
