@@ -1216,15 +1216,11 @@ void Board::performMove(const Move move)
     // Update the rook position in the case of castling
     if(move.isCastle())
     {
-        //                                            White Queen, White King, Black Queen, Black King
-        static constexpr square_t CastleRookFrom[4] = {Square::A1, Square::H1, Square::A8, Square::H8};
-        static constexpr square_t CastleRookTo[4]   = {Square::D1, Square::F1, Square::D8, Square::F8};
-
-        CastleIndex castleIndex = move.castleIndex();
-        square_t rookFrom = CastleRookFrom[castleIndex];
-        square_t rookTo   = CastleRookTo[castleIndex];
-        bitboard_t bbRookFrom = 1LL << rookFrom;
-        bitboard_t bbRookTo   = 1LL << rookTo;
+        const CastleIndex castleIndex = move.castleIndex();
+        const square_t rookFrom = Move::CastleRookFrom[castleIndex];
+        const square_t rookTo   = Move::CastleRookTo[castleIndex];
+        const bitboard_t bbRookFrom = 1LL << rookFrom;
+        const bitboard_t bbRookTo   = 1LL << rookTo;
 
         m_bbTypedPieces[Piece::ROOK][m_turn] = (m_bbTypedPieces[Piece::ROOK][m_turn] & ~bbRookFrom) | bbRookTo;
         m_bbColoredPieces[m_turn] = (m_bbColoredPieces[m_turn] & ~bbRookFrom) | bbRookTo;

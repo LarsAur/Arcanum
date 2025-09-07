@@ -110,22 +110,10 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     // Handle the moved rook when castling
     if(move.isCastle())
     {
-        if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN)
-        {
-            hash ^= m_tables[Piece::ROOK][WHITE][Square::A1] ^ m_tables[Piece::ROOK][WHITE][Square::D1];
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING)
-        {
-            hash ^= m_tables[Piece::ROOK][WHITE][Square::H1] ^ m_tables[Piece::ROOK][WHITE][Square::F1];
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
-        {
-            hash ^= m_tables[Piece::ROOK][BLACK][Square::A8] ^ m_tables[Piece::ROOK][BLACK][Square::D8];
-        }
-        else if(move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
-        {
-            hash ^= m_tables[Piece::ROOK][BLACK][Square::H8] ^ m_tables[Piece::ROOK][BLACK][Square::F8];
-        }
+        const CastleIndex castleIndex = move.castleIndex();
+        const square_t rookFrom = Move::CastleRookFrom[castleIndex];
+        const square_t rookTo = Move::CastleRookTo[castleIndex];
+        hash ^= m_tables[Piece::ROOK][board.m_turn][rookTo] ^ m_tables[Piece::ROOK][board.m_turn][rookFrom];
     }
 
     // XOR out the captured piece

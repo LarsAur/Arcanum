@@ -66,31 +66,9 @@ void NNUE::findDeltaFeatures(const Board& board, const Move& move, DeltaFeatures
     }
     else if(move.isCastle())
     {
-        square_t rookFrom;
-        square_t rookTo;
-        switch (CASTLE_SIDE(move.moveInfo))
-        {
-        case MoveInfoBit::CASTLE_WHITE_KING:
-            rookFrom = Square::H1;
-            rookTo = Square::F1;
-            break;
-        case MoveInfoBit::CASTLE_BLACK_KING:
-            rookFrom = Square::H8;
-            rookTo = Square::F8;
-            break;
-        case MoveInfoBit::CASTLE_WHITE_QUEEN:
-            rookFrom = Square::A1;
-            rookTo = Square::D1;
-            break;
-        case MoveInfoBit::CASTLE_BLACK_QUEEN:
-            rookFrom = Square::A8;
-            rookTo = Square::D8;
-            break;
-        default:
-            rookFrom = Square::NONE;
-            rookTo   = Square::NONE;
-            ERROR("Unknown castle bit in move")
-        }
+        const CastleIndex castleIndex = move.castleIndex();
+        const square_t rookFrom = Move::CastleRookFrom[castleIndex];
+        const square_t rookTo = Move::CastleRookTo[castleIndex];
 
         // Remove the rook from the old position
         delta.removed[Color::WHITE][delta.numRemoved]   = getFeatureIndex(rookFrom, turn, Piece::ROOK, Color::WHITE);

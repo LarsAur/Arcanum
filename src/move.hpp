@@ -172,6 +172,9 @@ namespace Arcanum
             return os;
         }
 
+        //                                            White Queen, White King, Black Queen, Black King
+        static constexpr square_t CastleRookFrom[4] = {Square::A1, Square::H1, Square::A8, Square::H8};
+        static constexpr square_t CastleRookTo[4]   = {Square::D1, Square::F1, Square::D8, Square::F8};
     } Move;
 
     struct PackedMove
