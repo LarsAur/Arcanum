@@ -4,7 +4,7 @@
 
 ## Overview
 Arcanum is a free [UCI][uci-protocol] chess engine under the GPL-3.0 license.
-Arcanum v2.5 has a rating of ~3291 elo in blitz on [CCRL][ccrl].
+Arcanum v2.6 has a rating of 3331 Elo in blitz on [CCRL][ccrl].
 
 ## Building
 Arcanum requires `c++17` and has only been tested using `clang++`. It can be compiled on Windows (Tested for Windows 11 using MinGW), and Linux (Tested for Ubuntu 22.04). Arcanum takes advantage of and requires some x86 intrinsics: `AVX2`, `FMA`, `BMI1`, `BMI2` `POPCNT` and `LZCNT`.
@@ -74,16 +74,20 @@ All of the following UCI options are available in Arcanum.
 
 ## Rating Progression
 
-| Version | CCRL Blitz | CCRL 40/15 |
-|---------|------------|------------|
-| 2.5     | 3291       | 3291       |
-| 2.4     | 3198       | 3210       |
-| 2.3.*   | 3129       | 3107       |
-| 2.2     | 2926       | 2929       |
-| 2.1     | 2724       |            |
-| 2.0     | 2456       |            |
-| 1.12    | 2227       | 2228       |
-| 1.11.*  | 2140       |            |
+| Version | CCRL[^1] Blitz | CCRL[^1] 40/15 | CEGT[^2] 40/20 |
+|---------|------------|------------|------------|
+| 2.6     | 3331	     | 3325       | 3250       |
+| 2.5     | 3278       | 3273       | 3181       |
+| 2.4     | 3198       | 3210       |            |
+| 2.3.*   | 3129       | 3107       |            |
+| 2.2     | 2926       | 2929       |            |
+| 2.1     | 2724       |            |            |
+| 2.0     | 2456       |            |            |
+| 1.12    | 2227       | 2228       |            |
+| 1.11.*  | 2140       |            |            |
+
+[^1]: CCRL: https://computerchess.org.uk/ccrl/404/
+[^2]: CEGT: http://www.cegt.net/
 
 [uci-protocol]: https://backscattering.de/chess/uci/
 [lucas-chess]: https://lucaschess.pythonanywhere.com/
@@ -98,6 +102,7 @@ All of the following UCI options are available in Arcanum.
 [nnue]: https://www.chessprogramming.org/NNUE
 [lichess]: https://lichess.org/@/ArcanumBot
 [ccrl]: https://computerchess.org.uk/ccrl/404/
+[cegt]: http://www.cegt.net/
 [syzygy]: http://tablebase.sesse.net/
 [pyrrhic]: https://github.com/AndyGrant/Pyrrhic
 [andy-grant]: https://github.com/AndyGrant
