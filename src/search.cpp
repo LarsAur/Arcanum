@@ -561,6 +561,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 R =  m_lmrReductions[depth][moveNumber];
                 R += isWorsening;
                 R -= m_killerMoveManager.contains(*move, plyFromRoot);
+                R -= m_counterMoveManager.contains(*move, prevMove, board.getTurn());
                 R += cutnode;
                 R = std::max(int8_t(0), R);
             }
