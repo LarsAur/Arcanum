@@ -94,7 +94,13 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
-    const PackedMove ttMove = entry.has_value() ? entry->getPackedMove() : PACKED_NULL_MOVE;
+    Move ttMove = NULL_MOVE;
+    if(entry.has_value())
+    {
+        PackedMove packedMove = entry->getPackedMove();
+        ttMove = board.generateMoveWithInfo(packedMove.from(), packedMove.to(), packedMove.promotionInfo());
+    }
+
     if(!isPv && entry.has_value())
     {
         switch (entry->getTTFlag())
@@ -249,7 +255,13 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     eval_t maxScore = MATE_SCORE;
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
-    const PackedMove ttMove = entry.has_value() ? entry->getPackedMove() : PACKED_NULL_MOVE;
+    Move ttMove = NULL_MOVE;
+    if(entry.has_value())
+    {
+        PackedMove packedMove = entry->getPackedMove();
+        ttMove = board.generateMoveWithInfo(packedMove.from(), packedMove.to(), packedMove.promotionInfo());
+    }
+
     if(!isPv && entry.has_value() && (entry->depth >= depth) && skipMove.isNull())
     {
         switch (entry->getTTFlag())
@@ -745,11 +757,12 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     if(ttEntry.has_value())
     {
-        PackedMove ttMove = ttEntry->getPackedMove();
+        PackedMove packedMove = ttEntry->getPackedMove();
+        Move ttMove = board.generateMoveWithInfo(packedMove.from(), packedMove.to(), packedMove.promotionInfo());
+
         staticEval = ttEntry->staticEval;
 
         // We have to check that the move from TT is legal,
-        // and find the matching non-packed move.
         // This is to avoid returning an illegal move in this position
         // in case the search ends in the first iteration
         for(uint8_t i = 0; i < numMoves; i++)
@@ -797,7 +810,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             // This is in case the move from the transposition is not 'correct' due to a miss.
             // Misses can happen if the position cannot replace another position
             // This is required to allow using results of incomplete searches
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, PackedMove(searchBestMove), NULL_MOVE);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerMoveManager, &m_history, &m_captureHistory, &m_counterMoveManager, &board, searchBestMove, NULL_MOVE);
 
             // Aspiration window
             // Stop using aspiration if the search score or window size is too high

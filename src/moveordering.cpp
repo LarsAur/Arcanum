@@ -18,7 +18,7 @@ inline void MoveSelector::m_scoreMoves()
         const Move& move = m_moves[i];
 
         // Check if the move is the TT move
-        if(m_packedTTMove == move)
+        if(m_moveFromTT == move)
         {
             m_ttMove = &m_moves[i];
             continue;
@@ -79,7 +79,7 @@ MoveSelector::MoveSelector(
     CaptureHistory* captureHistory,
     CounterMoveManager* counterMoveManager,
     Board *board,
-    const PackedMove ttMove,
+    const Move ttMove,
     const Move prevMove
 )
 {
@@ -102,7 +102,7 @@ MoveSelector::MoveSelector(
         return;
     }
 
-    m_packedTTMove = ttMove;
+    m_moveFromTT = ttMove;
     m_prevMove = prevMove;
     m_board = board;
     m_counterMoveManager = counterMoveManager;

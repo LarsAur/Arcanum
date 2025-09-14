@@ -6,6 +6,7 @@ namespace Arcanum
 {
     enum MoveInfoBit
     {
+        MOVE_INFO_NONE      = 0,
         PAWN_MOVE           = 1,
         ROOK_MOVE           = 2,
         KNIGHT_MOVE         = 4,
@@ -193,11 +194,26 @@ namespace Arcanum
             _info = (isPromotion << 14) | (promotionBits << 12) | (move.from << 6) | move.to;
         }
 
-        bool operator==(const Move& move) const
+        inline square_t to() const
         {
-            PackedMove packed(move);
+            return square_t(_info & 0x3f);
+        }
 
-            return packed._info == _info;
+        inline square_t from() const
+        {
+            return square_t((_info >> 6) & 0x3f);
+        }
+
+        inline bool isPromotion() const
+        {
+            return _info & 0x4000;
+        }
+
+        MoveInfoBit promotionInfo() const
+        {
+            if(!isPromotion()) return MoveInfoBit::MOVE_INFO_NONE;
+            uint16_t index = (_info >> 12) & 0x3;
+            return MoveInfoBit(MoveInfoBit::PROMOTE_ROOK << index);
         }
     };
 
