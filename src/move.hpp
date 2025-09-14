@@ -179,7 +179,7 @@ namespace Arcanum
 
     struct PackedMove
     {
-        uint16_t _info; // 2 = Promotion bits | 6 bits = from | 6 bits = to
+        uint16_t _info; // 1 bits = IsPromotion | 2 = Promotion bits | 6 bits = from | 6 bits = to
 
         PackedMove() = default;
         PackedMove(uint16_t info) :
@@ -188,8 +188,9 @@ namespace Arcanum
 
         explicit PackedMove(const Move& move)
         {
+            bool isPromotion = move.isPromotion();
             uint16_t promotionBits = LS1B((move.moveInfo >> 12) & 0xf) & 0b11;
-            _info = (promotionBits << 12) | (move.from << 6) | move.to;
+            _info = (isPromotion << 14) | (promotionBits << 12) | (move.from << 6) | move.to;
         }
 
         bool operator==(const Move& move) const

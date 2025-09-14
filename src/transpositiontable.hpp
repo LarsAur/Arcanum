@@ -24,13 +24,14 @@ namespace Arcanum
         static constexpr hash_t HashMask = 0xFFFFFFFFFFFFC000;
         static constexpr hash_t PvMask   = 0x1;
         static constexpr hash_t NumPiecesMask = 0b111110;
+        static constexpr hash_t TTFlagMask = 0b11000000;
 
         uint8_t depth;
         uint8_t generation;
         eval_t eval;
         eval_t staticEval;
-        uint16_t _flagAndPackedMove; // 2 bits = TT Flag | 14 bits = PackedMove info
-        hash_t _hashNpAndIsPv; // 50 bits hash | 5 bits numPieces-2 | 1 bit isPv
+        PackedMove packedMove;
+        hash_t _hashNpFlagAndIsPv; // 50 bits hash | 2 bits = TT Flag | 5 bits numPieces-2 | 1 bit isPv
 
         TTEntry(
             hash_t hash,
@@ -46,11 +47,10 @@ namespace Arcanum
             depth(depth),
             generation(generation),
             eval(eval),
-            staticEval(staticEval)
+            staticEval(staticEval),
+            packedMove(PackedMove(move))
         {
-            PackedMove packedMove(move);
-            _flagAndPackedMove = (static_cast<uint8_t>(flag) << 14) | packedMove._info;
-            _hashNpAndIsPv = (hash & HashMask) | (static_cast<hash_t>(numPieces-2) << 1) | static_cast<hash_t>(isPv);
+            _hashNpFlagAndIsPv = (hash & HashMask) | (static_cast<uint8_t>(flag) << 6) | (static_cast<hash_t>(numPieces-2) << 1) | static_cast<hash_t>(isPv);
         }
 
         // Returns how valuable it is to keep the entry in TT
@@ -61,27 +61,27 @@ namespace Arcanum
 
         inline PackedMove getPackedMove() const
         {
-            return PackedMove(_flagAndPackedMove & 0x3FFF);
+            return packedMove;
         }
 
         inline hash_t getHash() const
         {
-            return _hashNpAndIsPv & HashMask;
+            return _hashNpFlagAndIsPv & HashMask;
         }
 
         inline TTFlag getTTFlag() const
         {
-            return TTFlag((_flagAndPackedMove >> 14) & 0b11);
+            return TTFlag((_hashNpFlagAndIsPv & TTFlagMask) >> 6);
         }
 
         inline uint8_t getNumPieces() const
         {
-            return static_cast<uint8_t>((_hashNpAndIsPv & NumPiecesMask) >> 1) + 2;
+            return static_cast<uint8_t>((_hashNpFlagAndIsPv & NumPiecesMask) >> 1) + 2;
         }
 
         inline bool isPv() const
         {
-            return _hashNpAndIsPv & PvMask;
+            return _hashNpFlagAndIsPv & PvMask;
         }
 
         inline bool isValid() const
