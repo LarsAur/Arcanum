@@ -10,7 +10,6 @@ Zobrist Zobrist::zobrist = Zobrist();
 
 Zobrist::Zobrist()
 {
-    // TODO: Should castle rights be a part of the hash
     std::mt19937 generator(0);
     std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
 
@@ -30,6 +29,12 @@ Zobrist::Zobrist()
         m_enPassantTable[i] = distribution(generator);
     }
     m_enPassantTable[Square::NONE] = 0LL;
+
+    for(int i = 1; i < 16; i++)
+    {
+        m_castleRights[i] = distribution(generator);
+    }
+    m_castleRights[0] = 0LL;
 
     m_blackToMove = distribution(generator);
 }
@@ -82,13 +87,13 @@ void Zobrist::getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_
         hash ^= m_blackToMove;
     }
 
+    hash     ^= m_castleRights[board.m_castleRights];
     hash     ^= m_enPassantTable[board.m_enPassantSquare];
     pawnHash ^= m_enPassantTable[board.m_enPassantSquare];
 }
 
-void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassantSquare, square_t newEnPassantSquare, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
+void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassantSquare, square_t newEnPassantSquare, uint8_t oldCastleRights, uint8_t newCastleRights, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
 {
-    // TODO: Include castle opertunities
     // XOR in and out the moved piece corresponding to its location
     if(move.isPromotion())
     {
@@ -149,6 +154,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     pawnHash ^= enPassantHash;
     hash ^= enPassantHash;
     hash ^= m_blackToMove;
+    hash ^= m_castleRights[oldCastleRights] ^ m_castleRights[newCastleRights];
 
     #ifdef VERIFY_HASH
     // Verify hash

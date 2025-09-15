@@ -1230,6 +1230,7 @@ void Board::performMove(const Move move)
     }
 
     // Invalidate castle rights
+    uint8_t oldCastleRights = m_castleRights;
     if(move.moveInfo & MoveInfoBit::KING_MOVE)
     {
         if(m_turn == WHITE)
@@ -1310,7 +1311,7 @@ void Board::performMove(const Move move)
         m_bbEnPassantTarget = 1LL << m_enPassantTarget;
     }
 
-    Zobrist::zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, m_hash, m_pawnHash, m_materialHash);
+    Zobrist::zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, oldCastleRights, m_castleRights, m_hash, m_pawnHash, m_materialHash);
 
     m_moveset = MoveSet::NOT_GENERATED;
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
