@@ -142,7 +142,7 @@ namespace Arcanum
             Timer m_timer;
             Evaluator m_evaluator;
             KillerMoveManager m_killerMoveManager;
-            History m_history;
+            QuietHistory m_quietHistory;
             CaptureHistory m_captureHistory;
             CounterMoveManager m_counterMoveManager;
             PvTable m_pvTable;
