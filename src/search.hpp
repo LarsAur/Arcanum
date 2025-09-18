@@ -141,10 +141,10 @@ namespace Arcanum
             uint32_t m_lmpThresholds[2][MAX_SEARCH_DEPTH];
             Timer m_timer;
             Evaluator m_evaluator;
-            KillerMoveManager m_killerMoveManager;
+            KillerManager m_killerManager;
             QuietHistory m_quietHistory;
             CaptureHistory m_captureHistory;
-            CounterMoveManager m_counterMoveManager;
+            CounterManager m_counterManager;
             PvTable m_pvTable;
             SearchParameters m_searchParameters;
             uint8_t m_generation;

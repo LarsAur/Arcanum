@@ -47,13 +47,13 @@ inline void MoveSelector::m_scoreMoves()
 
         // Quiet moves
 
-        if(m_killerMoveManager->contains(move, m_plyFromRoot))
+        if(m_killerManager->contains(move, m_plyFromRoot))
         {
             m_killers[m_numKillers++] = &m_moves[i];
             continue;
         }
 
-        if(m_counterMoveManager->contains(move, m_prevMove, turn))
+        if(m_counterManager->contains(move, m_prevMove, turn))
         {
             m_counter = &m_moves[i];
             continue;
@@ -74,10 +74,10 @@ MoveSelector::MoveSelector(
     const Move *moves,
     const uint8_t numMoves,
     int plyFromRoot,
-    KillerMoveManager* killerMoveManager,
+    KillerManager* killerManager,
     QuietHistory* quietHistory,
     CaptureHistory* captureHistory,
-    CounterMoveManager* counterMoveManager,
+    CounterManager* counterManager,
     Board *board,
     const Move ttMove,
     const Move prevMove
@@ -105,8 +105,8 @@ MoveSelector::MoveSelector(
     m_moveFromTT = ttMove;
     m_prevMove = prevMove;
     m_board = board;
-    m_counterMoveManager = counterMoveManager;
-    m_killerMoveManager = killerMoveManager;
+    m_counterManager = counterManager;
+    m_killerManager = killerManager;
     m_quietHistory = quietHistory;
     m_captureHistory = captureHistory;
     m_plyFromRoot = plyFromRoot;

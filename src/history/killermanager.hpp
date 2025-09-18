@@ -5,7 +5,7 @@
 
 namespace Arcanum
 {
-    class KillerMoveManager
+    class KillerManager
     {
         private:
             static constexpr uint8_t KillerMoveMaxPly = 96;
@@ -16,8 +16,8 @@ namespace Arcanum
             uint32_t m_getIndex(uint8_t plyFromRoot, uint8_t offset) const;
         public:
 
-            KillerMoveManager();
-            ~KillerMoveManager();
+            KillerManager();
+            ~KillerManager();
             void add(Move move, uint8_t plyFromRoot);
             bool contains(Move move, uint8_t plyFromRoot) const;
             void clearPly(uint8_t plyFromRoot);

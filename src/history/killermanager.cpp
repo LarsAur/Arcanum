@@ -3,7 +3,7 @@
 
 using namespace Arcanum;
 
-KillerMoveManager::KillerMoveManager()
+KillerManager::KillerManager()
 {
     m_killerMoves = new Move[TableSize];
 
@@ -15,7 +15,7 @@ KillerMoveManager::KillerMoveManager()
     clear();
 }
 
-KillerMoveManager::~KillerMoveManager()
+KillerManager::~KillerManager()
 {
     delete[] m_killerMoves;
 }
@@ -23,7 +23,7 @@ KillerMoveManager::~KillerMoveManager()
 // Have to check if the move is not a capture move before adding it to the killer move list
 // This can be checked in the add function, but it is faster to do it before the function call,
 // because if can avoid overhead from calling the function
-void KillerMoveManager::add(Move move, uint8_t plyFromRoot)
+void KillerManager::add(Move move, uint8_t plyFromRoot)
 {
     if(plyFromRoot >= KillerMoveMaxPly)
     {
@@ -43,7 +43,7 @@ void KillerMoveManager::add(Move move, uint8_t plyFromRoot)
     m_killerMoves[m_getIndex(plyFromRoot, 0)] = move;
 }
 
-bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
+bool KillerManager::contains(Move move, uint8_t plyFromRoot) const
 {
     if(plyFromRoot >= KillerMoveMaxPly)
     {
@@ -60,7 +60,7 @@ bool KillerMoveManager::contains(Move move, uint8_t plyFromRoot) const
     return false;
 }
 
-void KillerMoveManager::clearPly(uint8_t plyFromRoot)
+void KillerManager::clearPly(uint8_t plyFromRoot)
 {
     if(plyFromRoot >= KillerMoveMaxPly)
     {
@@ -74,12 +74,12 @@ void KillerMoveManager::clearPly(uint8_t plyFromRoot)
     }
 }
 
-inline uint32_t KillerMoveManager::m_getIndex(uint8_t plyFromRoot, uint8_t offset) const
+inline uint32_t KillerManager::m_getIndex(uint8_t plyFromRoot, uint8_t offset) const
 {
     return (2 * plyFromRoot) + offset;
 }
 
-void KillerMoveManager::clear()
+void KillerManager::clear()
 {
     for(uint32_t i = 0; i < TableSize; i++)
     {
