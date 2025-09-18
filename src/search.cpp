@@ -61,10 +61,7 @@ void Searcher::clear()
 {
     m_generation = 0;
     m_tt.clear();
-    m_quietHistory.clear();
-    m_captureHistory.clear();
-    m_killerManager.clear();
-    m_counterManager.clear();
+    m_heuristics.clear();
 }
 
 template <bool isPv>
@@ -124,7 +121,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
-    m_killerManager.clearPly(plyFromRoot + 1);
+    m_heuristics.killerManager.clearPly(plyFromRoot + 1);
 
     eval_t staticEval;
     if(entry.has_value())
@@ -169,7 +166,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
     board.generateCaptureInfo();
     Move prevMove = m_searchStack[plyFromRoot-1].move;
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerManager, &m_quietHistory, &m_captureHistory, &m_counterManager, &board, ttMove, prevMove);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, prevMove);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = NULL_MOVE;
     while(const Move *move = moveSelector.getNextMove())
@@ -209,7 +206,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
             ttFlag = TTFlag::LOWER_BOUND;
             if(move->isQuiet())
             {
-                m_killerManager.add(*move, plyFromRoot);
+                m_heuristics.killerManager.add(*move, plyFromRoot);
             }
             break;
         }
@@ -330,7 +327,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
     }
 
-    m_killerManager.clearPly(plyFromRoot + 1);
+    m_heuristics.killerManager.clearPly(plyFromRoot + 1);
 
     Move bestMove = NULL_MOVE;
     Move* moves = nullptr;
@@ -424,7 +421,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t probBeta = beta + 300;
         if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->eval < probBeta))
         {
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerManager, &m_quietHistory, &m_captureHistory, &m_counterManager, &board, ttMove, prevMove);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, prevMove);
             moveSelector.skipQuiets(); // Note: Killers and counters are still included
             while(const Move* move = moveSelector.getNextMove())
             {
@@ -456,7 +453,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
     }
 
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_killerManager, &m_quietHistory, &m_captureHistory, &m_counterManager, &board, ttMove, prevMove);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, prevMove);
     uint8_t quietMovesPerformed = 0;
     uint8_t captureMovesPerformed = 0;
     Move performedMoves[MAX_MOVE_COUNT];
@@ -498,9 +495,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         // in case they have a low history score
         if(depth < 4
         && move->isQuiet()
-        && (m_quietHistory.get(*move, board.getTurn()) < (-3000 * depth))
-        && !m_killerManager.contains(*move, plyFromRoot)
-        && !m_counterManager.contains(*move, prevMove, board.getTurn())
+        && (m_heuristics.quietHistory.get(*move, board.getTurn()) < (-3000 * depth))
+        && !m_heuristics.killerManager.contains(*move, plyFromRoot)
+        && !m_heuristics.counterManager.contains(*move, prevMove, board.getTurn())
         && (moveNumber != 0))
         {
             moveSelector.skipQuiets();
@@ -572,8 +569,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             {
                 R =  m_lmrReductions[depth][moveNumber];
                 R += isWorsening;
-                R -= m_killerManager.contains(*move, plyFromRoot);
-                R -= m_counterManager.contains(*move, prevMove, board.getTurn());
+                R -= m_heuristics.killerManager.contains(*move, plyFromRoot);
+                R -= m_heuristics.counterManager.contains(*move, prevMove, board.getTurn());
                 R += cutnode;
                 R = std::max(int8_t(0), R);
             }
@@ -619,15 +616,15 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             // Update move history and killers for quiet moves
             if(move->isQuiet())
             {
-                m_killerManager.add(*move, plyFromRoot);
-                m_counterManager.setCounter(*move, prevMove, board.getTurn());
-                m_quietHistory.updateHistory(*move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, depth, board.getTurn());
+                m_heuristics.killerManager.add(*move, plyFromRoot);
+                m_heuristics.counterManager.setCounter(*move, prevMove, board.getTurn());
+                m_heuristics.quietHistory.updateHistory(*move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, depth, board.getTurn());
             }
 
             // Update capture history if the move was a capture
             if(move->isCapture())
             {
-                m_captureHistory.updateHistory(*move, &performedMoves[0], captureMovesPerformed, depth, board.getTurn());
+                m_heuristics.captureHistory.updateHistory(*move, &performedMoves[0], captureMovesPerformed, depth, board.getTurn());
             }
             break;
         }
@@ -810,7 +807,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             // This is in case the move from the transposition is not 'correct' due to a miss.
             // Misses can happen if the position cannot replace another position
             // This is required to allow using results of incomplete searches
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_killerManager, &m_quietHistory, &m_captureHistory, &m_counterManager, &board, searchBestMove, NULL_MOVE);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_heuristics, &board, searchBestMove, NULL_MOVE);
 
             // Aspiration window
             // Stop using aspiration if the search score or window size is too high
@@ -819,7 +816,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             alpha = useAspAlpha ? (searchScore - aspirationWindowAlpha) : -MATE_SCORE;
             beta  = useAspBeta  ? (searchScore + aspirationWindowBeta ) : MATE_SCORE;
 
-            m_killerManager.clearPly(1);
+            m_heuristics.killerManager.clearPly(1);
 
             for (int i = 0; i < numMoves; i++)
             {

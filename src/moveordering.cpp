@@ -31,7 +31,7 @@ inline void MoveSelector::m_scoreMoves()
             if(move.isCapture())
             {
                 score += (s_pieceValues[move.capturedPiece()] - s_pieceValues[move.movedPiece()]) * 16;
-                score += m_captureHistory->get(move, turn);
+                score += m_heuristics->captureHistory.get(move, turn);
             }
 
             if(move.isPromotion())
@@ -47,19 +47,19 @@ inline void MoveSelector::m_scoreMoves()
 
         // Quiet moves
 
-        if(m_killerManager->contains(move, m_plyFromRoot))
+        if(m_heuristics->killerManager.contains(move, m_plyFromRoot))
         {
             m_killers[m_numKillers++] = &m_moves[i];
             continue;
         }
 
-        if(m_counterManager->contains(move, m_prevMove, turn))
+        if(m_heuristics->counterManager.contains(move, m_prevMove, turn))
         {
             m_counter = &m_moves[i];
             continue;
         }
 
-        int32_t quietScore = m_quietHistory->get(move, turn);
+        int32_t quietScore = m_heuristics->quietHistory.get(move, turn);
         m_numQuiets++;
         m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].score = quietScore;
         m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].move = &m_moves[i];
@@ -74,10 +74,7 @@ MoveSelector::MoveSelector(
     const Move *moves,
     const uint8_t numMoves,
     int plyFromRoot,
-    KillerManager* killerManager,
-    QuietHistory* quietHistory,
-    CaptureHistory* captureHistory,
-    CounterManager* counterManager,
+    MoveOrderHeuristics* heuristics,
     Board *board,
     const Move ttMove,
     const Move prevMove
@@ -102,13 +99,10 @@ MoveSelector::MoveSelector(
         return;
     }
 
+    m_heuristics = heuristics;
     m_moveFromTT = ttMove;
     m_prevMove = prevMove;
     m_board = board;
-    m_counterManager = counterManager;
-    m_killerManager = killerManager;
-    m_quietHistory = quietHistory;
-    m_captureHistory = captureHistory;
     m_plyFromRoot = plyFromRoot;
 
     m_scoreMoves();

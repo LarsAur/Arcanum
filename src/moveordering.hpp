@@ -8,6 +8,22 @@
 
 namespace Arcanum
 {
+    struct MoveOrderHeuristics
+    {
+        QuietHistory quietHistory;
+        CaptureHistory captureHistory;
+        KillerManager killerManager;
+        CounterManager counterManager;
+
+        void clear()
+        {
+            quietHistory.clear();
+            captureHistory.clear();
+            killerManager.clear();
+            counterManager.clear();
+        }
+    };
+
     class MoveSelector
     {
         public:
@@ -25,10 +41,7 @@ namespace Arcanum
                 const Move *moves,
                 const uint8_t numMoves,
                 int plyFromRoot,
-                KillerManager* killerMoveManager,
-                QuietHistory* quietHistory,
-                CaptureHistory* captureHistory,
-                CounterManager* counterMoveManager,
+                MoveOrderHeuristics* heuristics,
                 Board *board,
                 const Move ttMove,
                 const Move prevMove
@@ -39,7 +52,7 @@ namespace Arcanum
             bool isSkippingQuiets();
             uint8_t getNumQuietsLeft();
 
-            private:
+        private:
             struct MoveAndScore
             {
                 const Move* move;
@@ -52,10 +65,7 @@ namespace Arcanum
             const Move* m_moves;
             int m_plyFromRoot;
             Board* m_board;
-            KillerManager* m_killerManager;
-            QuietHistory* m_quietHistory;
-            CaptureHistory* m_captureHistory;
-            CounterManager* m_counterManager;
+            MoveOrderHeuristics* m_heuristics;
             Move m_moveFromTT;
             Move m_prevMove;
             uint8_t m_numMoves;
