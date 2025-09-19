@@ -104,3 +104,10 @@ void logToFile(std::string str);
 #endif
 
 #define UCI_OUT(_str) std::cout << _str << std::endl;
+
+#define ASSERT_OR_EXIT(_cond, _msg) { \
+    if(!(_cond)) { \
+        ERROR((_msg)) \
+        exit(EXIT_FAILURE); \
+    } \
+}

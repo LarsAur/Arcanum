@@ -5,12 +5,7 @@ using namespace Arcanum;
 CaptureHistory::CaptureHistory()
 {
     m_historyScore = new int32_t[TableSize];
-
-    if(m_historyScore == nullptr)
-    {
-        ERROR("Unable to allocate capture history table")
-    }
-
+    ASSERT_OR_EXIT(m_historyScore != nullptr, "Failed to allocate memory for capture history table")
     clear();
 }
 

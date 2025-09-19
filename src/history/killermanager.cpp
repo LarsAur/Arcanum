@@ -6,12 +6,7 @@ using namespace Arcanum;
 KillerManager::KillerManager()
 {
     m_killerMoves = new Move[TableSize];
-
-    if(m_killerMoves == nullptr)
-    {
-        ERROR("Unable to allocate killer moves table")
-    }
-
+    ASSERT_OR_EXIT(m_killerMoves != nullptr, "Failed to allocate memory for killer moves table")
     clear();
 }
 

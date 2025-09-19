@@ -5,12 +5,7 @@ using namespace Arcanum;
 QuietHistory::QuietHistory()
 {
     m_historyScore = new int32_t[TableSize];
-
-    if(m_historyScore == nullptr)
-    {
-        ERROR("Unable to allocate history table")
-    }
-
+    ASSERT_OR_EXIT(m_historyScore != nullptr, "Failed to allocate memory for quiet history table")
     clear();
 }
 

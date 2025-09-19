@@ -5,12 +5,7 @@ using namespace Arcanum;
 CounterManager::CounterManager()
 {
     m_counterMoves = new Move[TableSize];
-
-    if(m_counterMoves == nullptr)
-    {
-        ERROR("Unable to allocate counter move table")
-    }
-
+    ASSERT_OR_EXIT(m_counterMoves != nullptr, "Failed to allocate memory for counter move table")
     clear();
 }
 
