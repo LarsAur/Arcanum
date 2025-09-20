@@ -18,8 +18,8 @@ namespace Arcanum
         public:
             ContinuationHistory();
             ~ContinuationHistory();
-            void updateContinuation(const Move* moveStack, uint8_t plyFromRoot, const Move& move, const Move* quiets, uint8_t numQuiets, Color turn, uint8_t depth);
-            int32_t getContinuationScore(const Move* moveStack, uint8_t plyFromRoot, const Move& move, Color turn);
+            void update(const Move* moveStack, uint8_t plyFromRoot, const Move& move, const Move* quiets, uint8_t numQuiets, Color turn, uint8_t depth);
+            int32_t get(const Move* moveStack, uint8_t plyFromRoot, const Move& move, Color turn);
             void clear();
     };
 }

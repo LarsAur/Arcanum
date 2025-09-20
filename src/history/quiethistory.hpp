@@ -17,7 +17,7 @@ namespace Arcanum
         public:
             QuietHistory();
             ~QuietHistory();
-            void updateHistory(const Move& bestMove, const Move* quiets, uint8_t numQuiets, uint8_t depth, Color turn);
+            void update(const Move& bestMove, const Move* quiets, uint8_t numQuiets, uint8_t depth, Color turn);
             int32_t get(const Move& move, Color turn);
             void clear();
     };

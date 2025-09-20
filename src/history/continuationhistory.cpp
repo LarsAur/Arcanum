@@ -36,7 +36,7 @@ int32_t ContinuationHistory::m_getBonus(uint8_t depth)
     return std::min(2000, 16 * depth * depth);
 }
 
-void ContinuationHistory::updateContinuation(const Move* moveStack, uint8_t plyFromRoot, const Move& move, const Move* quiets, uint8_t numQuiets, Color turn, uint8_t depth)
+void ContinuationHistory::update(const Move* moveStack, uint8_t plyFromRoot, const Move& move, const Move* quiets, uint8_t numQuiets, Color turn, uint8_t depth)
 {
     int32_t bonus = m_getBonus(depth);
 
@@ -66,7 +66,7 @@ void ContinuationHistory::updateContinuation(const Move* moveStack, uint8_t plyF
     }
 }
 
-int32_t ContinuationHistory::getContinuationScore(const Move* moveStack, uint8_t plyFromRoot, const Move& move, Color turn)
+int32_t ContinuationHistory::get(const Move* moveStack, uint8_t plyFromRoot, const Move& move, Color turn)
 {
     int32_t score = 0;
 

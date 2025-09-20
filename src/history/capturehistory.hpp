@@ -17,7 +17,7 @@ namespace Arcanum
         public:
             CaptureHistory();
             ~CaptureHistory();
-            void updateHistory(const Move& bestMove, const Move* captures, uint8_t numCaptures, uint8_t depth, Color turn);
+            void update(const Move& bestMove, const Move* captures, uint8_t numCaptures, uint8_t depth, Color turn);
             int32_t get(const Move& move, Color turn);
             void clear();
     };

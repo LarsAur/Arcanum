@@ -30,7 +30,7 @@ void QuietHistory::m_addBonus(const Move& move, Color turn, int32_t bonus)
     m_historyScore[index] += bonus - (m_historyScore[index] * std::abs(bonus) / 16384);
 }
 
-void QuietHistory::updateHistory(const Move& bestMove, const Move* quiets, uint8_t numQuiets, uint8_t depth, Color turn)
+void QuietHistory::update(const Move& bestMove, const Move* quiets, uint8_t numQuiets, uint8_t depth, Color turn)
 {
     int32_t bonus = m_getBonus(depth);
 

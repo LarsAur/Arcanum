@@ -62,7 +62,7 @@ inline void MoveSelector::m_scoreMoves()
         }
 
         int32_t quietScore = m_heuristics->quietHistory.get(move, turn);
-        quietScore += m_heuristics->continuationHistory.getContinuationScore(m_moveStack, m_plyFromRoot, move, turn);
+        quietScore += m_heuristics->continuationHistory.get(m_moveStack, m_plyFromRoot, move, turn);
         m_numQuiets++;
         m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].score = quietScore;
         m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].move = &m_moves[i];

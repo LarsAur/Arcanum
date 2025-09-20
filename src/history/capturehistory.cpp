@@ -30,7 +30,7 @@ void CaptureHistory::m_addBonus(const Move& move, Color turn, int32_t bonus)
     m_historyScore[index] += bonus - (m_historyScore[index] * std::abs(bonus) / 16384);
 }
 
-void CaptureHistory::updateHistory(const Move& bestMove, const Move* captures, uint8_t numCaptures, uint8_t depth, Color turn)
+void CaptureHistory::update(const Move& bestMove, const Move* captures, uint8_t numCaptures, uint8_t depth, Color turn)
 {
     int32_t bonus = m_getBonus(depth);
 

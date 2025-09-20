@@ -617,14 +617,14 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             {
                 m_heuristics.killerManager.add(*move, plyFromRoot);
                 m_heuristics.counterManager.setCounter(*move, prevMove, board.getTurn());
-                m_heuristics.quietHistory.updateHistory(*move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, depth, board.getTurn());
-                m_heuristics.continuationHistory.updateContinuation(m_searchStacks.moves, plyFromRoot, *move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, board.getTurn(), depth);
+                m_heuristics.quietHistory.update(*move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, depth, board.getTurn());
+                m_heuristics.continuationHistory.update(m_searchStacks.moves, plyFromRoot, *move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, board.getTurn(), depth);
             }
 
             // Update capture history if the move was a capture
             if(move->isCapture())
             {
-                m_heuristics.captureHistory.updateHistory(*move, &performedMoves[0], captureMovesPerformed, depth, board.getTurn());
+                m_heuristics.captureHistory.update(*move, &performedMoves[0], captureMovesPerformed, depth, board.getTurn());
             }
             break;
         }
