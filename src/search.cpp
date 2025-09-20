@@ -160,12 +160,12 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     }
 
     // Push the board on the search stack
-    m_searchStack[plyFromRoot].hash       = board.getHash();
-    m_searchStack[plyFromRoot].staticEval = staticEval;
-    m_searchStack[plyFromRoot].move       = NULL_MOVE;
+    m_searchStacks.hashes     [plyFromRoot] = board.getHash();
+    m_searchStacks.staticEvals[plyFromRoot] = staticEval;
+    m_searchStacks.moves      [plyFromRoot] = NULL_MOVE;
 
     board.generateCaptureInfo();
-    Move prevMove = m_searchStack[plyFromRoot-1].move;
+    Move prevMove = m_searchStacks.moves[plyFromRoot-1];
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, prevMove);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = NULL_MOVE;
@@ -181,7 +181,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         newBoard.performMove(*move);
         m_tt.prefetch(newBoard.getHash());
         m_evaluator.pushMoveToAccumulator(board, *move);
-        m_searchStack[plyFromRoot].move = *move;
+        m_searchStacks.moves[plyFromRoot] = *move;
         eval_t score = -m_alphaBetaQuiet<isPv>(newBoard, -beta, -alpha, plyFromRoot + 1);
         m_evaluator.popMoveFromAccumulator();
 
@@ -354,16 +354,16 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     board.generateCaptureInfo();
     bool isChecked = board.isChecked();
-    bool isImproving = (plyFromRoot > 1) && (staticEval > m_searchStack[plyFromRoot - 2].staticEval);
-    bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStack[plyFromRoot - 2].staticEval);
+    bool isImproving = (plyFromRoot > 1) && (staticEval > m_searchStacks.staticEvals[plyFromRoot - 2]);
+    bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStacks.staticEvals[plyFromRoot - 2]);
     bool opponentHasEasyCapture = board.hasEasyCapture(Color(board.getTurn()^1));
-    Move prevMove = m_searchStack[plyFromRoot-1].move;
+    Move prevMove = m_searchStacks.moves[plyFromRoot-1];
     bool isNullMoveSearch = prevMove.isNull();
 
     // Push the board on the search stack
-    m_searchStack[plyFromRoot].hash       = board.getHash();
-    m_searchStack[plyFromRoot].staticEval = staticEval;
-    m_searchStack[plyFromRoot].move       = NULL_MOVE;
+    m_searchStacks.hashes     [plyFromRoot] = board.getHash();
+    m_searchStacks.staticEvals[plyFromRoot] = staticEval;
+    m_searchStacks.moves      [plyFromRoot] = NULL_MOVE;
 
     // Internal Iterative Reductions
     if(isPv && depth >= 5 && !entry.has_value() && !isChecked && skipMove.isNull())
@@ -406,7 +406,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             int R = 2 + isImproving + depth / 4;
             newBoard.performNullMove();
             m_tt.prefetch(newBoard.getHash());
-            m_searchStack[plyFromRoot].move = NULL_MOVE;
+            m_searchStacks.moves[plyFromRoot] = NULL_MOVE;
             eval_t nullMoveScore = -m_alphaBeta<false>(newBoard, -beta, -beta + 1, depth - R, plyFromRoot + 1, !cutnode, totalExtensions);
 
             if(nullMoveScore >= beta)
@@ -429,7 +429,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 newBoard.performMove(*move);
                 m_tt.prefetch(newBoard.getHash());
                 m_evaluator.pushMoveToAccumulator(board, *move);
-                m_searchStack[plyFromRoot].move = *move;
+                m_searchStacks.moves[plyFromRoot] = *move;
 
                 m_stats.probCutQSearches++;
                 eval_t score = -m_alphaBetaQuiet<false>(newBoard, -probBeta, -probBeta + 1, plyFromRoot + 1);
@@ -552,7 +552,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             extension = 0;
 
         m_evaluator.pushMoveToAccumulator(board, *move);
-        m_searchStack[plyFromRoot].move = *move;
+        m_searchStacks.moves[plyFromRoot] = *move;
 
         int32_t newDepth = depth + extension - 1;
         totalExtensions += extension;
@@ -676,7 +676,7 @@ inline bool Searcher::m_isDraw(const Board& board, uint8_t plyFromRoot) const
     const uint16_t limit = std::min(uint16_t(plyFromRoot), board.getHalfMoves());
     for(uint16_t i = 2; i <= limit; i += 2)
     {
-        if(m_searchStack[plyFromRoot - i].hash == board.getHash())
+        if(m_searchStacks.hashes[plyFromRoot - i] == board.getHash())
             return true;
     }
 
@@ -777,9 +777,9 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     }
 
     // Initialize the search stack by pushing the initial board
-    m_searchStack[0].hash       = board.getHash();
-    m_searchStack[0].staticEval = staticEval;
-    m_searchStack[0].move       = NULL_MOVE;
+    m_searchStacks.hashes[0]      = board.getHash();
+    m_searchStacks.staticEvals[0] = staticEval;
+    m_searchStacks.moves[0]       = NULL_MOVE;
 
     uint32_t depth = 0;
     while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
@@ -825,7 +825,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
                 newBoard.performMove(*move);
                 m_tt.prefetch(newBoard.getHash());
                 m_evaluator.pushMoveToAccumulator(board, *move);
-                m_searchStack[0].move = *move;
+                m_searchStacks.moves[0] = *move;
 
                 eval_t score;
                 if(i == 0)
