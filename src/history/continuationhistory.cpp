@@ -86,5 +86,5 @@ int32_t ContinuationHistory::get(const Move* moveStack, uint8_t plyFromRoot, con
 
 void ContinuationHistory::clear()
 {
-    memset(m_scores, 0, TableSize*sizeof(uint16_t));
+    memset(m_scores, 0, TableSize*sizeof(int32_t));
 }
