@@ -165,8 +165,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     m_searchStacks.moves      [plyFromRoot] = NULL_MOVE;
 
     board.generateCaptureInfo();
-    Move prevMove = m_searchStacks.moves[plyFromRoot-1];
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, prevMove);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, m_searchStacks.moves);
     TTFlag ttFlag = TTFlag::UPPER_BOUND;
     Move bestMove = NULL_MOVE;
     while(const Move *move = moveSelector.getNextMove())
@@ -421,7 +420,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t probBeta = beta + 300;
         if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->eval < probBeta))
         {
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, prevMove);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, m_searchStacks.moves);
             moveSelector.skipQuiets(); // Note: Killers and counters are still included
             while(const Move* move = moveSelector.getNextMove())
             {
@@ -453,7 +452,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
     }
 
-    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, prevMove);
+    MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, m_searchStacks.moves);
     uint8_t quietMovesPerformed = 0;
     uint8_t captureMovesPerformed = 0;
     Move performedMoves[MAX_MOVE_COUNT];
@@ -619,6 +618,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 m_heuristics.killerManager.add(*move, plyFromRoot);
                 m_heuristics.counterManager.setCounter(*move, prevMove, board.getTurn());
                 m_heuristics.quietHistory.updateHistory(*move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, depth, board.getTurn());
+                m_heuristics.continuationHistory.updateContinuation(m_searchStacks.moves, plyFromRoot, *move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, board.getTurn(), depth);
             }
 
             // Update capture history if the move was a capture
@@ -807,7 +807,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             // This is in case the move from the transposition is not 'correct' due to a miss.
             // Misses can happen if the position cannot replace another position
             // This is required to allow using results of incomplete searches
-            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_heuristics, &board, searchBestMove, NULL_MOVE);
+            MoveSelector moveSelector = MoveSelector(moves, numMoves, 0, &m_heuristics, &board, searchBestMove, m_searchStacks.moves);
 
             // Aspiration window
             // Stop using aspiration if the search score or window size is too high

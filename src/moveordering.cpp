@@ -13,6 +13,8 @@ inline void MoveSelector::m_scoreMoves()
 {
     Color turn = m_board->getTurn();
 
+    Move prevMove = m_plyFromRoot == 0 ? NULL_MOVE : m_moveStack[m_plyFromRoot - 1];
+
     for(uint8_t i = 0; i < m_numMoves; i++)
     {
         const Move& move = m_moves[i];
@@ -53,13 +55,14 @@ inline void MoveSelector::m_scoreMoves()
             continue;
         }
 
-        if(m_heuristics->counterManager.contains(move, m_prevMove, turn))
+        if(m_heuristics->counterManager.contains(move, prevMove, turn))
         {
             m_counter = &m_moves[i];
             continue;
         }
 
         int32_t quietScore = m_heuristics->quietHistory.get(move, turn);
+        quietScore += m_heuristics->continuationHistory.getContinuationScore(m_moveStack, m_plyFromRoot, move, turn);
         m_numQuiets++;
         m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].score = quietScore;
         m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].move = &m_moves[i];
@@ -77,7 +80,7 @@ MoveSelector::MoveSelector(
     MoveOrderHeuristics* heuristics,
     Board *board,
     const Move ttMove,
-    const Move prevMove
+    const Move* moveStack
 )
 {
     m_numMoves = numMoves;
@@ -101,7 +104,7 @@ MoveSelector::MoveSelector(
 
     m_heuristics = heuristics;
     m_moveFromTT = ttMove;
-    m_prevMove = prevMove;
+    m_moveStack = moveStack;
     m_board = board;
     m_plyFromRoot = plyFromRoot;
 

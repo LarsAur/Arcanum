@@ -5,6 +5,7 @@
 #include <history/countermanager.hpp>
 #include <history/quiethistory.hpp>
 #include <history/capturehistory.hpp>
+#include <history/continuationhistory.hpp>
 
 namespace Arcanum
 {
@@ -14,6 +15,7 @@ namespace Arcanum
         CaptureHistory captureHistory;
         KillerManager killerManager;
         CounterManager counterManager;
+        ContinuationHistory continuationHistory;
 
         void clear()
         {
@@ -21,6 +23,7 @@ namespace Arcanum
             captureHistory.clear();
             killerManager.clear();
             counterManager.clear();
+            continuationHistory.clear();
         }
     };
 
@@ -44,7 +47,7 @@ namespace Arcanum
                 MoveOrderHeuristics* heuristics,
                 Board *board,
                 const Move ttMove,
-                const Move prevMove
+                const Move* moveStack
             );
             const Move* getNextMove();
             Phase getPhase() const;
@@ -63,11 +66,11 @@ namespace Arcanum
 
             Phase m_phase;
             const Move* m_moves;
+            const Move* m_moveStack;
             int m_plyFromRoot;
             Board* m_board;
             MoveOrderHeuristics* m_heuristics;
             Move m_moveFromTT;
-            Move m_prevMove;
             uint8_t m_numMoves;
 
             bool m_skipQuiets;
