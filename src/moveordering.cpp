@@ -42,7 +42,7 @@ inline void MoveSelector::m_scoreMoves()
             }
 
             m_movesAndScores[m_numCaptures].score = score;
-            m_movesAndScores[m_numCaptures].move = &m_moves[i];
+            m_movesAndScores[m_numCaptures].index = i;
             m_numCaptures++;
             continue;
         }
@@ -65,7 +65,7 @@ inline void MoveSelector::m_scoreMoves()
         quietScore += m_heuristics->continuationHistory.get(m_moveStack, m_plyFromRoot, move, turn);
         m_numQuiets++;
         m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].score = quietScore;
-        m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].move = &m_moves[i];
+        m_movesAndScores[MAX_MOVE_COUNT - m_numQuiets].index = i;
     }
 
     m_captureMovesAndScores = &m_movesAndScores[0];
@@ -129,7 +129,7 @@ const Move* MoveSelector::getNextMove()
         {
             MoveAndScore moveAndScore = popBestMoveAndScore(m_captureMovesAndScores, m_numCaptures--);
             // If the capture is a bad capture, move it to the back of the end of the capture array to be played in the bad capture phase
-            const Move* move = moveAndScore.move;
+            const Move* move = &m_moves[moveAndScore.index];
             if(move->isUnderPromotion() || !m_board->see(*move))
             {
                 m_badCaptureMovesAndScores[m_numBadCaptures++] = moveAndScore;
@@ -162,7 +162,7 @@ const Move* MoveSelector::getNextMove()
         if(m_numQuiets > 0 && !m_skipQuiets)
         {
             MoveAndScore moveAndScore = popBestMoveAndScore(m_quietMovesAndScores, m_numQuiets--);
-            return moveAndScore.move;
+            return m_moves + moveAndScore.index;
         }
         [[fallthrough]];
 

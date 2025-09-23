@@ -58,7 +58,7 @@ namespace Arcanum
         private:
             struct MoveAndScore
             {
-                const Move* move;
+                uint8_t index;
                 int32_t score;
             };
 
