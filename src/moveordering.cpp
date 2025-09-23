@@ -132,7 +132,10 @@ const Move* MoveSelector::getNextMove()
             const Move* move = &m_moves[moveAndScore.index];
             if(move->isUnderPromotion() || !m_board->see(*move))
             {
-                m_badCaptureMovesAndScores[m_numBadCaptures++] = moveAndScore;
+                // Note: The bad capture array grows backwards, and uses the memory at the end of m_captureMovesAndScores.
+                // This is safe since popBestMoveAndScore removes the last element from the m_captureMovesAndScores array.
+                m_numBadCaptures++;
+                m_badCaptureMovesAndScores[-m_numBadCaptures] = moveAndScore;
             }
             else
             {
@@ -170,7 +173,9 @@ const Move* MoveSelector::getNextMove()
         m_phase = Phase::BAD_CAPTURES_PHASE;
         if(m_nextBadCapture < m_numBadCaptures)
         {
-            return m_badCaptureMovesAndScores[m_nextBadCapture++].move;
+            m_nextBadCapture++;
+            MoveAndScore moveAndScore = m_badCaptureMovesAndScores[-m_nextBadCapture];
+            return m_moves + moveAndScore.index;
         }
         [[fallthrough]];
 

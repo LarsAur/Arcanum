@@ -86,7 +86,7 @@ namespace Arcanum
 
             MoveAndScore m_movesAndScores[MAX_MOVE_COUNT];
             MoveAndScore* m_captureMovesAndScores;
-            MoveAndScore* m_badCaptureMovesAndScores;
+            MoveAndScore* m_badCaptureMovesAndScores; // Note: This array grows backwards.
             MoveAndScore* m_quietMovesAndScores;
             void m_scoreMoves();
     };
