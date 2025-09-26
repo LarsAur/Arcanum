@@ -37,6 +37,8 @@ Searcher::Searcher(bool verbose)
     {
         m_lmpThresholds[0][d] = 1.5f + 0.5f * d * d;
         m_lmpThresholds[1][d] = 3.0f + 1.5f * d * d;
+        m_staticPruneMargins[0][d] = std::clamp(-25 * d * d, -10000, 0);  // Quiet moves
+        m_staticPruneMargins[1][d] = std::clamp(-100 * d, -10000, 0); // Captures
     }
 
     m_verbose = verbose;
@@ -474,6 +476,16 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     {
         if(*move == skipMove)
             continue;
+
+        if(!isPv && !move->isPromotion() && !move->isCastle() && !Evaluator::isCloseToMate(board, bestScore) && board.hasOfficers(board.getTurn()))
+        {
+            eval_t margin = m_staticPruneMargins[move->isCapture()][depth];
+            if(!board.see(*move, margin))
+            {
+                m_stats.seePrunedMoves++;
+                continue;
+            }
+        }
 
         // Late move pruning (LMP)
         // Skip quiet moves after having tried a certain number of moves
@@ -1053,6 +1065,7 @@ void Searcher::logStats()
     ss << "\nProbCut Searches:          " << m_stats.probCutSearches;
     ss << "\nFailed ProbCuts:           " << m_stats.failedProbCuts;
     ss << "\nQuiet SEE Cuts:            " << m_stats.quietSeeCuts;
+    ss << "\nSEE Pruned Moves:          " << m_stats.seePrunedMoves;
     ss << "\nAspiration Alpha Fails:    " << m_stats.aspirationAlphaFails;
     ss << "\nAspiration Beta Fails:     " << m_stats.aspirationBetaFails;
     ss << "\n";

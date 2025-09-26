@@ -64,6 +64,7 @@ namespace Arcanum
         uint64_t aspirationAlphaFails;
         uint64_t aspirationBetaFails;
         uint64_t quietSeeCuts;
+        uint64_t seePrunedMoves;
 
         SearchStats() :
             nodes(0),
@@ -94,7 +95,8 @@ namespace Arcanum
             failedProbCuts(0),
             aspirationAlphaFails(0),
             aspirationBetaFails(0),
-            quietSeeCuts(0)
+            quietSeeCuts(0),
+            seePrunedMoves(0)
         {};
 
     } SearchStats;
@@ -139,6 +141,7 @@ namespace Arcanum
             SearchStacks m_searchStacks;
             uint8_t m_lmrReductions[MAX_SEARCH_DEPTH][MAX_MOVE_COUNT];
             uint32_t m_lmpThresholds[2][MAX_SEARCH_DEPTH];
+            eval_t m_staticPruneMargins[2][MAX_SEARCH_DEPTH];
             Timer m_timer;
             Evaluator m_evaluator;
             MoveOrderHeuristics m_heuristics;
