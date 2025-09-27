@@ -15,7 +15,21 @@ Searcher::Searcher(bool verbose)
     m_tt.resize(32);
     m_stats = SearchStats();
     m_generation = 0;
+    m_verbose = verbose;
 
+    m_lmrReductions = new uint8_t[MAX_SEARCH_DEPTH * MAX_MOVE_COUNT];
+    ASSERT_OR_EXIT(m_lmrReductions != nullptr, "Failed to allocate memory for LMR reductions")
+
+    m_initializeTables();
+}
+
+Searcher::~Searcher()
+{
+    delete[] m_lmrReductions;
+}
+
+void Searcher::m_initializeTables()
+{
     // Initialize the LMR reduction lookup table
     for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
     {
@@ -23,11 +37,11 @@ Searcher::Searcher(bool verbose)
         {
             if((d == 0) || (m == 0))
             {
-                m_lmrReductions[d][m] = 0;
+                m_lmrReductions[d * MAX_MOVE_COUNT + m] = 0;
             }
             else
             {
-                m_lmrReductions[d][m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 4));
+                m_lmrReductions[d * MAX_MOVE_COUNT + m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 4));
             }
         }
     }
@@ -40,13 +54,11 @@ Searcher::Searcher(bool verbose)
         m_staticPruneMargins[0][d] = std::clamp(-25 * d * d, -10000, 0);  // Quiet moves
         m_staticPruneMargins[1][d] = std::clamp(-100 * d, -10000, 0); // Captures
     }
-
-    m_verbose = verbose;
 }
 
-Searcher::~Searcher()
+inline uint8_t Searcher::m_getReduction(uint8_t depth, uint8_t moveNumber) const
 {
-
+    return m_lmrReductions[depth * MAX_MOVE_COUNT + moveNumber];
 }
 
 void Searcher::setVerbose(bool enable)
@@ -578,7 +590,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             int8_t R = 0;
             if(depth >= 3 && !move->isCapture() && !checkOrChecking && !Evaluator::isMateScore(bestScore))
             {
-                R =  m_lmrReductions[depth][moveNumber];
+                R =  m_getReduction(depth, moveNumber);
                 R += isWorsening;
                 R -= m_heuristics.killerManager.contains(*move, plyFromRoot);
                 R -= m_heuristics.counterManager.contains(*move, prevMove, board.getTurn());

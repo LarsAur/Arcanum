@@ -139,7 +139,7 @@ namespace Arcanum
             std::unordered_map<hash_t, uint8_t, HashFunction> m_gameHistory;
             TranspositionTable m_tt;
             SearchStacks m_searchStacks;
-            uint8_t m_lmrReductions[MAX_SEARCH_DEPTH][MAX_MOVE_COUNT];
+            uint8_t* m_lmrReductions;
             uint32_t m_lmpThresholds[2][MAX_SEARCH_DEPTH];
             eval_t m_staticPruneMargins[2][MAX_SEARCH_DEPTH];
             Timer m_timer;
@@ -159,6 +159,8 @@ namespace Arcanum
             bool m_isDraw(const Board& board, uint8_t plyFromRoot) const;
             bool m_shouldStop();
             void m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, bool forceTBScore, uint8_t wdlTB);
+            void m_initializeTables();
+            uint8_t m_getReduction(uint8_t depth, uint8_t moveNumber) const;
 
             template <bool isPv>
             eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove = NULL_MOVE);
