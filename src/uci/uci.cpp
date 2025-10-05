@@ -126,7 +126,7 @@ void UCI::go(std::istringstream& is)
     // If perft is used, search will not be performed
     if(perftDepth > 0)
     {
-        Test::perft(UCI::board, perftDepth);
+        perft(UCI::board, perftDepth);
         return;
     }
 

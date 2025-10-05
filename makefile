@@ -46,7 +46,7 @@ uci: $(BUILDDIR)/$(FILENAME)
 	./$^
 
 test: $(BUILDDIR)/$(FILENAME)
-	./$^ --see-test --draw-test --capture-test --zobrist-test --perft-test
+	./$^ --see-test --draw-test --capture-test --zobrist-test --perft-test --binpack-test
 
 selfplay: $(BUILDDIR)/$(FILENAME)
 	./$^ --selfplay-test
@@ -82,7 +82,7 @@ $(BUILDDIR):
 	cd $(BUILDDIR)/src && mkdir tuning
 	cd $(BUILDDIR)/src && mkdir syzygy
 	cd $(BUILDDIR)/src && mkdir uci
-	cd $(BUILDDIR)/src && mkdir test
+	cd $(BUILDDIR)/src && mkdir tests
 
 $(BUILDDIR)/$(DEFAULT_NNUE):
 ifeq ($(OS),Windows_NT)

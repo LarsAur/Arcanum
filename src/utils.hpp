@@ -24,6 +24,7 @@
 #define ERROR_COLOR COLOR_RED
 #define SUCCESS_COLOR COLOR_GREEN
 #define FAIL_COLOR COLOR_RED
+#define TEST_INFO_COLOR COLOR_PURPLE
 // Default
 #define DEFAULT_COLOR COLOR_WHITE
 
@@ -91,18 +92,13 @@ void logToFile(std::string str);
     #define ERROR(_str) ;
 #endif
 
-#ifndef DISABLE_SUCCESS
-    #define SUCCESS(_str) std::cout << SUCCESS_COLOR << "[SUCCESS]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
-#else
-    #define SUCCESS(_str) ;
-#endif
+// SUCCESS, FAIL and INFO are only used in tests, so they always print to console
+#define SUCCESS(_str) std::cout << SUCCESS_COLOR   << "[SUCCESS] " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#define FAIL(_str)    std::cout << FAIL_COLOR      << "[FAIL]    " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#define TESTINFO(_str)std::cout << TEST_INFO_COLOR << "[INFO]    " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
 
-#ifndef DISABLE_FAIL
-    #define FAIL(_str) std::cout << FAIL_COLOR << "[FAIL]      " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
-#else
-    #define FAIL(_str) ;
-#endif
-
+// UCI is used for communication with the GUI, so it always prints to console
+// This macro mainly exists for semantic purposes
 #define UCI_OUT(_str) std::cout << _str << std::endl;
 
 #define ASSERT_OR_EXIT(_cond, _msg) { \

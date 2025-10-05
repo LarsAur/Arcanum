@@ -1,11 +1,11 @@
-#include <test/seeTest.hpp>
+#include <tests/test.hpp>
 #include <board.hpp>
 #include <fen.hpp>
 
-using namespace Arcanum::Benchmark;
+using namespace Arcanum;
 
 // From: https://github.com/lithander/Leorik/blob/master/Leorik.Test/see.epd
-std::string seeEDPs[] = {
+static std::string seeEDPs[] = {
     "6k1/1pp4p/p1pb4/6q1/3P1pRr/2P4P/PP1Br1P1/5RKN w - -; pm Rfxf4; ce -100;",
     "5rk1/1pp2q1p/p1pb4/8/3P1NP1/2P5/1P1BQ1P1/5RK1 b - -; pm Bxf4; ce 0;",
     "4R3/2r3p1/5bk1/1p1r3p/p2PR1P1/P1BK1P2/1P6/8 b - -; pm hxg4; ce 0;",
@@ -82,7 +82,7 @@ std::string seeEDPs[] = {
     "r1bqk1nr/pppp1ppp/2n5/1B2p3/1b2P3/5N2/PPPP1PPP/RNBQK2R w KQkq -; pm O-O; ce 0;",
 };
 
-bool SeeTest::m_testPosition(std::string fen, Move move, bool expected)
+static bool testPosition(std::string fen, Move move, bool expected)
 {
     Board board = Board(fen, false);
     board.getLegalMoves();
@@ -100,7 +100,7 @@ bool SeeTest::m_testPosition(std::string fen, Move move, bool expected)
     return seeScore == expected;
 }
 
-void SeeTest::runSeeTest()
+bool Test::runSeeTest()
 {
     int32_t successes = 0;
     constexpr uint32_t numTests = sizeof(seeEDPs) / sizeof(seeEDPs[0]);
@@ -108,11 +108,17 @@ void SeeTest::runSeeTest()
     for(uint32_t i = 0; i < numTests; i++)
     {
         EDP edp = FEN::parseEDP(seeEDPs[i]);
-        successes += m_testPosition(edp.fen, edp.pm, edp.ce >= 0);
+        successes += testPosition(edp.fen, edp.pm, edp.ce >= 0);
     }
 
     if(numTests != successes)
+    {
         FAIL("Completed SEE test. Successes: " << successes << " / " << numTests)
+    }
     else
+    {
         SUCCESS("Completed SEE test. Successes: " << successes << " / " << numTests)
+    }
+
+    return numTests == successes;
 }

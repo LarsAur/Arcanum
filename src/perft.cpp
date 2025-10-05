@@ -2,38 +2,34 @@
 
 using namespace Arcanum;
 
-void Test::findNumMovesAtDepth(Board& board, uint32_t depth, uint64_t *count)
+uint64_t Arcanum::findNumMovesAtDepth(Board& board, uint32_t depth)
 {
     Move* legalMoves = board.getLegalMoves();
     uint8_t numLegalMoves = board.getNumLegalMoves();
 
     if(numLegalMoves == 0)
     {
-        return;
+        return 0LL;
     }
 
     if(depth == 1)
     {
-        *count += numLegalMoves;
-        return;
+        return numLegalMoves;
     }
 
+    uint64_t total = 0LL;
     board.generateCaptureInfo();
     for(int i = 0; i < numLegalMoves; i++)
     {
         Board newBoard = Board(board);
         newBoard.performMove(legalMoves[i]);
-        findNumMovesAtDepth(newBoard, depth - 1, count);
+        total += findNumMovesAtDepth(newBoard, depth - 1);
     }
+
+    return total;
 }
 
-void Test::perft(std::string fen, uint32_t depth)
-{
-    Board board = Board(fen);
-    perft(board, depth);
-}
-
-void Test::perft(Board& board, uint32_t depth)
+void Arcanum::perft(Board& board, uint32_t depth)
 {
     uint64_t count = 0LL;
     Move* legalMoves = board.getLegalMoves();
@@ -44,12 +40,14 @@ void Test::perft(Board& board, uint32_t depth)
         uint64_t localCount = 0LL;
 
         if(depth == 1)
+        {
             localCount = 1;
+        }
         else
         {
             Board newBoard = Board(board);
             newBoard.performMove(legalMoves[i]);
-            findNumMovesAtDepth(newBoard, depth - 1, &localCount);
+            localCount = findNumMovesAtDepth(newBoard, depth - 1);
         }
 
         count += localCount;

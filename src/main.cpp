@@ -1,9 +1,5 @@
 #include <uci/uci.hpp>
-#include <test.hpp>
-#include <test/engineTest.hpp>
-#include <test/selfplayTest.hpp>
-#include <test/seeTest.hpp>
-#include <test/binpackTest.hpp>
+#include <tests/test.hpp>
 #include <eval.hpp>
 #include <bitboardlookups.hpp>
 
@@ -18,20 +14,13 @@ int main(int argc, char *argv[])
     if(argc == 1)
     {
         Interface::UCI::loop();
-        exit(EXIT_SUCCESS);
+        return EXIT_SUCCESS;
     }
 
-    for(int i = 1; i < argc; i++)
+    if(!Test::parseArgumentsAndRunTests(argc, argv))
     {
-        if("--perft-test"   == std::string(argv[i])) Test::perft();
-        if("--capture-test" == std::string(argv[i])) Test::captureMoves();
-        if("--zobrist-test" == std::string(argv[i])) Test::zobrist();
-        if("--draw-test"    == std::string(argv[i])) Test::draw();
-        if("--see-test"      == std::string(argv[i])) Benchmark::SeeTest::runSeeTest();
-        if("--selfplay-test" == std::string(argv[i])) Benchmark::SelfplayTest::runSelfplayTest();
-        if("--engine-test"   == std::string(argv[i])) Benchmark::EngineTest::runEngineTest();
-        if("--binpack-test" == std::string(argv[i])) Benchmark::BinpackTest::runBinpackTest();
+        return EXIT_FAILURE;
     }
 
-    return 0;
+    return EXIT_SUCCESS;
 }

@@ -1,8 +1,10 @@
-#include <string>
-#include <test/engineTest.hpp>
+#include <tests/test.hpp>
+#include <fen.hpp>
+#include <search.hpp>
 #include <board.hpp>
+#include <string>
 
-using namespace Arcanum::Benchmark;
+using namespace Arcanum;
 
 // EDPs are updated with moves from stockfish 17 with 1000ms searchtime.
 static std::string BenchmarkEDPStrings[] = {
@@ -269,10 +271,8 @@ static std::string BenchmarkEDPStrings[] = {
 
 constexpr uint32_t NumBenchmarkStrings = sizeof(BenchmarkEDPStrings) / sizeof(BenchmarkEDPStrings[0]);
 constexpr uint32_t SearchTime = 1000; // ms
-uint32_t EngineTest::m_successes;
-uint32_t EngineTest::m_attempts;
 
-void EngineTest::m_testPosition(EDP& edp, Searcher& searcher)
+static void testPosition(EDP& edp, Searcher& searcher, uint32_t& successes, uint32_t& attempts)
 {
     Board board = Board(FEN::startpos);
     FEN::setFEN(board, edp.fen, false);
@@ -280,27 +280,32 @@ void EngineTest::m_testPosition(EDP& edp, Searcher& searcher)
     searcher.clear();
     Move bestMove = searcher.getBestMoveInTime(board, SearchTime);
 
-    m_attempts++;
+    attempts++;
     if(bestMove != edp.pm)
     {
-        FAIL("[" << m_successes << " / " << m_attempts << "] Found " << bestMove << " not " << edp.pm << " in " << edp.fen)
+        FAIL("[" << successes << " / " << attempts << "] Found " << bestMove << " not " << edp.pm << " in " << edp.fen)
         return;
     }
 
-    m_successes++;
-    SUCCESS("[" << m_successes << " / " << m_attempts << "] Found " << bestMove << " in " << edp.fen)
+    successes++;
+    SUCCESS("[" << successes << " / " << attempts << "] Found " << bestMove << " in " << edp.fen)
 }
 
-void EngineTest::runEngineTest()
+bool Test::runEngineTest()
 {
-    m_successes = 0;
-    m_attempts = 0;
+    uint32_t successes = 0;
+    uint32_t attempts = 0;
 
     Searcher searcher = Searcher(false);
 
     for(uint32_t i = 0; i < NumBenchmarkStrings; i++)
     {
         EDP edp = FEN::parseEDP(BenchmarkEDPStrings[i]);
-        m_testPosition(edp, searcher);
+        testPosition(edp, searcher, successes, attempts);
     }
+
+    // This test is a bit hard, and not finding a specific move doesn't mean the engine is broken
+    // So we just print the results, and don't fail the test if not all positions are solved
+    SUCCESS("Engine test results: " << successes << " / " << attempts << " positions")
+    return true;
 }

@@ -1,11 +1,11 @@
-#include <test/selfplayTest.hpp>
+#include <tests/test.hpp>
 #include <search.hpp>
 #include <fen.hpp>
 #include <timer.hpp>
 
 using namespace Arcanum;
 
-void Benchmark::SelfplayTest::runSelfplayTest()
+bool Test::runSelfplayTest()
 {
     constexpr uint32_t SearchDepth = 15;
     constexpr uint32_t TurnsToPlay = 20;
@@ -33,4 +33,6 @@ void Benchmark::SelfplayTest::runSelfplayTest()
     }
 
     SUCCESS("Completed SelfPlayTest in " << timer.getMs() << "ms")
+
+    return true;
 }

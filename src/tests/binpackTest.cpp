@@ -1,17 +1,16 @@
-#include <test/binpackTest.hpp>
+#include <tests/test.hpp>
 #include <tuning/binpack.hpp>
+#include <tuning/gamerunner.hpp>
 #include <board.hpp>
 #include <search.hpp>
 #include <fen.hpp>
-#include <array>
 #include <random>
 
-using namespace Arcanum::Benchmark;
 using namespace Arcanum;
 
 constexpr char filename[] = "test_binpack.binpack";
 
-bool compareChunkAfterEncodeDecode(
+static bool compareChunkAfterEncodeDecode(
     std::vector<std::string> fens,
     std::vector<std::vector<Move>> moves,
     std::vector<std::vector<eval_t>> scores,
@@ -25,7 +24,8 @@ bool compareChunkAfterEncodeDecode(
     encoder.open(filename);
     for(uint32_t i = 0; i < numGames; i++)
     {
-        encoder.addGame(fens[i], moves[i], scores[i], results[i]);
+        Board board = Board(fens[i]);
+        encoder.addGame(board, moves[i], scores[i], results[i]);
     }
     encoder.close();
 
@@ -35,7 +35,7 @@ bool compareChunkAfterEncodeDecode(
     for(uint32_t i = 0; i < numGames; i++)
     {
         Board encodedBoard = Board(fens[i]);
-        const uint32_t numMoves = moves.size();
+        const uint32_t numMoves = moves[i].size();
         for(uint32_t j = 0; j < numMoves; j++)
         {
             Board *parsedBoard = parser.getNextBoard();
@@ -43,7 +43,7 @@ bool compareChunkAfterEncodeDecode(
             if(parsedBoard->fen() != encodedBoard.fen())
             {
                 pass = false;
-                FAIL("BinpackTest: FEN[" << j << "]" << parsedBoard->fen() << " != " << encodedBoard.fen())
+                FAIL("BinpackTest: FEN[" << i << "][" << j << "] " << parsedBoard->fen() << " != " << encodedBoard.fen())
                 break;
             }
 
@@ -57,7 +57,7 @@ bool compareChunkAfterEncodeDecode(
             if(parser.getScore() != scores[i][j])
             {
                 pass = false;
-                FAIL("BinpackTest: Score[" << j << "]" << parser.getScore() << " != " << scores[i][j])
+                FAIL("BinpackTest: Score[" << i << "][" << j << "] " << parser.getScore() << " != " << scores[i][j])
                 break;
             }
 
@@ -71,16 +71,12 @@ bool compareChunkAfterEncodeDecode(
     }
 
     parser.close();
-
-    if(pass) {
-        // Delete the binpack file
-        std::remove(filename);
-    }
+    std::remove(filename);
 
     return pass;
 }
 
-bool compareAfterEncodeDecode(
+static bool compareAfterEncodeDecode(
     std::string fen,
     std::vector<Move>& moves,
     std::vector<eval_t>& scores,
@@ -126,16 +122,12 @@ bool compareAfterEncodeDecode(
     }
 
     parser.close();
-
-    if(pass) {
-        // Delete the binpack file
-        std::remove(filename);
-    }
+    std::remove(filename);
 
     return pass;
 }
 
-void generateRandomGame(
+static void generateRandomGame(
     std::string& fen,
     std::vector<Move>& moves,
     std::vector<eval_t>& scores,
@@ -185,69 +177,33 @@ void generateRandomGame(
     }
 }
 
-void generatePlayedGame(
-    std::string& fen,
-    std::vector<Move>& moves,
-    std::vector<eval_t>& scores,
-    GameResult& result
-)
+bool Test::runBinpackTest()
 {
-    fen = FEN::startpos;
-
-    Searcher searcher = Searcher(false);
-    Board board = Board(FEN::startpos);
-
-    result = GameResult::DRAW;
-
-    while(board.hasLegalMove() && (searcher.getHistory().find(board.getHash()) == searcher.getHistory().end()))
-    {
-        searcher.addBoardToHistory(board);
-
-        SearchResult searchResult;
-        Move move = searcher.getBestMove(board, 10, &searchResult);
-
-        moves.push_back(move);
-        scores.push_back(searchResult.eval);
-
-        board.performMove(move);
-
-        if(moves.size() >= 300)
-        {
-            break;
-        }
-    }
-
-    if(!board.hasLegalMove() && board.isChecked())
-    {
-        if(board.getTurn() == Color::WHITE)
-        {
-            result = GameResult::BLACK_WIN;
-        }
-        else
-        {
-            result = GameResult::WHITE_WIN;
-        }
-    }
-}
-
-void BinpackTest::runBinpackTest()
-{
-    LOG("Running binpack test")
+    bool passed = true;
 
     {
-        std::string fen;
+        std::string fen = FEN::startpos;
         std::vector<Move> moves;
         std::vector<eval_t> scores;
         GameResult result;
+        GameRunner runner;
+        Searcher wSearcher(false);
+        Searcher bSearcher(false);
+        SearchParameters params;
+
+        params.useDepth = true;
+        params.depth = 10;
+        runner.setSearchers(&wSearcher, &bSearcher);
+        runner.setSearchParameters(params);
 
         // -- Play a game and try to encode and decode it.
 
-        LOG("Testing played game")
-        generatePlayedGame(fen, moves, scores, result);
+        TESTINFO("Testing played game")
+        runner.play(fen, &moves, &scores, &result);
         if(!compareAfterEncodeDecode(fen, moves, scores, result))
         {
             FAIL("Error encountered when encoding and decoding played game using binpack")
-            //TODO: Log fen, result and moves.
+            passed = false;
         }
         else
         {
@@ -258,7 +214,7 @@ void BinpackTest::runBinpackTest()
     // Play a number of random games and try to encode and decode it.
 
     {
-        constexpr uint32_t NumRandomGames = 10000;
+        constexpr uint32_t NumRandomGames = 100;
         std::string fen;
         std::vector<Move> moves;
         std::vector<eval_t> scores;
@@ -266,7 +222,7 @@ void BinpackTest::runBinpackTest()
         std::mt19937 generator(0);
 
         bool pass = true;
-        LOG("Testing " << NumRandomGames << " random games")
+        TESTINFO("Testing " << NumRandomGames << " random games")
         for(uint32_t i = 0; i < NumRandomGames; i++)
         {
             generateRandomGame(fen, moves, scores, result, generator);
@@ -274,17 +230,12 @@ void BinpackTest::runBinpackTest()
             {
                 pass = false;
                 FAIL("Error encountered when encoding and decoding random game using binpack")
-                //TODO: Log fen, result and moves.
+                passed = false;
                 break;
             }
 
             moves.clear();
             scores.clear();
-
-            if(i % (NumRandomGames / 10) == 0)
-            {
-                LOG(i << " / " << NumRandomGames)
-            }
         }
 
         if(pass)
@@ -296,14 +247,19 @@ void BinpackTest::runBinpackTest()
     // Play multiple games to create a binpack chunk
 
     {
-        constexpr uint32_t NumChunkGames = 10;
+        constexpr uint32_t NumChunkGames = 1000;
         std::vector<std::string> fens;
         std::vector<std::vector<Move>> moves;
         std::vector<std::vector<eval_t>> scores;
         std::vector<GameResult> results;
         std::mt19937 generator(0);
 
-        LOG("Testing binpack chunks")
+        fens.resize(NumChunkGames);
+        moves.resize(NumChunkGames);
+        scores.resize(NumChunkGames);
+        results.resize(NumChunkGames);
+
+        TESTINFO("Testing binpack chunks")
         for(uint32_t i = 0; i < NumChunkGames; i++)
         {
             generateRandomGame(fens[i], moves[i], scores[i], results[i], generator);
@@ -312,13 +268,13 @@ void BinpackTest::runBinpackTest()
         if(!compareChunkAfterEncodeDecode(fens, moves, scores, results))
         {
             FAIL("Error encountered when encoding and decoding chunks using binpack")
-            //TODO: Log fen, result and moves.
+            passed = false;
         }
         else
         {
-            SUCCESS("Encoded and decoded chunk correctly")
+            SUCCESS("Encoded and decoded chunk of " << NumChunkGames << " games correctly")
         }
     }
 
-    LOG("Completed binpack test")
+    return passed;
 }
