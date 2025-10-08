@@ -1,6 +1,7 @@
 #include <tests/test.hpp>
 #include <utils.hpp>
-#include <map>
+#include <vector>
+#include <unordered_map>
 
 using namespace Arcanum;
 
