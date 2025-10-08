@@ -810,9 +810,9 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     {
         depth++;
 
-        eval_t alpha;
-        eval_t beta;
-        Move bestMove;
+        eval_t alpha = -MATE_SCORE;
+        eval_t beta = MATE_SCORE;
+        Move bestMove = NULL_MOVE;
 
         eval_t aspirationWindowAlpha = 25;
         eval_t aspirationWindowBeta  = 25;
