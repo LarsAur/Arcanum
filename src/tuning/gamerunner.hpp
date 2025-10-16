@@ -1,16 +1,23 @@
 #include <search.hpp>
+#include <fen.hpp>
 #include <types.hpp>
+#include <random>
+#include <stdint.h>
+
 namespace Arcanum
 {
     class GameRunner
     {
         private:
-        Searcher* m_searchers[2];
+        Searcher m_searchers[2];
         SearchParameters m_searchParameters;
-        std::vector<Move>*   m_moves;
-        std::vector<eval_t>* m_evals; // This contains the evaluation of the position from the perspective of the current turn
-        GameResult* m_result;
+        std::vector<Move> m_moves;
+        std::vector<eval_t> m_evals; // This contains the evaluation of the position from the perspective of the current turn
+        GameResult m_result;
         Board m_board;
+        Board m_initialBoard;
+
+        std::mt19937 m_generator;
 
         bool m_allowDrawAdjudication;         // Enable / Disable draw adjudication
         uint32_t m_drawAdjudicationScore;     // If consecutive absolute scores are less than or equal to this, adjudication is performed
@@ -25,13 +32,23 @@ namespace Arcanum
         bool m_isDrawAdjudicated();
         bool m_isResignAdjudicated();
         bool m_isGameCompleted();
+        void m_resetGame();
         public:
         GameRunner();
-        void setSearchers(Searcher* s1, Searcher* s2);
+        void setTTSize(uint32_t mbSize);
         void setSearchParameters(SearchParameters parameters);
         void setDrawAdjudication(bool enable, uint32_t score = 0, uint32_t repeats = 0, uint32_t moves = 0);
         void setResignAdjudication(bool enable, uint32_t score = 0, uint32_t repeats = 0, uint32_t moves = 0);
         void setMoveLimit(uint32_t limit);
-        void play(Board board, std::vector<Move>* moves, std::vector<eval_t>* evals, GameResult* result);
+        void setInitialPosition(const Board& board);
+        void setRandomSeed(uint32_t seed);
+        void randomizeInitialPosition(uint32_t numMoves, const Board& board = Board(FEN::startpos), eval_t maxEval = MATE_SCORE);
+        void play(bool newGame = true);
+
+        const Board& getInitialPosition() const;
+        const std::vector<Move>& getMoves() const;
+        const std::vector<eval_t>& getEvals() const;
+        GameResult getResult() const;
+        Searcher& getSearcher(Color color);
     };
 }

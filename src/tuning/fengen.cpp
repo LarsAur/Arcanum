@@ -68,26 +68,16 @@ void Fengen::start(FengenParameters params)
     auto fn = [&](uint32_t id)
     {
         std::string startfen;
-        std::vector<Move> moves;
-        std::vector<eval_t> scores;
-        GameResult result;
         GameRunner runner;
-        std::uniform_int_distribution<uint8_t> randDist(0, 255);
-        std::mt19937 randGen(time(nullptr) + id);
 
         readLock.lock();
-        moves.reserve(300);
-        scores.reserve(300);
-        Searcher searchers[2] = {Searcher(false), Searcher(false)};
-        searchers[0].resizeTT(8);
-        searchers[1].resizeTT(8);
         readLock.unlock();
 
-        runner.setSearchers(&searchers[0], &searchers[1]);
         runner.setDrawAdjudication(true, 10, 10, 40);
         runner.setResignAdjudication(false);
         runner.setMoveLimit(300);
         runner.setSearchParameters(searchParams);
+        runner.setRandomSeed(time(nullptr) + id * 1000);
 
         while (true)
         {
@@ -117,45 +107,24 @@ void Fengen::start(FengenParameters params)
                 board = Board(FEN::startpos);
             }
 
-            // Apply random moves to the starting position
-            // If the position at some point contains a checkmate, the position is re-randomized
-            while(true)
+            // If enabled, randomize the position.
+            if(params.numRandomMoves > 0)
             {
-                Board randomBoard = Board(board);
-                bool randomized = true;
-                for(uint32_t i = 0; i < params.numRandomMoves; i++)
-                {
-                    Move* moves = randomBoard.getLegalMoves();
-                    uint8_t numMoves = randomBoard.getNumLegalMoves();
-                    randomBoard.generateCaptureInfo();
-                    uint8_t randIndex = randDist(randGen) % numMoves;
-                    randomBoard.performMove(moves[randIndex]);
-                    if(!randomBoard.hasLegalMove())
-                    {
-                        randomized = false;
-                        break;
-                    }
-                }
-
-                if(randomized)
-                {
-                    board = Board(randomBoard);
-                    break;
-                }
+                runner.randomizeInitialPosition(params.numRandomMoves, board, 200); // TODO: Set an eval limit
             }
 
-            // Play the game and record the moves, scores and result of the game
-            runner.play(board, &moves, &scores, &result);
+            // Play the game
+            runner.play();
 
             writeLock.lock();
             gameCount++;
-            results[result + 1]++;
+            results[runner.getResult() + 1]++;
 
             // Store the game using the selected encoding
-            encoder.addGame(board, moves, scores, result);
+            encoder.addGame(runner.getInitialPosition(), runner.getMoves(), runner.getEvals(), runner.getResult());
 
-            fenCount += moves.size() + 1; // Num moves + startfen
-            if((fenCount % 1000) < ((fenCount - moves.size() - 1) % 1000)  )
+            fenCount += runner.getMoves().size() + 1; // Num moves + startfen
+            if((fenCount % 1000) < ((fenCount - runner.getMoves().size() - 1) % 1000)  )
             {
                 LOG(
                     fenCount << " fens " <<
@@ -167,13 +136,6 @@ void Fengen::start(FengenParameters params)
                 msTimer.start();
             }
             writeLock.unlock();
-
-            moves.clear();
-            scores.clear();
-            searchers[0].clearHistory();
-            searchers[1].clearHistory();
-            searchers[0].clear();
-            searchers[1].clear();
         }
     };
 
