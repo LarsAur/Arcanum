@@ -392,13 +392,13 @@ void BinpackParser::m_parsePlyAndResult()
     {
         m_currentResult = GameResult::DRAW;
     }
-    else if(result > 0 && m_currentBoard.m_turn == WHITE)
+    else if(result == 1)
     {
-        m_currentResult = GameResult::WHITE_WIN;
+        m_currentResult = m_currentBoard.m_turn == WHITE ? GameResult::WHITE_WIN : GameResult::BLACK_WIN;
     }
     else
     {
-        m_currentResult = GameResult::BLACK_WIN;
+        m_currentResult = m_currentBoard.m_turn == WHITE ? GameResult::BLACK_WIN : GameResult::WHITE_WIN;
     }
 }
 
