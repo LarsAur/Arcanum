@@ -75,14 +75,14 @@ namespace Arcanum
             uint8_t m_numBitsInBitBuffer;
 
             void m_writeBlock();
-            void m_writeStem(Board& board, Move& move, eval_t score, GameResult result);
+            void m_writeStem(Board& board, const Move& move, eval_t score, GameResult result);
             void m_writePos(Board& board);
-            void m_writeMove(Move& move);
+            void m_writeMove(const Move& move);
             void m_writeScore(eval_t score);
             void m_writePlyAndResult(GameResult result, Color turn, uint16_t fullmove);
             void m_writeRule50(uint8_t rule50);
             void m_writeMovetextCount(uint32_t numMoves);
-            void m_writeEncodedMove(Board& board, Move& move);
+            void m_writeEncodedMove(Board& board, const Move& move);
             void m_writeVEncodedScore(eval_t prevScore, eval_t currentScore);
 
             void m_writeNbits(uint8_t bits, uint8_t numBits);
@@ -108,8 +108,8 @@ namespace Arcanum
             );
             void addGame(
                 const Board& startBoard,
-                std::vector<Move>& moves,
-                std::vector<eval_t>& scores,
+                const std::vector<Move>& moves,
+                const std::vector<eval_t>& scores,
                 GameResult result
             );
     };

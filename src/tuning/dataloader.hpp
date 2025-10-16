@@ -38,8 +38,8 @@ namespace Arcanum
         ) = 0;
         virtual void addGame(
             const Board& startBoard,
-            std::vector<Move>& moves,
-            std::vector<eval_t>& scores,
+            const std::vector<Move>& moves,
+            const std::vector<eval_t>& scores,
             GameResult result
         ) = 0;
     };
@@ -75,8 +75,8 @@ namespace Arcanum
             );
             void addGame(
                 const Board& startBoard,
-                std::vector<Move>& moves,
-                std::vector<eval_t>& scores,
+                const std::vector<Move>& moves,
+                const std::vector<eval_t>& scores,
                 GameResult result
             );
     };

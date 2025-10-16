@@ -52,8 +52,8 @@ void BinpackEncoder::addPosition(
 
 void BinpackEncoder::addGame(
     const Board& startBoard,
-    std::vector<Move>& moves,
-    std::vector<eval_t>& scores,
+    const std::vector<Move>& moves,
+    const std::vector<eval_t>& scores,
     GameResult result
 )
 {
@@ -175,7 +175,7 @@ void BinpackEncoder::m_writeBlock()
     m_buffer.clear();
 }
 
-void BinpackEncoder::m_writeStem(Board& board, Move& move, eval_t score, GameResult result)
+void BinpackEncoder::m_writeStem(Board& board, const Move& move, eval_t score, GameResult result)
 {
     m_writePos(board);
     m_writeMove(move);
@@ -288,7 +288,7 @@ void BinpackEncoder::m_writePos(Board& board)
     m_writeBytesToBuffer(data, PosByteSize);
 }
 
-void BinpackEncoder::m_writeMove(Move& move)
+void BinpackEncoder::m_writeMove(const Move& move)
 {
     // Rook, Knight, Bishop, Queen
     constexpr static uint8_t PromotionToBits[4] = {0b10, 0b00, 0b01, 0b11};
@@ -362,7 +362,7 @@ void BinpackEncoder::m_writeMovetextCount(uint32_t numMoves)
     m_writeBytesToBuffer(&data, 2);
 }
 
-void BinpackEncoder::m_writeEncodedMove(Board& board, Move& move)
+void BinpackEncoder::m_writeEncodedMove(Board& board, const Move& move)
 {
     constexpr static uint8_t PromotionFromRanks[2] = {6, 1};
 
