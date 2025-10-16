@@ -83,7 +83,7 @@ namespace Arcanum
         public:
             Board();
             Board(const Board& board);
-            Board(const std::string fen, bool strict = true);
+            explicit Board(const std::string fen, bool strict = true);
             Board& operator=(const Board& other) = default;
             void performMove(const Move move);
             void generateCaptureInfo();
