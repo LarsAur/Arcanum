@@ -595,6 +595,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 R -= m_heuristics.killerManager.contains(*move, plyFromRoot);
                 R -= m_heuristics.counterManager.contains(*move, prevMove, board.getTurn());
                 R += cutnode;
+                R -= isPv;
                 R = std::max(int8_t(0), R);
             }
 
