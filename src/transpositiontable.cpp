@@ -82,6 +82,24 @@ inline size_t TranspositionTable::m_getClusterIndex(hash_t hash)
     return hash % m_numClusters;
 }
 
+inline eval_t TranspositionTable::m_toTTEval(eval_t eval, uint8_t plyFromRoot)
+{
+    if(Evaluator::isMateScore(eval))
+    {
+        return (eval > 0) ? (eval + plyFromRoot) : (eval - plyFromRoot);
+    }
+    return eval;
+}
+
+inline eval_t TranspositionTable::m_fromTTEval(eval_t eval, uint8_t plyFromRoot)
+{
+    if(Evaluator::isMateScore(eval))
+    {
+        return (eval > 0) ? (eval - plyFromRoot) : (eval + plyFromRoot);
+    }
+    return eval;
+}
+
 void TranspositionTable::prefetch(hash_t hash)
 {
     if(m_table)
@@ -110,14 +128,10 @@ std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
         if(entry.isValid() && entry.getHash() == (hash & TTEntry::HashMask))
         {
             TTEntry retEntry = entry;
-            if(Evaluator::isMateScore(entry.eval))
-            {
-                retEntry.eval = entry.eval > 0 ? entry.eval - plyFromRoot : entry.eval + plyFromRoot;
-            }
-            if(Evaluator::isMateScore(entry.staticEval))
-            {
-                retEntry.staticEval = entry.staticEval > 0 ? entry.staticEval - plyFromRoot : entry.staticEval + plyFromRoot;
-            }
+            // Adjust the mate score based on plyFromRoot to make the score represent the mate distance from the root position
+            // Note: This is also done for static eval as it could be a TB mate score
+            retEntry.eval       = m_fromTTEval(entry.eval, plyFromRoot);
+            retEntry.staticEval = m_fromTTEval(entry.staticEval, plyFromRoot);
             return retEntry;
         }
     }
@@ -137,15 +151,9 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
     TTEntry newEntry(hash, move, eval, staticEval, depth, m_generation, numPieces, isPv, flag);
 
     // Adjust the mate score based on plyFromRoot to make the score represent the mate distance from this position
-    if(Evaluator::isMateScore(newEntry.eval))
-    {
-        newEntry.eval = newEntry.eval > 0 ? newEntry.eval + plyFromRoot : newEntry.eval - plyFromRoot;
-    }
-
-    if(Evaluator::isMateScore(newEntry.staticEval))
-    {
-        newEntry.staticEval = newEntry.staticEval > 0 ? newEntry.staticEval + plyFromRoot : newEntry.staticEval - plyFromRoot;
-    }
+    // Note: This is also done for static eval as it could be a TB mate score
+    newEntry.eval       = m_toTTEval(newEntry.eval, plyFromRoot);
+    newEntry.staticEval = m_toTTEval(newEntry.staticEval, plyFromRoot);
 
     m_stats.entriesAdded++;
 

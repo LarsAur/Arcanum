@@ -138,6 +138,8 @@ namespace Arcanum
             TTStats m_stats;
             uint8_t m_generation;
             size_t m_getClusterIndex(hash_t hash);
+            eval_t m_toTTEval(eval_t eval, uint8_t plyFromRoot);
+            eval_t m_fromTTEval(eval_t eval, uint8_t plyFromRoot);
         public:
             TranspositionTable();
             ~TranspositionTable();
