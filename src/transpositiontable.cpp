@@ -64,6 +64,7 @@ void TranspositionTable::clearStats()
 
 void TranspositionTable::clear()
 {
+    m_generation = 0;
     clearStats();
 
     // Set all table enties to be invalid
@@ -85,6 +86,11 @@ void TranspositionTable::prefetch(hash_t hash)
 {
     if(m_table)
         _mm_prefetch(m_table + m_getClusterIndex(hash), _MM_HINT_T0);
+}
+
+void TranspositionTable::incrementGeneration()
+{
+    m_generation = (m_generation < UINT8_MAX) ? m_generation + 1 : m_generation;
 }
 
 std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
@@ -121,14 +127,14 @@ std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
     return {}; // Return empty optional
 }
 
-void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
+void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
 {
     if(!m_table)
         return;
 
     TTCluster* cluster = &m_table[m_getClusterIndex(hash)];
 
-    TTEntry newEntry(hash, move, eval, staticEval, depth, generation, numPieces, isPv, flag);
+    TTEntry newEntry(hash, move, eval, staticEval, depth, m_generation, numPieces, isPv, flag);
 
     // Adjust the mate score based on plyFromRoot to make the score represent the mate distance from this position
     if(Evaluator::isMateScore(newEntry.eval))

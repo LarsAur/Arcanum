@@ -14,7 +14,6 @@ Searcher::Searcher(bool verbose)
     m_tt = TranspositionTable();
     m_tt.resize(32);
     m_stats = SearchStats();
-    m_generation = 0;
     m_verbose = verbose;
 
     m_lmrReductions = new uint8_t[MAX_SEARCH_DEPTH * MAX_MOVE_COUNT];
@@ -73,7 +72,6 @@ void Searcher::resizeTT(uint32_t mbSize)
 
 void Searcher::clear()
 {
-    m_generation = 0;
     m_tt.clear();
     m_heuristics.clear();
 }
@@ -225,7 +223,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
-    m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, staticEval, ttFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+    m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, staticEval, ttFlag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
     return bestScore;
 }
@@ -324,7 +322,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             if((tbFlag == TTFlag::EXACT) || (tbFlag == TTFlag::LOWER_BOUND ? tbScore >= beta : tbScore <= alpha))
             {
                 // TODO: Might be some bad effects of using tbScore as static eval. Add some value for unknown score.
-                m_tt.add(tbScore, NULL_MOVE, isPv, depth, plyFromRoot, tbScore, tbFlag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+                m_tt.add(tbScore, NULL_MOVE, isPv, depth, plyFromRoot, tbScore, tbFlag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
                 return tbScore;
             }
 
@@ -687,7 +685,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
         else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
-        m_tt.add(bestScore, bestMove, isPv, depth, plyFromRoot, staticEval, flag, m_generation, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+        m_tt.add(bestScore, bestMove, isPv, depth, plyFromRoot, staticEval, flag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
     }
 
     return bestScore;
@@ -748,8 +746,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     Move searchBestMove = NULL_MOVE;
     m_searchParameters = parameters;
     m_pvTable = PvTable();
-
-    m_generation = (uint8_t) std::min(board.getFullMoves(), uint16_t(0x00ff));
+    m_tt.incrementGeneration();
     m_numPiecesRoot = board.getNumPieces();
     m_timer.start();
 
@@ -929,7 +926,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt.add(searchScore, bestMove, true, depth, 0, staticEval, TTFlag::EXACT, m_generation, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
+        m_tt.add(searchScore, bestMove, true, depth, 0, staticEval, TTFlag::EXACT, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
         m_sendUciInfo(board, searchScore, depth, forceTBScore, wdlTB);

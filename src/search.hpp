@@ -147,7 +147,6 @@ namespace Arcanum
             MoveOrderHeuristics m_heuristics;
             PvTable m_pvTable;
             SearchParameters m_searchParameters;
-            uint8_t m_generation;
             uint8_t m_numPiecesRoot; // Number of pieces in the root of the search
             SearchStats m_stats;
             uint64_t m_tbHits;

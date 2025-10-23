@@ -136,14 +136,16 @@ namespace Arcanum
             size_t m_numClusters;
             size_t m_numEntries;
             TTStats m_stats;
+            uint8_t m_generation;
             size_t m_getClusterIndex(hash_t hash);
         public:
             TranspositionTable();
             ~TranspositionTable();
 
             void prefetch(hash_t hash);
+            void incrementGeneration();
             std::optional<TTEntry> get(hash_t hash, uint8_t plyFromRoot);
-            void add(eval_t score, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t generation, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash);
+            void add(eval_t score, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash);
             void resize(uint32_t mbSize);
             void clear();
             void clearStats();
