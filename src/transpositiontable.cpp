@@ -129,9 +129,9 @@ std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
         {
             TTEntry retEntry = entry;
             // Adjust the mate score based on plyFromRoot to make the score represent the mate distance from the root position
-            // Note: This is also done for static eval as it could be a TB mate score
-            retEntry.eval       = m_fromTTEval(entry.eval, plyFromRoot);
-            retEntry.staticEval = m_fromTTEval(entry.staticEval, plyFromRoot);
+            // Note: This is also done for raw eval as it could be a TB mate score
+            retEntry.eval    = m_fromTTEval(entry.eval, plyFromRoot);
+            retEntry.rawEval = m_fromTTEval(entry.rawEval, plyFromRoot);
             return retEntry;
         }
     }
@@ -141,19 +141,19 @@ std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
     return {}; // Return empty optional
 }
 
-void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
+void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t rawEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
 {
     if(!m_table)
         return;
 
     TTCluster* cluster = &m_table[m_getClusterIndex(hash)];
 
-    TTEntry newEntry(hash, move, eval, staticEval, depth, m_generation, numPieces, isPv, flag);
+    TTEntry newEntry(hash, move, eval, rawEval, depth, m_generation, numPieces, isPv, flag);
 
     // Adjust the mate score based on plyFromRoot to make the score represent the mate distance from this position
-    // Note: This is also done for static eval as it could be a TB mate score
-    newEntry.eval       = m_toTTEval(newEntry.eval, plyFromRoot);
-    newEntry.staticEval = m_toTTEval(newEntry.staticEval, plyFromRoot);
+    // Note: This is also done for rawEval eval as it could be a TB mate score
+    newEntry.eval    = m_toTTEval(newEntry.eval, plyFromRoot);
+    newEntry.rawEval = m_toTTEval(newEntry.rawEval, plyFromRoot);
 
     m_stats.entriesAdded++;
 

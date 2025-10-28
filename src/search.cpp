@@ -76,6 +76,11 @@ void Searcher::clear()
     m_heuristics.clear();
 }
 
+eval_t Searcher::m_adjustEval(eval_t rawEval, Board& board)
+{
+    return rawEval;
+}
+
 template <bool isPv>
 eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot)
 {
@@ -135,16 +140,18 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 
     m_heuristics.killerManager.clearPly(plyFromRoot + 1);
 
-    eval_t staticEval;
+    eval_t rawEval;
     if(entry.has_value())
     {
-        staticEval = entry->staticEval;
+        rawEval = entry->rawEval;
     }
     else
     {
         m_stats.evaluations++;
-        staticEval = m_evaluator.evaluate(board, plyFromRoot);
+        rawEval = m_evaluator.evaluate(board, plyFromRoot);
     }
+
+    eval_t staticEval = m_adjustEval(rawEval, board);
 
     bool isChecked = board.isChecked();
 
@@ -223,7 +230,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
-    m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, staticEval, ttFlag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+    m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, rawEval, ttFlag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
     return bestScore;
 }
@@ -347,16 +354,18 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     moves = board.getLegalMoves();
     numMoves = board.getNumLegalMoves();
 
-    eval_t staticEval;
+    eval_t rawEval;
     if(entry.has_value())
     {
-        staticEval = entry->staticEval;
+        rawEval = entry->rawEval;
     }
     else
     {
         m_stats.evaluations++;
-        staticEval = m_evaluator.evaluate(board, plyFromRoot);
+        rawEval = m_evaluator.evaluate(board, plyFromRoot);
     }
+
+    eval_t staticEval = m_adjustEval(rawEval, board);
 
     if(numMoves == 0)
     {
@@ -685,7 +694,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
         else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
-        m_tt.add(bestScore, bestMove, isPv, depth, plyFromRoot, staticEval, flag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+        m_tt.add(bestScore, bestMove, isPv, depth, plyFromRoot, rawEval, flag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
     }
 
     return bestScore;
@@ -742,7 +751,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_numNodesSearched = 0;
     m_tbHits = 0;
     eval_t searchScore = 0;
-    eval_t staticEval = 0;
+    eval_t rawEval = 0;
     Move searchBestMove = NULL_MOVE;
     m_searchParameters = parameters;
     m_pvTable = PvTable();
@@ -779,7 +788,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         PackedMove packedMove = ttEntry->getPackedMove();
         Move ttMove = board.generateMoveWithInfo(packedMove.from(), packedMove.to(), packedMove.promotionInfo());
 
-        staticEval = ttEntry->staticEval;
+        rawEval = ttEntry->rawEval;
 
         // We have to check that the move from TT is legal,
         // This is to avoid returning an illegal move in this position
@@ -795,8 +804,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     }
     else
     {
-        staticEval = m_evaluator.evaluate(board, 0);
+        rawEval = m_evaluator.evaluate(board, 0);
     }
+
+    eval_t staticEval = m_adjustEval(rawEval, board);
 
     // Initialize the search stack by pushing the initial board
     m_searchStacks.hashes[0]      = board.getHash();
@@ -926,7 +937,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt.add(searchScore, bestMove, true, depth, 0, staticEval, TTFlag::EXACT, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
+        m_tt.add(alpha, bestMove, true, depth, 0, rawEval, TTFlag::EXACT, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
         m_sendUciInfo(board, searchScore, depth, forceTBScore, wdlTB);

@@ -29,7 +29,7 @@ namespace Arcanum
         uint8_t depth;
         uint8_t generation;
         eval_t eval;
-        eval_t staticEval;
+        eval_t rawEval;
         PackedMove packedMove;
         hash_t _hashNpFlagAndIsPv; // 50 bits hash | 2 bits = TT Flag | 5 bits numPieces-2 | 1 bit isPv
 
@@ -37,7 +37,7 @@ namespace Arcanum
             hash_t hash,
             Move move,
             eval_t eval,
-            eval_t staticEval,
+            eval_t rawEval,
             uint8_t depth,
             uint8_t generation,
             uint8_t numPieces,
@@ -47,7 +47,7 @@ namespace Arcanum
             depth(depth),
             generation(generation),
             eval(eval),
-            staticEval(staticEval),
+            rawEval(rawEval),
             packedMove(PackedMove(move))
         {
             _hashNpFlagAndIsPv = (hash & HashMask) | (static_cast<uint8_t>(flag) << 6) | (static_cast<hash_t>(numPieces-2) << 1) | static_cast<hash_t>(isPv);
@@ -147,7 +147,7 @@ namespace Arcanum
             void prefetch(hash_t hash);
             void incrementGeneration();
             std::optional<TTEntry> get(hash_t hash, uint8_t plyFromRoot);
-            void add(eval_t score, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t staticEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash);
+            void add(eval_t score, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t rawEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash);
             void resize(uint32_t mbSize);
             void clear();
             void clearStats();
