@@ -34,6 +34,8 @@ namespace Arcanum
             static bool isMateScore(eval_t eval);
             // Returns true if the board and score indicates that it might be close to mate
             static bool isCloseToMate(Board& board, eval_t eval);
+            // Clamps the eval to avoid mate scores
+            static eval_t clampEval(eval_t eval);
 
             static NNUE nnue;
 

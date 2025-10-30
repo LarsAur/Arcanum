@@ -6,6 +6,7 @@
 #include <history/quiethistory.hpp>
 #include <history/capturehistory.hpp>
 #include <history/continuationhistory.hpp>
+#include <history/correctionhistory.hpp>
 
 namespace Arcanum
 {
@@ -16,6 +17,7 @@ namespace Arcanum
         KillerManager killerManager;
         CounterManager counterManager;
         ContinuationHistory continuationHistory;
+        CorrectionHistory correctionHistory;
 
         void clear()
         {
@@ -24,6 +26,7 @@ namespace Arcanum
             killerManager.clear();
             counterManager.clear();
             continuationHistory.clear();
+            correctionHistory.clear();
         }
     };
 

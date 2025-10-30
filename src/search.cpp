@@ -78,7 +78,13 @@ void Searcher::clear()
 
 eval_t Searcher::m_adjustEval(eval_t rawEval, Board& board)
 {
-    return rawEval;
+    if(board.isChecked() || Evaluator::isMateScore(rawEval))
+    {
+        return rawEval;
+    }
+
+    eval_t adjustedEval = rawEval + m_heuristics.correctionHistory.get(board);
+    return Evaluator::clampEval(adjustedEval);
 }
 
 template <bool isPv>
@@ -695,6 +701,10 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
         m_tt.add(bestScore, bestMove, isPv, depth, plyFromRoot, rawEval, flag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+
+        if (!board.isChecked() && !bestMove.isCapture() && ((flag == TTFlag::EXACT) || (flag == (bestScore >= staticEval ? TTFlag::LOWER_BOUND : TTFlag::UPPER_BOUND)))) {
+            m_heuristics.correctionHistory.update(board, bestScore, staticEval, depth);
+        }
     }
 
     return bestScore;
