@@ -91,7 +91,9 @@ template <bool isPv>
 eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot)
 {
     if(m_shouldStop())
+    {
         return 0;
+    }
 
     m_numNodesSearched++;
     m_stats.qSearchNodes++;
@@ -108,10 +110,11 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
     }
 
     if(m_isDraw(board, plyFromRoot))
+    {
         return DRAW_VALUE;
+    }
 
     eval_t bestScore = -MATE_SCORE;
-
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
     Move ttMove = NULL_MOVE;
@@ -250,10 +253,14 @@ template <bool isPv>
 eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove)
 {
     if(m_shouldStop())
+    {
         return 0;
+    }
 
     if(depth <= 0)
+    {
         return m_alphaBetaQuiet<isPv>(board, alpha, beta, plyFromRoot);
+    }
 
     m_numNodesSearched++;
     if constexpr (isPv)
@@ -268,13 +275,17 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     }
 
     if(m_isDraw(board, plyFromRoot))
+    {
         return DRAW_VALUE;
+    }
 
     // Mate distance pruning
     alpha = std::max(alpha, eval_t(plyFromRoot - MATE_SCORE));
     beta = std::min(beta, eval_t(MATE_SCORE - plyFromRoot - 1));
     if (alpha >= beta)
-      return alpha;
+    {
+        return alpha;
+    }
 
     eval_t originalAlpha = alpha;
     eval_t bestScore = -MATE_SCORE;
@@ -505,7 +516,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     while (const Move* move = moveSelector.getNextMove())
     {
         if(*move == skipMove)
+        {
             continue;
+        }
 
         if(!isPv && !move->isPromotion() && !move->isCastle() && !Evaluator::isCloseToMate(board, bestScore) && board.hasOfficers(board.getTurn()))
         {
@@ -590,7 +603,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
         // Limit the number of extensions
         if(totalExtensions > 32)
+        {
             extension = 0;
+        }
 
         m_evaluator.pushMoveToAccumulator(board, *move);
         m_searchStacks.moves[plyFromRoot] = *move;
