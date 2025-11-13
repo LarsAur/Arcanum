@@ -236,6 +236,11 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
+    if(m_stopSearch)
+    {
+        return 0;
+    }
+
     m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, rawEval, ttFlag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
 
     return bestScore;
