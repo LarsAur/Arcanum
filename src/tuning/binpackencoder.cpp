@@ -296,6 +296,7 @@ void BinpackEncoder::m_writeMove(const Move& move)
 
     CompressedMoveType type = CompressedMoveType::NORMAL;
     uint8_t promoteBit = 0;
+    square_t to = move.to;
     if(move.isPromotion())
     {
         type = CompressedMoveType::PROMOTION;
@@ -308,12 +309,18 @@ void BinpackEncoder::m_writeMove(const Move& move)
     else if(move.isCastle())
     {
         type = CompressedMoveType::CASTLE;
+
+        // Note: In the binpack format castling moves can have the rook square as the target
+        // I.e. A1, H1, A8 and H8 not the targets used by Arcanum which is C1, G1, C8 and G8
+        // We thus have to convert them from the Arcanum format to the binpack format
+        if(to == Square::C1) to = Square::A1;
+        if(to == Square::G1) to = Square::H1;
+        if(to == Square::C8) to = Square::A8;
+        if(to == Square::G8) to = Square::H8;
     }
 
-    // TODO: Might have to change the to square of castle moves. See m_parseMove() in BinpackParser.
-
     data[0] = (uint8_t(type) << 6) | move.from;
-    data[1] = (move.to << 2) | promoteBit;
+    data[1] = (to << 2) | promoteBit;
     m_writeBytesToBuffer(data, 2);
 }
 
