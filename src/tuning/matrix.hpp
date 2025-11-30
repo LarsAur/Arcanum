@@ -443,4 +443,24 @@ namespace Arcanum
         }
     }
 
+    // Matrix B will be transposed
+    template <uint32_t n, uint32_t m, uint32_t p>
+    void multiplyTransposeBAccumulate(Matrix<n, m>& matA, Matrix<p, m>& matB, Matrix<n, p>& matAcc)
+    {
+        float* aData = matA.data();
+        float* bData = matB.data();
+        float* oData = matAcc.data();
+
+        for(uint32_t col = 0; col < p; col++)
+        {
+            for(uint32_t row = 0; row < n; row++)
+            {
+                for(uint32_t i = 0; i < m; i++)
+                {
+                    oData[col * n + row] += aData[i * n + row] * bData[i * n + col];
+                }
+            }
+        }
+    }
+
 }

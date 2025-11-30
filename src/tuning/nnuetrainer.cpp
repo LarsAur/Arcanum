@@ -296,33 +296,25 @@ float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResul
     m_findFeatureSet(board, featureSet);
     uint32_t bucket = NNUE::getOutputBucket(board);
 
-    // -- Calculation of auxillery coefficients
-    Matrix<NNUE::L1Size, 1> delta1(false);
-    Matrix<1, 1>            delta2(false);
-
     // Calculate derivative of activation functions (Sigma prime)
-    Matrix<NNUE::L1Size, 1> accumulatorReLuPrime(false);
-    accumulatorReLuPrime.copy(m_trace.acc);
-    accumulatorReLuPrime.clippedReluPrime(ReluClipValue);
+    m_backPropData.accumulatorReLuPrime.copy(m_trace.acc);
+    m_backPropData.accumulatorReLuPrime.clippedReluPrime(ReluClipValue);
 
     // Calculate deltas (d_l = W_l+1^T * d_l+1) * sigma prime (Z_l)
 
-    delta2.set(0, 0, sigmoidPrime * lossPrime);
+    m_backPropData.delta2.set(0, 0, sigmoidPrime * lossPrime);
 
-    multiplyTransposeA(m_net.l1Weights[bucket], delta2, delta1);
-    delta1.hadamard(accumulatorReLuPrime);
+    multiplyTransposeA(m_net.l1Weights[bucket], m_backPropData.delta2, m_backPropData.delta1);
+    m_backPropData.delta1.hadamard(m_backPropData.accumulatorReLuPrime);
 
     // Calculation of gradient
 
-    Matrix<1, NNUE::L1Size> gradientL1Weights(false);
-
-    multiplyTransposeB(delta2, m_trace.acc, gradientL1Weights);
-    calcAndAccFtGradient(featureSet, delta1, m_gradient.ftWeights);
+    multiplyTransposeBAccumulate(m_backPropData.delta2, m_trace.acc, m_gradient.l1Weights[bucket]);
+    calcAndAccFtGradient(featureSet, m_backPropData.delta1, m_gradient.ftWeights);
 
     // Accumulate the change
-    m_gradient.l1Biases[bucket].add(delta2);
-    m_gradient.ftBiases.add(delta1);
-    m_gradient.l1Weights[bucket].add(gradientL1Weights);
+    m_gradient.l1Biases[bucket].add(m_backPropData.delta2);
+    m_gradient.ftBiases.add(m_backPropData.delta1);
 
     return loss;
 }

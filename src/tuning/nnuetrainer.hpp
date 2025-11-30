@@ -46,6 +46,13 @@ namespace Arcanum
                 Matrix<1, 1>            out;
             };
 
+            struct BackPropagationData
+            {
+                Matrix<NNUE::L1Size, 1> delta1;
+                Matrix<1, 1>            delta2;
+                Matrix<NNUE::L1Size, 1> accumulatorReLuPrime;
+            };
+
             struct AdamMoments
             {
                 Net m;
@@ -59,6 +66,7 @@ namespace Arcanum
 
             Net m_gradient;
             AdamMoments m_moments;
+            BackPropagationData m_backPropData;
 
             TrainingParameters m_params;
 
