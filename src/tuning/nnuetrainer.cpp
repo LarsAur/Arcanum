@@ -31,6 +31,15 @@ _net1.l1Weights[i]._op; \
 _net1.l1Biases [i]._op; \
 }
 
+#define NET_MADD(_net1, _scalar, _net2) \
+_net1.ftWeights.madd(_scalar, _net2.ftWeights); \
+_net1.ftBiases .madd(_scalar, _net2.ftBiases ); \
+for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++) \
+{ \
+_net1.l1Weights[i].madd(_scalar, _net2.l1Weights[i]); \
+_net1.l1Biases [i].madd(_scalar, _net2.l1Biases [i]); \
+}
+
 const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE v6";
 
 bool NNUETrainer::load(std::string filename)
@@ -327,16 +336,14 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
 
     // M_t = B1 * M_t-1 + (1 - B1) * g_t
 
-    NET_UNARY_OP(m_moments.m, scale(beta1 / (1.0f - beta1)))
-    NET_BINARY_OP(m_moments.m, add, m_gradient)
-    NET_UNARY_OP(m_moments.m, scale(1.0f - beta1))
+    NET_UNARY_OP(m_moments.m, scale(beta1))
+    NET_MADD(m_moments.m, (1.0f - beta1), m_gradient)
 
     // v_t = B2 * v_t-1 + (1 - B2) * g_t^2
 
-    NET_UNARY_OP(m_moments.v, scale(beta2))
     NET_UNARY_OP(m_gradient, pow2())
-    NET_UNARY_OP(m_gradient, scale(1.0f - beta2))
-    NET_BINARY_OP(m_moments.v, add, m_gradient)
+    NET_UNARY_OP(m_moments.v, scale(beta2))
+    NET_MADD(m_moments.v, (1.0f - beta2), m_gradient)
 
     // M^_t = alpha * M_t / (1 - Beta1^t)
 

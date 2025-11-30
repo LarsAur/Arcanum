@@ -86,6 +86,13 @@ namespace Arcanum
                     m_data[i] += matrix.m_data[i];
             }
 
+            void madd(float scalar, Matrix<rows, cols>& matrix)
+            {
+                // TODO: Optimize with AVX (fmadd)
+                for(uint32_t i = 0; i < cols * rows; i++)
+                    m_data[i] += scalar * matrix.m_data[i];
+            }
+
             void addScalar(float scalar)
             {
                 for(uint32_t i = 0; i < cols * rows; i++)
