@@ -242,14 +242,14 @@ float NNUETrainer::m_predict(const Board& board)
 inline float NNUETrainer::m_sigmoid(float v)
 {
     constexpr float e = 2.71828182846f;
-    return 1.0f / (1.0f + pow(e, -v * SigmoidFactor));
+    return 1.0f / (1.0f + pow(e, -v));
 }
 
 inline float NNUETrainer::m_sigmoidPrime(float sigmoid)
 {
     // Calculate derivative of sigmoid based on the sigmoid value
-    // f'(x) = f(x) * (1 - f(x)) / SIG_FACTOR
-    return ((sigmoid) * (1.0f - (sigmoid))) * SigmoidFactor;
+    // f'(x) = f(x) * (1 - f(x))
+    return ((sigmoid) * (1.0f - (sigmoid)));
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
@@ -269,8 +269,8 @@ float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResul
     }
 
     // Calculate target
-    float wdlOutput       = m_sigmoid(out);
-    float wdlTargetCp     = m_sigmoid(cpTarget);
+    float wdlOutput       = m_sigmoid(out / NNUE::NetworkScale);
+    float wdlTargetCp     = m_sigmoid(cpTarget / NNUE::NetworkScale);
     float target          = wdlTargetCp * m_params.lambda + wdlTarget * (1.0f - m_params.lambda);
 
     // Calculate loss
@@ -441,8 +441,8 @@ float NNUETrainer::m_getValidationLoss()
         }
 
         // Calculate target
-        float wdlOutput       = m_sigmoid(out);
-        float wdlTargetCp     = m_sigmoid(cp);
+        float wdlOutput       = m_sigmoid(out / NNUE::NetworkScale);
+        float wdlTargetCp     = m_sigmoid(cp / NNUE::NetworkScale);
         float target          = wdlTargetCp * m_params.lambda + wdlTarget * (1.0f - m_params.lambda);
 
         // Calculate loss
