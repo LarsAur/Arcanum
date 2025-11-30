@@ -153,6 +153,32 @@ namespace Arcanum
                     m_data[i] = std::clamp(m_data[i], min, max);
             }
 
+            void adamUpdate(
+                float alpha,
+                Matrix<rows, cols>& gradient,
+                Matrix<rows, cols>& m,
+                Matrix<rows, cols>& v
+            )
+            {
+                // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
+                // Note: The bias correction steps are omitted for simplicity.
+                constexpr float beta1   = 0.9f;
+                constexpr float beta2   = 0.999f;
+                constexpr float epsilon = 1.0E-8;
+
+                for(uint32_t i = 0; i < cols * rows; i++)
+                {
+                    // M_t = B1 * M_t-1 + (1 - B1) * g_t
+                    m.m_data[i] = beta1 * m.m_data[i] + (1.0f - beta1) * gradient.m_data[i];
+
+                    // v_t = B2 * v_t-1 + (1 - B2) * g_t^2
+                    v.m_data[i] = beta2 * v.m_data[i] + (1.0f - beta2) * gradient.m_data[i] * gradient.m_data[i];
+
+                    // net = net + M^_t / (sqrt(v^_t) + epsilon)
+                    m_data[i] += alpha * m.m_data[i] / (std::sqrt(v.m_data[i]) + epsilon);
+                }
+            }
+
             void set(uint32_t row, uint32_t col, float value)
             {
                 if(row >= rows)

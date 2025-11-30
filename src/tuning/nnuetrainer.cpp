@@ -31,15 +31,6 @@ _net1.l1Weights[i]._op; \
 _net1.l1Biases [i]._op; \
 }
 
-#define NET_MADD(_net1, _scalar, _net2) \
-_net1.ftWeights.madd(_scalar, _net2.ftWeights); \
-_net1.ftBiases .madd(_scalar, _net2.ftBiases ); \
-for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++) \
-{ \
-_net1.l1Weights[i].madd(_scalar, _net2.l1Weights[i]); \
-_net1.l1Biases [i].madd(_scalar, _net2.l1Biases [i]); \
-}
-
 const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE v6";
 
 bool NNUETrainer::load(std::string filename)
@@ -319,43 +310,15 @@ float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResul
     return loss;
 }
 
-void NNUETrainer::m_applyGradient(uint32_t timestep)
+void NNUETrainer::m_applyGradient()
 {
-    // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
-    constexpr float beta1   = 0.9f;
-    constexpr float beta2   = 0.999f;
-    constexpr float epsilon = 1.0E-8;
-
-    // M_t = B1 * M_t-1 + (1 - B1) * g_t
-
-    NET_UNARY_OP(m_moments.m, scale(beta1))
-    NET_MADD(m_moments.m, (1.0f - beta1), m_gradient)
-
-    // v_t = B2 * v_t-1 + (1 - B2) * g_t^2
-
-    NET_UNARY_OP(m_gradient, pow2())
-    NET_UNARY_OP(m_moments.v, scale(beta2))
-    NET_MADD(m_moments.v, (1.0f - beta2), m_gradient)
-
-    // M^_t = alpha * M_t / (1 - Beta1^t)
-
-    NET_BINARY_OP(m_moments.mHat, copy, m_moments.m)
-    NET_UNARY_OP(m_moments.mHat, scale(m_params.alpha / (1.0f - std::pow(beta1, timestep))))
-
-    // v^_t = v_t / (1 - Beta2^t)
-
-    NET_BINARY_OP(m_moments.vHat, copy, m_moments.v)
-    NET_UNARY_OP(m_moments.vHat, scale(1.0f / (1.0f - std::pow(beta2, timestep))))
-
-    // sqrt(v^_t) + epsilon
-
-    NET_UNARY_OP(m_moments.vHat, sqrt())
-    NET_UNARY_OP(m_moments.vHat, addScalar(epsilon))
-
-    // net = net + M^_t / (sqrt(v^_t) + epsilon)
-
-    NET_BINARY_OP(m_moments.mHat, hadamardInverse, m_moments.vHat)
-    NET_BINARY_OP(m_net, add, m_moments.mHat)
+    m_net.ftWeights.adamUpdate(m_params.alpha, m_gradient.ftWeights, m_moments.m.ftWeights, m_moments.v.ftWeights);
+    m_net.ftBiases.adamUpdate(m_params.alpha,  m_gradient.ftBiases, m_moments.m.ftBiases, m_moments.v.ftBiases);
+    for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
+    {
+        m_net.l1Weights[i].adamUpdate(m_params.alpha, m_gradient.l1Weights[i], m_moments.m.l1Weights[i], m_moments.v.l1Weights[i]);
+        m_net.l1Biases [i].adamUpdate(m_params.alpha, m_gradient.l1Biases [i], m_moments.m.l1Biases[i],  m_moments.v.l1Biases[i]);
+    }
 
     // Clamp the weights of the linear layers to enable quantization at a later stage
     for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
@@ -457,16 +420,13 @@ void NNUETrainer::train(TrainingParameters params)
 {
     m_params = params;
 
-    // Calculate the initial timestep and alpha based on the starting epoch.
-    uint64_t timestep = m_params.startEpoch * m_params.epochSize / m_params.batchSize;
+    // Calculate the initial alpha based on the starting epoch.
     m_params.alpha = m_params.alpha * std::pow(m_params.gamma, m_params.startEpoch / m_params.gammaSteps);
 
     // Initialize the gradients
     NET_UNARY_OP(m_gradient, setZero())
     NET_UNARY_OP(m_moments.m, setZero())
     NET_UNARY_OP(m_moments.v, setZero())
-    NET_UNARY_OP(m_moments.mHat, setZero())
-    NET_UNARY_OP(m_moments.vHat, setZero())
 
     DataLoader loader;
     if(!loader.open(m_params.dataset))
@@ -528,7 +488,7 @@ void NNUETrainer::train(TrainingParameters params)
             {
                 NET_UNARY_OP(m_gradient, scale(1.0f / m_params.batchSize))
 
-                m_applyGradient(++timestep);
+                m_applyGradient();
 
                 // Reset the gradient to 0
                 NET_UNARY_OP(m_gradient, setZero())

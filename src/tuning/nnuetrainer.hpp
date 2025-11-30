@@ -57,8 +57,6 @@ namespace Arcanum
             {
                 Net m;
                 Net v;
-                Net mHat;
-                Net vHat;
             };
 
             Trace m_trace;
@@ -77,7 +75,7 @@ namespace Arcanum
             void m_initAccumulator(const Board& board);
             void m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet);
 
-            void m_applyGradient(uint32_t timestep);
+            void m_applyGradient();
             float m_backPropagate(const Board& board, float cpTarget, GameResult result);
             bool m_shouldFilterPosition(Board& board, Move& move, eval_t eval);
             float m_getValidationLoss();
