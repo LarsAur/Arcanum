@@ -4,6 +4,7 @@
 #include <fen.hpp>
 #include <math.h>
 #include <eval.hpp>
+#include <timer.hpp>
 
 using namespace Arcanum;
 
@@ -416,8 +417,30 @@ float NNUETrainer::m_getValidationLoss()
     return totalLoss / m_params.validationSize;
 }
 
+std::string NNUETrainer::m_getOutputFilename(const std::string& base, uint32_t epoch)
+{
+    std::stringstream ss;
+    ss << base << epoch << ".fnnue";
+    return ss.str();
+}
+
+// Write the epoch loss and validation loss to a file
+void NNUETrainer::m_logLoss(float epochLoss, uint64_t epochPosCount, float validationLoss, const std::string& prefix, const std::string& filename)
+{
+    std::ofstream os(filename, std::ios::app | std::ios::out);
+    std::stringstream ssLoss;
+    ssLoss << prefix << ":"
+    << std::fixed << std::setprecision(6)
+    << " Epoch loss: " << (epochLoss / epochPosCount)
+    << " Validation loss: " << validationLoss << "\n";
+    os.write(ssLoss.str().c_str(), ssLoss.str().length());
+    os.close();
+}
+
 void NNUETrainer::train(TrainingParameters params)
 {
+    constexpr uint32_t LoggingInterval = 200; // Number of batches between logging
+
     m_params = params;
 
     // Calculate the initial alpha based on the starting epoch.
@@ -439,11 +462,19 @@ void NNUETrainer::train(TrainingParameters params)
     {
         uint64_t epochPosCount = 0LL;
         uint64_t batchPosCount = 0LL;
-        float epochLoss = 0.0f;
-        float batchLoss = 0.0f;
+        uint64_t iterationBatchCount = 0LL;
+        float epochLoss        = 0.0f;
+        float batchLoss        = 0.0f;
+        float iterationLoss    = 0.0f;
 
         // Clear the gradient at the start of the epoch
         NET_UNARY_OP(m_gradient, setZero())
+
+        // Start timers
+        Timer epochTimer;
+        Timer iterationTimer;
+        epochTimer.start();
+        iterationTimer.start();
 
         while (epochPosCount < m_params.epochSize)
         {
@@ -496,37 +527,43 @@ void NNUETrainer::train(TrainingParameters params)
                 // Aggregate the loss and position count
                 epochPosCount += batchPosCount;
                 epochLoss     += batchLoss;
+                iterationLoss += batchLoss;
+                batchPosCount  = 0;
+                batchLoss      = 0.0f;
+                iterationBatchCount++;
 
-                LOG("Avg. Batch Loss = " << std::fixed << std::setprecision(6) << (batchLoss / batchPosCount)
-                << " Avg. Epoch Loss = " << std::setprecision(6)               << (epochLoss / epochPosCount)
-                << " #Positions = " << epochPosCount)
+                if(iterationBatchCount >= LoggingInterval)
+                {
+                    LOG("Avg. Iteration Loss: " << std::fixed << std::setprecision(6) << (iterationLoss / (iterationBatchCount * m_params.batchSize))
+                    << " Avg. Epoch Loss: "     << std::setprecision(6)               << (epochLoss / epochPosCount)
+                    << " FENs: " << epochPosCount
+                    << " FENs/sec: " << 1000 * iterationBatchCount * m_params.batchSize / iterationTimer.getMs())
 
-                batchPosCount = 0;
-                batchLoss = 0.0f;
+                    iterationLoss = 0.0f;
+                    iterationBatchCount = 0;
+                    iterationTimer.start();
+                }
             }
+
         }
+        LOG("Epoch time: " << epochTimer.getMs() << " ms")
+
+        // Calculate validation loss
+        float validationLoss = m_getValidationLoss();
+        LOG("Validation loss: " << validationLoss)
+
+        // Log the losses to file
+        m_logLoss(epochLoss, epochPosCount, validationLoss, m_getOutputFilename(m_params.output, epoch), "loss.log");
 
         // Apply gamma scaling
         if((epoch != 0) && (epoch % m_params.gammaSteps == 0))
         {
             m_params.alpha *= m_params.gamma;
+            LOG("Applying gamma scaling. New alpha: " << m_params.alpha)
         }
 
-        // Write the epoch loss and validation loss to a file
-        float validationLoss = m_getValidationLoss();
-        LOG("Validation loss: " << validationLoss)
-        std::ofstream os("loss.log", std::ios::app | std::ios::out);
-        std::stringstream ssLoss;
-        ssLoss << std::fixed << std::setprecision(6)
-        << "Epoch loss: " << (epochLoss / float(epochPosCount))
-        << " Validation loss: " << validationLoss << "\n";
-        os.write(ssLoss.str().c_str(), ssLoss.str().length());
-        os.close();
-
         // Store the net for each epoch
-        std::stringstream ssNnueName;
-        ssNnueName << m_params.output << epoch << ".fnnue";
-        store(ssNnueName.str());
+        store(m_getOutputFilename(m_params.output, epoch));
     }
 }
 

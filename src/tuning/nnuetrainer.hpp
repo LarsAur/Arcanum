@@ -70,6 +70,8 @@ namespace Arcanum
 
             static float m_sigmoid(float v);
             static float m_sigmoidPrime(float sigmoid);
+            static std::string m_getOutputFilename(const std::string& base, uint32_t epoch);
+            static void m_logLoss(float epochLoss, uint64_t epochPosCount, float validationLoss, const std::string& prefix, const std::string& filename);
 
             float m_predict(const Board& board);
             void m_initAccumulator(const Board& board);
