@@ -103,7 +103,7 @@ void logToFile(std::string str);
 
 #define ASSERT_OR_EXIT(_cond, _msg) { \
     if(!(_cond)) { \
-        ERROR((_msg)) \
+        ERROR(_msg) \
         exit(EXIT_FAILURE); \
     } \
 }
