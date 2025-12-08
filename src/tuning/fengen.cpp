@@ -73,11 +73,13 @@ void Fengen::start(FengenParameters params)
         readLock.lock();
         readLock.unlock();
 
-        runner.setDrawAdjudication(true, 10, 10, 40);
+        runner.setDrawAdjudication(true, 10, 6, 40);
         runner.setResignAdjudication(false);
         runner.setMoveLimit(300);
         runner.setSearchParameters(searchParams);
         runner.setRandomSeed(time(nullptr) + id * 1000);
+        runner.setTTSize(0); // Disable TT
+        runner.setDatagenMode(true);
 
         while (true)
         {
@@ -110,7 +112,7 @@ void Fengen::start(FengenParameters params)
             // If enabled, randomize the position.
             if(params.numRandomMoves > 0)
             {
-                runner.randomizeInitialPosition(params.numRandomMoves, board, 200); // TODO: Set an eval limit
+                runner.randomizeInitialPosition(params.numRandomMoves, board, 400); // TODO: Set an eval limit
             }
 
             // Play the game

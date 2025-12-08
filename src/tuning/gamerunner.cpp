@@ -13,6 +13,12 @@ GameRunner::GameRunner() :
     m_searchers[1].setVerbose(false);
 }
 
+void GameRunner::setDatagenMode(bool enable)
+{
+    m_searchers[0].setDatagenMode(enable);
+    m_searchers[1].setDatagenMode(enable);
+}
+
 void GameRunner::setTTSize(uint32_t mbSize)
 {
     m_searchers[0].resizeTT(mbSize);

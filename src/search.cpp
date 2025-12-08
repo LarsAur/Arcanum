@@ -9,12 +9,13 @@ using namespace Arcanum;
 
 #define DRAW_VALUE 0
 
-Searcher::Searcher(bool verbose)
+Searcher::Searcher(bool verbose) :
+m_tt(TranspositionTable()),
+m_stats(SearchStats()),
+m_verbose(verbose),
+m_datagenMode(false)
 {
-    m_tt = TranspositionTable();
     m_tt.resize(32);
-    m_stats = SearchStats();
-    m_verbose = verbose;
 
     m_lmrReductions = new uint8_t[MAX_SEARCH_DEPTH * MAX_MOVE_COUNT];
     ASSERT_OR_EXIT(m_lmrReductions != nullptr, "Failed to allocate memory for LMR reductions")
@@ -63,6 +64,11 @@ inline uint8_t Searcher::m_getReduction(uint8_t depth, uint8_t moveNumber) const
 void Searcher::setVerbose(bool enable)
 {
     m_verbose = enable;
+}
+
+void Searcher::setDatagenMode(bool enable)
+{
+    m_datagenMode = enable;
 }
 
 void Searcher::resizeTT(uint32_t mbSize)
@@ -520,45 +526,48 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             continue;
         }
 
-        if(!isPv && !move->isPromotion() && !move->isCastle() && !Evaluator::isCloseToMate(board, bestScore) && board.hasOfficers(board.getTurn()))
+        if(!m_datagenMode) // Disable pruning at low depths when in data generation mode
         {
-            eval_t margin = m_staticPruneMargins[move->isCapture()][depth];
-            if(!board.see(*move, margin))
+            if(!isPv && !move->isPromotion() && !move->isCastle() && !Evaluator::isCloseToMate(board, bestScore) && board.hasOfficers(board.getTurn()))
             {
-                m_stats.seePrunedMoves++;
+                eval_t margin = m_staticPruneMargins[move->isCapture()][depth];
+                if(!board.see(*move, margin))
+                {
+                    m_stats.seePrunedMoves++;
+                    continue;
+                }
+            }
+
+            // Late move pruning (LMP)
+            // Skip quiet moves after having tried a certain number of moves
+            if(!isPv
+            && !Evaluator::isCloseToMate(board, bestScore)
+            && !isChecked
+            && !moveSelector.isSkippingQuiets()
+            && moveNumber >= m_lmpThresholds[isImproving][depth])
+            {
+                moveSelector.skipQuiets();
+
+                // Track the number of quiet moves skipped
+                m_stats.lmpPrunedMoves += moveSelector.getNumQuietsLeft();
+            }
+
+            // Prune quiet positions with low history scores
+            // Note that we keep counter moves and killer moves
+            // in case they have a low history score
+            if(depth < 4
+            && move->isQuiet()
+            && (m_heuristics.quietHistory.get(*move, board.getTurn()) < (-3000 * depth))
+            && !m_heuristics.killerManager.contains(*move, plyFromRoot)
+            && !m_heuristics.counterManager.contains(*move, prevMove, board.getTurn())
+            && (moveNumber != 0))
+            {
+                moveSelector.skipQuiets();
+                // Track the number of quiet moves skipped
+                // +1 as this move is skipped as well
+                m_stats.historyPrunedMoves += moveSelector.getNumQuietsLeft() + 1;
                 continue;
             }
-        }
-
-        // Late move pruning (LMP)
-        // Skip quiet moves after having tried a certain number of moves
-        if( !isPv
-        && !Evaluator::isCloseToMate(board, bestScore)
-        && !isChecked
-        && !moveSelector.isSkippingQuiets()
-        && moveNumber >= m_lmpThresholds[isImproving][depth])
-        {
-            moveSelector.skipQuiets();
-
-            // Track the number of quiet moves skipped
-            m_stats.lmpPrunedMoves += moveSelector.getNumQuietsLeft();
-        }
-
-        // Prune quiet positions with low history scores
-        // Note that we keep counter moves and killer moves
-        // in case they have a low history score
-        if(depth < 4
-        && move->isQuiet()
-        && (m_heuristics.quietHistory.get(*move, board.getTurn()) < (-3000 * depth))
-        && !m_heuristics.killerManager.contains(*move, plyFromRoot)
-        && !m_heuristics.counterManager.contains(*move, prevMove, board.getTurn())
-        && (moveNumber != 0))
-        {
-            moveSelector.skipQuiets();
-            // Track the number of quiet moves skipped
-            // +1 as this move is skipped as well
-            m_stats.historyPrunedMoves += moveSelector.getNumQuietsLeft() + 1;
-            continue;
         }
 
         // Generate new board and make the move

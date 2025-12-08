@@ -35,6 +35,7 @@ namespace Arcanum
         void m_resetGame();
         public:
         GameRunner();
+        void setDatagenMode(bool enable);
         void setTTSize(uint32_t mbSize);
         void setSearchParameters(SearchParameters parameters);
         void setDrawAdjudication(bool enable, uint32_t score = 0, uint32_t repeats = 0, uint32_t moves = 0);
