@@ -967,7 +967,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         {
             if(depth == 1)
             {
-                WARNING("Search was stopped before completing the first depth iteration")
+                WARNING("Search was stopped before completing the first depth iteration: " << board.fen())
             }
 
             // Reduce the depth to match the depth of the last complete iteration

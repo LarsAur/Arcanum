@@ -130,7 +130,7 @@ void Fengen::start(FengenParameters params)
             {
                 LOG(
                     fenCount << " fens " <<
-                    1000000.0f / msTimer.getMs() << " fens/sec " <<
+                    std::fixed << std::setprecision(2) << 1000000.0f / msTimer.getMs() << " fens/sec " <<
                     100 * fenCount / params.numFens << "% " <<
                     gameCount << " games (offset: " << gameCount + params.offset << ") " <<
                     "Results: W: " << results[2] << " B: " << results[0] << " D: " << results[1]
