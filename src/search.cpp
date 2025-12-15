@@ -509,6 +509,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     // Futility pruning
     if(!isPv
+    && !m_datagenMode
     && depth <= 10
     && !isChecked
     && (staticEval + 150 * (depth + 1) <= alpha)
