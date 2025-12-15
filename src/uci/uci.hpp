@@ -71,6 +71,7 @@ namespace Arcanum
                 static SpinOption   optionMoveOverhead;
                 static CheckOption  optionNormalizeScore;
                 static CheckOption  optionShowWDL;
+                static CheckOption  optionDatagenMode;
 
                 static void sendBestMove(const Move& move);
                 static void sendInfo(const SearchInfo& info);

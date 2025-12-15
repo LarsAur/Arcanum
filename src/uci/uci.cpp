@@ -24,6 +24,7 @@ StringOption UCI::optionNNUEPath     = StringOption("NNUEPath", TOSTRING(DEFAULT
 SpinOption   UCI::optionMoveOverhead = SpinOption("MoveOverhead", 10, 0, 5000);
 CheckOption  UCI::optionNormalizeScore = CheckOption("NormalizeScore", true);
 CheckOption  UCI::optionShowWDL      = CheckOption("UCI_ShowWDL", false);
+CheckOption  UCI::optionDatagenMode  = CheckOption("DatagenMode", false, []{ UCI::searcher.setDatagenMode(UCI::optionDatagenMode.value); });
 
 void UCI::listUCI()
 {
