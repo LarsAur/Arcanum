@@ -1,5 +1,6 @@
 #include <uci/uci.hpp>
 #include <tests/test.hpp>
+#include <tuning/fengen.hpp>
 #include <eval.hpp>
 #include <bitboardlookups.hpp>
 
@@ -14,6 +15,11 @@ int main(int argc, char *argv[])
     if(argc == 1)
     {
         Interface::UCI::loop();
+        return EXIT_SUCCESS;
+    }
+
+    if(Fengen::parseArgumentsAndRunFengen(argc, argv))
+    {
         return EXIT_SUCCESS;
     }
 

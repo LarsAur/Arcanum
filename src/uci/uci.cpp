@@ -228,41 +228,6 @@ void UCI::drawboard()
     UCI_OUT("Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black"))
 }
 
-void UCI::fengen(std::istringstream& is)
-{
-    FengenParameters params;
-
-    std::string token;
-    while(is >> token)
-    {
-        toLowerCase(token);
-        if     (token == "positions")  is >> params.startposPath;
-        else if(token == "numrandommoves") is >> params.numRandomMoves;
-        else if(token == "output")     is >> params.outputPath;
-        else if(token == "numfens")    is >> params.numFens;
-        else if(token == "numthreads") is >> params.numThreads;
-        else if(token == "depth")      is >> params.depth;
-        else if(token == "movetime")   is >> params.movetime;
-        else if(token == "nodes")      is >> params.nodes;
-        else if(token == "offset")     is >> params.offset;
-        else WARNING("Unknown token: " << token)
-    }
-
-    // Validate input
-    if(params.numFens <= 0) 
-    { ERROR("Number of fens cannot be 0 or less")    return; }
-    if(params.numThreads <= 0) 
-    { ERROR("Number of threads cannot be 0 or less") return; }
-    if(params.startposPath == "" && params.numRandomMoves == 0)
-    { ERROR("numrandommoves cannot be 0 when there is no path to edp file with starting positions") return; }
-    if(params.outputPath   == "")
-    { ERROR("Output path cannot be empty")            return; }
-    if(params.depth == 0 && params.movetime == 0 && params.nodes == 0) 
-    { ERROR("Search depth, movetime and nodes cannot be 0 at the same time") return; }
-
-    Fengen::start(params);
-}
-
 void UCI::train(std::istringstream& is)
 {
     TrainingParameters params;
@@ -361,16 +326,6 @@ void UCI::help()
     UCI_OUT("\tgamma <float>                       - Learning rate scaling factor. Applied after each gammasteps epoch")
     UCI_OUT("\tgammasteps <steps>                  - Number of epochs between each application of gamma")
     UCI_OUT("\t[input <path>]                      - Path to the input net to continue training. Net is randomized if not set")
-    UCI_OUT("fengen                                - Generate FENs used to train the NNUE")
-    UCI_OUT("\tpositions <path>                    - Path to a file containing a list of stating positions")
-    UCI_OUT("\tnumrandommoves <nummoves>           - Number of random moves from the starting position")
-    UCI_OUT("\toutput <path>                       - Path to the output file")
-    UCI_OUT("\tnumfens <numfens>                   - Number of FENs to generate")
-    UCI_OUT("\tnumthreads <numthreads>             - Number of threads to use")
-    UCI_OUT("\t[depth <depth>]                     - Max search depth")
-    UCI_OUT("\t[nodes <nodes>]                     - Max searched nodes")
-    UCI_OUT("\t[movetime <movetime>]               - Max searchtime (ms)")
-    UCI_OUT("\t[offset <offset>]                   - Offset in lines to start reading from positions file")
     UCI_OUT("\nFor more details, check out https://www.wbec-ridderkerk.nl/html/UCIProtocol.html")
 }
 
@@ -404,7 +359,6 @@ void UCI::loop()
         else if (token == "stop"      ) UCI::stop();
         else if (token == "eval"      ) UCI::eval();
         else if (token == "d"         ) UCI::drawboard();
-        else if (token == "fengen"    ) UCI::fengen(is);
         else if (token == "train"     ) UCI::train(is);
         else if (token == "help"      ) UCI::help();
     } while (token != "quit");

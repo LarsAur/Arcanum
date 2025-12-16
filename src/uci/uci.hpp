@@ -59,7 +59,6 @@ namespace Arcanum
                 static void stop();
                 static void eval();
                 static void drawboard();
-                static void fengen(std::istringstream& is);
                 static void train(std::istringstream& is);
                 static void help();
             public:
