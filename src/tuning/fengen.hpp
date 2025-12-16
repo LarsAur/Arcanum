@@ -7,12 +7,12 @@
 
 namespace Arcanum
 {
-
     struct FengenParameters
     {
         std::string startposPath; // Path to EDP file containing start positions
-        uint32_t    numRandomMoves; // Number of random moves at the beginning of the game
         std::string outputPath;   // Path to the output file
+        std::string syzygyPath;   // Path to the syzygy tablebases
+        uint32_t    numRandomMoves; // Number of random moves at the beginning of the game
         uint32_t offset;          // Start offset in the startpos EDP file
         uint32_t numFens;         // Number of FENs to generate
         uint32_t numThreads;      // Number of threads to use
@@ -22,8 +22,9 @@ namespace Arcanum
 
         FengenParameters() :
         startposPath(""),
-        numRandomMoves(0),
         outputPath(""),
+        syzygyPath(""),
+        numRandomMoves(0),
         offset(0),
         numFens(0),
         numThreads(0),

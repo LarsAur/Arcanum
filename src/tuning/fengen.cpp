@@ -9,6 +9,7 @@
 #include <syzygy.hpp>
 #include <fen.hpp>
 #include <timer.hpp>
+#include <syzygy.hpp>
 
 using namespace Arcanum;
 
@@ -65,6 +66,7 @@ bool Fengen::parseArgumentsAndRunFengen(int argc, char* argv[])
     {
         if(parseStringArg("--positions",      params.startposPath,   argc, argv, index)) { continue; }
         if(parseStringArg("--output",         params.outputPath,     argc, argv, index)) { continue; }
+        if(parseStringArg("--syzygypath",     params.syzygyPath,     argc, argv, index)) { continue; }
         if(parseUInt32Arg("--numrandommoves", params.numRandomMoves, argc, argv, index)) { continue; }
         if(parseUInt32Arg("--numfens",        params.numFens,        argc, argv, index)) { continue; }
         if(parseUInt32Arg("--numthreads",     params.numThreads,     argc, argv, index)) { continue; }
@@ -99,8 +101,9 @@ bool Fengen::parseArgumentsAndRunFengen(int argc, char* argv[])
     {
         LOG("Starting fengen with parameters:")
         LOG("\tStartpos path:     " << params.startposPath)
-        LOG("\tNum random moves:  " << params.numRandomMoves)
         LOG("\tOutput path:       " << params.outputPath)
+        LOG("\tSyzygy path:       " << params.syzygyPath)
+        LOG("\tNum random moves:  " << params.numRandomMoves)
         LOG("\tOffset:            " << params.offset)
         LOG("\tNum fens:          " << params.numFens)
         LOG("\tNum threads:       " << params.numThreads)
@@ -122,8 +125,13 @@ void Fengen::start(FengenParameters params)
     size_t gameCount = 0LL;
     Timer msTimer = Timer();
     bool readInputPositions = !params.startposPath.empty();
-
     uint64_t results[3] = {0, 0, 0};
+
+    // Initialize syzygy
+    if(!params.syzygyPath.empty())
+    {
+        TBInit(params.syzygyPath);
+    }
 
     // Set search parameters
     SearchParameters searchParams = SearchParameters();
@@ -252,6 +260,7 @@ void Fengen::start(FengenParameters params)
         threads.at(i).join();
     }
 
+    TBFree();
     encoder.close();
     LOG("Finished generating FENs")
 }
