@@ -446,6 +446,20 @@ void NNUETrainer::train(TrainingParameters params)
     // Calculate the initial alpha based on the starting epoch.
     m_params.alpha = m_params.alpha * std::pow(m_params.gamma, m_params.startEpoch / m_params.gammaSteps);
 
+    // Load initial net or create a random initial net
+    if(m_params.initialNet != "")
+    {
+        if(!load(m_params.initialNet))
+        {
+            ERROR("Unable to load initial net " << m_params.initialNet)
+            return;
+        }
+    }
+    else
+    {
+        randomizeNet();
+    }
+
     // Initialize the gradients
     NET_UNARY_OP(m_gradient, setZero())
     NET_UNARY_OP(m_moments.m, setZero())

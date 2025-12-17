@@ -1,6 +1,5 @@
 #include <uci/uci.hpp>
-#include <tests/test.hpp>
-#include <tuning/fengen.hpp>
+#include <argsparser.hpp>
 #include <eval.hpp>
 #include <bitboardlookups.hpp>
 
@@ -18,12 +17,7 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    if(Fengen::parseArgumentsAndRunFengen(argc, argv))
-    {
-        return EXIT_SUCCESS;
-    }
-
-    if(!Test::parseArgumentsAndRunTests(argc, argv))
+    if(!ArgsParser::parseArgumentsAndRunCommand(argc, argv))
     {
         return EXIT_FAILURE;
     }

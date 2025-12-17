@@ -228,66 +228,6 @@ void UCI::drawboard()
     UCI_OUT("Current Turn: " << ((board.getTurn() == Color::WHITE) ? "White" : "Black"))
 }
 
-void UCI::train(std::istringstream& is)
-{
-    TrainingParameters params;
-
-    // Set default values for training parameters
-    params.dataset        = "";          // Path to the dataset
-    params.output         = "";          // Path to the output net. "<epoch>.fnnue" is appended to the name
-    params.batchSize      = 20000;       // Batch size
-    params.startEpoch     = 0;           // Epoch to start at (used for naming output LR scaling)
-    params.endEpoch       = INT32_MAX;   // Epoch to end at. Runs for INT32_MAX epochs if not set.
-    params.epochSize      = 100'000'000; // Number of positions in each epoch
-    params.validationSize = 0;           // Size of the validation set
-    params.alpha          = 0.001f;      // Learning rate
-    params.lambda         = 1.0f;        // Weighting between wdlTarget and cpTarget in loss function 1.0 = 100% cpTarget 0.0 = 100% wdlTarget
-    params.gamma          = 1.0f;        // Scaling of learning rate over epochs
-    params.gammaSteps     = 1;           // How often to apply gamma scaling
-
-    std::string inputPath  = "";         // Path to the initial net. Randomized if not set
-
-
-    std::string token;
-    while(is >> token)
-    {
-        toLowerCase(token);
-        if     (token == "dataset")        is >> params.dataset;
-        else if(token == "output")         is >> params.output;
-        else if(token == "batchsize")      is >> params.batchSize;
-        else if(token == "startepoch")     is >> params.startEpoch;
-        else if(token == "endepoch")       is >> params.endEpoch;
-        else if(token == "epochsize")      is >> params.epochSize;
-        else if(token == "validationsize") is >> params.validationSize;
-        else if(token == "alpha")          is >> params.alpha;
-        else if(token == "lambda")         is >> params.lambda;
-        else if(token == "gamma")          is >> params.gamma;
-        else if(token == "gammasteps")     is >> params.gammaSteps;
-        else if(token == "input")          is >> inputPath;
-        else WARNING("Unknown token: " << token)
-    }
-
-    if(params.dataset == "") { ERROR("Path to the dataset cannot be empty") return; }
-    if(params.output == "") { ERROR("Output path cannot be empty") return; }
-    if(params.batchSize <= 0) { ERROR("Batch size cannot be 0 or less") return; }
-    if(params.endEpoch <= params.startEpoch) { ERROR("End epoch must be larger than the end epoch") return; }
-    if(params.epochSize <= 0) {ERROR("Epoch size has to be larger than 0") return; }
-    if(params.gammaSteps <= 0) {ERROR("GammaSteps has to be larger than 1. Use Gamma=1 to disable gamma scaling") return; }
-    if((params.lambda < 0) || (params.lambda > 1)) {ERROR("Lambda has to be between 0 and 1 (inclusive)") return; }
-
-    NNUETrainer trainer;
-    if(inputPath == "")
-    {
-        trainer.randomizeNet();
-    }
-    else
-    {
-        trainer.load(inputPath);
-    }
-
-    trainer.train(params);
-}
-
 void UCI::help()
 {
     UCI_OUT("ucinewgame                            - Start a new game")
@@ -313,19 +253,6 @@ void UCI::help()
     UCI_OUT("isready                               - Ask if the engine is ready to receive new commands. 'readyok' is returned when ready")
     UCI_OUT("eval                                  - Returns the static evaluation for the current position")
     UCI_OUT("d                                     - Show the current board, FEN and turn")
-    UCI_OUT("train                                 - Train NNUE net")
-    UCI_OUT("\tdataset <path>                      - Path to the dataset")
-    UCI_OUT("\toutput <path>                       - Relative path to the output net. <epoch>.fnnue will be added as postfix")
-    UCI_OUT("\tbatchsize <batchsize>               - Number of poisitions to process in each batch")
-    UCI_OUT("\tstartepoch <epoch>                  - Epoch to start training")
-    UCI_OUT("\tendepoch <epoch>                    - Epoch to stop training")
-    UCI_OUT("\tepochsize <size>                    - Number of positions in each epoch")
-    UCI_OUT("\tvalidationsize <size>               - Number of positions to use for validation")
-    UCI_OUT("\talpha <float>                       - Initial learning rate")
-    UCI_OUT("\tlambda <float>                      - Weighting between cp and wdl")
-    UCI_OUT("\tgamma <float>                       - Learning rate scaling factor. Applied after each gammasteps epoch")
-    UCI_OUT("\tgammasteps <steps>                  - Number of epochs between each application of gamma")
-    UCI_OUT("\t[input <path>]                      - Path to the input net to continue training. Net is randomized if not set")
     UCI_OUT("\nFor more details, check out https://www.wbec-ridderkerk.nl/html/UCIProtocol.html")
 }
 
@@ -359,7 +286,6 @@ void UCI::loop()
         else if (token == "stop"      ) UCI::stop();
         else if (token == "eval"      ) UCI::eval();
         else if (token == "d"         ) UCI::drawboard();
-        else if (token == "train"     ) UCI::train(is);
         else if (token == "help"      ) UCI::help();
     } while (token != "quit");
 

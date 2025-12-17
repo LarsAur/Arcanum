@@ -43,7 +43,7 @@ static bool runSelectedTests(std::unordered_map<std::string, bool(*)()>& testMap
 {
     std::vector<std::tuple<std::string, bool>> results;
 
-    for(int i = 1; i < argc; i++)
+    for(int i = 2; i < argc; i++)
     {
         const std::string arg = std::string(argv[i]);
         auto it = testMap.find(arg);
@@ -65,24 +65,20 @@ static bool runSelectedTests(std::unordered_map<std::string, bool(*)()>& testMap
 bool Test::parseArgumentsAndRunTests(int argc, char* argv[])
 {
     std::unordered_map<std::string, bool(*)()> testMap = {
-        {"--selfplay-test", Test::runSelfplayTest},
-        {"--see-test",      Test::runSeeTest},
-        {"--engine-test",   Test::runEngineTest},
-        {"--binpack-test",  Test::runBinpackTest},
-        {"--perft-test",    Test::runPerftTest},
-        {"--zobrist-test",  Test::runZobristTest},
-        {"--capture-test",  Test::runCaptureTest},
-        {"--draw-test",     Test::runDrawTest},
+        {"--selfplay", Test::runSelfplayTest},
+        {"--see",      Test::runSeeTest},
+        {"--engine",   Test::runEngineTest},
+        {"--binpack",  Test::runBinpackTest},
+        {"--perft",    Test::runPerftTest},
+        {"--zobrist",  Test::runZobristTest},
+        {"--capture",  Test::runCaptureTest},
+        {"--draw",     Test::runDrawTest},
     };
 
-    // Check if --all-tests is given, if so run all tests and ignore other arguments.
-    for(int i = 1; i < argc; i++)
+    // Run all tests if no specific test is given
+    if(argc == 2)
     {
-        const std::string arg = std::string(argv[i]);
-        if(arg == "--all-tests")
-        {
-            return runAllTests(testMap);
-        }
+        return runAllTests(testMap);
     }
 
     // Otherwise run only the selected tests

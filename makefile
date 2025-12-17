@@ -46,13 +46,13 @@ uci: $(BUILDDIR)/$(FILENAME)
 	./$^
 
 test: $(BUILDDIR)/$(FILENAME)
-	./$^ --see-test --draw-test --capture-test --zobrist-test --perft-test --binpack-test
+	./$^ test --see --draw --capture --zobrist --perft --binpack
 
 selfplay: $(BUILDDIR)/$(FILENAME)
-	./$^ --selfplay-test
+	./$^ test --selfplay
 
 enginetest: $(BUILDDIR)/$(FILENAME)
-	./$^ --engine-test
+	./$^ --engine
 
 release: $(RELEASEDIR)
 	make clean

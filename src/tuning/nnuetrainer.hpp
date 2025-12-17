@@ -11,6 +11,7 @@ namespace Arcanum
     {
         std::string dataset;
         std::string output;
+        std::string initialNet;
         uint64_t batchSize;
         uint32_t startEpoch;
         uint32_t endEpoch;

@@ -36,9 +36,6 @@ namespace Arcanum
 
     class Fengen{
         public:
-        // Parses command line arguments and runs fengen if the arguments are valid
-        // Returns false if the arguments are not a fengen command
-        static bool parseArgumentsAndRunFengen(int argc, char* argv[]);
         static void start(FengenParameters params);
     };
 }
