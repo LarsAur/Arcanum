@@ -2,7 +2,7 @@
 
 using namespace Arcanum;
 
-bool matchesPyrrhicMove(Move move, unsigned pyrrhicMove) {
+static bool matchesPyrrhicMove(Move move, unsigned pyrrhicMove) {
 
     static uint32_t arcanumPromotions[5] = {
         0,
@@ -18,7 +18,7 @@ bool matchesPyrrhicMove(Move move, unsigned pyrrhicMove) {
     return (move.from == from) && (move.to == to) && (PROMOTED_PIECE(move.moveInfo) == arcanumPromotions[promo]);
 }
 
-bool Arcanum::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& wdl)
+bool Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& wdl)
 {
     if(board.getNumPieces() > TB_LARGEST || board.getCastleRights())
     {
@@ -72,7 +72,7 @@ bool Arcanum::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& 
     return numMoves > 0;
 }
 
-uint32_t Arcanum::TBProbeWDL(const Board &board)
+uint32_t Syzygy::TBProbeWDL(const Board &board)
 {
     return tb_probe_wdl(
         board.getColoredPieces(Color::WHITE),
@@ -88,7 +88,7 @@ uint32_t Arcanum::TBProbeWDL(const Board &board)
     );
 }
 
-bool Arcanum::TBInit(std::string path)
+bool Syzygy::TBInit(std::string path)
 {
     bool initialized = tb_init(path.c_str());
 
@@ -105,7 +105,7 @@ bool Arcanum::TBInit(std::string path)
     return initialized;
 }
 
-void Arcanum::TBFree()
+void Syzygy::TBFree()
 {
     tb_free();
 }

@@ -331,7 +331,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     // Table base probe
     if(board.getNumPieces() <= TB_LARGEST && board.getHalfMoves() == 0 && skipMove.isNull())
     {
-        uint32_t tbResult = TBProbeWDL(board);
+        uint32_t tbResult = Syzygy::TBProbeWDL(board);
 
         if(tbResult != TB_RESULT_FAILED)
         {
@@ -807,7 +807,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     uint8_t wdlTB = 0xff;
     if(m_searchParameters.numSearchMoves == 0)
     {
-        if(TBProbeDTZ(board, moves, numMoves, wdlTB))
+        if(Syzygy::TBProbeDTZ(board, moves, numMoves, wdlTB))
         {
             forceTBScore = true;
         }

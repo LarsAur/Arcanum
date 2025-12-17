@@ -27,7 +27,7 @@ void Fengen::start(FengenParameters params)
     // Initialize syzygy
     if(!params.syzygyPath.empty())
     {
-        TBInit(params.syzygyPath);
+        Syzygy::TBInit(params.syzygyPath);
     }
 
     // Set search parameters
@@ -157,7 +157,7 @@ void Fengen::start(FengenParameters params)
         threads.at(i).join();
     }
 
-    TBFree();
+    Syzygy::TBFree();
     encoder.close();
     INFO("Finished generating FENs")
 }
