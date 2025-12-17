@@ -23,7 +23,7 @@ make clean
 ```
 
 ### Release build
-To build a *release build*, meant for connecting to a UCI GUI such as [Cute Chess][cute-chess] or [Lucas Chess][lucas-chess], `-DLOG_FILE_NAME=<filename>` should be added to `CFLAGS`. This will redirect all logging to a file named `<filename>_[date]_[time].log`. Note that this file is not created unless something is logged. It is also possible to disable separate log-levels by adding `-DDISABLE_DEBUG`, `-DDISABLE_LOG`, `-DDISABLE_WARNING` and `-DDISABLE_ERROR` to `CFLAGS`.
+To build a *release build*, meant for connecting to a UCI GUI such as [Cute Chess][cute-chess] or [Lucas Chess][lucas-chess], `-DLOG_FILE_NAME=<filename>` should be added to `CFLAGS`. This will redirect all logging to a file named `<filename>_[date]_[time].log`. Note that this file is not created unless something is logged. It is also possible to disable separate log-levels by adding `-DDISABLE_DEBUG`, `-DDISABLE_WARNING` and `-DDISABLE_ERROR` to `CFLAGS`.
 
 To add a version name, which shows up in the *id* section of the UCI protocol, `-DARCANUM_VERSION=<version>` can be added to the `CFLAGS`. If not included, the version will be set to `dev_build`.
 
