@@ -12,16 +12,27 @@ namespace Arcanum
 
     }
 
+    DataLoader::~DataLoader()
+    {
+        close();
+    }
+
     bool DataLoader::open(std::string path)
     {
+        if (m_parser)
+        {
+            ERROR("DataLoader already has an open parser")
+            return false;
+        }
+
         if(path.find(".binpack") != std::string::npos)
         {
-            m_parser = std::make_unique<BinpackParser>();
+            m_parser = new BinpackParser();
             INFO("Loading binpack file: " << path)
         }
         else if(path.find(".txt") != std::string::npos)
         {
-            m_parser = std::make_unique<LegacyParser>();
+            m_parser = new LegacyParser();
             INFO("Loading legacy file: " << path)
         }
         else{
@@ -34,7 +45,12 @@ namespace Arcanum
 
     void DataLoader::close()
     {
-        m_parser->close();
+        if(m_parser)
+        {
+            m_parser->close();
+            delete m_parser;
+            m_parser = nullptr;
+        }
     }
 
     bool DataLoader::eof()
@@ -69,16 +85,27 @@ namespace Arcanum
 
     }
 
+    DataStorer::~DataStorer()
+    {
+        close();
+    }
+
     bool DataStorer::open(std::string path)
     {
+        if(m_encoder)
+        {
+            ERROR("DataStorer already has an open encoder")
+            return false;
+        }
+
         if(path.find(".binpack") != std::string::npos)
         {
-            m_encoder = std::make_unique<BinpackEncoder>();
+            m_encoder = new BinpackEncoder();
             INFO("Loading binpack file: " << path)
         }
         else if(path.find(".txt") != std::string::npos)
         {
-            m_encoder = std::make_unique<LegacyEncoder>();
+            m_encoder = new LegacyEncoder();
             INFO("Loading legacy file: " << path)
         }
         else{
@@ -91,7 +118,12 @@ namespace Arcanum
 
     void DataStorer::close()
     {
-        m_encoder->close();
+        if(m_encoder)
+        {
+            m_encoder->close();
+            delete m_encoder;
+            m_encoder = nullptr;
+        }
     }
 
     // Encode a position and write it to file

@@ -47,9 +47,10 @@ namespace Arcanum
     class DataLoader
     {
         private:
-            std::unique_ptr<DataParser> m_parser;
+            DataParser* m_parser;
         public:
             DataLoader();
+            ~DataLoader();
             bool open(std::string path);
             void close();
             bool eof();
@@ -62,9 +63,10 @@ namespace Arcanum
     class DataStorer
     {
         private:
-            std::unique_ptr<DataEncoder> m_encoder;
+            DataEncoder* m_encoder;
         public:
             DataStorer();
+            ~DataStorer();
             bool open(std::string path);
             void close();
             void addPosition(
