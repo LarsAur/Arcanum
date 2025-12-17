@@ -18,6 +18,7 @@
 #define COLOR_CYAN "\x1B[0;36m"
 #define COLOR_WHITE "\x1B[0;37m"
 
+#define FILENAME_FIELD_WIDTH 26
 #define DEBUG_COLOR COLOR_CYAN
 #define LOG_COLOR COLOR_WHITE
 #define WARNING_COLOR COLOR_YELLOW
@@ -50,13 +51,15 @@ void logToFile(std::string str);
 }
 
 // Get the file name from the full file path
-#define __FILENAME__ (strrchr(__FILE__, '\\') ? strrchr(__FILE__, '\\') + 1 : __FILE__)
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+#define __PADDED_LOCATION__ std::setw(FILENAME_FIELD_WIDTH) << std::left << std::string(__FILENAME__) + ":" + std::to_string(__LINE__)
 
 #ifndef DISABLE_DEBUG
     #ifndef LOG_FILE_NAME
-        #define DEBUG(_str) std::cout << DEBUG_COLOR << "[DEBUG]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+        #define DEBUG(_str) std::cout << DEBUG_COLOR << "[DEBUG]   " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
     #else
-        #define DEBUG(_str) _FILE_PRINT("[DEBUG]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+        #define DEBUG(_str) _FILE_PRINT("[DEBUG]   [" << __PADDED_LOCATION__ << "] " << _str)
     #endif
 #else
     #define DEBUG(_str) ;
@@ -64,9 +67,9 @@ void logToFile(std::string str);
 
 #ifndef DISABLE_LOG
     #ifndef LOG_FILE_NAME
-        #define LOG(_str) std::cout << LOG_COLOR << "[LOG]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+        #define LOG(_str) std::cout << LOG_COLOR << "[LOG]   " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
     #else
-        #define LOG(_str) _FILE_PRINT("[LOG]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+        #define LOG(_str) _FILE_PRINT("[LOG]   [" << __PADDED_LOCATION__ << "] " << _str)
     #endif
 #else
     #define LOG(_str) ;
@@ -74,9 +77,9 @@ void logToFile(std::string str);
 
 #ifndef DISABLE_WARNING
     #ifndef LOG_FILE_NAME
-        #define WARNING(_str) std::cout << WARNING_COLOR << "[WARNING]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+        #define WARNING(_str) std::cout << WARNING_COLOR << "[WARNING]   " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
     #else
-        #define WARNING(_str) _FILE_PRINT("[WARNING]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+        #define WARNING(_str) _FILE_PRINT("[WARNING]   [" << __PADDED_LOCATION__ << "] " << _str)
     #endif
 #else
     #define WARNING(_str) ;
@@ -84,18 +87,18 @@ void logToFile(std::string str);
 
 #ifndef DISABLE_ERROR
     #ifndef LOG_FILE_NAME
-        #define ERROR(_str) std::cout << ERROR_COLOR << "[ERROR]   " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+        #define ERROR(_str) std::cout << ERROR_COLOR << "[ERROR]   " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
     #else
-        #define ERROR(_str) _FILE_PRINT("[ERROR]   [" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str)
+        #define ERROR(_str) _FILE_PRINT("[ERROR]   [" << __PADDED_LOCATION__ << "] " << _str)
     #endif
 #else
     #define ERROR(_str) ;
 #endif
 
 // SUCCESS, FAIL and INFO are only used in tests, so they always print to console
-#define SUCCESS(_str) std::cout << SUCCESS_COLOR   << "[SUCCESS] " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
-#define FAIL(_str)    std::cout << FAIL_COLOR      << "[FAIL]    " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
-#define TESTINFO(_str)std::cout << TEST_INFO_COLOR << "[INFO]    " << DEFAULT_COLOR << "[" << __FILENAME__ << ":" <<  __LINE__ << "] " << _str << std::endl;
+#define SUCCESS(_str) std::cout << SUCCESS_COLOR   << "[SUCCESS] " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
+#define FAIL(_str)    std::cout << FAIL_COLOR      << "[FAIL]    " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
+#define TESTINFO(_str)std::cout << TEST_INFO_COLOR << "[INFO]    " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
 
 // UCI is used for communication with the GUI, so it always prints to console
 // This macro mainly exists for semantic purposes
