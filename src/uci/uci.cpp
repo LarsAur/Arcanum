@@ -173,7 +173,7 @@ void UCI::position(std::istringstream& is)
             fen += token + " ";
     }
 
-    LOG("Loading FEN: " << fen)
+    DEBUG("Loading FEN: " << fen)
     searcher.clearHistory();
     board = Board(fen);
     searcher.addBoardToHistory(board);
@@ -260,7 +260,7 @@ void UCI::loop()
 {
     UCI::newgame();
 
-    LOG("Entering UCI loop")
+    DEBUG("Entering UCI loop")
     std::string token, cmd;
     do
     {
@@ -290,7 +290,7 @@ void UCI::loop()
     } while (token != "quit");
 
     TBFree();
-    LOG("Exiting UCI loop")
+    DEBUG("Exiting UCI loop")
 }
 
 void UCI::sendInfo(const SearchInfo& info)

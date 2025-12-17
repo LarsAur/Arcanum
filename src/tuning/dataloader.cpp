@@ -17,12 +17,12 @@ namespace Arcanum
         if(path.find(".binpack") != std::string::npos)
         {
             m_parser = std::make_unique<BinpackParser>();
-            LOG("Loading binpack file: " << path)
+            INFO("Loading binpack file: " << path)
         }
         else if(path.find(".txt") != std::string::npos)
         {
             m_parser = std::make_unique<LegacyParser>();
-            LOG("Loading legacy file: " << path)
+            INFO("Loading legacy file: " << path)
         }
         else{
             ERROR("Unsupported file format: " << path)
@@ -74,12 +74,12 @@ namespace Arcanum
         if(path.find(".binpack") != std::string::npos)
         {
             m_encoder = std::make_unique<BinpackEncoder>();
-            LOG("Loading binpack file: " << path)
+            INFO("Loading binpack file: " << path)
         }
         else if(path.find(".txt") != std::string::npos)
         {
             m_encoder = std::make_unique<LegacyEncoder>();
-            LOG("Loading legacy file: " << path)
+            INFO("Loading legacy file: " << path)
         }
         else{
             ERROR("Unsupported file format: " << path)

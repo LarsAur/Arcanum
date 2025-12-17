@@ -25,7 +25,7 @@
 #define ERROR_COLOR COLOR_RED
 #define SUCCESS_COLOR COLOR_GREEN
 #define FAIL_COLOR COLOR_RED
-#define TEST_INFO_COLOR COLOR_PURPLE
+#define INFO_COLOR COLOR_PURPLE
 // Default
 #define DEFAULT_COLOR COLOR_WHITE
 
@@ -65,16 +65,6 @@ void logToFile(std::string str);
     #define DEBUG(_str) ;
 #endif
 
-#ifndef DISABLE_LOG
-    #ifndef LOG_FILE_NAME
-        #define LOG(_str) std::cout << LOG_COLOR << "[LOG]   " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
-    #else
-        #define LOG(_str) _FILE_PRINT("[LOG]   [" << __PADDED_LOCATION__ << "] " << _str)
-    #endif
-#else
-    #define LOG(_str) ;
-#endif
-
 #ifndef DISABLE_WARNING
     #ifndef LOG_FILE_NAME
         #define WARNING(_str) std::cout << WARNING_COLOR << "[WARNING]   " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
@@ -95,10 +85,10 @@ void logToFile(std::string str);
     #define ERROR(_str) ;
 #endif
 
-// SUCCESS, FAIL and INFO are only used in tests, so they always print to console
+// SUCCESS, FAIL and INFO are used outside of UCI, so they always print to console
 #define SUCCESS(_str) std::cout << SUCCESS_COLOR   << "[SUCCESS] " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
 #define FAIL(_str)    std::cout << FAIL_COLOR      << "[FAIL]    " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
-#define TESTINFO(_str)std::cout << TEST_INFO_COLOR << "[INFO]    " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
+#define INFO(_str)    std::cout << INFO_COLOR      << "[INFO]    " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
 
 // UCI is used for communication with the GUI, so it always prints to console
 // This macro mainly exists for semantic purposes

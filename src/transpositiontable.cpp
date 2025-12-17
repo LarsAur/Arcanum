@@ -52,7 +52,7 @@ void TranspositionTable::resize(uint32_t mbSize)
     m_stats.maxEntries = numEntries;
     m_mbSize = mbSize;
 
-    LOG("Resized the transpostition table to " << m_mbSize << "MB (" << m_numClusters << " Clusters, " << m_numEntries << " Entries)")
+    DEBUG("Resized the transpostition table to " << m_mbSize << "MB (" << m_numClusters << " Clusters, " << m_numEntries << " Entries)")
 
     clear();
 }
@@ -248,7 +248,7 @@ void TranspositionTable::logStats()
     ss << "\nMissrate:             " << (float) (100 * m_stats.lookupMisses) / m_stats.lookups << "%";
     ss << "\n----------------------------------";
 
-    LOG(ss.str())
+    DEBUG(ss.str())
 }
 
 uint32_t TranspositionTable::permills()

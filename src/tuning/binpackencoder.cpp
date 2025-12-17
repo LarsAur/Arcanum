@@ -156,7 +156,7 @@ void BinpackEncoder::m_writeBytesToBuffer(void* src, uint32_t numBytes)
 
 void BinpackEncoder::m_writeBlock()
 {
-    DEBUG("Writing chunk: " << m_buffer.size() << " Bytes")
+    INFO("Writing chunk: " << m_buffer.size() << " Bytes")
 
     // Write chunk header
     m_ofs.write("BINP", 4);

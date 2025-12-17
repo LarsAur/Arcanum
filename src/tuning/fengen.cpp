@@ -55,7 +55,7 @@ void Fengen::start(FengenParameters params)
         }
 
         // Forward to the startposition given by offset
-        LOG("Forwarding to startposition " << params.offset)
+        INFO("Forwarding to startposition " << params.offset)
         for(size_t i = 0; i < params.offset; i++)
         {
             std::string unusedFen;
@@ -134,7 +134,7 @@ void Fengen::start(FengenParameters params)
             fenCount += runner.getMoves().size() + 1; // Num moves + startfen
             if((fenCount % 1000) < ((fenCount - runner.getMoves().size() - 1) % 1000)  )
             {
-                LOG(
+                INFO(
                     fenCount << " fens " <<
                     std::fixed << std::setprecision(2) << 1000000.0f / msTimer.getMs() << " fens/sec " <<
                     100 * fenCount / params.numFens << "% " <<
@@ -159,5 +159,5 @@ void Fengen::start(FengenParameters params)
 
     TBFree();
     encoder.close();
-    LOG("Finished generating FENs")
+    INFO("Finished generating FENs")
 }

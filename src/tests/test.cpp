@@ -8,7 +8,7 @@ using namespace Arcanum;
 static bool listResults(const std::vector<std::tuple<std::string, bool>>& results)
 {
     bool passed = true;
-    TESTINFO("Test results:")
+    INFO("Test results:")
     for(auto const& [name, result] : results)
     {
         if(result)
@@ -32,7 +32,7 @@ static bool runAllTests(std::unordered_map<std::string, bool(*)()>& testMap)
     for(auto const& [arg, func] : testMap)
     {
         const std::string testName = arg.substr(2); // Remove the leading '--' for display
-        TESTINFO("Running test: " << testName)
+        INFO("Running test: " << testName)
         results.push_back({testName, func()});
     }
 
@@ -50,12 +50,12 @@ static bool runSelectedTests(std::unordered_map<std::string, bool(*)()>& testMap
         if(it != testMap.end())
         {
             const std::string testName = arg.substr(2); // Remove the leading '--' for display
-            TESTINFO("Running test: " << testName)
+            INFO("Running test: " << testName)
             results.push_back({testName, it->second()});
         }
         else
         {
-            TESTINFO("Unknown test argument: " << arg)
+            INFO("Unknown test argument: " << arg)
         }
     }
 

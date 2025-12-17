@@ -1141,7 +1141,7 @@ void Searcher::logStats()
     ss << "\nProbCut Searches      " << (float) (100 * m_stats.probCuts) / m_stats.probCutSearches << "%";
     ss << "\n----------------------------------";
 
-    LOG(ss.str())
+    DEBUG(ss.str())
 }
 
 std::unordered_map<hash_t, uint8_t, HashFunction>& Searcher::getHistory()

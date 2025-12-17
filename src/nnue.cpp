@@ -378,7 +378,7 @@ static void quantizeTransposeMatrix(T* qMatrix, Matrix<rows, cols>& fMatrix, int
 
 void NNUE::load(const std::string filename)
 {
-    LOG("Loading NNUE: " << filename)
+    DEBUG("Loading NNUE: " << filename)
 
     // // Load the float net
     NNUETrainer fLoader;
@@ -388,7 +388,7 @@ void NNUE::load(const std::string filename)
         return;
     }
 
-    LOG("Quantizing NNUE")
+    DEBUG("Quantizing NNUE")
 
     // Quantize the featuretransformer
     quantizeMatrix(m_net->ftWeights, fLoader.getNet()->ftWeights, FTQ);
@@ -401,5 +401,5 @@ void NNUE::load(const std::string filename)
         quantizeMatrix(m_net->l1Biases[i], fLoader.getNet()->l1Biases[i], LQ * FTQ);
     }
 
-    LOG("Finished loading and quantizing: " << filename)
+    DEBUG("Finished loading and quantizing: " << filename)
 }

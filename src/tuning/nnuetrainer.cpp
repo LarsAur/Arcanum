@@ -68,7 +68,7 @@ bool NNUETrainer::m_loadNet(std::string filename, Net& net)
     ss << path << filename;
     std::ifstream fStream(ss.str(), std::ios::in | std::ios::binary);
 
-    LOG("Loading FNNUE " << ss.str())
+    DEBUG("Loading FNNUE " << ss.str())
     if(!fStream.is_open())
     {
         ERROR("Unable to open " << ss.str())
@@ -79,7 +79,7 @@ bool NNUETrainer::m_loadNet(std::string filename, Net& net)
     bool status = m_loadNetFromStream(stream, net);
     fStream.close();
 
-    LOG("Finished loading FNNUE " << ss.str())
+    DEBUG("Finished loading FNNUE " << ss.str())
     return status;
 }
 
@@ -132,7 +132,7 @@ void NNUETrainer::m_storeNet(std::string filename, Net& net)
 
     std::stringstream ss;
     ss << path << filename;
-    LOG("Storing nnue in " << ss.str())
+    INFO("Storing nnue in " << ss.str())
     std::ofstream stream(ss.str(), std::ios::out | std::ios::binary);
 
     if(!stream.is_open())
@@ -161,7 +161,7 @@ void NNUETrainer::m_storeNet(std::string filename, Net& net)
 
     stream.close();
 
-    LOG("Finished storing nnue in " << ss.str())
+    INFO("Finished storing nnue in " << ss.str())
 }
 
 void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet)
@@ -218,7 +218,7 @@ void NNUETrainer::m_initAccumulator(const Board& board)
 
 void NNUETrainer::randomizeNet()
 {
-    LOG("Randomizing NNUETrainer")
+    INFO("Randomizing NNUETrainer")
     m_net.ftWeights.heRandomize();
     m_net.l1Weights[0].heRandomize();
     m_net.ftBiases.setZero();
@@ -548,7 +548,7 @@ void NNUETrainer::train(TrainingParameters params)
 
                 if(iterationBatchCount >= LoggingInterval)
                 {
-                    LOG("Avg. Iteration Loss: " << std::fixed << std::setprecision(6) << (iterationLoss / (iterationBatchCount * m_params.batchSize))
+                    INFO("Avg. Iteration Loss: " << std::fixed << std::setprecision(6) << (iterationLoss / (iterationBatchCount * m_params.batchSize))
                     << " Avg. Epoch Loss: "     << std::setprecision(6)               << (epochLoss / epochPosCount)
                     << " FENs: " << epochPosCount
                     << " FENs/sec: " << 1000 * iterationBatchCount * m_params.batchSize / iterationTimer.getMs())
@@ -560,11 +560,11 @@ void NNUETrainer::train(TrainingParameters params)
             }
 
         }
-        LOG("Epoch time: " << epochTimer.getMs() << " ms")
+        INFO("Epoch time: " << epochTimer.getMs() << " ms")
 
         // Calculate validation loss
         float validationLoss = m_getValidationLoss();
-        LOG("Validation loss: " << validationLoss)
+        INFO("Validation loss: " << validationLoss)
 
         // Log the losses to file
         m_logLoss(epochLoss, epochPosCount, validationLoss, m_getOutputFilename(m_params.output, epoch), "loss.log");
@@ -573,7 +573,7 @@ void NNUETrainer::train(TrainingParameters params)
         if((epoch != 0) && (epoch % m_params.gammaSteps == 0))
         {
             m_params.alpha *= m_params.gamma;
-            LOG("Applying gamma scaling. New alpha: " << m_params.alpha)
+            INFO("Applying gamma scaling. New alpha: " << m_params.alpha)
         }
 
         // Store the net for each epoch

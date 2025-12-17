@@ -98,8 +98,8 @@ bool Arcanum::TBInit(std::string path)
     }
     else
     {
-        LOG("Initialized syzygy: " << path)
-        LOG("Syzygy largest piece set: " << TB_LARGEST)
+        DEBUG("Initialized syzygy: " << path)
+        DEBUG("Syzygy largest piece set: " << TB_LARGEST)
     }
 
     return initialized;

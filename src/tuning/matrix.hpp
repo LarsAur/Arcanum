@@ -248,7 +248,7 @@ namespace Arcanum
                     {
                         ss << std::setfill(' ') << std::setw(3) << m_data[col * rows + row];
                     }
-                    LOG(ss.str())
+                    DEBUG(ss.str())
                 }
             }
 

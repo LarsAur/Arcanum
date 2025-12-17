@@ -30,7 +30,7 @@ bool ArgsParser::parseArgumentsAndRunCommand(int argc, char* argv[])
         return Test::parseArgumentsAndRunTests(argc, argv);
     }
 
-    WARNING("Unknown command: " << command)
+    INFO("Unknown command: " << command)
 
     return false;
 }
@@ -54,7 +54,7 @@ bool ArgsParser::parseArgumentsAndRunFengen(int argc, char* argv[])
         if(matchAndParseArg("--nodes",          params.nodes,          argc, argv, index)) { continue; }
         if(matchAndParseArg("--offset",         params.offset,         argc, argv, index)) { continue; }
 
-        ERROR("Unknown argument: " << argv[index])
+        INFO("Unknown argument: " << argv[index])
         return false;
     }
 
@@ -62,33 +62,33 @@ bool ArgsParser::parseArgumentsAndRunFengen(int argc, char* argv[])
     bool valid = true;
 
     if(params.numFens <= 0)
-    { valid = false; ERROR("Number of fens cannot be 0 or less") }
+    { valid = false; INFO("Number of fens cannot be 0 or less") }
 
     if(params.numThreads <= 0)
-    { valid = false; ERROR("Number of threads cannot be 0 or less") }
+    { valid = false; INFO("Number of threads cannot be 0 or less") }
 
     if(params.startposPath == "" && params.numRandomMoves == 0)
-    { valid = false; ERROR("numrandommoves cannot be 0 when there is no path to edp file with starting positions") }
+    { valid = false; INFO("numrandommoves cannot be 0 when there is no path to edp file with starting positions") }
 
     if(params.outputPath == "")
-    { valid = false; ERROR("Output path cannot be empty")            }
+    { valid = false; INFO("Output path cannot be empty")            }
 
     if(params.depth == 0 && params.movetime == 0 && params.nodes == 0)
-    { valid = false; ERROR("Search depth, movetime and nodes cannot be 0 at the same time") }
+    { valid = false; INFO("Search depth, movetime and nodes cannot be 0 at the same time") }
 
     if(valid)
     {
-        LOG("Starting fengen with parameters:")
-        LOG("Startpos path:     " << params.startposPath)
-        LOG("Output path:       " << params.outputPath)
-        LOG("Syzygy path:       " << params.syzygyPath)
-        LOG("Num random moves:  " << params.numRandomMoves)
-        LOG("Offset:            " << params.offset)
-        LOG("Num fens:          " << params.numFens)
-        LOG("Num threads:       " << params.numThreads)
-        LOG("Depth:             " << params.depth)
-        LOG("Movetime (ms):     " << params.movetime)
-        LOG("Nodes:             " << params.nodes)
+        INFO("Starting fengen with parameters:")
+        INFO("Startpos path:     " << params.startposPath)
+        INFO("Output path:       " << params.outputPath)
+        INFO("Syzygy path:       " << params.syzygyPath)
+        INFO("Num random moves:  " << params.numRandomMoves)
+        INFO("Offset:            " << params.offset)
+        INFO("Num fens:          " << params.numFens)
+        INFO("Num threads:       " << params.numThreads)
+        INFO("Depth:             " << params.depth)
+        INFO("Movetime (ms):     " << params.movetime)
+        INFO("Nodes:             " << params.nodes)
 
         Fengen::start(params);
     }
@@ -161,19 +161,19 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
 
     if(valid)
     {
-        LOG("Starting NNUE trainer with parameters:")
-        LOG("Dataset:           " << params.dataset)
-        LOG("Output:            " << params.output)
-        LOG("Initial net:       " << params.initialNet)
-        LOG("Batch size:        " << params.batchSize)
-        LOG("Start epoch:       " << params.startEpoch)
-        LOG("End epoch:         " << params.endEpoch)
-        LOG("Epoch size:        " << params.epochSize)
-        LOG("Validation size:   " << params.validationSize)
-        LOG("Alpha:             " << params.alpha)
-        LOG("Lambda:            " << params.lambda)
-        LOG("Gamma:             " << params.gamma)
-        LOG("Gamma steps:       " << params.gammaSteps)
+        INFO("Starting NNUE trainer with parameters:")
+        INFO("Dataset:           " << params.dataset)
+        INFO("Output:            " << params.output)
+        INFO("Initial net:       " << params.initialNet)
+        INFO("Batch size:        " << params.batchSize)
+        INFO("Start epoch:       " << params.startEpoch)
+        INFO("End epoch:         " << params.endEpoch)
+        INFO("Epoch size:        " << params.epochSize)
+        INFO("Validation size:   " << params.validationSize)
+        INFO("Alpha:             " << params.alpha)
+        INFO("Lambda:            " << params.lambda)
+        INFO("Gamma:             " << params.gamma)
+        INFO("Gamma steps:       " << params.gammaSteps)
 
         NNUETrainer trainer;
         trainer.train(params);

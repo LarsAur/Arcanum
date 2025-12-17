@@ -141,7 +141,7 @@ bool Test::runBinpackTest()
 
         // -- Play a game and try to encode and decode it.
 
-        TESTINFO("Testing played game")
+        INFO("Testing played game")
         runner.play();
         if(!compareAfterEncodeDecode(runner.getInitialPosition(), runner.getMoves(), runner.getEvals(), runner.getResult()))
         {
@@ -168,7 +168,7 @@ bool Test::runBinpackTest()
         runner.setMoveLimit(300);
 
         bool pass = true;
-        TESTINFO("Testing " << NumRandomGames << " random games")
+        INFO("Testing " << NumRandomGames << " random games")
         for(uint32_t i = 0; i < NumRandomGames; i++)
         {
             runner.randomizeInitialPosition((i % 9) + 1); // Randomize between 1 and 9 moves
@@ -211,7 +211,7 @@ bool Test::runBinpackTest()
         runner.setSearchParameters(params);
         runner.setMoveLimit(300);
 
-        TESTINFO("Testing binpack chunks")
+        INFO("Testing binpack chunks")
         for(uint32_t i = 0; i < NumChunkGames; i++)
         {
             runner.randomizeInitialPosition((i % 9) + 1); // Randomize between 1 and 9 moves
