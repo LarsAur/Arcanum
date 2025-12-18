@@ -144,25 +144,25 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
     bool valid = true;
 
     if(params.dataset == "")
-    { valid = false; ERROR("Path to the dataset cannot be empty") }
+    { valid = false; INFO("Path to the dataset cannot be empty") }
 
     if(params.output == "")
-    { valid = false; ERROR("Output path cannot be empty") }
+    { valid = false; INFO("Output path cannot be empty") }
 
     if(params.batchSize <= 0)
-    { valid = false; ERROR("Batch size cannot be 0 or less") }
+    { valid = false; INFO("Batch size cannot be 0 or less") }
 
     if(params.endEpoch <= params.startEpoch)
-    { valid = false; ERROR("End epoch must be larger than the end epoch") }
+    { valid = false; INFO("End epoch must be larger than the end epoch") }
 
     if(params.epochSize <= 0)
-    { valid = false; ERROR("Epoch size has to be larger than 0") }
+    { valid = false; INFO("Epoch size has to be larger than 0") }
 
     if(params.gammaSteps <= 0)
-    { valid = false; ERROR("GammaSteps has to be larger than 1. Use Gamma=1 to disable gamma scaling") }
+    { valid = false; INFO("GammaSteps has to be larger than 1. Use Gamma=1 to disable gamma scaling") }
 
     if((params.lambda < 0) || (params.lambda > 1))
-    { valid = false; ERROR("Lambda has to be between 0 and 1 (inclusive)") }
+    { valid = false; INFO("Lambda has to be between 0 and 1 (inclusive)") }
 
     if(valid)
     {
