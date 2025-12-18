@@ -2,6 +2,7 @@
 #include <utils.hpp>
 #include <tuning/fengen.hpp>
 #include <tuning/nnuetrainer.hpp>
+#include <tuning/datamerger.hpp>
 #include <tests/test.hpp>
 
 using namespace Arcanum;
@@ -28,6 +29,10 @@ bool ArgsParser::parseArgumentsAndRunCommand(int argc, char* argv[])
     else if(command == "test")
     {
         return Test::parseArgumentsAndRunTests(argc, argv);
+    }
+    else if(command == "merge")
+    {
+        return parseArgumentsAndMergeData(argc, argv);
     }
 
     INFO("Unknown command: " << command)
@@ -182,3 +187,20 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
     return valid;
 }
 
+bool ArgsParser::parseArgumentsAndMergeData(int argc, char* argv[])
+{
+    DataMerger merger;
+    std::string path;
+
+    int index = 2; // Skip the executable name and command
+    while(index < argc)
+    {
+        if(matchAndParseArg("--input",  path, argc, argv, index))  { merger.addInputPath(path);   continue; }
+        if(matchAndParseArg("--output", path,  argc, argv, index)) { merger.setOutputPath(path);  continue; }
+
+        INFO("Unknown argument: " << argv[index])
+        return false;
+    }
+
+    return merger.mergeData();
+}
