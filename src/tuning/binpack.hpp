@@ -58,6 +58,7 @@ namespace Arcanum
         bool open(std::string path);
         void close();
         bool eof();
+        bool isEndOfGame();
         Board* getNextBoard();
         Move getMove();
         eval_t getScore();

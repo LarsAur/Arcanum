@@ -38,6 +38,11 @@ void BinpackParser::close()
     m_ifs.close();
 }
 
+bool BinpackParser::isEndOfGame()
+{
+    return m_currentMoveTextCount == 0;
+}
+
 Board* BinpackParser::getNextBoard()
 {
     if(m_numBytesRead >= m_currentChuckSize)

@@ -58,6 +58,11 @@ namespace Arcanum
         return m_parser->eof();
     }
 
+    bool DataLoader::isEndOfGame()
+    {
+        return m_parser->isEndOfGame();
+    }
+
     Board* DataLoader::getNextBoard()
     {
         return m_parser->getNextBoard();

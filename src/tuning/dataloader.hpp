@@ -17,6 +17,7 @@ namespace Arcanum
             virtual bool open(std::string path) = 0;
             virtual void close() = 0;
             virtual bool eof() = 0;
+            virtual bool isEndOfGame() = 0;
             virtual Board* getNextBoard() = 0;
             virtual Move getMove() = 0;
             virtual eval_t getScore() = 0;
@@ -54,6 +55,7 @@ namespace Arcanum
             bool open(std::string path);
             void close();
             bool eof();
+            bool isEndOfGame();
             Board* getNextBoard();
             Move getMove();
             eval_t getScore();

@@ -32,6 +32,12 @@ bool LegacyParser::eof()
     return m_ifs.eof();
 }
 
+bool LegacyParser::isEndOfGame()
+{
+    // TODO: It is possible to reconstruct the game from the FEN strings
+    return true; // Each position is stored independently in this format
+}
+
 Board* LegacyParser::getNextBoard()
 {
     std::string resultStr;
@@ -60,6 +66,7 @@ Move LegacyParser::getMove()
 {
     // This format does not store the move
     // thus a null move is returned.
+    // TODO: It is possible to reconstruct the move from the FEN strings
     return NULL_MOVE;
 }
 
