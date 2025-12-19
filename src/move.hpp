@@ -149,27 +149,20 @@ namespace Arcanum
 
         std::string toString() const
         {
-            std::stringstream ss;
-            ss << squareToString(from);
-            ss << squareToString(to);
+            std::string str;
+            str += squareToString(from);
+            str += squareToString(to);
 
-            if(moveInfo & PROMOTE_QUEEN)       ss << "q";
-            else if(moveInfo & PROMOTE_ROOK)   ss << "r";
-            else if(moveInfo & PROMOTE_BISHOP) ss << "b";
-            else if(moveInfo & PROMOTE_KNIGHT) ss << "n";
-            return ss.str();
+            if(moveInfo & PROMOTE_QUEEN)       str += "q";
+            else if(moveInfo & PROMOTE_ROOK)   str += "r";
+            else if(moveInfo & PROMOTE_BISHOP) str += "b";
+            else if(moveInfo & PROMOTE_KNIGHT) str += "n";
+            return str;
         }
 
         friend inline std::ostream& operator<<(std::ostream& os, const Move& move)
         {
-            os << squareToString(move.from);
-            os << squareToString(move.to);
-
-            if(move.moveInfo & PROMOTE_QUEEN)       os << "q";
-            else if(move.moveInfo & PROMOTE_ROOK)   os << "r";
-            else if(move.moveInfo & PROMOTE_BISHOP) os << "b";
-            else if(move.moveInfo & PROMOTE_KNIGHT) os << "n";
-
+            os << move.toString();
             return os;
         }
 

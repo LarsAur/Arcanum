@@ -381,7 +381,7 @@ bool FEN::setFEN(Board& board, const std::string fen, bool strict)
 
 std::string FEN::getFEN(const Board& board)
 {
-    std::stringstream ss;
+    std::string str;
     int emptyCnt = 0;
     for(int rank = 7; rank >= 0; rank--)
     {
@@ -408,37 +408,39 @@ std::string FEN::getFEN(const Board& board)
 
             if(c != '\0')
             {
-                if(emptyCnt > 0) ss << emptyCnt;
-                ss << c;
+                if(emptyCnt > 0)
+                {
+                    str += std::to_string(emptyCnt);
+                }
+                str += c;
                 emptyCnt = 0;
             }
         }
 
-        if(emptyCnt > 0) ss << emptyCnt;
+        if(emptyCnt > 0) str += std::to_string(emptyCnt);
         emptyCnt = 0;
-        if(rank != 0) ss << "/";
+        if(rank != 0) str += "/";
     }
 
     // Turn
-    ss << ((board.m_turn == Color::WHITE) ? " w " : " b ");
-
+    str += ((board.m_turn == Color::WHITE) ? " w " : " b ");
     // Castle
-    if(board.m_castleRights & CastleRights::WHITE_KING_SIDE)  ss << "K";
-    if(board.m_castleRights & CastleRights::WHITE_QUEEN_SIDE) ss << "Q";
-    if(board.m_castleRights & CastleRights::BLACK_KING_SIDE)  ss << "k";
-    if(board.m_castleRights & CastleRights::BLACK_QUEEN_SIDE) ss << "q";
-    if(board.m_castleRights == 0) ss << "-";
+    if(board.m_castleRights & CastleRights::WHITE_KING_SIDE)  str += "K";
+    if(board.m_castleRights & CastleRights::WHITE_QUEEN_SIDE) str += "Q";
+    if(board.m_castleRights & CastleRights::BLACK_KING_SIDE)  str += "k";
+    if(board.m_castleRights & CastleRights::BLACK_QUEEN_SIDE) str += "q";
+    if(board.m_castleRights == 0) str += "-";
 
     // Enpassant
-    if(board.m_enPassantSquare != Square::NONE) ss << " " << squareToString(board.m_enPassantSquare) << " ";
-    else ss << " - ";
+    if(board.m_enPassantSquare != Square::NONE) str += " " + squareToString(board.m_enPassantSquare) + " ";
+    else str += " - ";
 
     // Half moves
-    ss << unsigned(board.m_rule50) << " ";
+    str += std::to_string(unsigned(board.m_rule50)) + " ";
     // Full moves
-    ss << board.m_fullMoves;
+    str += std::to_string(board.m_fullMoves);
 
-    return ss.str();
+    return str;
 }
 
 std::string FEN::toString(const Board& board)
