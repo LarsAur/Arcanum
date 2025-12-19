@@ -19,6 +19,8 @@ namespace Arcanum
         uint32_t depth;           // Max depth to search to. Unused if 0
         uint32_t movetime;        // Max time to search (ms). Unused if 0
         uint32_t nodes;           // Max nodes to search. Unused if 0
+        uint32_t ttSize;          // Size of the transposition table in MB.
+        eval_t   scoreLimit;      // Maximum absolute score to allow for randomized positions
 
         FengenParameters() :
         startposPath(""),
@@ -30,7 +32,9 @@ namespace Arcanum
         numThreads(0),
         depth(0),
         movetime(0),
-        nodes(0) 
+        nodes(0),
+        ttSize(0),
+        scoreLimit(400)
         {};
     };
 

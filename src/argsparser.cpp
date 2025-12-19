@@ -58,6 +58,8 @@ bool ArgsParser::parseArgumentsAndRunFengen(int argc, char* argv[])
         if(matchAndParseArg("--movetime",       params.movetime,       argc, argv, index)) { continue; }
         if(matchAndParseArg("--nodes",          params.nodes,          argc, argv, index)) { continue; }
         if(matchAndParseArg("--offset",         params.offset,         argc, argv, index)) { continue; }
+        if(matchAndParseArg("--scorelimit",     params.scoreLimit,     argc, argv, index)) { continue; }
+        if(matchAndParseArg("--ttsize",         params.ttSize,         argc, argv, index)) { continue; }
 
         INFO("Unknown argument: " << argv[index])
         return false;

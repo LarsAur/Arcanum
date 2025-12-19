@@ -84,7 +84,7 @@ void Fengen::start(FengenParameters params)
         runner.setMoveLimit(300);
         runner.setSearchParameters(searchParams);
         runner.setRandomSeed(time(nullptr) + id * 1000);
-        runner.setTTSize(0); // Disable TT
+        runner.setTTSize(params.ttSize);
         runner.setDatagenMode(true);
 
         while (true)
@@ -118,7 +118,7 @@ void Fengen::start(FengenParameters params)
             // If enabled, randomize the position.
             if(params.numRandomMoves > 0)
             {
-                runner.randomizeInitialPosition(params.numRandomMoves, board, 400); // TODO: Set an eval limit
+                runner.randomizeInitialPosition(params.numRandomMoves, board, params.scoreLimit);
             }
 
             // Play the game

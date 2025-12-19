@@ -2,6 +2,7 @@
 
 #include <string>
 #include <utils.hpp>
+#include <types.hpp>
 
 namespace Arcanum
 {
@@ -31,6 +32,10 @@ namespace Arcanum
                     else if constexpr (std::is_same_v<T, float >)
                     {
                         out = std::stof(std::string(argv[index++]));
+                    }
+                    else if constexpr (std::is_same_v<T, int16_t>)
+                    {
+                        out = std::stoul(std::string(argv[index++]));
                     }
                     else
                     {
