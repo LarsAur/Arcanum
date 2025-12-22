@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cstring>
 #include <sstream>
+#include <iomanip>
 
 #define STRINGIFY(s) #s
 #define TOSTRING(x) STRINGIFY(x)

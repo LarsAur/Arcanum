@@ -1,4 +1,5 @@
 #include <history/correctionhistory.hpp>
+#include <algorithm>
 
 using namespace Arcanum;
 
