@@ -36,7 +36,7 @@ namespace Arcanum
             bitboard_t m_bbTypedPieces[6][NUM_COLORS];
             bitboard_t m_blockers[NUM_COLORS]; // Pieces blocking the king from a sliding piece
             bitboard_t m_pinners[NUM_COLORS];  // Pieces which targets the king with only one opponent piece blocking
-            square_t m_pinnerBlockerIdxPairs[64]; // Array containing the idx of the pinner
+            square_t m_pinnerBlockerIdxPairs[NUM_COLORS][64]; // Lookup from blockerIdx to the corresponding pinnerIdx. The color is the color of the king
             bitboard_t m_bbOpponentAttacks;
             square_t m_kingIdx;
 

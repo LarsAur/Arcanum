@@ -105,7 +105,7 @@ inline void Board::m_findPinnedPieces()
         snipers |= getBishopMoves(0LL, kingIdx)
                     & (m_bbTypedPieces[Piece::BISHOP][c^1] | m_bbTypedPieces[Piece::QUEEN][c^1]);
 
-        occupancy = m_bbAllPieces ^ snipers;
+        occupancy = m_bbAllPieces;
 
         while (snipers)
         {
@@ -114,18 +114,10 @@ inline void Board::m_findPinnedPieces()
 
             if(CNTSBITS(blockingSquares) == 1)
             {
+                square_t blockerIdx = LS1B(blockingSquares);
+                m_pinnerBlockerIdxPairs[c][blockerIdx] = sniperIdx;
                 m_blockers[c]  |= blockingSquares;
                 m_pinners[c^1] |= (1LL << sniperIdx);
-
-                // This does not have to be reset or initialized.
-                // It is assumed that the square is known to contain a blocker before lookup.
-                // Only update for the corresponding turn, as it is only used by m_attemptAddPseudoLegalMove
-                // Does not matter if there are more snipers on the same line
-                if(i == m_turn)
-                {
-                    square_t blockerIdx = LS1B(blockingSquares);
-                    m_pinnerBlockerIdxPairs[blockerIdx] = sniperIdx;
-                }
             }
         }
     }
@@ -176,7 +168,7 @@ inline void Board::m_generateMoves()
         // creating two loops seems to be a bit slower, so we continue to check if each piece is a blocker
         if((1LL << pieceIdx) & m_blockers[m_turn])
         {
-            square_t pinnerIdx = m_pinnerBlockerIdxPairs[pieceIdx];
+            square_t pinnerIdx = m_pinnerBlockerIdxPairs[m_turn][pieceIdx];
             targets &= getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx);
         }
 
@@ -348,7 +340,7 @@ inline bool Board::m_hasMove()
         // creating two loops seems to be a bit slower, so we continue to check if each piece is a blocker
         if((1LL << pieceIdx) & m_blockers[m_turn])
         {
-            square_t pinnerIdx = m_pinnerBlockerIdxPairs[pieceIdx];
+            square_t pinnerIdx = m_pinnerBlockerIdxPairs[m_turn][pieceIdx];
             targets &= getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx);
         }
 
@@ -383,7 +375,7 @@ inline bool Board::m_isLegalEnpassant(Move move) const
     // Checking that if a blocker is moved, the piece is still blocking.
     // Have to check for blockers still blocking after move
     // TODO: This can be replaced by a lookup table similar to between by containing the entire line
-    square_t pinnerIdx = m_pinnerBlockerIdxPairs[move.from];
+    square_t pinnerIdx = m_pinnerBlockerIdxPairs[m_turn][move.from];
     if((getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx)) & bbTo)
     {
         return true;
@@ -416,7 +408,7 @@ inline bool Board::m_isLegalMove(Move move) const
     // Checking that if a blocker is moved, the piece is still blocking.
     // Have to check for blockers still blocking after move
     // TODO: This can be replaced by a lookup table similar to between by containing the entire line
-    square_t pinnerIdx = m_pinnerBlockerIdxPairs[move.from];
+    square_t pinnerIdx = m_pinnerBlockerIdxPairs[m_turn][move.from];
     if((getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx)) & bbTo)
     {
         return true;
