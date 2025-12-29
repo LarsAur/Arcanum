@@ -436,6 +436,7 @@ Move* Board::getLegalMovesFromCheck()
     }
 
     m_moveset = MoveSet::ALL;
+    m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_findPinnedPieces();
     m_numLegalMoves = 0;
     Color opponent = Color(m_turn^1);
@@ -719,6 +720,7 @@ Move* Board::getLegalMoves()
     }
 
     m_moveset = MoveSet::ALL;
+    m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_findPinnedPieces();
     m_numLegalMoves = 0;
 
@@ -792,6 +794,7 @@ Move* Board::getLegalCaptureMoves()
     }
 
     m_moveset = MoveSet::CAPTURES;
+    m_captureInfoGenerated = MoveSet::NOT_GENERATED;
     m_findPinnedPieces();
     m_numLegalMoves = 0;
     // Everything below is generating moves when not in check, thus we can filter for capturing moves
