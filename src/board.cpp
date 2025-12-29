@@ -826,8 +826,10 @@ Move* Board::getLegalCaptureMoves()
 // checkmate and stalemate at evaluation
 bool Board::hasLegalMove()
 {
-    if((m_moveset == Board::MoveSet::ALL) || (m_numLegalMoves > 0))
+    if((m_moveset == MoveSet::ALL) || (m_numLegalMoves > 0))
+    {
         return m_numLegalMoves > 0;
+    }
 
     if(isChecked())
         return hasLegalMoveFromCheck();
@@ -904,8 +906,10 @@ bool Board::hasLegalMove()
 
 bool Board::hasLegalMoveFromCheck()
 {
-    if(m_numLegalMoves > 0)
-        return true;
+    if((m_moveset == Board::MoveSet::ALL) || (m_numLegalMoves > 0))
+    {
+        return m_numLegalMoves > 0;
+    }
 
     m_findPinnedPieces();
     Color opponent = Color(m_turn^1);
