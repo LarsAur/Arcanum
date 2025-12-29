@@ -13,7 +13,7 @@ static void playAllMovesAndCheckCaptures(Board& board, uint32_t depth, bool* fai
     Move* legalMoves = board.getLegalMoves();
     uint8_t numLegalMoves = board.getNumLegalMoves();
 
-    if((numLegalMoves == 0) || (depth == 0))
+    if(numLegalMoves == 0)
     {
         return;
     }
@@ -43,6 +43,11 @@ static void playAllMovesAndCheckCaptures(Board& board, uint32_t depth, bool* fai
     {
         *failed = true;
         FAIL("Mismatch in number of captures and promotions. Expected " << (int)numCapturesAndPromotions << " but got " << (int)numNoisyMoves << " in position " << board.fen())
+        return;
+    }
+
+    if(depth == 0)
+    {
         return;
     }
 
