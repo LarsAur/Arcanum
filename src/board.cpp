@@ -123,13 +123,16 @@ inline void Board::m_findPinnedPieces()
     }
 }
 
-template <MoveInfoBit MoveType, bool CapturesOnly>
+template <MoveInfoBit MoveType, Board::MoveSet Set>
 __attribute__((always_inline))
 inline void Board::m_generateMoves()
 {
     static_assert(MoveType != MoveInfoBit::PAWN_MOVE);
     static_assert(MoveType != MoveInfoBit::KING_MOVE);
-
+    static_assert(Set != MoveSet::NOT_GENERATED);
+    
+    const Color opponent = Color(m_turn^1);
+    
     Piece type;
     switch (MoveType)
     {
@@ -153,11 +156,11 @@ inline void Board::m_generateMoves()
         }
 
         // Filter the allowed target squares
-        if constexpr (CapturesOnly)
+        if constexpr (Set == MoveSet::CAPTURES)
         {
-            targets &= m_bbColoredPieces[m_turn^1]; // All opponent pieces
+            targets &= m_bbColoredPieces[opponent]; // All opponent pieces
         }
-        else
+        else if constexpr (Set == MoveSet::ALL)
         {
             targets &= ~m_bbColoredPieces[m_turn];  // All squares except own pieces
         }
@@ -183,7 +186,7 @@ inline void Board::m_generateMoves()
     }
 }
 
-template <bool CapturesOnly>
+template <Board::MoveSet Set>
 __attribute__((always_inline))
 inline void Board::m_generatePawnMoves()
 {
@@ -213,7 +216,7 @@ inline void Board::m_generatePawnMoves()
         square_t pawnIdx = popLS1B(&bbOrigins);
         // If one promotion move is legal, all are legal
         bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-        if(!CapturesOnly && added)
+        if(added && (Set == MoveSet::ALL))
         {
             m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
             m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
@@ -240,7 +243,7 @@ inline void Board::m_generatePawnMoves()
         square_t pawnIdx = popLS1B(&bbOrigins);
         // If one promotion move is legal, all are legal
         bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-        if(!CapturesOnly && added)
+        if(added && (Set == MoveSet::ALL))
         {
             m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
             m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
@@ -269,7 +272,7 @@ inline void Board::m_generatePawnMoves()
 
         // If one promotion move is legal, all are legal
         bool added = m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_QUEEN));
-        if(!CapturesOnly && added)
+        if(added && (Set == MoveSet::ALL))
         {
             m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_ROOK);
             m_legalMoves[m_numLegalMoves++] = Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE | MoveInfoBit::PROMOTE_BISHOP);
@@ -277,7 +280,7 @@ inline void Board::m_generatePawnMoves()
         }
     }
 
-    if constexpr(!CapturesOnly)
+    if constexpr(Set == MoveSet::ALL)
     {
         // Forward moves without promotion
         pawnMoves = getPawnMoves(pawns, m_turn) & ~m_bbAllPieces & ~PromotionSquares;
@@ -288,7 +291,6 @@ inline void Board::m_generatePawnMoves()
             square_t pawnIdx = popLS1B(&pawnMovesOrigin);
             m_attemptAddPseudoLegalMove(Move(pawnIdx, target, MoveInfoBit::PAWN_MOVE));
         }
-
 
         // Double move
         bitboard_t doubleMoves       = getPawnDoubleMoves(pawns, m_turn, m_bbAllPieces);
@@ -724,11 +726,11 @@ Move* Board::getLegalMoves()
     m_findPinnedPieces();
     m_numLegalMoves = 0;
 
-    m_generateMoves<MoveInfoBit::ROOK_MOVE, false>();
-    m_generateMoves<MoveInfoBit::KNIGHT_MOVE, false>();
-    m_generateMoves<MoveInfoBit::BISHOP_MOVE, false>();
-    m_generateMoves<MoveInfoBit::QUEEN_MOVE, false>();
-    m_generatePawnMoves<false>();
+    m_generateMoves<MoveInfoBit::ROOK_MOVE, MoveSet::ALL>();
+    m_generateMoves<MoveInfoBit::KNIGHT_MOVE, MoveSet::ALL>();
+    m_generateMoves<MoveInfoBit::BISHOP_MOVE, MoveSet::ALL>();
+    m_generateMoves<MoveInfoBit::QUEEN_MOVE, MoveSet::ALL>();
+    m_generatePawnMoves<MoveSet::ALL>();
 
     // King moves
     // Create bitboard for where the king would be attacked
@@ -800,11 +802,11 @@ Move* Board::getLegalCaptureMoves()
     // Everything below is generating moves when not in check, thus we can filter for capturing moves
     Color opponent = Color(m_turn ^ 1);
 
-    m_generateMoves<MoveInfoBit::ROOK_MOVE, true>();
-    m_generateMoves<MoveInfoBit::KNIGHT_MOVE, true>();
-    m_generateMoves<MoveInfoBit::BISHOP_MOVE, true>();
-    m_generateMoves<MoveInfoBit::QUEEN_MOVE, true>();
-    m_generatePawnMoves<true>();
+    m_generateMoves<MoveInfoBit::ROOK_MOVE, MoveSet::CAPTURES>();
+    m_generateMoves<MoveInfoBit::KNIGHT_MOVE, MoveSet::CAPTURES>();
+    m_generateMoves<MoveInfoBit::BISHOP_MOVE, MoveSet::CAPTURES>();
+    m_generateMoves<MoveInfoBit::QUEEN_MOVE, MoveSet::CAPTURES>();
+    m_generatePawnMoves<MoveSet::CAPTURES>();
 
     // King moves
     bitboard_t kMoves = getKingMoves(m_kingIdx);
@@ -906,7 +908,7 @@ bool Board::hasLegalMove()
 
 bool Board::hasLegalMoveFromCheck()
 {
-    if((m_moveset == Board::MoveSet::ALL) || (m_numLegalMoves > 0))
+    if((m_moveset == MoveSet::ALL) || (m_numLegalMoves > 0))
     {
         return m_numLegalMoves > 0;
     }

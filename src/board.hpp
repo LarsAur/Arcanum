@@ -51,7 +51,6 @@ namespace Arcanum
             {
                 NOT_GENERATED,
                 CAPTURES,
-                CAPTURES_AND_CHECKS,
                 ALL,
             };
             MoveSet m_moveset; // Which set moves are generated
@@ -71,10 +70,10 @@ namespace Arcanum
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
 
-            template <MoveInfoBit MoveType, bool CapturesOnly>
+            template <MoveInfoBit MoveType, MoveSet Set>
             void m_generateMoves();
 
-            template <bool CapturesOnly>
+            template <MoveSet Set>
             void m_generatePawnMoves();
 
             template <MoveInfoBit MoveType>
