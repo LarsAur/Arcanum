@@ -47,6 +47,6 @@ namespace Arcanum
         static bool setFEN(Board& board, const std::string& fen, bool strict = true);
         static std::string getFEN(const Board& board);
         static std::string toString(const Board& board);
-        static EDP parseEDP(std::string edp);
+        static EDP parseEDP(const std::string& edp);
     };
 };

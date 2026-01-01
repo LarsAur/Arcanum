@@ -674,7 +674,7 @@ void FEN::m_parseMovelist(Board& board, std::vector<Move>& list, std::istringstr
     }
 }
 
-EDP FEN::parseEDP(std::string edp)
+EDP FEN::parseEDP(const std::string& edp)
 {
     std::string token;
     EDP desc;
