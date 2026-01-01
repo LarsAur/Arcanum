@@ -707,7 +707,7 @@ EDP FEN::parseEDP(const std::string& edp)
         else if(token == "pm"  ) {is >> token; desc.pm = getMoveFromAlgebraic(token, board); }
         else if(token == "pv"  ) m_parseVariation(board, desc.pv, is);
         else if(token == "rc"  ) is >> desc.rc;
-        else if(token == "sm"  ) {is >> token; desc.pm = getMoveFromAlgebraic(token, board); }
+        else if(token == "sm"  ) {is >> token; desc.sm = getMoveFromAlgebraic(token, board); }
         else if(token == "v0"  ) WARNING("Missing EDP variant name")
     }
 
