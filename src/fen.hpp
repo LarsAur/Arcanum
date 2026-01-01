@@ -33,18 +33,18 @@ namespace Arcanum
     class FEN
     {
         private:
-        static bool m_consumeExpectedSpace(std::istringstream& is);
-        static bool m_setPosition(Board& board, std::istringstream& is);
-        static bool m_setTurn(Board& board, std::istringstream& is);
-        static bool m_setCastleRights(Board& board, std::istringstream& is, bool strict);
-        static bool m_setEnpassantTarget(Board& board, std::istringstream& is);
-        static bool m_setHalfmoveClock(Board& board, std::istringstream& is);
-        static bool m_setFullmoveClock(Board& board, std::istringstream& is);
+        static bool m_consumeExpectedSpace(const std::string& fen, uint32_t& index);
+        static bool m_setPosition(Board& board, const std::string& fen, uint32_t& index);
+        static bool m_setTurn(Board& board, const std::string& fen, uint32_t& index);
+        static bool m_setCastleRights(Board& board, const std::string& fen, uint32_t& index, bool strict);
+        static bool m_setEnpassantTarget(Board& board, const std::string& fen, uint32_t& index);
+        static bool m_setHalfmoveClock(Board& board, const std::string& fen, uint32_t& index);
+        static bool m_setFullmoveClock(Board& board, const std::string& fen, uint32_t& index);
         static void m_parseVariation(Board& board, std::vector<Move>& variation, std::istringstream& is);
         static void m_parseMovelist(Board& board, std::vector<Move>& list, std::istringstream& is);
         public:
         static constexpr const char* startpos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-        static bool setFEN(Board& board, const std::string fen, bool strict = true);
+        static bool setFEN(Board& board, const std::string& fen, bool strict = true);
         static std::string getFEN(const Board& board);
         static std::string toString(const Board& board);
         static EDP parseEDP(std::string edp);

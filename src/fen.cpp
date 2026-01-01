@@ -3,8 +3,10 @@
 
 using namespace Arcanum;
 
-bool FEN::m_setPosition(Board& board, std::istringstream& is)
+bool FEN::m_setPosition(Board& board, const std::string& fen, uint32_t& index)
 {
+    const size_t length = fen.length();
+
     // -- Create empty board
     board.m_bbAllPieces = 0LL;
     for(int c = 0; c < Color::NUM_COLORS; c++)
@@ -29,14 +31,14 @@ bool FEN::m_setPosition(Board& board, std::istringstream& is)
     // A8 -> H8, A7 -> H7 ..., A1 -> H1
     while (!(file > 7 && rank == 0))
     {
-        is.get(chr);
-
         // Verify that the EOF is not hit
-        if(is.eof())
+        if(length <= index)
         {
             ERROR("Not enough characters in FEN string")
             return false;
         }
+
+        chr = fen[index++];
 
         // Move to next rank
         if(chr == '/')
@@ -120,17 +122,16 @@ bool FEN::m_setPosition(Board& board, std::istringstream& is)
     return true;
 }
 
-bool FEN::m_setTurn(Board& board, std::istringstream& is)
+bool FEN::m_setTurn(Board& board, const std::string& fen, uint32_t& index)
 {
-    char chr;
-    is.get(chr);
-
     // Verify that the EOF is not hit
-    if(is.eof())
+    if(fen.length() <= index)
     {
         ERROR("Not enough characters in FEN string")
         return false;
     }
+
+    char chr = fen[index++];
 
     if(chr == 'w')
     {
@@ -149,19 +150,19 @@ bool FEN::m_setTurn(Board& board, std::istringstream& is)
     return true;
 }
 
-bool FEN::m_setCastleRights(Board& board, std::istringstream& is, bool strict)
+bool FEN::m_setCastleRights(Board& board, const std::string& fen, uint32_t& index, bool strict)
 {
-    char chr;
-    board.m_castleRights = 0;
+    const size_t length = fen.length();
 
-    is.get(chr);
-
-    // Verify that the EOF is not hit
-    if(is.eof())
+    // Verify that the FEN is long enough
+    if(length <= index)
     {
         ERROR("Not enough characters in FEN string")
         return false;
     }
+
+    char chr = fen[index++];
+    board.m_castleRights = 0;
 
     // No castle rights available
     if(chr == '-')
@@ -183,20 +184,22 @@ bool FEN::m_setCastleRights(Board& board, std::istringstream& is, bool strict)
             return false;
         }
 
-        // Exit the loop if there are no more castle rights
-        if(is.peek() == ' ')
-        {
-            break;
-        }
-
-        is.get(chr);
-
         // Verify that the EOF is not hit
-        if(is.eof())
+        if(length <= index)
         {
             ERROR("Not enough characters in FEN string")
             return false;
         }
+
+        // Peek to check if there are no more castling rights
+        chr = fen[index];
+        if(chr == ' ')
+        {
+            break;
+        }
+
+        // Consume the character if it was not a space
+        index++;
     }
 
     // Check if the castle rights are legal
@@ -217,9 +220,9 @@ bool FEN::m_setCastleRights(Board& board, std::istringstream& is, bool strict)
     return true;
 }
 
-bool FEN::m_setEnpassantTarget(Board& board, std::istringstream& is)
+bool FEN::m_setEnpassantTarget(Board& board, const std::string& fen, uint32_t& index)
 {
-    char chr;
+    const size_t length = fen.length();
 
     // Read enpassant square
     board.m_enPassantSquare = Square::NONE;
@@ -227,14 +230,14 @@ bool FEN::m_setEnpassantTarget(Board& board, std::istringstream& is)
     board.m_bbEnPassantSquare = 0LL;
     board.m_bbEnPassantTarget = 0LL;
 
-    is.get(chr);
-
     // Verify that the EOF is not hit
-    if(is.eof())
+    if(length <= index)
     {
         ERROR("Not enough characters in FEN string")
         return false;
     }
+
+    char chr = fen[index++];
 
     // No enpassant square available
     if(chr == '-')
@@ -244,14 +247,14 @@ bool FEN::m_setEnpassantTarget(Board& board, std::istringstream& is)
 
     int32_t file = chr - 'a';
 
-    is.get(chr);
-
     // Verify that the EOF is not hit
-    if(is.eof())
+    if(length <= index)
     {
         ERROR("Not enough characters in FEN string")
         return false;
     }
+
+    chr = fen[index++];
 
     int32_t rank = chr - '1';
 
@@ -281,49 +284,67 @@ bool FEN::m_setEnpassantTarget(Board& board, std::istringstream& is)
     return true;
 }
 
-bool FEN::m_setHalfmoveClock(Board& board, std::istringstream& is)
+bool FEN::m_setHalfmoveClock(Board& board, const std::string& fen, uint32_t& index)
 {
-    if(!std::isdigit(is.peek()))
+    const size_t length = fen.length();
+
+    if(length <= index)
+    {
+        ERROR("Not enough characters in FEN string to parse half move clock")
+        return false;
+    }
+
+    if(!std::isdigit(fen[index]))
     {
         ERROR("The half move clock is not a number")
         return false;
     }
 
     // Read half moves
-    uint16_t rule50;
-    is >> rule50;
-    board.m_rule50 = uint8_t(rule50);
+    board.m_rule50 = 0;
+    while((length > index) && std::isdigit(fen[index]))
+    {
+        board.m_rule50 = (board.m_rule50 * 10) + (fen[index++] - '0');
+    }
 
     return true;
 }
 
-bool FEN::m_setFullmoveClock(Board& board, std::istringstream& is)
+bool FEN::m_setFullmoveClock(Board& board, const std::string& fen, uint32_t& index)
 {
-    if(!std::isdigit(is.peek()))
+    const size_t length = fen.length();
+
+    if(length <= index)
+    {
+        ERROR("Not enough characters in FEN string to parse full move clock")
+        return false;
+    }
+
+    if(!std::isdigit(fen[index]))
     {
         ERROR("The full move clock is not a number")
         return false;
     }
 
     // Read full moves
-    is >> board.m_fullMoves;
+    board.m_fullMoves = 0;
+    while((length > index) && std::isdigit(fen[index]))
+    {
+        board.m_fullMoves = (board.m_fullMoves * 10) + (fen[index++] - '0');
+    }
 
     return true;
 }
 
-bool FEN::m_consumeExpectedSpace(std::istringstream& is)
+bool FEN::m_consumeExpectedSpace(const std::string& fen, uint32_t& index)
 {
-    char chr;
-    is.get(chr);
-
-    // Verify that the EOF is not hit
-    if(is.eof())
+    if(fen.length() <= index)
     {
         ERROR("Not enough characters in FEN string")
         return false;
     }
 
-    if(chr != ' ')
+    if(fen[index++] != ' ')
     {
         ERROR("Missing expected space in FEN string");
         return false;
@@ -332,18 +353,18 @@ bool FEN::m_consumeExpectedSpace(std::istringstream& is)
     return true;
 }
 
-bool FEN::setFEN(Board& board, const std::string fen, bool strict)
+bool FEN::setFEN(Board& board, const std::string& fen, bool strict)
 {
     bool success = true;
-    std::istringstream is(fen);
 
-    success &= m_setPosition(board, is);
-    success &= m_consumeExpectedSpace(is);
-    success &= m_setTurn(board, is);
-    success &= m_consumeExpectedSpace(is);
-    success &= m_setCastleRights(board, is, strict);
-    success &= m_consumeExpectedSpace(is);
-    success &= m_setEnpassantTarget(board, is);
+    uint32_t index = 0;
+    success &= m_setPosition(board, fen, index);
+    success &= m_consumeExpectedSpace(fen, index);
+    success &= m_setTurn(board, fen, index);
+    success &= m_consumeExpectedSpace(fen, index);
+    success &= m_setCastleRights(board, fen, index, strict);
+    success &= m_consumeExpectedSpace(fen, index);
+    success &= m_setEnpassantTarget(board, fen, index);
 
     // Some FEN strings does not contain information about the move clocks
     // By disabling strict mode, these are not parsed and instead set to zero
@@ -352,10 +373,10 @@ bool FEN::setFEN(Board& board, const std::string fen, bool strict)
     // Simply remove the castle rights and show a warning
     if(strict)
     {
-        success &= m_consumeExpectedSpace(is);
-        success &= m_setHalfmoveClock(board, is);
-        success &= m_consumeExpectedSpace(is);
-        success &= m_setFullmoveClock(board, is);
+        success &= m_consumeExpectedSpace(fen, index);
+        success &= m_setHalfmoveClock(board, fen, index);
+        success &= m_consumeExpectedSpace(fen, index);
+        success &= m_setFullmoveClock(board, fen, index);
     }
     else
     {
