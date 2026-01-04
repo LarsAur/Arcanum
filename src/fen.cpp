@@ -389,7 +389,7 @@ bool FEN::setFEN(Board& board, const std::string& fen, bool strict)
         ERROR("Unable to parse FEN: " << fen);
     }
 
-    Zobrist::zobrist.getHashs(board, board.m_hash, board.m_pawnHash, board.m_materialHash);
+    Zobrist::getHashes(board, board.m_hash, board.m_pawnHash, board.m_materialHash);
 
     // Set cache to unknown
     board.m_moveset = Board::MoveSet::NOT_GENERATED;

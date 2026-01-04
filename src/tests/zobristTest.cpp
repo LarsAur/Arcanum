@@ -20,7 +20,7 @@ static void playAllMovesAndCheckZobrist(Board& board, uint32_t depth, bool* fail
         newBoard.performMove(legalMoves[i]);
 
         hash_t hash, pawnHash, materialHash;
-        Zobrist::zobrist.getHashs(newBoard, hash, pawnHash, materialHash);
+        Zobrist::getHashes(newBoard, hash, pawnHash, materialHash);
 
         if(hash != newBoard.getHash())
         {

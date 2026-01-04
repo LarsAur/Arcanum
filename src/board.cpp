@@ -1312,7 +1312,7 @@ void Board::performMove(const Move move)
         m_bbEnPassantTarget = 1LL << m_enPassantTarget;
     }
 
-    Zobrist::zobrist.getUpdatedHashs(*this, move, oldEnPassantSquare, m_enPassantSquare, oldCastleRights, m_castleRights, m_hash, m_pawnHash, m_materialHash);
+    Zobrist::getUpdatedHashes(*this, move, oldEnPassantSquare, m_enPassantSquare, oldCastleRights, m_castleRights, m_hash, m_pawnHash, m_materialHash);
 
     m_moveset = MoveSet::NOT_GENERATED;
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
@@ -1341,7 +1341,7 @@ void Board::performNullMove()
     m_bbEnPassantSquare = 0LL;
     m_bbEnPassantTarget = 0LL;
 
-    Zobrist::zobrist.updateHashsAfterNullMove(m_hash, m_pawnHash, oldEnPassantSquare);
+    Zobrist::updateHashesAfterNullMove(m_hash, m_pawnHash, oldEnPassantSquare);
 
     m_turn = Color(m_turn^1);
     m_kingIdx = LS1B(m_bbTypedPieces[Piece::KING][m_turn]);

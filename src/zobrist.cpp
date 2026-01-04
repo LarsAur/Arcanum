@@ -6,9 +6,12 @@
 
 using namespace Arcanum;
 
-Zobrist Zobrist::zobrist = Zobrist();
+hash_t Zobrist::m_tables[6][2][64];
+hash_t Zobrist::m_enPassantTable[65]; // Only 16 is actually used, index 64 is used to not read out of bounds
+hash_t Zobrist::m_castleRights[16];
+hash_t Zobrist::m_blackToMove;
 
-Zobrist::Zobrist()
+void Zobrist::init()
 {
     std::mt19937 generator(0);
     std::uniform_int_distribution<uint64_t> distribution(0, UINT64_MAX);
@@ -39,11 +42,6 @@ Zobrist::Zobrist()
     m_blackToMove = distribution(generator);
 }
 
-Zobrist::~Zobrist()
-{
-
-}
-
 inline void Zobrist::m_addAllPieces(hash_t &hash, hash_t &materialHash, bitboard_t bitboard, uint8_t pieceType, Color pieceColor)
 {
     int i = 0;
@@ -56,7 +54,7 @@ inline void Zobrist::m_addAllPieces(hash_t &hash, hash_t &materialHash, bitboard
     }
 }
 
-void Zobrist::getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
+void Zobrist::getHashes(const Board &board, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
 {
     hash = 0LL;
     pawnHash = 0LL;
@@ -92,7 +90,7 @@ void Zobrist::getHashs(const Board &board, hash_t &hash, hash_t &pawnHash, hash_
     pawnHash ^= m_enPassantTable[board.m_enPassantSquare];
 }
 
-void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassantSquare, square_t newEnPassantSquare, uint8_t oldCastleRights, uint8_t newCastleRights, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
+void Zobrist::getUpdatedHashes(const Board &board, Move move, square_t oldEnPassantSquare, square_t newEnPassantSquare, uint8_t oldCastleRights, uint8_t newCastleRights, hash_t &hash, hash_t &pawnHash, hash_t &materialHash)
 {
     // XOR in and out the moved piece corresponding to its location
     if(move.isPromotion())
@@ -161,7 +159,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     hash_t h, ph, mh;
     Board b(board);
     b.m_turn = Color(b.m_turn^1);
-    getHashs(b, h, ph, mh);
+    Zobrist::getHashes(b, h, ph, mh);
     if(h != hash || ph != pawnHash || mh != materialHash)
     {
         DEBUG(FEN::toString(board))
@@ -177,7 +175,7 @@ void Zobrist::getUpdatedHashs(const Board &board, Move move, square_t oldEnPassa
     #endif
 }
 
-void Zobrist::updateHashsAfterNullMove(hash_t& hash, hash_t& pawnHash, square_t oldEnPassantSquare)
+void Zobrist::updateHashesAfterNullMove(hash_t& hash, hash_t& pawnHash, square_t oldEnPassantSquare)
 {
     hash_t enPassantHash = m_enPassantTable[oldEnPassantSquare];
     pawnHash ^= enPassantHash;

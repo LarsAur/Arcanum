@@ -2,13 +2,14 @@
 #include <argsparser.hpp>
 #include <eval.hpp>
 #include <bitboardlookups.hpp>
+#include <zobrist.hpp>
 
 using namespace Arcanum;
 
 int main(int argc, char *argv[])
 {
     BitboardLookups::generateBitboardLookups();
-
+    Zobrist::init();
     Evaluator::nnue.load(Interface::UCI::optionNNUEPath.value);
 
     if(argc == 1)
