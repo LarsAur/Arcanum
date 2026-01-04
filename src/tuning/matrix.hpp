@@ -1,10 +1,8 @@
 #pragma once
 
-#include <nnue.hpp>
 #include <types.hpp>
 #include <utils.hpp>
 #include <memory.hpp>
-#include <sstream>
 #include <iomanip>
 #include <cmath>
 #include <random>
@@ -250,16 +248,6 @@ namespace Arcanum
                     }
                     DEBUG(ss.str())
                 }
-            }
-
-            void writeToStream(std::ofstream& stream)
-            {
-                stream.write((char*) m_data, rows * cols * sizeof(float));
-            }
-
-            void readFromStream(std::istream& stream)
-            {
-                stream.read((char*) m_data, rows * cols * sizeof(float));
             }
     };
 

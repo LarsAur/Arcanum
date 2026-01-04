@@ -1,6 +1,5 @@
 #include <nnue.hpp>
-#include <tuning/nnuetrainer.hpp>
-#include <tuning/matrix.hpp>
+#include <tuning/nnueformat.hpp>
 
 using namespace Arcanum;
 
@@ -350,55 +349,23 @@ inline void NNUE::m_l1AffineTransform(const int8_t* in, int8_t* weights, int32_t
     *out = acc32[0] + acc32[4] + biases[0];
 }
 
-template <typename T, uint32_t rows, uint32_t cols>
-static void quantizeMatrix(T* qMatrix, Matrix<rows, cols>& fMatrix, int32_t qFactor)
-{
-    float* data = fMatrix.data();
-    for(uint32_t i = 0; i < rows * cols; i++)
-    {
-        qMatrix[i] = static_cast<T>(qFactor * data[i]);
-    }
-}
-
-// Transposes / Converts the matrix to be row major instead of column major
-// which is how the data is stored in the float Matrix
-template <typename T, uint32_t rows, uint32_t cols>
-static void quantizeTransposeMatrix(T* qMatrix, Matrix<rows, cols>& fMatrix, int32_t qFactor)
-{
-    float* data = fMatrix.data();
-
-    for(uint32_t i = 0; i < rows; i++)
-    {
-        for(uint32_t j = 0; j < cols; j++)
-        {
-            qMatrix[i * cols + j] = static_cast<T>(qFactor * data[j*rows + i]);
-        }
-    }
-}
-
 void NNUE::load(const std::string filename)
 {
-    DEBUG("Loading NNUE: " << filename)
-
-    // // Load the float net
-    NNUETrainer fLoader;
-    if(!fLoader.load(filename))
+    NNUEParser parser;
+    if(!parser.load(filename))
     {
-        ERROR("Unable to load " << filename);
         return;
     }
 
-    DEBUG("Quantizing NNUE")
-
     // Quantize the featuretransformer
-    quantizeMatrix(m_net->ftWeights, fLoader.getNet()->ftWeights, FTQ);
-    quantizeMatrix(m_net->ftBiases,  fLoader.getNet()->ftBiases,  FTQ);
+    parser.read(m_net->ftWeights, L1Size, FTSize, FTQ);
+    parser.read(m_net->ftBiases,  L1Size,      1, FTQ);
 
     // Quantize the output layers with buckets
     for(uint32_t i = 0; i < NumOutputBuckets; i++)
     {
-        quantizeTransposeMatrix(m_net->l1Weights[i], fLoader.getNet()->l1Weights[i], LQ);
-        quantizeMatrix(m_net->l1Biases[i], fLoader.getNet()->l1Biases[i], LQ * FTQ);
+        parser.readTranspose(m_net->l1Weights[i], 1, L1Size, LQ);
+        parser.read(m_net->l1Biases[i], 1, 1, LQ * FTQ);
     }
 
     DEBUG("Finished loading and quantizing: " << filename)

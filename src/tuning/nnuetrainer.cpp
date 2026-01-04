@@ -1,4 +1,5 @@
 #include <tuning/nnuetrainer.hpp>
+#include <tuning/nnueformat.hpp>
 #include <memory.hpp>
 #include <utils.hpp>
 #include <fen.hpp>
@@ -7,12 +8,6 @@
 #include <timer.hpp>
 
 using namespace Arcanum;
-
-#ifdef ENABLE_INCBIN
-#define INCBIN_PREFIX
-#include <incbin/incbin.hpp>
-INCBIN(char, EmbeddedNNUE, TOSTRING(DEFAULT_NNUE));
-#endif
 
 #define NET_BINARY_OP(_net1, _op, _net2) \
 _net1.ftWeights._op(_net2.ftWeights); \
@@ -32,136 +27,46 @@ _net1.l1Weights[i]._op; \
 _net1.l1Biases [i]._op; \
 }
 
-const char* NNUETrainer::NNUE_MAGIC = "Arcanum FNNUE v6";
-
-bool NNUETrainer::load(std::string filename)
+bool NNUETrainer::load(const std::string& filename)
 {
-    #ifdef ENABLE_INCBIN
-    // Some GUIs always pass the UCI options, even if they are the default.
-    // This check is to prevent trying to load the default NNUE from file if INCBIN is used.
-    // This is done because the file will likely not exist.
-    // Additionally, it allows us to continue using a single load function
-    if(filename == TOSTRING(DEFAULT_NNUE))
+    NNUEParser parser;
+    if(!parser.load(filename))
     {
-        return m_loadIncbin();
-    }
-    #endif
-
-    return m_loadNet(filename, m_net);
-}
-
-#ifdef ENABLE_INCBIN
-bool NNUETrainer::m_loadIncbin()
-{
-    DEBUG("Loading NNUE from INCBIN " << TOSTRING(DEFAULT_NNUE))
-    std::stringstream sstream;
-    sstream.write(reinterpret_cast<const char*>(EmbeddedNNUEData), EmbeddedNNUESize);
-    std::istream& stream = sstream;
-    return m_loadNetFromStream(stream, m_net);
-}
-#endif
-
-bool NNUETrainer::m_loadNet(std::string filename, Net& net)
-{
-    std::string path = getWorkPath();
-    std::stringstream ss;
-    ss << path << filename;
-    std::ifstream fStream(ss.str(), std::ios::in | std::ios::binary);
-
-    DEBUG("Loading FNNUE " << ss.str())
-    if(!fStream.is_open())
-    {
-        ERROR("Unable to open " << ss.str())
         return false;
     }
 
-    std::istream& stream = fStream;
-    bool status = m_loadNetFromStream(stream, net);
-    fStream.close();
+    bool status = true;
+    status &= parser.read(m_net.ftWeights.data(), NNUE::L1Size, NNUE::FTSize, 1);
+    status &= parser.read(m_net.ftBiases.data(),  NNUE::L1Size, 1, 1);
+    for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
+    {
+        status &= parser.read(m_net.l1Weights[i].data(), 1, NNUE::L1Size, 1);
+        status &= parser.read(m_net.l1Biases[i].data(), 1, 1, 1);
+    }
 
-    DEBUG("Finished loading FNNUE " << ss.str())
     return status;
 }
 
-bool NNUETrainer::m_loadNetFromStream(std::istream& stream, Net& net)
+bool NNUETrainer::store(const std::string& filename)
 {
-    std::string magic;
-    std::string metadata;
-    uint32_t magicSize;
-    uint32_t metaSize;
-
-    // Check magic size
-    stream.read((char*) &magicSize, sizeof(uint32_t));
-    if(magicSize != strlen(NNUE_MAGIC))
+    NNUEEncoder encoder;
+    if(!encoder.open(filename))
     {
-        ERROR("Mismatching NNUE magic size " << magicSize << " != " << strlen(NNUE_MAGIC));
         return false;
     }
 
-    // Check magic value
-    magic.resize(magicSize);
-    stream.read(magic.data(), magicSize);
-    if(magic != NNUE_MAGIC)
+    encoder.write(m_net.ftWeights.data(), NNUE::L1Size, NNUE::FTSize);
+    encoder.write(m_net.ftBiases.data(), NNUE::L1Size, 1);
+
+    for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
     {
-        ERROR("Mismatching NNUE magic " << magic << " != " << NNUE_MAGIC);
-        return false;
+        encoder.write(m_net.l1Weights[i].data(), 1, NNUE::L1Size);
+        encoder.write(m_net.l1Biases[i].data(), 1, 1);
     }
 
-    // Read metadata
-    stream.read((char*) &metaSize, sizeof(uint32_t));
-    metadata.resize(metaSize);
-    stream.read(metadata.data(), metaSize);
-
-    DEBUG("Magic:" << magic)
-    DEBUG("Metadata:\n" << metadata)
-
-    // Read Net data
-    NET_UNARY_OP(net, readFromStream(stream))
+    encoder.close();
 
     return true;
-}
-
-void NNUETrainer::store(std::string filename)
-{
-    m_storeNet(filename, m_net);
-}
-
-void NNUETrainer::m_storeNet(std::string filename, Net& net)
-{
-    std::string path = getWorkPath();
-
-    std::stringstream ss;
-    ss << path << filename;
-    INFO("Storing nnue in " << ss.str())
-    std::ofstream stream(ss.str(), std::ios::out | std::ios::binary);
-
-    if(!stream.is_open())
-    {
-        ERROR("Unable to open " << ss.str())
-        return;
-    }
-
-    // Write magic (size of magic + magic)
-    uint32_t magicSize = strlen(NNUE_MAGIC);
-    stream.write((char*) &magicSize, sizeof(uint32_t));
-    stream.write(NNUE_MAGIC, magicSize);
-
-    // Write metadata (size of metadata + metadata)
-    time_t now = time(0);
-    tm *gmt = gmtime(&now);
-    std::string utcstr = asctime(gmt);
-    std::string arch = "768->1024->1 Quantizable";
-    std::string metadata = utcstr + arch;
-    uint32_t metaSize = metadata.size();
-    stream.write((char*) &metaSize, sizeof(uint32_t));
-    stream.write(metadata.c_str(), metaSize);
-
-    // Write Net data
-    NET_UNARY_OP(net, writeToStream(stream))
-
-    stream.close();
-
-    INFO("Finished storing nnue in " << ss.str())
 }
 
 void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet)

@@ -30,8 +30,6 @@ namespace Arcanum
             static constexpr uint32_t RegSize = 256 / 32; // Number of floats in an AVX2 register
             static constexpr float ReluClipValue = 1.0f;
 
-            static const char* NNUE_MAGIC;
-
             struct Net
             {
                 Matrix<NNUE::L1Size, NNUE::FTSize> ftWeights;
@@ -82,18 +80,11 @@ namespace Arcanum
             float m_backPropagate(const Board& board, float cpTarget, GameResult result);
             bool m_shouldFilterPosition(Board& board, Move& move, eval_t eval);
             float m_getValidationLoss();
-
-            void m_storeNet(std::string filename, Net& net);
-            bool m_loadNet(std::string filename, Net& net);
-            bool m_loadNetFromStream(std::istream& stream, Net& net);
-            #ifdef ENABLE_INCBIN
-            bool m_loadIncbin();
-            #endif
         public:
+            bool store(const std::string& filename);
+            bool load(const std::string& filename);
             void randomizeNet();
             void train(TrainingParameters params);
-            bool load(std::string filename);
-            void store(std::string filename);
             Net* getNet();
     };
 }
