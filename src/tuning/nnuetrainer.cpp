@@ -265,21 +265,25 @@ bool NNUETrainer::m_shouldFilterPosition(Board& board, Move& move, eval_t eval)
     return false;
 }
 
-float NNUETrainer::m_getValidationLoss()
+std::tuple<float, float> NNUETrainer::m_getValidationLoss(const std::string& filename)
 {
     if(m_params.validationSize == 0)
     {
-        return 0.0f;
+        return std::tuple<float, float>(0.0f, 0.0f);
     }
 
     DataLoader loader;
     if(!loader.open(m_params.dataset))
     {
         ERROR("Unable to open validation dataset " << m_params.dataset)
-        return 0.0f;
+        return std::tuple<float, float>(0.0f, 0.0f);
     }
 
+    NNUE nnue;
+    nnue.load(filename);
+
     float totalLoss = 0.0f;
+    float totalQLoss = 0.0f;
 
     uint64_t i = 0;
     while(i < m_params.validationSize)
@@ -297,6 +301,7 @@ float NNUETrainer::m_getValidationLoss()
         i++;
 
         float out = m_predict(*board);
+        eval_t qout = nnue.predictBoard(*board);
 
         // Set Win-Draw-Loss target based on result
         // Normalize from [-1, 1] to [0, 1]
@@ -310,16 +315,19 @@ float NNUETrainer::m_getValidationLoss()
 
         // Calculate target
         float wdlOutput       = m_sigmoid(out / NNUE::NetworkScale);
+        float qwdlOutput      = m_sigmoid(qout / NNUE::NetworkScale);
         float wdlTargetCp     = m_sigmoid(cp / NNUE::NetworkScale);
         float target          = wdlTargetCp * m_params.lambda + wdlTarget * (1.0f - m_params.lambda);
 
         // Calculate loss
         float loss            = pow(target - wdlOutput, 2);
+        float qloss           = pow(target - qwdlOutput, 2);
 
         totalLoss += loss;
+        totalQLoss += qloss;
     }
 
-    return totalLoss / m_params.validationSize;
+    return std::tuple<float, float>(totalLoss / m_params.validationSize, totalQLoss / m_params.validationSize);
 }
 
 std::string NNUETrainer::m_getOutputFilename(const std::string& base, uint32_t epoch)
@@ -330,14 +338,15 @@ std::string NNUETrainer::m_getOutputFilename(const std::string& base, uint32_t e
 }
 
 // Write the epoch loss and validation loss to a file
-void NNUETrainer::m_logLoss(float epochLoss, uint64_t epochPosCount, float validationLoss, const std::string& prefix, const std::string& filename)
+void NNUETrainer::m_logLoss(float epochLoss, uint64_t epochPosCount, float validationLoss, float validationQLoss, const std::string& prefix, const std::string& filename)
 {
     std::ofstream os(filename, std::ios::app | std::ios::out);
     std::stringstream ssLoss;
     ssLoss << prefix << ":"
     << std::fixed << std::setprecision(6)
     << " Epoch loss: " << (epochLoss / epochPosCount)
-    << " Validation loss: " << validationLoss << "\n";
+    << " Validation loss: " << validationLoss
+    << " Validation loss (Quantized): " << validationQLoss << "\n";
     os.write(ssLoss.str().c_str(), ssLoss.str().length());
     os.close();
 }
@@ -467,12 +476,19 @@ void NNUETrainer::train(TrainingParameters params)
         }
         INFO("Epoch time: " << epochTimer.getMs() << " ms")
 
+        // Get the filename for the current epoch
+        std::string netFilename = m_getOutputFilename(m_params.output, epoch);
+
+        // Store the net for each epoch
+        store(netFilename);
+
         // Calculate validation loss
-        float validationLoss = m_getValidationLoss();
+        auto [validationLoss, validationQLoss] = m_getValidationLoss(netFilename);
         INFO("Validation loss: " << validationLoss)
+        INFO("Validation loss (Quantized): " << validationQLoss)
 
         // Log the losses to file
-        m_logLoss(epochLoss, epochPosCount, validationLoss, m_getOutputFilename(m_params.output, epoch), "loss.log");
+        m_logLoss(epochLoss, epochPosCount, validationLoss, validationQLoss, netFilename, "loss.log");
 
         // Apply gamma scaling
         if((epoch != 0) && (epoch % m_params.gammaSteps == 0))
@@ -480,9 +496,6 @@ void NNUETrainer::train(TrainingParameters params)
             m_params.alpha *= m_params.gamma;
             INFO("Applying gamma scaling. New alpha: " << m_params.alpha)
         }
-
-        // Store the net for each epoch
-        store(m_getOutputFilename(m_params.output, epoch));
     }
 }
 

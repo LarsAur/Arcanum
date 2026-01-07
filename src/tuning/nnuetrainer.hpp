@@ -70,7 +70,7 @@ namespace Arcanum
             static float m_sigmoid(float v);
             static float m_sigmoidPrime(float sigmoid);
             static std::string m_getOutputFilename(const std::string& base, uint32_t epoch);
-            static void m_logLoss(float epochLoss, uint64_t epochPosCount, float validationLoss, const std::string& prefix, const std::string& filename);
+            static void m_logLoss(float epochLoss, uint64_t epochPosCount, float validationLoss, float validationQLoss, const std::string& prefix, const std::string& filename);
 
             float m_predict(const Board& board);
             void m_initAccumulator(const Board& board);
@@ -79,7 +79,7 @@ namespace Arcanum
             void m_applyGradient();
             float m_backPropagate(const Board& board, float cpTarget, GameResult result);
             bool m_shouldFilterPosition(Board& board, Move& move, eval_t eval);
-            float m_getValidationLoss();
+            std::tuple<float, float> m_getValidationLoss(const std::string& filename);
         public:
             bool store(const std::string& filename);
             bool load(const std::string& filename);
