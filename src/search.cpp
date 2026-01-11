@@ -1073,10 +1073,7 @@ void Searcher::m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, b
     if(Evaluator::isRealMateScore(score))
     {
         info.mate = true;
-        // Divide by 2 to get moves and not plys.
-        // Round away from zero, as the last ply in odd plys has to be counted as a move
-        uint16_t distance = std::ceil((MATE_SCORE - std::abs(score)) / 2.0f);
-        info.mateDistance = score > 0 ? distance : -distance;
+        info.mateDistance = Evaluator::getMateDistance(score);
     }
     else if(forceTBScore)
     {

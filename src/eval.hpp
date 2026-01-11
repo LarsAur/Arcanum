@@ -36,6 +36,8 @@ namespace Arcanum
             static bool isCloseToMate(Board& board, eval_t eval);
             // Clamps the eval to avoid mate scores
             static eval_t clampEval(eval_t eval);
+            // Gets the distance to mate from a real mate score
+            static int32_t getMateDistance(eval_t eval);
 
             static NNUE nnue;
 

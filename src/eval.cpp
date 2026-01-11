@@ -100,6 +100,20 @@ bool Evaluator::isCloseToMate(Board& board, eval_t eval)
     return (std::abs(eval) > 900) || (board.getNumPieces() <= 5);
 }
 
+int32_t Evaluator::getMateDistance(eval_t eval)
+{
+    if(!isRealMateScore(eval))
+    {
+        ERROR("Eval is not real mate: " << eval);
+        return 0;
+    }
+
+    // Divide by 2 to get moves and not plys.
+    // Round away from zero, as any potential odd last ply has to be counted as a move
+    int32_t distance = std::ceil((MATE_SCORE - std::abs(eval)) / 2.0f);
+    return eval > 0 ? distance : -distance;
+}
+
 eval_t Evaluator::clampEval(eval_t eval)
 {
     constexpr static eval_t UpperMargin = MATE_SCORE - MAX_MATE_DISTANCE - 1;
