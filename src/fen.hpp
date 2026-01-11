@@ -49,5 +49,7 @@ namespace Arcanum
         static std::string toString(const Board& board);
         static EDP parseEDP(const std::string& edp);
         static Move getMoveFromAlgebraic(std::string algebraic, Board& board);
+        static std::string getAlgebraicFromMove(const Move& move, Board& board);
+        static std::string getPGN(Board position, GameResult result, const std::vector<Move>& moves, const std::vector<eval_t>& evals={});
     };
 };

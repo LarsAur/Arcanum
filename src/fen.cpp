@@ -1,4 +1,5 @@
 #include <fen.hpp>
+#include <eval.hpp>
 #include <zobrist.hpp>
 
 using namespace Arcanum;
@@ -646,6 +647,109 @@ Move FEN::getMoveFromAlgebraic(std::string token, Board& board)
     return NULL_MOVE;
 }
 
+std::string FEN::getAlgebraicFromMove(const Move& move, Board& board)
+{
+    std::string algebraic;
+
+    // Handle castling moves
+    if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_KING || move.moveInfo & MoveInfoBit::CASTLE_BLACK_KING)
+    {
+        algebraic = "O-O";
+        return algebraic;
+    }
+    else if(move.moveInfo & MoveInfoBit::CASTLE_WHITE_QUEEN || move.moveInfo & MoveInfoBit::CASTLE_BLACK_QUEEN)
+    {
+        algebraic = "O-O-O";
+        return algebraic;
+    }
+
+    // Determine piece character
+    switch (move.movedPiece())
+    {
+    case Piece::ROOK:   algebraic += 'R';  break;
+    case Piece::KNIGHT: algebraic += 'N';  break;
+    case Piece::BISHOP: algebraic += 'B';  break;
+    case Piece::QUEEN:  algebraic += 'Q';  break;
+    case Piece::KING:   algebraic += 'K';  break;
+    default: break;
+    }
+
+    // Check if the move is ambiguous
+    Move* moves = board.getLegalMoves();
+    uint8_t numMoves = board.getNumLegalMoves();
+    board.generateCaptureInfo();
+
+    bool uniqueFile = true;
+    bool uniqueRank = true;
+    bool hasAmbiguity = false;
+    for(uint8_t i = 0; i < numMoves; i++)
+    {
+        // Skip the current move
+        if((move.from == moves[i].from) && (move.to == moves[i].to)) continue;
+
+        // If the same piece is moved to the same square, the move is ambiguous
+        if((moves[i].movedPiece() == move.movedPiece()) && (moves[i].to == move.to))
+        {
+            hasAmbiguity = true;
+            if(FILE(moves[i].from) == FILE(move.from))
+            {
+                uniqueFile = false;
+            }
+
+            if(RANK(moves[i].from) == RANK(move.from))
+            {
+                uniqueRank = false;
+            }
+        }
+    }
+
+    if(hasAmbiguity)
+    {
+        // If both file and rank are unique, add the file
+        if(uniqueFile)
+        {
+            algebraic += ('a' + FILE(move.from));
+        }
+        else if(uniqueRank)
+        {
+            algebraic += ('1' + RANK(move.from));
+        }
+        else
+        {
+            // Both file and rank are needed
+            algebraic += ('a' + FILE(move.from));
+            algebraic += ('1' + RANK(move.from));
+        }
+    }
+
+    // Check if the move is a capture
+    if(move.isCapture())
+    {
+        if(move.movedPiece() == Piece::PAWN && !hasAmbiguity)
+        {
+            // For pawn captures, always add the from file
+            algebraic += ('a' + FILE(move.from));
+        }
+        algebraic += 'x';
+    }
+
+    // Add destination square
+    algebraic += squareToString(move.to);
+
+    // Add promotion info
+    switch (move.promotedPiece())
+    {
+    case Piece::ROOK:   algebraic += "R"; break;
+    case Piece::KNIGHT: algebraic += "N"; break;
+    case Piece::BISHOP: algebraic += "B"; break;
+    case Piece::QUEEN:  algebraic += "Q"; break;
+    default: // No promotion
+        break;
+    }
+
+    return algebraic;
+}
+
 void FEN::m_parseVariation(Board& board, std::vector<Move>& variation, std::istringstream& is)
 {
     std::string token;
@@ -712,4 +816,84 @@ EDP FEN::parseEDP(const std::string& edp)
     }
 
     return desc;
+}
+
+// Return the game in PGN format
+// Based on: https://en.wikipedia.org/wiki/Portable_Game_Notation
+std::string FEN::getPGN(Board position, GameResult result, const std::vector<Move>& moves, const std::vector<eval_t>& evals)
+{
+    std::string pgn;
+
+    // Get the current data as a string
+    constexpr size_t DataTimeLength = 100;
+    char dateTime[DataTimeLength];
+    time_t now = std::time(nullptr);
+    strftime(dateTime, DataTimeLength, "%F", std::localtime(&now));
+
+    // Add required tags
+    pgn += "[Event \"Arcanum GameRunner\"]\n";
+    pgn += "[Site \"Arcanum GameRunner\"]\n";
+    pgn += "[Date \"" + std::string(dateTime) + "\"]\n";
+    pgn += "[Round \"1\"]\n";
+    pgn += "[White \"Arcanum\"]\n";
+    pgn += "[Black \"Arcanum\"]\n";
+    pgn += "[Result \"";
+    switch (result)
+    {
+    case GameResult::WHITE_WIN: pgn += "1-0\"]\n"; break;
+    case GameResult::BLACK_WIN: pgn += "0-1\"]\n"; break;
+    case GameResult::DRAW: pgn += "1/2-1/2\"]\n"; break;
+    }
+    pgn += "[FEN \"" + position.fen() + "\"]\n";
+    pgn += "[SetUp \"1\"]\n";
+
+    pgn += "\n";
+
+    // Add moves
+    for(uint32_t i = 0; i < moves.size(); i++)
+    {
+        // Add move number
+        // If the first move is by black, add "... "
+        if(i == 0 && position.getTurn() == Color::BLACK)
+        {
+            pgn += std::to_string(position.getFullMoves()) + "... ";
+        }
+        else if(position.getTurn() == Color::WHITE)
+        {
+            pgn += std::to_string(position.getFullMoves()) + ". ";
+        }
+
+        // Add move
+        pgn += getAlgebraicFromMove(moves.at(i), position) + " ";
+
+        // Add evaluation in comment if available
+        if(evals.size() > i)
+        {
+            if(Evaluator::isRealMateScore(evals.at(i)))
+            {
+                int32_t mateDistance = Evaluator::getMateDistance(evals.at(i));
+                pgn += "{ ";
+                if(mateDistance > 0)
+                {
+                    pgn += "+M" + std::to_string(std::abs(mateDistance));
+                }
+                else
+                {
+                    pgn += "-M" + std::to_string(std::abs(mateDistance));
+                }
+                pgn += " } ";
+            }
+            else
+            {
+                std::stringstream ss;
+                ss << std::fixed << std::setprecision(2) << (evals.at(i) / 100.0f);
+                pgn += "{ " + ss.str() + " } ";
+            }
+        }
+
+        // Perform move on board
+        position.performMove(moves.at(i));
+    }
+
+    return pgn;
 }
