@@ -325,3 +325,8 @@ void GameRunner::play(bool newGame)
         m_searchers[1].addBoardToHistory(m_board);
     }
 }
+
+std::string GameRunner::getPgn() const
+{
+    return FEN::getPGN(m_initialBoard, m_result, m_moves, m_evals);
+}

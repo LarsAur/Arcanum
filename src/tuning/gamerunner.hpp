@@ -50,6 +50,7 @@ namespace Arcanum
         const std::vector<Move>& getMoves() const;
         const std::vector<eval_t>& getEvals() const;
         GameResult getResult() const;
+        std::string getPgn() const;
         Searcher& getSearcher(Color color);
     };
 }
