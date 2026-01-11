@@ -512,7 +512,7 @@ std::string FEN::toString(const Board& board)
 }
 
 // https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
-Move getMoveFromAlgebraic(std::string token, Board& board)
+Move FEN::getMoveFromAlgebraic(std::string token, Board& board)
 {
     uint32_t consumed = 0;
     int8_t fromFile = -1;

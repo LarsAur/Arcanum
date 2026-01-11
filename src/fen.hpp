@@ -48,5 +48,6 @@ namespace Arcanum
         static std::string getFEN(const Board& board);
         static std::string toString(const Board& board);
         static EDP parseEDP(const std::string& edp);
+        static Move getMoveFromAlgebraic(std::string algebraic, Board& board);
     };
 };
