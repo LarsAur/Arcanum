@@ -35,7 +35,14 @@ namespace Arcanum
                 const float* data = reinterpret_cast<const float*>(m_data + m_offset);
                 for(uint32_t i = 0; i < rows * cols; i++)
                 {
-                    dst[i] = static_cast<T>(qFactor * data[i]);
+                    if constexpr (std::is_same<T, float>::value)
+                    {
+                        dst[i] = qFactor * data[i];
+                    }
+                    else
+                    {
+                        dst[i] = static_cast<T>(std::round(qFactor * data[i]));
+                    }
                 }
 
                 m_offset += bytes;
@@ -61,7 +68,14 @@ namespace Arcanum
                     for(uint32_t j = 0; j < cols; j++)
                     {
                         // Write in row-major order and read in column-major
-                        dst[i * cols + j] = static_cast<T>(qFactor * data[j*rows + i]);
+                        if constexpr (std::is_same<T, float>::value)
+                        {
+                            dst[i * cols + j] = qFactor * data[j*rows + i];
+                        }
+                        else
+                        {
+                            dst[i * cols + j] = static_cast<T>(std::round(qFactor * data[j*rows + i]));
+                        }
                     }
                 }
 
