@@ -12,7 +12,7 @@ namespace Arcanum
             static constexpr uint32_t FTSize  = 768;
             static constexpr uint32_t L1Size  = 1024;
             static constexpr int32_t NetworkScale = 400;
-            static constexpr int32_t FTQ = 127; // Quantization factor of the feature transformer
+            static constexpr int32_t FTQ = 255; // Quantization factor of the feature transformer
             static constexpr int32_t LQ = 64;   // Quantization factor of the linear layers
             static constexpr uint32_t NumOutputBuckets = 1;
 
@@ -69,8 +69,8 @@ namespace Arcanum
             void m_accAddSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective);
             void m_accAddSubSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective);
             void m_accAddAddSubSub(Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective);
-            void m_l1AffineTransform(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out);
-            void m_clampAcc(const int16_t* in, int8_t* out);
+            void m_l1AffineTransform(const uint8_t* in, int8_t* weights, int32_t* biases, int32_t* out);
+            void m_clampAcc(const int16_t* in, uint8_t* out);
     };
 
 }

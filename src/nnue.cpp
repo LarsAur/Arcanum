@@ -269,7 +269,7 @@ void NNUE::m_accAddAddSubSub(Accumulator* acc, Accumulator* nextAcc, const Delta
 
 eval_t NNUE::predict(const Accumulator* acc, const Board& board)
 {
-    alignas(64) int8_t clampedAcc[L1Size];
+    alignas(64) uint8_t clampedAcc[L1Size];
     alignas(64) int32_t l1Out[1];
 
     uint32_t bucket = getOutputBucket(board);
@@ -288,26 +288,24 @@ eval_t NNUE::predictBoard(const Board& board)
     return predict(&acc, board);
 }
 
-inline void NNUE::m_clampAcc(const int16_t* in, int8_t* out)
+inline void NNUE::m_clampAcc(const int16_t* in, uint8_t* out)
 {
     constexpr uint32_t NumChunks = L1Size / 16;
 
-    __m256i* in256 = (__m256i*) in;
+    const __m256i* in256 = (__m256i*) in;
     __m256i* out256 = (__m256i*) out;
-
-    const __m256i zero = _mm256_setzero_si256();
-    const __m256i clip = _mm256_set1_epi16(FTQ);
 
     for(uint32_t i = 0; i < NumChunks / 2; i++)
     {
         __m256i acc1 = _mm256_load_si256(in256 + 2*i);
         __m256i acc2 = _mm256_load_si256(in256 + 2*i + 1);
-        acc1 = _mm256_max_epi16(zero, _mm256_min_epi16(clip, acc1));
-        acc2 = _mm256_max_epi16(zero, _mm256_min_epi16(clip, acc2));
 
         // Convert the two 16-bit vectors to 8-bit
         // Note that this shuffles the output [a1,a2,a3,a4], [b1,b2,b3,b4] -> [(a1,a2), (b1,b2), (a3, a4), (b3, b4)]
-        __m256i acc8bit = _mm256_packs_epi16(acc1, acc2);
+        // When using _mm256_packus_epi16 over _mm256_packs_epi16, the values are clamped to [0, 255], so there is no
+        // need to manually perform the clipped ReLU operation
+        static_assert(FTQ == 255, "Adjust clamping when FTQ is changed");
+        __m256i acc8bit = _mm256_packus_epi16(acc1, acc2);
 
         // Unshuffle the shuffled output from above
         // 64-bit chunks are moved according to the select signal
@@ -318,7 +316,7 @@ inline void NNUE::m_clampAcc(const int16_t* in, int8_t* out)
     }
 }
 
-inline void NNUE::m_l1AffineTransform(const int8_t* in, int8_t* weights, int32_t* biases, int32_t* out)
+inline void NNUE::m_l1AffineTransform(const uint8_t* in, int8_t* weights, int32_t* biases, int32_t* out)
 {
     constexpr uint32_t NumInChunks  = L1Size / 32;
 
@@ -332,6 +330,7 @@ inline void NNUE::m_l1AffineTransform(const int8_t* in, int8_t* weights, int32_t
         __m256i factors8 = _mm256_load_si256(in256 + j);
         __m256i weights8 = _mm256_load_si256(w256 + j);
 
+        // Note: The first argument is treated as unsigned bytes, and the second as signed bytes
         __m256i sum16 = _mm256_maddubs_epi16(factors8, weights8);
 
         // Extract the upper and lower part of the 16-bit vectors and convert them to 32-bit
