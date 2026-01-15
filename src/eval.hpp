@@ -32,6 +32,10 @@ namespace Arcanum
             static bool isTbMateScore(eval_t eval);
             // Returns true if the score is a mate score
             static bool isMateScore(eval_t eval);
+            // Returns true if the score is a winning TB or mate score
+            static bool isWinningScore(eval_t eval);
+            // Returns true if the score is a losing TB or mate score
+            static bool isLosingScore(eval_t eval);
             // Returns true if the board and score indicates that it might be close to mate
             static bool isCloseToMate(Board& board, eval_t eval);
             // Clamps the eval to avoid mate scores

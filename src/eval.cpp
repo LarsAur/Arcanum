@@ -95,6 +95,16 @@ bool Evaluator::isMateScore(eval_t eval)
     return std::abs(eval) >= TB_MATE_SCORE - TB_MAX_MATE_DISTANCE;
 }
 
+bool Evaluator::isWinningScore(eval_t eval)
+{
+    return eval >= (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE);
+}
+
+bool Evaluator::isLosingScore(eval_t eval)
+{
+    return eval <= -(TB_MATE_SCORE - TB_MAX_MATE_DISTANCE);
+}
+
 bool Evaluator::isCloseToMate(Board& board, eval_t eval)
 {
     return (std::abs(eval) > 900) || (board.getNumPieces() <= 5);
