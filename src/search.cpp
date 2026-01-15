@@ -507,19 +507,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     Move performedMoves[MAX_MOVE_COUNT];
     uint32_t moveNumber = 0;
 
-    // Futility pruning
-    if(!isPv
-    && !m_datagenMode
-    && depth <= 10
-    && !isChecked
-    && (staticEval + 150 * (depth + 1) <= alpha)
-    && !Evaluator::isCloseToMate(board, alpha)
-    && board.hasOfficers(board.getTurn()))
-    {
-        m_stats.futilityPrunedMoves += moveSelector.getNumQuietsLeft();
-        moveSelector.skipQuiets();
-    }
-
     while (const Move* move = moveSelector.getNextMove())
     {
         if(*move == skipMove)
@@ -527,9 +514,13 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             continue;
         }
 
-        if(!m_datagenMode) // Disable pruning at low depths when in data generation mode
+        if(!m_datagenMode
+        && board.hasOfficers(board.getTurn())
+        && !Evaluator::isLosingScore(bestScore))
         {
-            if(!isPv && !move->isPromotion() && !move->isCastle() && !Evaluator::isCloseToMate(board, bestScore) && board.hasOfficers(board.getTurn()))
+            if(!isPv
+            && !move->isPromotion()
+            && !move->isCastle())
             {
                 eval_t margin = m_staticPruneMargins[move->isCapture()][depth];
                 if(!board.see(*move, margin))
@@ -542,7 +533,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             // Late move pruning (LMP)
             // Skip quiet moves after having tried a certain number of moves
             if(!isPv
-            && !Evaluator::isCloseToMate(board, bestScore)
             && !isChecked
             && !moveSelector.isSkippingQuiets()
             && moveNumber >= m_lmpThresholds[isImproving][depth])
@@ -567,6 +557,19 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 // Track the number of quiet moves skipped
                 // +1 as this move is skipped as well
                 m_stats.historyPrunedMoves += moveSelector.getNumQuietsLeft() + 1;
+                continue;
+            }
+
+            // Futility pruning
+            if(!isPv
+            && move->isQuiet()
+            && moveNumber >= 1
+            && depth <= 10
+            && !isChecked
+            && (staticEval + 150 * (depth + 1) <= alpha))
+            {
+                m_stats.futilityPrunedMoves += moveSelector.getNumQuietsLeft();
+                moveSelector.skipQuiets();
                 continue;
             }
         }
