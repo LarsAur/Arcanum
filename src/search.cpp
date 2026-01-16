@@ -515,11 +515,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
 
         if(!m_datagenMode
+        && !isPv
         && board.hasOfficers(board.getTurn())
         && !Evaluator::isLosingScore(bestScore))
         {
-            if(!isPv
-            && !move->isPromotion()
+            if(!move->isPromotion()
             && !move->isCastle())
             {
                 eval_t margin = m_staticPruneMargins[move->isCapture()][depth];
@@ -532,8 +532,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
             // Late move pruning (LMP)
             // Skip quiet moves after having tried a certain number of moves
-            if(!isPv
-            && !isChecked
+            if(!isChecked
             && !moveSelector.isSkippingQuiets()
             && moveNumber >= m_lmpThresholds[isImproving][depth])
             {
@@ -561,8 +560,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             }
 
             // Futility pruning
-            if(!isPv
-            && move->isQuiet()
+            if(move->isQuiet()
             && moveNumber >= 1
             && depth <= 10
             && !isChecked
