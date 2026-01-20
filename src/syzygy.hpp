@@ -8,8 +8,16 @@ namespace Arcanum
     class Syzygy
     {
         public:
-        static bool TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& wdl);
-        static uint32_t TBProbeWDL(const Board& board);
+        enum class WDLResult : int8_t
+        {
+            LOSS = 0,
+            DRAW = 1,
+            WIN  = 2,
+            FAILED = 3
+        };
+
+        static WDLResult TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves);
+        static WDLResult TBProbeWDL(const Board& board);
         static bool TBInit(std::string path);
         static void TBFree();
     };

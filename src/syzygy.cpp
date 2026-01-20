@@ -2,9 +2,9 @@
 
 using namespace Arcanum;
 
-static bool matchesPyrrhicMove(Move move, unsigned pyrrhicMove) {
-
-    static uint32_t arcanumPromotions[5] = {
+Syzygy::WDLResult Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves)
+{
+    constexpr static uint32_t PyrrhicToArcanumPromotion[5] = {
         0,
         Arcanum::PROMOTE_QUEEN,
         Arcanum::PROMOTE_ROOK,
@@ -12,24 +12,12 @@ static bool matchesPyrrhicMove(Move move, unsigned pyrrhicMove) {
         Arcanum::PROMOTE_KNIGHT,
     };
 
-    unsigned to    = TB_GET_TO(pyrrhicMove);
-    unsigned from  = TB_GET_FROM(pyrrhicMove);
-    unsigned promo = TB_GET_PROMOTES(pyrrhicMove);
-    return (move.from == from) && (move.to == to) && (PROMOTED_PIECE(move.moveInfo) == arcanumPromotions[promo]);
-}
-
-bool Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& wdl)
-{
     if(board.getNumPieces() > TB_LARGEST || board.getCastleRights())
     {
-        return false;
+        return Syzygy::WDLResult::FAILED;
     }
 
     unsigned results[MAX_MOVE_COUNT];
-
-    Move* legalMoves = board.getLegalMoves();
-    uint8_t numLegalMoves = board.getNumLegalMoves();
-    board.generateCaptureInfo();
 
     unsigned result = tb_probe_root(
         board.getColoredPieces(Color::WHITE),
@@ -47,34 +35,50 @@ bool Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves, uint8_t& w
 
     // Probe failed, or we are already in a finished position.
     if(result == TB_RESULT_FAILED)
-        return false;
+    {
+        return Syzygy::WDLResult::FAILED;
+    }
 
-
-    // Find a move with the
+    // Find a move with the same WDL value as the root position
     numMoves = 0;
     for (int i = 0; i < MAX_MOVE_COUNT && results[i] != TB_RESULT_FAILED; i++)
     {
         if (TB_GET_WDL(results[i]) == TB_GET_WDL(result))
         {
-            for(uint8_t j = 0; j < numLegalMoves; j++)
-            {
-                if(matchesPyrrhicMove(legalMoves[j], results[i]))
-                {
-                    moves[numMoves++] = legalMoves[j];
-                    break;
-                }
-            }
+            square_t to    = TB_GET_TO(results[i]);
+            square_t from  = TB_GET_FROM(results[i]);
+            uint32_t promo = PyrrhicToArcanumPromotion[TB_GET_PROMOTES(results[i])];
+            moves[numMoves++] = board.generateMoveWithInfo(from, to, promo);
         }
     }
 
-    wdl = TB_GET_WDL(result);
+    // Check if any maching moves are found
+    // Assuming some moves could fail probing
+    if(numMoves == 0)
+    {
+        return Syzygy::WDLResult::FAILED;
+    }
 
-    return numMoves > 0;
+    switch (TB_GET_WDL(result))
+    {
+    case TB_LOSS:
+        return Syzygy::WDLResult::LOSS;
+    case TB_WIN:
+        return Syzygy::WDLResult::WIN;
+    default:
+        // This covers TB_DRAW, TB_BLESSED_LOSS and TB_CURSED_WIN
+        return Syzygy::WDLResult::DRAW;
+    }
 }
 
-uint32_t Syzygy::TBProbeWDL(const Board &board)
+Syzygy::WDLResult Syzygy::TBProbeWDL(const Board &board)
 {
-    return tb_probe_wdl(
+    if(board.getNumPieces() > TB_LARGEST || board.getCastleRights() || board.getHalfMoves() != 0)
+    {
+        return Syzygy::WDLResult::FAILED;
+    }
+
+    uint32_t result = tb_probe_wdl(
         board.getColoredPieces(Color::WHITE),
         board.getColoredPieces(Color::BLACK),
         board.getTypedPieces(Piece::KING,    Color::WHITE) | board.getTypedPieces(Piece::KING,   Color::BLACK),
@@ -86,6 +90,19 @@ uint32_t Syzygy::TBProbeWDL(const Board &board)
         board.getEnpassantSquare() == 64 ? 0 : board.getEnpassantSquare(),
         board.getTurn()^1
     );
+
+    switch (result)
+    {
+    case TB_RESULT_FAILED:
+        return Syzygy::WDLResult::FAILED;
+    case TB_LOSS:
+        return Syzygy::WDLResult::LOSS;
+    case TB_WIN:
+        return Syzygy::WDLResult::WIN;
+    default:
+        // This covers TB_DRAW, TB_BLESSED_LOSS and TB_CURSED_WIN
+        return Syzygy::WDLResult::DRAW;
+    }
 }
 
 bool Syzygy::TBInit(std::string path)

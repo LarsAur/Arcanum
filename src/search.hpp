@@ -7,6 +7,7 @@
 #include <moveordering.hpp>
 #include <pvtable.hpp>
 #include <timer.hpp>
+#include <syzygy.hpp>
 #include <vector>
 #include <unordered_map>
 #include <memory>
@@ -159,7 +160,7 @@ namespace Arcanum
             eval_t m_adjustEval(eval_t rawEval, Board& board);
             bool m_isDraw(const Board& board, uint8_t plyFromRoot) const;
             bool m_shouldStop();
-            void m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, bool forceTBScore, uint8_t wdlTB);
+            void m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, Syzygy::WDLResult tbResult);
             void m_initializeTables();
             uint8_t m_getReduction(uint8_t depth, uint8_t moveNumber) const;
 

@@ -329,11 +329,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     }
 
     // Table base probe
-    if(board.getNumPieces() <= TB_LARGEST && board.getHalfMoves() == 0 && skipMove.isNull())
+    if(skipMove.isNull())
     {
-        uint32_t tbResult = Syzygy::TBProbeWDL(board);
+        Syzygy::WDLResult tbResult = Syzygy::TBProbeWDL(board);
 
-        if(tbResult != TB_RESULT_FAILED)
+        if(tbResult != Syzygy::WDLResult::FAILED)
         {
             m_tbHits++;
             eval_t tbScore;
@@ -341,15 +341,15 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
             switch (tbResult)
             {
-            case TB_WIN:
+            case Syzygy::WDLResult::WIN:
                 tbFlag = TTFlag::LOWER_BOUND;
                 tbScore = TB_MATE_SCORE - plyFromRoot;
                 break;
-            case TB_LOSS:
+            case Syzygy::WDLResult::LOSS:
                 tbFlag = TTFlag::UPPER_BOUND;
                 tbScore = -TB_MATE_SCORE + plyFromRoot;
                 break;
-            default: // TB_DRAW
+            default: // DRAW
                 tbFlag = TTFlag::EXACT;
                 tbScore = DRAW_VALUE;
             }
@@ -800,19 +800,16 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_numPiecesRoot = board.getNumPieces();
     m_timer.start();
 
-    // Check if only a select set of moves should be searched
-    // This set can be set by the search parameters or the table base
+    // Copy the search moves from the parameters
     Move* moves = m_searchParameters.searchMoves;
     uint8_t numMoves = m_searchParameters.numSearchMoves;
-    bool forceTBScore = false;
-    uint8_t wdlTB = 0xff;
-    if(m_searchParameters.numSearchMoves == 0)
+
+    // Only generate moves or probe tablebase if no search moves are provided
+    Syzygy::WDLResult tbResult = Syzygy::WDLResult::FAILED;
+    if(numMoves == 0)
     {
-        if(Syzygy::TBProbeDTZ(board, moves, numMoves, wdlTB))
-        {
-            forceTBScore = true;
-        }
-        else
+        tbResult = Syzygy::TBProbeDTZ(board, moves, numMoves);
+        if(tbResult == Syzygy::WDLResult::FAILED)
         {
             moves = board.getLegalMoves();
             numMoves = board.getNumLegalMoves();
@@ -823,7 +820,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_evaluator.initAccumulatorStack(board);
 
     std::optional<TTEntry> ttEntry = m_tt.get(board.getHash(), 0);
-
     if(ttEntry.has_value())
     {
         PackedMove packedMove = ttEntry->getPackedMove();
@@ -981,7 +977,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         m_tt.add(alpha, bestMove, true, depth, 0, rawEval, TTFlag::EXACT, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
-        m_sendUciInfo(board, searchScore, depth, forceTBScore, wdlTB);
+        m_sendUciInfo(board, searchScore, depth, tbResult);
 
         if(depth >= MAX_SEARCH_DEPTH - 1)
         {
@@ -998,7 +994,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         searchScore = 0;
     }
 
-    m_sendUciInfo(board, searchScore, depth, forceTBScore, wdlTB);
+    m_sendUciInfo(board, searchScore, depth, tbResult);
 
     if(m_verbose)
     {
@@ -1052,7 +1048,7 @@ bool Searcher::m_shouldStop()
     return false;
 }
 
-void Searcher::m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, bool forceTBScore, uint8_t wdlTB)
+void Searcher::m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, Syzygy::WDLResult tbResult)
 {
     if(!m_verbose)
     {
@@ -1076,11 +1072,16 @@ void Searcher::m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, b
         info.mate = true;
         info.mateDistance = Evaluator::getMateDistance(score);
     }
-    else if(forceTBScore)
+    else
     {
-        if(wdlTB >= TB_BLESSED_LOSS && wdlTB <= TB_CURSED_WIN) info.score = 0;
-        if(wdlTB == TB_LOSS) info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE;
-        if(wdlTB >= TB_WIN ) info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE;
+        // Check for table base result
+        switch (tbResult)
+        {
+        case Syzygy::WDLResult::DRAW: info.score = 0; break;
+        case Syzygy::WDLResult::LOSS: info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE; break;
+        case Syzygy::WDLResult::WIN:  info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE; break;
+        case Syzygy::WDLResult::FAILED: break;
+        }
     }
 
     Interface::UCI::sendInfo(info);
