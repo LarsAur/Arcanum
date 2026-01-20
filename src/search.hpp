@@ -147,7 +147,7 @@ namespace Arcanum
             Evaluator m_evaluator;
             MoveOrderHeuristics m_heuristics;
             PvTable m_pvTable;
-            SearchParameters m_searchParameters;
+            SearchParameters m_parameters;
             uint8_t m_numPiecesRoot; // Number of pieces in the root of the search
             SearchStats m_stats;
             uint64_t m_tbHits;

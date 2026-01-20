@@ -772,21 +772,23 @@ inline bool Searcher::m_isDraw(const Board& board, uint8_t plyFromRoot) const
 
 Move Searcher::search(Board board, SearchParameters parameters, SearchResult* searchResult)
 {
-    m_stopSearch = false;
-    m_numNodesSearched = 0;
-    m_tbHits = 0;
     eval_t searchScore = 0;
     eval_t rawEval = 0;
     Move searchBestMove = NULL_MOVE;
-    m_searchParameters = parameters;
+
+    m_tbHits = 0;
+    m_stopSearch = false;
+    m_numNodesSearched = 0;
+    m_parameters = parameters;
+
     m_pvTable = PvTable();
     m_tt.incrementGeneration();
     m_numPiecesRoot = board.getNumPieces();
     m_timer.start();
 
     // Copy the search moves from the parameters
-    Move* moves = m_searchParameters.searchMoves;
-    uint8_t numMoves = m_searchParameters.numSearchMoves;
+    Move* moves = m_parameters.searchMoves;
+    uint8_t numMoves = m_parameters.numSearchMoves;
 
     // Only generate moves or probe tablebase if no search moves are provided
     Syzygy::WDLResult tbResult = Syzygy::WDLResult::FAILED;
@@ -836,7 +838,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_searchStacks.moves[0]       = NULL_MOVE;
 
     uint32_t depth = 0;
-    while(!m_searchParameters.useDepth || m_searchParameters.depth > depth)
+    while(!m_parameters.useDepth || m_parameters.depth > depth)
     {
         depth++;
 
@@ -1016,14 +1018,14 @@ bool Searcher::m_shouldStop()
     if((m_numNodesSearched & 0xff) == 0)
     {
         // Check for timeout
-        if(m_searchParameters.useTime && m_timer.getMs() >= m_searchParameters.msTime )
+        if(m_parameters.useTime && m_timer.getMs() >= m_parameters.msTime)
         {
             m_stopSearch = true;
             return true;
         }
     }
 
-    if(m_searchParameters.useNodes && m_numNodesSearched >= m_searchParameters.nodes)
+    if(m_parameters.useNodes && m_numNodesSearched >= m_parameters.nodes)
     {
         m_stopSearch = true;
         return true;
