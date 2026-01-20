@@ -171,8 +171,6 @@ namespace Arcanum
         public:
             Searcher(bool verbose = true);
             ~Searcher();
-            Move getBestMove(Board& board, int depth, SearchResult* searchResult = nullptr);
-            Move getBestMoveInTime(Board& board, uint32_t ms, SearchResult* searchResult = nullptr);
             Move search(Board board, SearchParameters parameters, SearchResult* searchResult = nullptr);
             void stop();
             void resizeTT(uint32_t mbSize);

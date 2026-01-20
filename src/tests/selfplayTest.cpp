@@ -17,16 +17,20 @@ bool Test::runSelfplayTest()
     whiteSearcher.addBoardToHistory(board);
     blackSearcher.addBoardToHistory(board);
 
+    SearchParameters params;
+    params.depth = SearchDepth;
+    params.useDepth = true;
+
     timer.start();
 
     for(uint32_t i = 0; i < TurnsToPlay; i++)
     {
         DEBUG("Turn: " << i << "/" << TurnsToPlay)
-        Move whiteMove = whiteSearcher.getBestMove(board, SearchDepth);
+        Move whiteMove = whiteSearcher.search(board, params);
         board.performMove(whiteMove);
         whiteSearcher.addBoardToHistory(board);
         blackSearcher.addBoardToHistory(board);
-        Move blackMove = blackSearcher.getBestMove(board, SearchDepth);
+        Move blackMove = blackSearcher.search(board, params);
         board.performMove(blackMove);
         whiteSearcher.addBoardToHistory(board);
         blackSearcher.addBoardToHistory(board);

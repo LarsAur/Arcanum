@@ -770,22 +770,6 @@ inline bool Searcher::m_isDraw(const Board& board, uint8_t plyFromRoot) const
     return board.isMaterialDraw();
 }
 
-Move Searcher::getBestMove(Board& board, int depth, SearchResult* searchResult)
-{
-    SearchParameters parameters = SearchParameters();
-    parameters.depth = depth;
-    parameters.useDepth = true;
-    return search(Board(board), parameters, searchResult);
-}
-
-Move Searcher::getBestMoveInTime(Board& board, uint32_t ms, SearchResult* searchResult)
-{
-    SearchParameters parameters = SearchParameters();
-    parameters.msTime = ms;
-    parameters.useTime = ms;
-    return search(Board(board), parameters, searchResult);
-}
-
 Move Searcher::search(Board board, SearchParameters parameters, SearchResult* searchResult)
 {
     m_stopSearch = false;

@@ -278,7 +278,10 @@ static void testPosition(EDP& edp, Searcher& searcher, uint32_t& successes, uint
     FEN::setFEN(board, edp.fen, false);
 
     searcher.clear();
-    Move bestMove = searcher.getBestMoveInTime(board, SearchTime);
+    SearchParameters params = SearchParameters();
+    params.msTime = SearchTime;
+    params.useTime = true;
+    Move bestMove = searcher.search(board, params);
 
     attempts++;
     if(bestMove != edp.pm)
