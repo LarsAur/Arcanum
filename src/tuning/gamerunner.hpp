@@ -43,7 +43,7 @@ namespace Arcanum
         void setMoveLimit(uint32_t limit);
         void setInitialPosition(const Board& board);
         void setRandomSeed(uint32_t seed);
-        void randomizeInitialPosition(uint32_t numMoves, const Board& board = Board(FEN::startpos), eval_t maxEval = MATE_SCORE);
+        void randomizeInitialPosition(uint32_t numMoves, const Board& board = Board(FEN::startpos), eval_t maxEval = Evaluator::MateScore);
         void play(bool newGame = true);
 
         const Board& getInitialPosition() const;

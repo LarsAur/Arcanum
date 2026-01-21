@@ -8,7 +8,7 @@
 
 namespace Arcanum
 {
-    constexpr uint8_t MAX_MOVE_COUNT = 218;
+    constexpr uint8_t MaxMoveCount = 218;
 
     typedef enum CastleRights : uint8_t
     {
@@ -42,7 +42,7 @@ namespace Arcanum
 
             Piece m_pieces[64];
             uint8_t m_numLegalMoves = 0;
-            Move m_legalMoves[MAX_MOVE_COUNT];
+            Move m_legalMoves[MaxMoveCount];
             hash_t m_hash;
             hash_t m_materialHash;
             hash_t m_pawnHash;

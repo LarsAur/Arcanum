@@ -6,11 +6,6 @@
 
 namespace Arcanum
 {
-    #define MATE_SCORE (INT16_MAX)
-    #define MAX_MATE_DISTANCE (256)
-    #define TB_MATE_SCORE (MATE_SCORE - MAX_MATE_DISTANCE)
-    #define TB_MAX_MATE_DISTANCE (256)
-
     class Evaluator
     {
         private:
@@ -26,6 +21,11 @@ namespace Arcanum
 
             void m_propagateAccumulatorUpdates(Color perspective);
         public:
+            constexpr static eval_t MateScore = INT16_MAX;
+            constexpr static eval_t MaxMateDistance = 256;
+            constexpr static eval_t TbMateScore = MateScore - MaxMateDistance;
+            constexpr static eval_t TbMaxMateDistance = 256;
+
             // Returns true if the score is a mate score not from the TB
             static bool isRealMateScore(eval_t eval);
             // Returns true if the score is a mate score from the TB

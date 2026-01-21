@@ -82,27 +82,27 @@ void Evaluator::popMoveFromAccumulator()
 
 bool Evaluator::isRealMateScore(eval_t eval)
 {
-    return std::abs(eval) >= MATE_SCORE - MAX_MATE_DISTANCE;
+    return std::abs(eval) >= MateScore - MaxMateDistance;
 }
 
 bool Evaluator::isTbMateScore(eval_t eval)
 {
-    return std::abs(eval) >= (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE) && !isRealMateScore(eval);
+    return std::abs(eval) >= (TbMateScore - TbMaxMateDistance) && !isRealMateScore(eval);
 }
 
 bool Evaluator::isMateScore(eval_t eval)
 {
-    return std::abs(eval) >= TB_MATE_SCORE - TB_MAX_MATE_DISTANCE;
+    return std::abs(eval) >= TbMateScore - TbMaxMateDistance;
 }
 
 bool Evaluator::isWinningScore(eval_t eval)
 {
-    return eval >= (TB_MATE_SCORE - TB_MAX_MATE_DISTANCE);
+    return eval >= (TbMateScore - TbMaxMateDistance);
 }
 
 bool Evaluator::isLosingScore(eval_t eval)
 {
-    return eval <= -(TB_MATE_SCORE - TB_MAX_MATE_DISTANCE);
+    return eval <= -(TbMateScore - TbMaxMateDistance);
 }
 
 bool Evaluator::isCloseToMate(Board& board, eval_t eval)
@@ -120,14 +120,14 @@ int32_t Evaluator::getMateDistance(eval_t eval)
 
     // Divide by 2 to get moves and not plys.
     // Round away from zero, as any potential odd last ply has to be counted as a move
-    int32_t distance = std::ceil((MATE_SCORE - std::abs(eval)) / 2.0f);
+    int32_t distance = std::ceil((MateScore - std::abs(eval)) / 2.0f);
     return eval > 0 ? distance : -distance;
 }
 
 eval_t Evaluator::clampEval(eval_t eval)
 {
-    constexpr static eval_t UpperMargin = MATE_SCORE - MAX_MATE_DISTANCE - 1;
-    constexpr static eval_t LowerMargin = -MATE_SCORE + MAX_MATE_DISTANCE + 1;
+    constexpr static eval_t UpperMargin = MateScore - MaxMateDistance - 1;
+    constexpr static eval_t LowerMargin = -MateScore + MaxMateDistance + 1;
     return std::clamp(eval, LowerMargin, UpperMargin);
 }
 
@@ -139,7 +139,9 @@ eval_t Evaluator::evaluate(Board& board, uint8_t plyFromRoot)
     {
         // Checkmate
         if(board.isChecked())
-            return -MATE_SCORE + plyFromRoot;
+        {
+            return -MateScore + plyFromRoot;
+        }
 
         // Stalemate
         return 0;

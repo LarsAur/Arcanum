@@ -61,6 +61,6 @@
  * Draw, and Lose. PYRRHIC_MAX_MATE_PLY should be your max search height.
  */
 #define PYRRHIC_VALUE_PAWN     (  100)
-#define PYRRHIC_VALUE_MATE     (MATE_SCORE)
+#define PYRRHIC_VALUE_MATE     (Arcanum::Evaluator::MateScore)
 #define PYRRHIC_VALUE_DRAW     (    0)
 #define PYRRHIC_MAX_MATE_PLY   (  255)

@@ -278,7 +278,7 @@ void GameRunner::randomizeInitialPosition(uint32_t plies, const Board& board, ev
         }
 
         // Check that the position has an acceptable evaluation by performing a short search
-        if(maxEval != MATE_SCORE)
+        if(maxEval != Evaluator::MateScore)
         {
             m_searchers[0].clear();
             m_searchers[0].search(m_initialBoard, searchParams, &searchResult);

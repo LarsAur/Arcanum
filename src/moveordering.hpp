@@ -87,7 +87,7 @@ namespace Arcanum
             const Move* m_killers[2];
             const Move* m_counter;
 
-            MoveAndScore m_movesAndScores[MAX_MOVE_COUNT];
+            MoveAndScore m_movesAndScores[MaxMoveCount];
             MoveAndScore* m_captureMovesAndScores;
             MoveAndScore* m_badCaptureMovesAndScores; // Note: This array grows backwards.
             MoveAndScore* m_quietMovesAndScores;

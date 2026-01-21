@@ -12,11 +12,11 @@
 #include <unordered_map>
 #include <memory>
 
-#define MAX_SEARCH_DEPTH 64
-#define MAX_SEARCH_PLY 96
-
 namespace Arcanum
 {
+    constexpr uint32_t MaxSearchDepth = 64;// Maximum search depth in root
+    constexpr uint32_t MaxSearchPly = 96;  // Maximum number of half-moves ply from root
+
     class HashFunction
     {
         public:
@@ -27,9 +27,9 @@ namespace Arcanum
 
     struct SearchStacks
     {
-        hash_t hashes      [MAX_SEARCH_PLY];
-        eval_t staticEvals [MAX_SEARCH_PLY];
-        Move   moves       [MAX_SEARCH_PLY];
+        hash_t hashes      [MaxSearchPly];
+        eval_t staticEvals [MaxSearchPly];
+        Move   moves       [MaxSearchPly];
     };
 
     // https://www.wbec-ridderkerk.nl/html/UCIProtocol.html
@@ -114,7 +114,7 @@ namespace Arcanum
         uint32_t mate; // TODO: This requires a search with only exact pruning
         bool infinite;
         uint32_t numSearchMoves;
-        Move searchMoves[MAX_MOVE_COUNT];
+        Move searchMoves[MaxMoveCount];
 
         SearchParameters() :
             useTime(false),
@@ -141,8 +141,8 @@ namespace Arcanum
             TranspositionTable m_tt;
             SearchStacks m_searchStacks;
             uint8_t* m_lmrReductions;
-            uint32_t m_lmpThresholds[2][MAX_SEARCH_DEPTH];
-            eval_t m_staticPruneMargins[2][MAX_SEARCH_DEPTH];
+            uint32_t m_lmpThresholds[2][MaxSearchDepth];
+            eval_t m_staticPruneMargins[2][MaxSearchDepth];
             Timer m_timer;
             Evaluator m_evaluator;
             MoveOrderHeuristics m_heuristics;

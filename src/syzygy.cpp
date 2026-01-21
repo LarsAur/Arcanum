@@ -17,7 +17,7 @@ Syzygy::WDLResult Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMove
         return Syzygy::WDLResult::FAILED;
     }
 
-    unsigned results[MAX_MOVE_COUNT];
+    unsigned results[MaxMoveCount];
 
     unsigned result = tb_probe_root(
         board.getColoredPieces(Color::WHITE),
@@ -41,7 +41,7 @@ Syzygy::WDLResult Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMove
 
     // Find a move with the same WDL value as the root position
     numMoves = 0;
-    for (int i = 0; i < MAX_MOVE_COUNT && results[i] != TB_RESULT_FAILED; i++)
+    for (int i = 0; i < MaxMoveCount && results[i] != TB_RESULT_FAILED; i++)
     {
         if (TB_GET_WDL(results[i]) == TB_GET_WDL(result))
         {

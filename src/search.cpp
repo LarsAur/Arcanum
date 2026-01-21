@@ -17,7 +17,7 @@ m_datagenMode(false)
 {
     m_tt.resize(32);
 
-    m_lmrReductions = new uint8_t[MAX_SEARCH_DEPTH * MAX_MOVE_COUNT];
+    m_lmrReductions = new uint8_t[MaxSearchDepth * MaxMoveCount];
     ASSERT_OR_EXIT(m_lmrReductions != nullptr, "Failed to allocate memory for LMR reductions")
 
     m_initializeTables();
@@ -31,23 +31,23 @@ Searcher::~Searcher()
 void Searcher::m_initializeTables()
 {
     // Initialize the LMR reduction lookup table
-    for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
+    for(uint8_t d = 0; d < MaxSearchDepth; d++)
     {
-        for(uint8_t m = 0; m < MAX_MOVE_COUNT; m++)
+        for(uint8_t m = 0; m < MaxMoveCount; m++)
         {
             if((d == 0) || (m == 0))
             {
-                m_lmrReductions[d * MAX_MOVE_COUNT + m] = 0;
+                m_lmrReductions[d * MaxMoveCount + m] = 0;
             }
             else
             {
-                m_lmrReductions[d * MAX_MOVE_COUNT + m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 4));
+                m_lmrReductions[d * MaxMoveCount + m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 4));
             }
         }
     }
 
     // Initialize the LMP threshold lookup table
-    for(uint8_t d = 0; d < MAX_SEARCH_DEPTH; d++)
+    for(uint8_t d = 0; d < MaxSearchDepth; d++)
     {
         m_lmpThresholds[0][d] = 1.5f + 0.5f * d * d;
         m_lmpThresholds[1][d] = 3.0f + 1.5f * d * d;
@@ -58,7 +58,7 @@ void Searcher::m_initializeTables()
 
 inline uint8_t Searcher::m_getReduction(uint8_t depth, uint8_t moveNumber) const
 {
-    return m_lmrReductions[depth * MAX_MOVE_COUNT + moveNumber];
+    return m_lmrReductions[depth * MaxMoveCount + moveNumber];
 }
 
 void Searcher::setVerbose(bool enable)
@@ -120,7 +120,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         return DRAW_VALUE;
     }
 
-    eval_t bestScore = -MATE_SCORE;
+    eval_t bestScore = -Evaluator::MateScore;
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
     Move ttMove = NULL_MOVE;
@@ -286,16 +286,16 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     }
 
     // Mate distance pruning
-    alpha = std::max(alpha, eval_t(plyFromRoot - MATE_SCORE));
-    beta = std::min(beta, eval_t(MATE_SCORE - plyFromRoot - 1));
+    alpha = std::max(alpha, eval_t(plyFromRoot - Evaluator::MateScore));
+    beta = std::min(beta, eval_t(Evaluator::MateScore - plyFromRoot - 1));
     if (alpha >= beta)
     {
         return alpha;
     }
 
     eval_t originalAlpha = alpha;
-    eval_t bestScore = -MATE_SCORE;
-    eval_t maxScore = MATE_SCORE;
+    eval_t bestScore = -Evaluator::MateScore;
+    eval_t maxScore = Evaluator::MateScore;
 
     std::optional<TTEntry> entry = m_tt.get(board.getHash(), plyFromRoot);
     Move ttMove = NULL_MOVE;
@@ -343,11 +343,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             {
             case Syzygy::WDLResult::WIN:
                 tbFlag = TTFlag::LOWER_BOUND;
-                tbScore = TB_MATE_SCORE - plyFromRoot;
+                tbScore = Evaluator::TbMateScore - plyFromRoot;
                 break;
             case Syzygy::WDLResult::LOSS:
                 tbFlag = TTFlag::UPPER_BOUND;
-                tbScore = -TB_MATE_SCORE + plyFromRoot;
+                tbScore = -Evaluator::TbMateScore + plyFromRoot;
                 break;
             default: // DRAW
                 tbFlag = TTFlag::EXACT;
@@ -504,7 +504,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, m_searchStacks.moves);
     uint8_t quietMovesPerformed = 0;
     uint8_t captureMovesPerformed = 0;
-    Move performedMoves[MAX_MOVE_COUNT];
+    Move performedMoves[MaxMoveCount];
     uint32_t moveNumber = 0;
 
     while (const Move* move = moveSelector.getNextMove())
@@ -686,8 +686,8 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             {
                 m_heuristics.killerManager.add(*move, plyFromRoot);
                 m_heuristics.counterManager.setCounter(*move, prevMove, board.getTurn());
-                m_heuristics.quietHistory.update(*move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, depth, board.getTurn());
-                m_heuristics.continuationHistory.update(m_searchStacks.moves, plyFromRoot, *move, &performedMoves[MAX_MOVE_COUNT - quietMovesPerformed], quietMovesPerformed, board.getTurn(), depth);
+                m_heuristics.quietHistory.update(*move, &performedMoves[MaxMoveCount - quietMovesPerformed], quietMovesPerformed, depth, board.getTurn());
+                m_heuristics.continuationHistory.update(m_searchStacks.moves, plyFromRoot, *move, &performedMoves[MaxMoveCount - quietMovesPerformed], quietMovesPerformed, board.getTurn(), depth);
             }
 
             // Update capture history if the move was a capture
@@ -705,7 +705,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             // Count and track quiet moves for LMP and History
             // Quiets are added from the back
             quietMovesPerformed++;
-            performedMoves[MAX_MOVE_COUNT - quietMovesPerformed] = *move;
+            performedMoves[MaxMoveCount - quietMovesPerformed] = *move;
         }
 
         // Note: Capture and Quiet are not inverse as promotions can be non-capture but is not quiet
@@ -841,9 +841,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     while(!m_parameters.useDepth || m_parameters.depth > depth)
     {
         depth++;
-
-        eval_t alpha = -MATE_SCORE;
-        eval_t beta = MATE_SCORE;
+        eval_t alpha = -Evaluator::MateScore;
+        eval_t beta = Evaluator::MateScore;
         Move bestMove = NULL_MOVE;
 
         eval_t aspirationWindowAlpha = 25;
@@ -869,8 +868,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             // Stop using aspiration if the search score or window size is too high
             bool useAspAlpha = depth > 5 && searchScore < 900 && aspirationWindowAlpha < 600;
             bool useAspBeta  = depth > 5 && searchScore < 900 && aspirationWindowBeta < 600;
-            alpha = useAspAlpha ? (searchScore - aspirationWindowAlpha) : -MATE_SCORE;
-            beta  = useAspBeta  ? (searchScore + aspirationWindowBeta ) : MATE_SCORE;
+            alpha = useAspAlpha ? (searchScore - aspirationWindowAlpha) : -Evaluator::MateScore;
+            beta  = useAspBeta  ? (searchScore + aspirationWindowBeta ) : Evaluator::MateScore;
 
             m_heuristics.killerManager.clearPly(1);
 
@@ -965,7 +964,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         // Send UCI info
         m_sendUciInfo(board, searchScore, depth, tbResult);
 
-        if(depth >= MAX_SEARCH_DEPTH - 1)
+        if(depth >= MaxSearchDepth - 1)
         {
             break;
         }
@@ -1064,8 +1063,8 @@ void Searcher::m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, S
         switch (tbResult)
         {
         case Syzygy::WDLResult::DRAW: info.score = 0; break;
-        case Syzygy::WDLResult::LOSS: info.score = -TB_MATE_SCORE + MAX_MATE_DISTANCE; break;
-        case Syzygy::WDLResult::WIN:  info.score =  TB_MATE_SCORE - MAX_MATE_DISTANCE; break;
+        case Syzygy::WDLResult::LOSS: info.score = -Evaluator::TbMateScore + Evaluator::TbMaxMateDistance; break;
+        case Syzygy::WDLResult::WIN:  info.score =  Evaluator::TbMateScore - Evaluator::TbMaxMateDistance; break;
         case Syzygy::WDLResult::FAILED: break;
         }
     }
