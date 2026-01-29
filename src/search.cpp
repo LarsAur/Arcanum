@@ -246,7 +246,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         }
     }
 
-    if(m_stopSearch)
+    if(m_shouldStop())
     {
         return 0;
     }
@@ -719,7 +719,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     }
 
     // Stop the thread from writing to the TT when search is stopped
-    if(m_stopSearch)
+    if(m_shouldStop())
     {
         return 0;
     }
@@ -782,6 +782,13 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_numNodesSearched = 0;
     m_parameters = parameters;
 
+    // Clamp the search depth to valid values
+    if(!m_parameters.useDepth)
+    {
+        m_parameters.depth = MaxSearchDepth - 1;
+    }
+    m_parameters.depth = std::clamp(m_parameters.depth, 1u, MaxSearchDepth - 1);
+
     m_tt.incrementGeneration();
     m_numPiecesRoot = board.getNumPieces();
     m_timer.start();
@@ -810,7 +817,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     {
         PackedMove packedMove = ttEntry->getPackedMove();
         Move ttMove = board.generateMoveWithInfo(packedMove.from(), packedMove.to(), packedMove.promotionInfo());
-
         rawEval = ttEntry->rawEval;
 
         // We have to check that the move from TT is legal,
@@ -837,10 +843,9 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_searchStacks.staticEvals[0] = staticEval;
     m_searchStacks.moves[0]       = NULL_MOVE;
 
-    uint32_t depth = 0;
-    while(!m_parameters.useDepth || m_parameters.depth > depth)
+    for(uint32_t depth = 1; depth <= m_parameters.depth; depth++)
     {
-        depth++;
+        m_rootDepth = depth;
         eval_t alpha = -Evaluator::MateScore;
         eval_t beta = Evaluator::MateScore;
         Move bestMove = NULL_MOVE;
@@ -849,7 +854,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         eval_t aspirationWindowBeta  = 25;
         bool rerun = true;
 
-        while(rerun && !m_stopSearch)
+        while(rerun && !m_shouldStop())
         {
             rerun = false;
 
@@ -946,44 +951,19 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // Stop search from writing to TT
-        if(m_stopSearch)
+        if(m_shouldStop())
         {
-            if(depth == 1)
-            {
-                WARNING("Search was stopped before completing the first depth iteration: " << board.fen())
-            }
-
             // Reduce the depth to match the depth of the last complete iteration
             depth = std::max(1u, depth - 1);
+            m_sendUciInfo(board, searchScore, depth, tbResult);
             break;
         }
 
         // If search is not canceled, save the best move found in this iteration
-        m_tt.add(alpha, bestMove, true, depth, 0, rawEval, TTFlag::EXACT, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
+        m_tt.add(searchScore, searchBestMove, true, depth, 0, rawEval, TTFlag::EXACT, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
 
         // Send UCI info
         m_sendUciInfo(board, searchScore, depth, tbResult);
-
-        if(depth >= MaxSearchDepth - 1)
-        {
-            break;
-        }
-    }
-
-    // If the search is so short that no score is calculated for any moves.
-    // The first available move is returned to avoid returning a null move
-    if(searchBestMove.isNull())
-    {
-        WARNING("Search was stopped before any moves could be evaluated. Returning the first move with score 0")
-        searchBestMove = moves[0];
-        searchScore = 0;
-    }
-
-    m_sendUciInfo(board, searchScore, depth, tbResult);
-
-    if(m_verbose)
-    {
-        Interface::UCI::sendBestMove(searchBestMove);
     }
 
     m_stats.nodes += m_numNodesSearched;
@@ -991,6 +971,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
     if(m_verbose)
     {
+        Interface::UCI::sendBestMove(searchBestMove);
         m_tt.logStats();
         logStats();
     }
@@ -1011,6 +992,12 @@ void Searcher::stop()
 
 bool Searcher::m_shouldStop()
 {
+    // Force the first depth iteration to complete
+    if(m_rootDepth <= 1)
+    {
+        return false;
+    }
+
     if(m_stopSearch) return true;
 
     // Limit the number of calls to getMs which is slow

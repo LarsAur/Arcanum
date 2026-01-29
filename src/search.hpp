@@ -153,6 +153,7 @@ namespace Arcanum
             uint64_t m_tbHits;
             uint64_t m_numNodesSearched; // Number of nodes searched in a search call. Used to terminate search based on number of nodes.
             uint8_t m_seldepth;
+            uint32_t m_rootDepth;
             bool m_verbose; // Print use output and stats while searching
             bool m_datagenMode; // Disable certain search optimizations for better data generation
             volatile bool m_stopSearch;
