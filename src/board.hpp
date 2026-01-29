@@ -86,7 +86,7 @@ namespace Arcanum
             Board& operator=(const Board& other) = default;
             void performMove(const Move move);
             void generateCaptureInfo();
-            Move generateMoveWithInfo(square_t from, square_t to, uint32_t promoteInfo);
+            Move generateMoveWithInfo(square_t from, square_t to, uint32_t promoteInfo) const;
             void performNullMove();
             hash_t getHash() const;
             hash_t getPawnHash() const;
@@ -114,7 +114,6 @@ namespace Arcanum
             uint8_t getNumLegalMoves() const;
             uint8_t getNumPieces() const;
             uint8_t getNumColoredPieces(Color color) const;
-            Move getMoveFromArithmetic(std::string& arithmetic);
             bitboard_t attackersTo(square_t square, bitboard_t occupancy) const;
             bool see(const Move& move, eval_t threshold = 0) const;
             std::string fen() const;

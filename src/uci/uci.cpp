@@ -105,7 +105,7 @@ void UCI::go(std::istringstream& is)
             while (is >> token)
             {
                 toLowerCase(token);
-                Move move = board.getMoveFromArithmetic(token);
+                Move move = getMoveFromUciString(token, board);
                 parameters.searchMoves[parameters.numSearchMoves++] = move;
             }
         }
@@ -182,7 +182,7 @@ void UCI::position(std::istringstream& is)
     while (is >> token)
     {
         toLowerCase(token);
-        Move move = board.getMoveFromArithmetic(token);
+        Move move = getMoveFromUciString(token, board);
         if(move.isNull())
         {
             ERROR(token << " is not legal in the position")
@@ -348,4 +348,35 @@ void UCI::sendBestMove(const Move& move)
         ERROR("Illegal Null-Move was reported as the best move")
 
     UCI_OUT("bestmove " << move)
+}
+
+// Generate a Move object from a UCI move string (e.g. e2e4, e7e8q)
+// Note: This not check if the move is legal in the given position
+Move UCI::getMoveFromUciString(const std::string& uciStr, const Board& board)
+{
+    if((uciStr.length() < 4) || (uciStr.length() > 5))
+    {
+        WARNING("UCI string has to be 4 or 5 characters long: " << uciStr)
+        return NULL_MOVE;
+    }
+
+    square_t from = SQUARE(uciStr[0] - 'a', uciStr[1] - '1');
+    square_t to   = SQUARE(uciStr[2] - 'a', uciStr[3] - '1');
+    uint32_t promoteInfo = 0;
+
+    if(uciStr.length() == 5)
+    {
+        switch (uciStr[4])
+        {
+            case 'q': promoteInfo = MoveInfoBit::PROMOTE_QUEEN;  break;
+            case 'r': promoteInfo = MoveInfoBit::PROMOTE_ROOK;   break;
+            case 'b': promoteInfo = MoveInfoBit::PROMOTE_BISHOP; break;
+            case 'n': promoteInfo = MoveInfoBit::PROMOTE_KNIGHT; break;
+            default:
+                WARNING("Invalid promotion piece in UCI string: " << uciStr)
+                return NULL_MOVE;
+        }
+    }
+
+    return board.generateMoveWithInfo(from, to, promoteInfo);
 }

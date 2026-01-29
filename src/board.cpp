@@ -1168,7 +1168,7 @@ void Board::generateCaptureInfo()
     }
 }
 
-Move Board::generateMoveWithInfo(square_t from, square_t to, uint32_t promoteInfo)
+Move Board::generateMoveWithInfo(square_t from, square_t to, uint32_t promoteInfo) const
 {
     Move move = Move(from, to, promoteInfo);
 
@@ -1519,21 +1519,6 @@ uint8_t Board::getNumPieces() const
 uint8_t Board::getNumColoredPieces(Color color) const
 {
     return CNTSBITS(m_bbColoredPieces[color]);
-}
-
-Move Board::getMoveFromArithmetic(std::string& arighemetic)
-{
-    Move* moves = getLegalMoves();
-    generateCaptureInfo();
-
-    for(uint8_t i = 0; i < m_numLegalMoves; i++)
-    {
-        if(moves[i].toString() == arighemetic)
-            return moves[i];
-    }
-
-    WARNING("Found no matching move for " << arighemetic << " in " << FEN::getFEN(*this))
-    return NULL_MOVE;
 }
 
 bitboard_t Board::attackersTo(const square_t square, bitboard_t occupancy) const

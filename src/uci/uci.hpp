@@ -60,6 +60,7 @@ namespace Arcanum
                 static void eval();
                 static void drawboard();
                 static void help();
+                static Move getMoveFromUciString(const std::string& uciStr, const Board& board);
             public:
                 // Options
                 static SpinOption   optionHash;
