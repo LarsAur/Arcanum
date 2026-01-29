@@ -5,18 +5,17 @@
 
 namespace Arcanum
 {
-
-    #define MAX_PV_LENGTH 96
-
     class PvTable
     {
         private:
-            uint8_t m_pvLengths[MAX_PV_LENGTH];
-            Move m_table[MAX_PV_LENGTH][MAX_PV_LENGTH];
+            uint32_t m_maxPvLength;
+            uint8_t* m_pvLengths;
+            Move* m_pvTable;
+            uint32_t m_tableIndex(uint32_t plyFromRoot, uint32_t ply) const;
         public:
-            PvTable();
+            PvTable(uint32_t maxPvLength);
             void updatePv(const Move& move, uint8_t plyFromRoot);
-            void updatePvLength(uint8_t length);
+            void updatePvLength(uint8_t plyFromRoot);
             std::string getPvLine();
     };
 }

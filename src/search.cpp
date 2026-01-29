@@ -11,6 +11,7 @@ using namespace Arcanum;
 
 Searcher::Searcher(bool verbose) :
 m_tt(TranspositionTable()),
+m_pvTable(PvTable(MaxSearchPly)),
 m_stats(SearchStats()),
 m_verbose(verbose),
 m_datagenMode(false)
@@ -781,7 +782,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_numNodesSearched = 0;
     m_parameters = parameters;
 
-    m_pvTable = PvTable();
     m_tt.incrementGeneration();
     m_numPiecesRoot = board.getNumPieces();
     m_timer.start();
