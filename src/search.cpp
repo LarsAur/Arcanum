@@ -971,8 +971,6 @@ bool Searcher::m_shouldStop()
         return false;
     }
 
-    if(m_stopSearch) return true;
-
     // Limit the number of calls to getMs which is slow
     if((m_numNodesSearched & 0xff) == 0)
     {
@@ -980,17 +978,15 @@ bool Searcher::m_shouldStop()
         if(m_parameters.useTime && m_timer.getMs() >= m_parameters.msTime)
         {
             m_stopSearch = true;
-            return true;
         }
     }
 
     if(m_parameters.useNodes && m_numNodesSearched >= m_parameters.nodes)
     {
         m_stopSearch = true;
-        return true;
     }
 
-    return false;
+    return m_stopSearch;
 }
 
 void Searcher::m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, Syzygy::WDLResult tbResult)
