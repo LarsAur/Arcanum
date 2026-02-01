@@ -821,22 +821,18 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     for(uint32_t depth = 1; depth <= m_parameters.depth; depth++)
     {
         m_rootDepth = depth;
+        Move bestMove = NULL_MOVE;
         eval_t alpha = -Evaluator::MateScore;
         eval_t beta = Evaluator::MateScore;
-        Move bestMove = NULL_MOVE;
-
         eval_t aspirationWindowAlpha = 25;
         eval_t aspirationWindowBeta  = 25;
-        bool rerun = true;
 
+        bool rerun = true;
         while(rerun && !m_shouldStop())
         {
             rerun = false;
-
-            bestMove = NULL_MOVE;
-
-            // Reset seldepth for each depth interation
             m_seldepth = 0;
+            bestMove = NULL_MOVE;
 
             // The local variable for the best move from the previous iteration is used by the move selector.
             // This is in case the move from the transposition is not 'correct' due to a miss.
