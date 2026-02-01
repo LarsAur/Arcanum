@@ -774,7 +774,6 @@ inline bool Searcher::m_isDraw(const Board& board, uint8_t plyFromRoot) const
 Move Searcher::search(Board board, SearchParameters parameters, SearchResult* searchResult)
 {
     eval_t searchScore = 0;
-    eval_t rawEval = 0;
     Move searchBestMove = NULL_MOVE;
 
     m_tbHits = 0;
@@ -811,31 +810,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     }
 
     m_evaluator.initAccumulatorStack(board);
-
-    std::optional<TTEntry> ttEntry = m_tt.get(board.getHash(), 0);
-    if(ttEntry.has_value())
-    {
-        PackedMove packedMove = ttEntry->getPackedMove();
-        Move ttMove = board.generateMoveWithInfo(packedMove.from(), packedMove.to(), packedMove.promotionInfo());
-        rawEval = ttEntry->rawEval;
-
-        // We have to check that the move from TT is legal,
-        // This is to avoid returning an illegal move in this position
-        // in case the search ends in the first iteration
-        for(uint8_t i = 0; i < numMoves; i++)
-        {
-            if(ttMove == moves[i])
-            {
-                searchBestMove = moves[i];
-                break;
-            }
-        }
-    }
-    else
-    {
-        rawEval = m_evaluator.evaluate(board, 0);
-    }
-
+    eval_t rawEval = m_evaluator.evaluate(board, 0);
     eval_t staticEval = m_adjustEval(rawEval, board);
 
     // Initialize the search stack by pushing the initial board
