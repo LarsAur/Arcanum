@@ -871,8 +871,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
             // Aspiration window
             // Stop using aspiration if the search score or window size is too high
-            bool useAspAlpha = depth > 5 && searchScore < 900 && aspirationWindowAlpha < 600;
-            bool useAspBeta  = depth > 5 && searchScore < 900 && aspirationWindowBeta < 600;
+            bool useAspAlpha = depth > 5 && std::abs(searchScore) < 900 && aspirationWindowAlpha < 600;
+            bool useAspBeta  = depth > 5 && std::abs(searchScore) < 900 && aspirationWindowBeta < 600;
             alpha = useAspAlpha ? (searchScore - aspirationWindowAlpha) : -Evaluator::MateScore;
             beta  = useAspBeta  ? (searchScore + aspirationWindowBeta ) : Evaluator::MateScore;
 
