@@ -950,20 +950,18 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
             searchBestMove = bestMove;
         }
 
-        // Stop search from writing to TT
+        // Send UCI info
+        // Note: The last reported depth might not be complete if the search was stopped
+        m_sendUciInfo(board, searchScore, depth, tbResult);
+
+        // Exit search if stopped, and avoid storing incomplete search results in the transposition table
         if(m_shouldStop())
         {
-            // Reduce the depth to match the depth of the last complete iteration
-            depth = std::max(1u, depth - 1);
-            m_sendUciInfo(board, searchScore, depth, tbResult);
             break;
         }
 
-        // If search is not canceled, save the best move found in this iteration
+        // Store the result in the transposition table
         m_tt.add(searchScore, searchBestMove, true, depth, 0, rawEval, TTFlag::EXACT, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
-
-        // Send UCI info
-        m_sendUciInfo(board, searchScore, depth, tbResult);
     }
 
     m_stats.nodes += m_numNodesSearched;
