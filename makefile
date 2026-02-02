@@ -51,7 +51,7 @@ selfplay: $(BUILDDIR)/$(FILENAME)
 	./$^ test --selfplay
 
 enginetest: $(BUILDDIR)/$(FILENAME)
-	./$^ --engine
+	./$^ test --engine
 
 release: $(RELEASEDIR)
 	make clean
