@@ -824,8 +824,8 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         Move bestMove = NULL_MOVE;
         eval_t alpha = -Evaluator::MateScore;
         eval_t beta = Evaluator::MateScore;
-        eval_t aspirationWindowAlpha = 25;
-        eval_t aspirationWindowBeta  = 25;
+        eval_t aspirationWindowAlpha = 35;
+        eval_t aspirationWindowBeta  = 35;
 
         bool rerun = true;
         while(rerun && !m_shouldStop())
