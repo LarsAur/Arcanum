@@ -87,7 +87,7 @@ void Fengen::start(FengenParameters params)
         runner.setTTSize(params.ttSize);
         runner.setDatagenMode(true);
 
-        while (true)
+        while (fenCount < params.numFens)
         {
             Board board;
 
@@ -97,7 +97,7 @@ void Fengen::start(FengenParameters params)
                 readLock.lock();
 
                 posStream.peek();
-                if(posStream.eof() || fenCount > params.numFens)
+                if(posStream.eof())
                 {
                     readLock.unlock();
                     break;
