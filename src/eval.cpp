@@ -3,6 +3,7 @@
 #include <fen.hpp>
 #include <algorithm>
 #include <syzygy.hpp>
+#include <cmath>
 
 using namespace Arcanum;
 

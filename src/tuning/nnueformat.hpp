@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <cmath>
 #include <utils.hpp>
 
 namespace Arcanum
