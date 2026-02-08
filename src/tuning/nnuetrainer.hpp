@@ -76,7 +76,7 @@ namespace Arcanum
             void m_initAccumulator(const Board& board);
             void m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet);
 
-            void m_applyGradient();
+            void m_applyGradient(uint32_t timestep);
             float m_backPropagate(const Board& board, float cpTarget, GameResult result);
             bool m_shouldFilterPosition(Board& board, Move& move, eval_t eval);
             std::tuple<float, float> m_getValidationLoss(const std::string& filename);

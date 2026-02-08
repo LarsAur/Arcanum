@@ -216,14 +216,14 @@ float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResul
     return loss;
 }
 
-void NNUETrainer::m_applyGradient()
+void NNUETrainer::m_applyGradient(uint32_t timestep)
 {
-    m_net.ftWeights.adamUpdate(m_params.alpha, m_gradient.ftWeights, m_moments.m.ftWeights, m_moments.v.ftWeights);
-    m_net.ftBiases.adamUpdate(m_params.alpha,  m_gradient.ftBiases, m_moments.m.ftBiases, m_moments.v.ftBiases);
+    m_net.ftWeights.adamUpdate(m_params.alpha, timestep, m_gradient.ftWeights, m_moments.m.ftWeights, m_moments.v.ftWeights);
+    m_net.ftBiases.adamUpdate(m_params.alpha, timestep, m_gradient.ftBiases, m_moments.m.ftBiases, m_moments.v.ftBiases);
     for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
     {
-        m_net.l1Weights[i].adamUpdate(m_params.alpha, m_gradient.l1Weights[i], m_moments.m.l1Weights[i], m_moments.v.l1Weights[i]);
-        m_net.l1Biases [i].adamUpdate(m_params.alpha, m_gradient.l1Biases [i], m_moments.m.l1Biases[i],  m_moments.v.l1Biases[i]);
+        m_net.l1Weights[i].adamUpdate(m_params.alpha, timestep, m_gradient.l1Weights[i], m_moments.m.l1Weights[i], m_moments.v.l1Weights[i]);
+        m_net.l1Biases [i].adamUpdate(m_params.alpha, timestep, m_gradient.l1Biases [i], m_moments.m.l1Biases[i],  m_moments.v.l1Biases[i]);
     }
 
     // Clamp the weights of the linear layers to enable quantization at a later stage
@@ -386,6 +386,7 @@ void NNUETrainer::train(TrainingParameters params)
         return;
     }
 
+    uint32_t timestep = 0;
     for(uint32_t epoch = m_params.startEpoch; epoch < m_params.endEpoch; epoch++)
     {
         uint64_t epochPosCount = 0LL;
@@ -447,7 +448,7 @@ void NNUETrainer::train(TrainingParameters params)
             {
                 NET_UNARY_OP(m_gradient, scale(1.0f / m_params.batchSize))
 
-                m_applyGradient();
+                m_applyGradient(++timestep);
 
                 // Reset the gradient to 0
                 NET_UNARY_OP(m_gradient, setZero())
