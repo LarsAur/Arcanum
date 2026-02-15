@@ -57,7 +57,6 @@ namespace Arcanum
             MoveSet m_captureInfoGenerated;
 
             friend class Zobrist;
-            friend class Evaluator;
             friend class FEN;
             friend class BinpackParser;
             friend class BinpackEncoder;
