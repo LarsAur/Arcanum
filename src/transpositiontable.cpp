@@ -20,7 +20,10 @@ TranspositionTable::TranspositionTable() :
 
 TranspositionTable::~TranspositionTable()
 {
-    Memory::alignedFree(m_table);
+    if(m_table != nullptr)
+    {
+        Memory::alignedFree(m_table);
+    }
 }
 
 void TranspositionTable::resize(uint32_t mbSize)
@@ -44,7 +47,9 @@ void TranspositionTable::resize(uint32_t mbSize)
 
     // Free the old table and set the new configuration
     if(m_table != nullptr)
+    {
         Memory::alignedFree(m_table);
+    }
 
     m_table = newTable;
     m_numClusters = numClusters;
