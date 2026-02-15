@@ -300,6 +300,7 @@ bool Test::runEngineTest()
     uint32_t attempts = 0;
 
     Searcher searcher = Searcher(false);
+    searcher.resizeTT(32);
 
     for(uint32_t i = 0; i < NumBenchmarkStrings; i++)
     {

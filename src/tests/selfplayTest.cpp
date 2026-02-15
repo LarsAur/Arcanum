@@ -13,6 +13,10 @@ bool Test::runSelfplayTest()
     Timer timer;
     Searcher whiteSearcher = Searcher();
     Searcher blackSearcher = Searcher();
+
+    whiteSearcher.resizeTT(32);
+    blackSearcher.resizeTT(32);
+
     Board board = Board(FEN::startpos);
     whiteSearcher.addBoardToHistory(board);
     blackSearcher.addBoardToHistory(board);

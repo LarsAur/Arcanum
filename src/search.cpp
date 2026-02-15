@@ -16,8 +16,6 @@ m_stats(SearchStats()),
 m_verbose(verbose),
 m_datagenMode(false)
 {
-    m_tt.resize(32);
-
     m_lmrReductions = new uint8_t[MaxSearchDepth * MaxMoveCount];
     ASSERT_OR_EXIT(m_lmrReductions != nullptr, "Failed to allocate memory for LMR reductions")
 

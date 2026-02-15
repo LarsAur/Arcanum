@@ -15,6 +15,7 @@ static bool testCheckmateWithoutRepeat()
     params.useTime = true;
     params.msTime = 200;
 
+    runner.setTTSize(32);
     runner.setSearchParameters(params);
     runner.setMoveLimit(10);
 

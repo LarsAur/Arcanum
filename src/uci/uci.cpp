@@ -258,6 +258,7 @@ void UCI::help()
 
 void UCI::loop()
 {
+    UCI::searcher.resizeTT(optionHash.value);
     UCI::newgame();
 
     DEBUG("Entering UCI loop")
