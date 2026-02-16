@@ -450,7 +450,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(depth > 2 && !isNullMoveSearch && staticEval >= beta && !Evaluator::isMateScore(beta) && board.hasOfficers(board.getTurn()))
         {
             Board newBoard = Board(board);
-            int R = 2 + isImproving + depth / 4;
+            int R = 4 + isImproving + depth / 4;
             newBoard.performNullMove();
             m_tt.prefetch(newBoard.getHash());
             m_searchStacks.moves[plyFromRoot] = NULL_MOVE;
