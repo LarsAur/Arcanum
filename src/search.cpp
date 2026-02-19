@@ -412,12 +412,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     m_searchStacks.staticEvals[plyFromRoot] = staticEval;
     m_searchStacks.moves      [plyFromRoot] = NULL_MOVE;
 
-    // Internal Iterative Reductions
-    if(isPv && depth >= 5 && !entry.has_value() && !isChecked && skipMove.isNull())
-    {
-        depth--;
-    }
-
     if(!isPv && !isChecked && skipMove.isNull())
     {
         // Reverse futility pruning
