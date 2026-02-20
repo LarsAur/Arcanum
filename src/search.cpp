@@ -570,7 +570,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         newBoard.performMove(*move);
         m_tt.prefetch(newBoard.getHash());
         eval_t score;
-        bool checkOrChecking = isChecked || newBoard.isChecked();
 
         // Extend search when only a single move is available
         uint8_t extension = numMoves == 1;
@@ -625,10 +624,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         {
             // Late move reduction (LMR)
             int8_t R = 0;
-            if(depth >= 3 && !move->isCapture() && !checkOrChecking && !Evaluator::isMateScore(bestScore))
+            if(depth >= 3 && move->isQuiet() && !isChecked && !Evaluator::isMateScore(bestScore) )
             {
                 R =  m_getReduction(depth, moveNumber);
                 R += isWorsening;
+                R -= newBoard.isChecked();
                 R -= m_heuristics.killerManager.contains(*move, plyFromRoot);
                 R -= m_heuristics.counterManager.contains(*move, prevMove, board.getTurn());
                 R += cutnode;
