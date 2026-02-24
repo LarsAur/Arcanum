@@ -658,18 +658,20 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
         m_evaluator.popMoveFromAccumulator();
 
-        if(score > bestScore)
+        if(score > alpha)
         {
+            alpha = score;
             if constexpr(isPv)
             {
                 m_pvTable.updatePv(*move, plyFromRoot);
             }
+        }
 
+        if(score > bestScore)
+        {
             bestScore = score;
             bestMove = *move;
         }
-
-        alpha = std::max(alpha, bestScore);
 
         // Beta-Cutoff
         if(alpha >= beta)
