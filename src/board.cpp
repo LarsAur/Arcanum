@@ -346,7 +346,10 @@ inline bool Board::m_hasMove()
             targets &= getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx);
         }
 
-        return targets;
+        if(targets)
+        {
+            return true;
+        }
     }
 
     return false;
