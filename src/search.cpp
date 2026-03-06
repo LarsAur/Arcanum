@@ -489,7 +489,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                     return score;
                 }
             }
-
             m_stats.failedProbCuts++;
         }
     }
@@ -1062,13 +1061,13 @@ void Searcher::logStats()
     ss << "\n";
     ss << "\nPercentages:";
     ss << "\n----------------------------------";
-    ss << "\nRe-Searches:          " << (float) (100 * m_stats.researchesRequired) / m_stats.nullWindowSearches << "%";
-    ss << "\nNull-Move Cutoffs:    " << (float) (100 * m_stats.nullMoveCutoffs) / (m_stats.nullMoveCutoffs + m_stats.failedNullMoveCutoffs) << "%";
-    ss << "\nRazor Cutoffs:        " << (float) (100 * m_stats.razorCutoffs) / (m_stats.razorCutoffs + m_stats.failedRazorCutoffs) << "%";
-    ss << "\nSingular Extension    " << (float) (100 * m_stats.singularExtensions) / (m_stats.singularExtensionAttempts) << "%";
-    ss << "\nProbCuts              " << (float) (100 * m_stats.probCuts) / (m_stats.probCuts + m_stats.failedProbCuts) << "%";
-    ss << "\nProbCut QSearches     " << (float) (100 * m_stats.probCuts) / m_stats.probCutQSearches << "%";
-    ss << "\nProbCut Searches      " << (float) (100 * m_stats.probCuts) / m_stats.probCutSearches << "%";
+    ss << "\nRe-Searches:              " << (float) (100 * m_stats.researchesRequired) / m_stats.nullWindowSearches << "%";
+    ss << "\nNull-Move Cutoffs:        " << (float) (100 * m_stats.nullMoveCutoffs) / (m_stats.nullMoveCutoffs + m_stats.failedNullMoveCutoffs) << "%";
+    ss << "\nRazor Cutoffs:            " << (float) (100 * m_stats.razorCutoffs) / (m_stats.razorCutoffs + m_stats.failedRazorCutoffs) << "%";
+    ss << "\nSingular Extension        " << (float) (100 * m_stats.singularExtensions) / (m_stats.singularExtensionAttempts) << "%";
+    ss << "\nProbCuts                  " << (float) (100 * m_stats.probCuts) / (m_stats.probCutQSearches) << "%";
+    ss << "\nPassing ProbCut QSearches " << (float) (100 * m_stats.probCutSearches) / m_stats.probCutQSearches << "%";
+    ss << "\nPassing ProbCut Searches  " << (float) (100 * m_stats.probCuts) / m_stats.probCutSearches << "%";
     ss << "\n----------------------------------";
 
     DEBUG(ss.str())
