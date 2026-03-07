@@ -460,12 +460,19 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
         // ProbCut
         eval_t probBeta = beta + 300;
-        if(depth >= 6 && !Evaluator::isMateScore(beta) && !(entry.has_value() && entry->depth >= depth - 3 && entry->eval < probBeta))
+        if(depth >= 6
+        && !Evaluator::isMateScore(beta)
+        && (!entry.has_value() || (entry->depth < depth - 3) || entry->eval >= probBeta))
         {
             MoveSelector moveSelector = MoveSelector(moves, numMoves, plyFromRoot, &m_heuristics, &board, ttMove, m_searchStacks.moves);
             moveSelector.skipQuiets(); // Note: Killers and counters are still included
             while(const Move* move = moveSelector.getNextMove())
             {
+                if(!board.see(*move, 1))
+                {
+                    continue;
+                }
+
                 Board newBoard = Board(board);
                 newBoard.performMove(*move);
                 m_tt.prefetch(newBoard.getHash());
