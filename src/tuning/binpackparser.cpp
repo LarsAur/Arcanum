@@ -341,7 +341,17 @@ void BinpackParser::m_parsePos()
             break;
         }
 
-        m_currentBoard.m_kingIdx = LS1B(m_currentBoard.m_bbTypedPieces[Piece::KING][m_currentBoard.m_turn]);
+    }
+
+    m_currentBoard.m_kingIdx = LS1B(m_currentBoard.m_bbTypedPieces[Piece::KING][m_currentBoard.m_turn]);
+
+    m_currentBoard.m_enPassantSquareCandidate = m_currentBoard.m_enPassantSquare;
+    if(!m_currentBoard.isEnPassantPossible())
+    {
+        m_currentBoard.m_enPassantSquare = Square::NONE;
+        m_currentBoard.m_enPassantTarget = Square::NONE;
+        m_currentBoard.m_bbEnPassantSquare = 0LL;
+        m_currentBoard.m_bbEnPassantTarget = 0LL;
     }
 }
 
@@ -473,29 +483,9 @@ void BinpackParser::m_parseNextMoveAndScore()
         bitboard_t destinations = getPawnMoves(bbFrom, m_currentBoard.m_turn) & ~m_currentBoard.m_bbAllPieces;
         destinations |= getPawnDoubleMoves(bbFrom, m_currentBoard.m_turn, m_currentBoard.m_bbAllPieces);
 
-        // Thus we have to invalidate the enpassant square if this is the case to not end up with an additional
-        // bit in the destionations bitboard. To simplify it, we generate all legal moves on the board and check
-        // if an enpassant move is legal, as this check is done in move generation
-        // Note that the legal enpassant move does not be the move currently being parsed.
-        // TODO: This can be done without generating all legal moves
-        bitboard_t bbEnpassantSquare = 0LL;
-        if(attacks & m_currentBoard.m_bbEnPassantSquare)
-        {
-            Move* moves = m_currentBoard.getLegalMoves();
-            uint8_t numMoves = m_currentBoard.getNumLegalMoves();
-
-            for(uint8_t i = 0; i < numMoves; i++)
-            {
-                if(moves[i].isEnpassant())
-                {
-                    bbEnpassantSquare = m_currentBoard.m_bbEnPassantSquare;
-                    break;
-                }
-            }
-        }
-
         // Attacks and enpassant squares
-        destinations |= (attacks & (m_currentBoard.m_bbColoredPieces[opponent] | bbEnpassantSquare));
+        // Note: the enpassant square only exists if legal enpassant moves exist
+        destinations |= (attacks & (m_currentBoard.m_bbColoredPieces[opponent] | m_currentBoard.m_bbEnPassantSquare));
 
         if(RANK(from) == promotionRank)
         {

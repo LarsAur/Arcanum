@@ -228,11 +228,11 @@ void BinpackEncoder::m_writePos(Board& board)
         case Piece::PAWN:
             if(pieceColor == Color::WHITE)
             {
-                nibble = (board.m_enPassantSquare == square - 8) ? 12 : PieceToNibble[Color::WHITE][Piece::PAWN];
+                nibble = (board.m_enPassantSquareCandidate == square - 8) ? 12 : PieceToNibble[Color::WHITE][Piece::PAWN];
             }
             else
             {
-                nibble = (board.m_enPassantSquare == square + 8) ? 12 : PieceToNibble[Color::BLACK][Piece::PAWN];
+                nibble = (board.m_enPassantSquareCandidate == square + 8) ? 12 : PieceToNibble[Color::BLACK][Piece::PAWN];
             }
             break;
 
@@ -388,30 +388,10 @@ void BinpackEncoder::m_writeEncodedMove(Board& board, const Move& move)
         bitboard_t destinations = getPawnMoves(bbFrom, board.getTurn()) & ~board.m_bbAllPieces;
         destinations |= getPawnDoubleMoves(bbFrom, board.getTurn(), board.m_bbAllPieces);
 
-        // SF Binpacks does not include the enpassant square if the move would cause the king to become checked
-        // Thus we have to invalidate the enpassant square if this is the case to not end up with an additional
-        // bit in the destionations bitboard. To simplify it, we generate all legal moves on the board and check
-        // if an enpassant move is legal, as this check is done in move generation
-        // Note that the legal enpassant move does not be the move currently being encoded.
-        // TODO: This can be done without generating all legal moves
-        bitboard_t bbEnpassantSquare = 0LL;
-        if(attacks & board.m_bbEnPassantSquare)
-        {
-            Move* moves = board.getLegalMoves();
-            uint8_t numMoves = board.getNumLegalMoves();
-
-            for(uint8_t i = 0; i < numMoves; i++)
-            {
-                if(moves[i].moveInfo & MoveInfoBit::ENPASSANT)
-                {
-                    bbEnpassantSquare = board.m_bbEnPassantSquare;
-                    break;
-                }
-            }
-        }
 
         // Attacks and enpassant squares
-        destinations |= (attacks & (board.getColoredPieces(Color(!board.getTurn())) | bbEnpassantSquare));
+        // Note: the enpassant square only exists if legal enpassant moves exist
+        destinations |= (attacks & (board.getColoredPieces(Color(!board.getTurn())) | board.m_bbEnPassantSquare));
 
         if(RANK(move.from) == promotionRank)
         {

@@ -15,6 +15,7 @@ Board::Board()
     m_rule50 = 0;
     m_fullMoves = 1;
     m_castleRights = 0;
+    m_enPassantSquareCandidate = Square::NONE;
     m_enPassantSquare = Square::NONE;
     m_enPassantTarget = Square::NONE;
     m_bbEnPassantSquare = 0LL;
@@ -36,6 +37,7 @@ Board::Board()
 
     m_moveset = MoveSet::NOT_GENERATED;
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
+    m_blockersGenerated = MoveSet::NOT_GENERATED;
     m_bbOpponentAttacks = 0LL;
 }
 
@@ -57,6 +59,7 @@ Board::Board(const Board& board)
     m_rule50 = board.m_rule50;
     m_fullMoves = board.m_fullMoves;
     m_castleRights = board.m_castleRights;
+    m_enPassantSquareCandidate = board.m_enPassantSquareCandidate;
     m_enPassantSquare = board.m_enPassantSquare;
     m_enPassantTarget = board.m_enPassantTarget;
     m_bbEnPassantSquare = board.m_bbEnPassantSquare;
@@ -83,6 +86,7 @@ Board::Board(const Board& board)
 
     m_moveset = MoveSet::NOT_GENERATED; // Moves are not copied over
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
+    m_blockersGenerated = MoveSet::NOT_GENERATED;
     m_kingIdx = board.m_kingIdx;
     m_bbOpponentAttacks = board.m_bbOpponentAttacks;
 }
@@ -91,10 +95,14 @@ Board::Board(const Board& board)
 // Pinners and blockers are required for both sides because they are used by see().
 inline void Board::m_findPinnedPieces()
 {
+    if(m_blockersGenerated == MoveSet::ALL)
+    {
+        return;
+    }
+
     for(uint8_t i = 0; i < 2; i++)
     {
         bitboard_t snipers;
-        bitboard_t occupancy;
         Color c = Color(i);
         m_blockers[c] = 0LL;
         m_pinners[c^1]  = 0LL;
@@ -105,12 +113,10 @@ inline void Board::m_findPinnedPieces()
         snipers |= getBishopMoves(0LL, kingIdx)
                     & (m_bbTypedPieces[Piece::BISHOP][c^1] | m_bbTypedPieces[Piece::QUEEN][c^1]);
 
-        occupancy = m_bbAllPieces;
-
         while (snipers)
         {
             square_t sniperIdx = popLS1B(&snipers);
-            bitboard_t blockingSquares = getBetweens(kingIdx, sniperIdx) & occupancy & ~(1LL << sniperIdx);
+            bitboard_t blockingSquares = getBetweens(kingIdx, sniperIdx) & m_bbAllPieces & ~(1LL << sniperIdx);
 
             if(CNTSBITS(blockingSquares) == 1)
             {
@@ -121,6 +127,8 @@ inline void Board::m_findPinnedPieces()
             }
         }
     }
+
+    m_blockersGenerated = MoveSet::ALL;
 }
 
 template <MoveInfoBit MoveType, Board::MoveSet Set>
@@ -1213,11 +1221,87 @@ Move Board::generateMoveWithInfo(square_t from, square_t to, uint32_t promoteInf
     return move;
 }
 
+// Checks if enpassant is legal after a double pawn move
+// Shall only be used by performMove when performing a double pawn move
+// It has to be called before any changes are made to the board
+bool Board::m_isEnpassantLegalAfterMove(const Move& move)
+{
+    bitboard_t bbFrom = 0b1LL << move.from;
+    Color opponent = Color(m_turn ^ 1);
+
+    // 1. Check if there are any attacking pawns
+    bitboard_t enpassantAttackers = getPawnAttacks(1LL << m_enPassantSquareCandidate, m_turn)
+                                    & m_bbTypedPieces[Piece::PAWN][opponent];
+    if(!enpassantAttackers)
+    {
+        return false;
+    }
+
+    m_findPinnedPieces();
+
+    // 2. Check if the double move gives discovered check.
+    //    Enpassant is never legal in this case
+    square_t opponentKingIdx = LS1B(m_bbTypedPieces[Piece::KING][opponent]);
+    bool discovery = (bbFrom & m_blockers[opponent]) && (FILE(move.from) != FILE(opponentKingIdx));
+    if(discovery)
+    {
+        return false;
+    }
+
+    // 3. If any of the attacking pawns are not blocking a check, enpassant is legal
+    bitboard_t nonBlockedAttackers = enpassantAttackers & ~m_blockers[opponent];
+    if(nonBlockedAttackers)
+    {
+        return true;
+    }
+
+    // 4. For blocked attackers, check if the enpassant square is between the pinner and the king
+    bitboard_t blockedAttackers = enpassantAttackers & m_blockers[opponent];
+    while(blockedAttackers)
+    {
+        square_t blocker = popLS1B(&blockedAttackers);
+        square_t pinner = m_pinnerBlockerIdxPairs[opponent][blocker];
+        if(getBetweens(opponentKingIdx, pinner) & (1LL << m_enPassantSquareCandidate))
+        {
+            return true;
+        }
+    }
+
+    // If non of the blocked attackers can perform the enpassant
+    // Enpassant is not legal
+    return false;
+}
 
 void Board::performMove(const Move move)
 {
     bitboard_t bbFrom = 0b1LL << move.from;
     bitboard_t bbTo = 0b1LL << move.to;
+    square_t oldEnPassantSquare = m_enPassantSquare;
+    square_t oldEnPassantTarget = m_enPassantTarget;
+    bitboard_t bbOldEnPassantTarget = m_bbEnPassantTarget;
+    Color opponent = Color(m_turn ^ 1);
+
+    // Reset enpassant squares
+    m_enPassantSquareCandidate = Square::NONE;
+    m_enPassantSquare = Square::NONE;
+    m_enPassantTarget = Square::NONE;
+    m_bbEnPassantSquare = 0LL;
+    m_bbEnPassantTarget = 0LL;
+
+    if(move.moveInfo & MoveInfoBit::DOUBLE_MOVE)
+    {
+        m_enPassantSquareCandidate = (move.to + move.from) >> 1; // Average of the two squares is the middle
+
+        // Check if enpassant is legal. This is needed to set the correct zobrist hash to detect repeats correctly.
+        // Enpassant will only make the position 'unique' if it allows the opponent to perform a different set of moves
+        if(m_isEnpassantLegalAfterMove(move))
+        {
+            m_enPassantTarget = move.to;
+            m_enPassantSquare = (move.to + move.from) >> 1; // Average of the two squares is the middle
+            m_bbEnPassantSquare = 1LL << m_enPassantSquare;
+            m_bbEnPassantTarget = 1LL << m_enPassantTarget;
+        }
+    }
 
     // Update the rook position in the case of castling
     if(move.isCastle())
@@ -1270,7 +1354,6 @@ void Board::performMove(const Move move)
     }
 
     // Remove potential captures
-    Color opponent = Color(m_turn ^ 1);
     if(m_bbAllPieces & bbTo)
     {
         m_bbColoredPieces[opponent] &= ~bbTo;
@@ -1278,10 +1361,10 @@ void Board::performMove(const Move move)
     }
     else if(move.moveInfo & MoveInfoBit::ENPASSANT)
     {
-        m_pieces[m_enPassantTarget] = NO_PIECE;
-        m_bbAllPieces &= ~m_bbEnPassantTarget;
-        m_bbColoredPieces[opponent] &= ~m_bbEnPassantTarget;
-        m_bbTypedPieces[Piece::PAWN][opponent] &= ~m_bbEnPassantTarget;
+        m_pieces[oldEnPassantTarget] = NO_PIECE;
+        m_bbAllPieces &= ~bbOldEnPassantTarget;
+        m_bbColoredPieces[opponent] &= ~bbOldEnPassantTarget;
+        m_bbTypedPieces[Piece::PAWN][opponent] &= ~bbOldEnPassantTarget;
     }
 
     // Move the pieces
@@ -1303,24 +1386,11 @@ void Board::performMove(const Move move)
         m_pieces[move.from] = NO_PIECE;
     }
 
-    square_t oldEnPassantSquare = m_enPassantSquare;
-    // Required to reset
-    m_enPassantSquare = Square::NONE;
-    m_enPassantTarget = Square::NONE;
-    m_bbEnPassantSquare = 0LL;
-    m_bbEnPassantTarget = 0LL;
-    if(move.moveInfo & MoveInfoBit::DOUBLE_MOVE)
-    {
-        m_enPassantTarget = move.to;
-        m_enPassantSquare = (move.to + move.from) >> 1; // Average of the two squares is the middle
-        m_bbEnPassantSquare = 1LL << m_enPassantSquare;
-        m_bbEnPassantTarget = 1LL << m_enPassantTarget;
-    }
-
     Zobrist::getUpdatedHashes(*this, move, oldEnPassantSquare, m_enPassantSquare, oldCastleRights, m_castleRights, m_hash, m_pawnHash, m_materialHash);
 
     m_moveset = MoveSet::NOT_GENERATED;
     m_captureInfoGenerated = MoveSet::NOT_GENERATED;
+    m_blockersGenerated = MoveSet::NOT_GENERATED;
     m_turn = opponent;
     m_kingIdx = LS1B(m_bbTypedPieces[Piece::KING][m_turn]);
     m_fullMoves += (m_turn == WHITE); // Note: turn is flipped
@@ -1341,6 +1411,7 @@ void Board::performMove(const Move move)
 void Board::performNullMove()
 {
     square_t oldEnPassantSquare = m_enPassantSquare;
+    m_enPassantSquareCandidate = Square::NONE;
     m_enPassantSquare = Square::NONE;
     m_enPassantTarget = Square::NONE;
     m_bbEnPassantSquare = 0LL;
@@ -1352,6 +1423,56 @@ void Board::performNullMove()
     m_kingIdx = LS1B(m_bbTypedPieces[Piece::KING][m_turn]);
     m_bbOpponentAttacks = 0LL;
     m_rule50++;
+
+    m_moveset = MoveSet::NOT_GENERATED;
+    m_captureInfoGenerated = MoveSet::NOT_GENERATED;
+    // Blockers and pinners are still the same
+}
+
+bool Board::isEnPassantPossible()
+{
+    if(m_enPassantSquare == Square::NONE)
+    {
+        return false;
+    }
+
+    Color opponent = Color(m_turn^1);
+
+    // Check if there are any attacking pawns
+    bitboard_t enpassantAttackers = getPawnAttacks(m_bbEnPassantSquare, opponent)
+            & m_bbTypedPieces[Piece::PAWN][m_turn];
+    if(!enpassantAttackers)
+    {
+        return false;
+    }
+
+    // Check if the we are in check
+    // If we are checked by a slider,
+    // the move double-move resulted in a discovered check and enpassant is not legal
+    bitboard_t snipers;
+    snipers =  getRookMoves(m_bbAllPieces, m_kingIdx)
+                & (m_bbTypedPieces[Piece::ROOK][opponent]   | m_bbTypedPieces[Piece::QUEEN][opponent]);
+    snipers |= getBishopMoves(m_bbAllPieces, m_kingIdx)
+                & (m_bbTypedPieces[Piece::BISHOP][opponent] | m_bbTypedPieces[Piece::QUEEN][opponent]);
+    if(snipers)
+    {
+        return false;
+    }
+
+    // Check if any of the enpassant attackers can perform the move without creating discovered check
+    m_findPinnedPieces();
+    while(enpassantAttackers)
+    {
+        square_t pawnIdx = popLS1B(&enpassantAttackers);
+        Move move = Move(pawnIdx, m_enPassantSquare, MoveInfoBit::CAPTURE_PAWN | MoveInfoBit::PAWN_MOVE | MoveInfoBit::ENPASSANT);
+        if(m_isLegalEnpassant(move))
+        {
+            return true;
+        }
+    }
+
+    // Non of the moves were legal
+    return false;
 }
 
 hash_t Board::getHash() const

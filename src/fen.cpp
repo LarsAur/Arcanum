@@ -226,6 +226,7 @@ bool FEN::m_setEnpassantTarget(Board& board, const std::string& fen, uint32_t& i
     const size_t length = fen.length();
 
     // Read enpassant square
+    board.m_enPassantSquareCandidate = Square::NONE;
     board.m_enPassantSquare = Square::NONE;
     board.m_enPassantTarget = Square::NONE;
     board.m_bbEnPassantSquare = 0LL;
@@ -267,6 +268,7 @@ bool FEN::m_setEnpassantTarget(Board& board, const std::string& fen, uint32_t& i
     }
 
     // Set the enpassant square
+    board.m_enPassantSquareCandidate = SQUARE(file, rank);
     board.m_enPassantSquare = SQUARE(file, rank);
     board.m_bbEnPassantSquare = SQUARE_BB(file, rank);
 
@@ -390,13 +392,23 @@ bool FEN::setFEN(Board& board, const std::string& fen, bool strict)
         ERROR("Unable to parse FEN: " << fen);
     }
 
-    Zobrist::getHashes(board, board.m_hash, board.m_pawnHash, board.m_materialHash);
-
     // Set cache to unknown
     board.m_moveset = Board::MoveSet::NOT_GENERATED;
     board.m_captureInfoGenerated = Board::MoveSet::NOT_GENERATED;
+    board.m_blockersGenerated = Board::MoveSet::NOT_GENERATED;
     board.m_kingIdx = LS1B(board.m_bbTypedPieces[Piece::KING][board.m_turn]);
     board.m_bbOpponentAttacks = 0LL;
+
+    // Check if enpassant is possible before generating the hash
+    if(!board.isEnPassantPossible())
+    {
+        board.m_enPassantSquare = Square::NONE;
+        board.m_enPassantTarget = Square::NONE;
+        board.m_bbEnPassantSquare = 0LL;
+        board.m_bbEnPassantTarget = 0LL;
+    }
+
+    Zobrist::getHashes(board, board.m_hash, board.m_pawnHash, board.m_materialHash);
 
     return success;
 }
@@ -454,8 +466,14 @@ std::string FEN::getFEN(const Board& board)
     if(board.m_castleRights == 0) str += "-";
 
     // Enpassant
-    if(board.m_enPassantSquare != Square::NONE) str += " " + squareToString(board.m_enPassantSquare) + " ";
-    else str += " - ";
+    if(board.m_enPassantSquareCandidate != Square::NONE)
+    {
+        str += " " + squareToString(board.m_enPassantSquareCandidate) + " ";
+    }
+    else
+    {
+        str += " - ";
+    }
 
     // Half moves
     str += std::to_string(unsigned(board.m_rule50)) + " ";

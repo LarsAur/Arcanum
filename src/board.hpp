@@ -26,6 +26,7 @@ namespace Arcanum
             uint8_t m_rule50;
             uint8_t m_castleRights;
             // set to 64 for invalid enpassant
+            square_t m_enPassantSquareCandidate;
             square_t m_enPassantSquare; // Square moved to when capturing
             square_t m_enPassantTarget; // Square of the captured piece
             bitboard_t m_bbEnPassantSquare; // Square moved to when capturing
@@ -55,6 +56,7 @@ namespace Arcanum
             };
             MoveSet m_moveset; // Which set moves are generated
             MoveSet m_captureInfoGenerated;
+            MoveSet m_blockersGenerated;
 
             friend class Zobrist;
             friend class FEN;
@@ -68,6 +70,7 @@ namespace Arcanum
             bool m_isLegalMove(Move move) const;
             bitboard_t m_getLeastValuablePiece(const bitboard_t mask, const Color color, Piece& piece) const;
             void m_findPinnedPieces();
+            bool m_isEnpassantLegalAfterMove(const Move& move);
 
             template <MoveInfoBit MoveType, MoveSet Set>
             void m_generateMoves();
@@ -118,5 +121,6 @@ namespace Arcanum
             std::string fen() const;
             bool isMaterialDraw() const;
             bool hasEasyCapture(Color turn) const;
+            bool isEnPassantPossible();
     };
 }
