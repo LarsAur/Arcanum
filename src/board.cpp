@@ -110,7 +110,7 @@ inline void Board::m_findPinnedPieces()
         while (snipers)
         {
             square_t sniperIdx = popLS1B(&snipers);
-            bitboard_t blockingSquares = getBetweens(kingIdx, sniperIdx) & occupancy;
+            bitboard_t blockingSquares = getBetweens(kingIdx, sniperIdx) & occupancy & ~(1LL << sniperIdx);
 
             if(CNTSBITS(blockingSquares) == 1)
             {
@@ -172,7 +172,7 @@ inline void Board::m_generateMoves()
         if((1LL << pieceIdx) & m_blockers[m_turn])
         {
             square_t pinnerIdx = m_pinnerBlockerIdxPairs[m_turn][pieceIdx];
-            targets &= getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx);
+            targets &= getBetweens(m_kingIdx, pinnerIdx);
         }
 
         while(targets)
@@ -343,7 +343,7 @@ inline bool Board::m_hasMove()
         if((1LL << pieceIdx) & m_blockers[m_turn])
         {
             square_t pinnerIdx = m_pinnerBlockerIdxPairs[m_turn][pieceIdx];
-            targets &= getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx);
+            targets &= getBetweens(m_kingIdx, pinnerIdx);
         }
 
         if(targets)
@@ -379,9 +379,8 @@ inline bool Board::m_isLegalEnpassant(Move move) const
 
     // Checking that if a blocker is moved, the piece is still blocking.
     // Have to check for blockers still blocking after move
-    // TODO: This can be replaced by a lookup table similar to between by containing the entire line
     square_t pinnerIdx = m_pinnerBlockerIdxPairs[m_turn][move.from];
-    if((getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx)) & bbTo)
+    if(getBetweens(m_kingIdx, pinnerIdx) & bbTo)
     {
         return true;
     }
@@ -412,9 +411,8 @@ inline bool Board::m_isLegalMove(Move move) const
 
     // Checking that if a blocker is moved, the piece is still blocking.
     // Have to check for blockers still blocking after move
-    // TODO: This can be replaced by a lookup table similar to between by containing the entire line
     square_t pinnerIdx = m_pinnerBlockerIdxPairs[m_turn][move.from];
-    if((getBetweens(pinnerIdx, m_kingIdx) | (1LL << pinnerIdx)) & bbTo)
+    if(getBetweens(m_kingIdx, pinnerIdx) & bbTo)
     {
         return true;
     }
@@ -550,9 +548,11 @@ Move* Board::getLegalMovesFromCheck()
 
     // -- The attacking piece is a sliding piece (Rook, Bishop or Queen)
 
-    // Create a blocking mask, consisting of all squares in which pieces can move to block attackers
-    bitboard_t blockingBetweenMask = getBetweens(attackerIdx, m_kingIdx);
-    bitboard_t blockingMask = attackers | blockingBetweenMask;
+    // Create a blocking mask, consisting of all squares in which pieces block or capture the attacker
+    bitboard_t blockingMask = getBetweens(m_kingIdx, attackerIdx);
+
+    // Blocking mask excluding the occupied squares. Used to check if pawn moves can block
+    bitboard_t blockingBetweenMask = blockingMask & ~m_bbAllPieces;
 
     // Queen moves
     bitboard_t queens = m_bbTypedPieces[Piece::QUEEN][m_turn];
@@ -1006,9 +1006,11 @@ bool Board::hasLegalMoveFromCheck()
 
     // -- The attacking piece is a sliding piece (Rook, Bishop or Queen)
 
-    // Create a blocking mask, consisting of all squares in which pieces can move to block attackers
-    bitboard_t blockingBetweenMask = getBetweens(m_kingIdx, attackerIdx);
-    bitboard_t blockingMask = attackers | blockingBetweenMask;
+    // Create a blocking mask, consisting of all squares in which pieces block or capture the attacker
+    bitboard_t blockingMask = getBetweens(m_kingIdx, attackerIdx);
+
+    // Blocking mask excluding the occupied squares. Used to check if pawn moves can block
+    bitboard_t blockingBetweenMask = blockingMask & ~m_bbAllPieces;
 
     // Queen moves
     bitboard_t queens = m_bbTypedPieces[Piece::QUEEN][m_turn];

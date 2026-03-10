@@ -113,9 +113,12 @@ namespace Arcanum
         return getRookMoves(allPiecesBitboard, queenIdx) | getBishopMoves(allPiecesBitboard, queenIdx);
     }
 
-    static inline bitboard_t getBetweens(const square_t fromIdx, const square_t toIdx)
+    // Returns a bitboard with all squares between 'from' and 'to'
+    // Excluding 'from' and including 'to'
+    // If 'from' and 'to' are not on the same rank, file or diagonal, 0 is returned
+    static inline bitboard_t getBetweens(const square_t from, const square_t to)
     {
-        return BitboardLookups::betweens[fromIdx][toIdx];
+        return BitboardLookups::betweens[from][to];
     }
 
     static std::string squareToString(square_t square)

@@ -32,8 +32,9 @@ void generateBetweensLookups()
             uint8_t toFile = FILE(to);
             uint8_t toRank = RANK(to);
 
-            // If not on the same rank, file or diagonal, set to zero.
-            BitboardLookups::betweens[from][to] = 0LL;
+            // Initialize with 'to' included.
+            // This is later cleared to 0 if 'from' and 'to' are not on the same line
+            BitboardLookups::betweens[from][to] |= (1LL << to);
 
             // Check if to and from are on the same rank or file
             if(toFile == fromFile)
@@ -69,14 +70,19 @@ void generateBetweensLookups()
                 {
                     uint8_t d = y2 - y1;
                     for(uint8_t i = 1; i < d; i++)
-                        BitboardLookups::betweens[from][to] |= SQUARE_BB(x1 + i, y1 + i);
+                    BitboardLookups::betweens[from][to] |= SQUARE_BB(x1 + i, y1 + i);
                 }
                 else // Down right
                 {
                     uint8_t d = y1 - y2;
                     for(uint8_t i = 1; i < d; i++)
-                        BitboardLookups::betweens[from][to] |= SQUARE_BB(x1 + i, y1 - i);
+                    BitboardLookups::betweens[from][to] |= SQUARE_BB(x1 + i, y1 - i);
                 }
+            }
+            else
+            {
+                // Not on the same line, so there are no squares in between
+                BitboardLookups::betweens[from][to] = 0LL;
             }
         }
     }
