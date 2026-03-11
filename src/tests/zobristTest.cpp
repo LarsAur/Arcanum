@@ -96,6 +96,60 @@ bool Test::runZobristTest()
         SUCCESS("Boards with different turns have different hashes")
     }
 
+    // Verify that the hash of a board with/without enpassant has different hash only when enpassant is legal
+
+    // Enpassant is legal
+    Board boardEp1 = Board("rnbqkbnr/1pp1pppp/p7/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3");
+    Board boardEp2 = Board("rnbqkbnr/1pp1pppp/p7/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3");
+    if(boardEp1.getHash() == boardEp2.getHash())
+    {
+        FAIL("Boards with and without enpassant have the same hash even though enpassant is legal")
+        return false;
+    }
+    else
+    {
+        SUCCESS("Boards with and without enpassant have different hashes when enpassant is legal")
+    }
+
+    // Enpassant is not legal because there are no attackers
+    boardEp1 = Board("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    boardEp2 = Board("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1");
+    if(boardEp1.getHash() != boardEp2.getHash())
+    {
+        FAIL("Boards with and without enpassant have different hash when enpassant is not legal due to no attackers")
+        return false;
+    }
+    else
+    {
+        SUCCESS("Boards with and without enpassant have the same hash when enpassant is not legal due to no attackers")
+    }
+
+    // Enpassant is not legal because it would cause a discovered check
+    boardEp1 = Board("1nbqkbnr/1pp1pppp/8/r1PpK3/8/p4P2/PP1PP1PP/RNBQ1BNR w k d6 0 8");
+    boardEp2 = Board("1nbqkbnr/1pp1pppp/8/r1PpK3/8/p4P2/PP1PP1PP/RNBQ1BNR w k - 0 8");
+    if(boardEp1.getHash() != boardEp2.getHash())
+    {
+        FAIL("Boards with and without enpassant have different hash when enpassant is not legal due to self checking")
+        return false;
+    }
+    else
+    {
+        SUCCESS("Boards with and without enpassant have the same hash when enpassant is not legal due to self checking")
+    }
+
+    // Enpassant is not allowed because it does not stop the king from being in check
+    boardEp1 = Board("rnbqkbnr/2p1pppp/8/1p1pPK2/8/p7/PPPP1PPP/RNBQ1BNR w kq d6 0 8");
+    boardEp2 = Board("rnbqkbnr/2p1pppp/8/1p1pPK2/8/p7/PPPP1PPP/RNBQ1BNR w kq - 0 8");
+    if(boardEp1.getHash() != boardEp2.getHash())
+    {
+        FAIL("Boards with and without enpassant have different hash when enpassant is not legal due to not stopping check")
+        return false;
+    }
+    else
+    {
+        SUCCESS("Boards with and without enpassant have the same hash when enpassant is not legal due to not stopping check")
+    }
+
     /////////////////// Recursive check of zobrist update vs zobrist initialization /////////////////
 
     // Test initial position
