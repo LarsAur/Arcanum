@@ -169,14 +169,18 @@ namespace Arcanum
 
                 for(uint32_t i = 0; i < cols * rows; i++)
                 {
+                    const float grad = gradient.m_data[i];
+
                     // M_t = B1 * M_t-1 + (1 - B1) * g_t
-                    m.m_data[i] = beta1 * m.m_data[i] + (1.0f - beta1) * gradient.m_data[i];
+                    float m_t = beta1 * m.m_data[i] + (1.0f - beta1) * grad;
+                    m.m_data[i] = m_t;
 
                     // v_t = B2 * v_t-1 + (1 - B2) * g_t^2
-                    v.m_data[i] = beta2 * v.m_data[i] + (1.0f - beta2) * gradient.m_data[i] * gradient.m_data[i];
+                    float v_t = beta2 * v.m_data[i] + (1.0f - beta2) * grad * grad;
+                    v.m_data[i] = v_t;
 
                     // net = net + M^_t / (sqrt(v^_t) + epsilon)
-                    m_data[i] += corrAlpha * m.m_data[i] / (std::sqrt(v.m_data[i]) + epsilon);
+                    m_data[i] += corrAlpha * m_t / (std::sqrt(v_t) + epsilon);
                 }
             }
 
