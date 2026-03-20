@@ -353,6 +353,8 @@ void NNUETrainer::m_logLoss(float epochLoss, uint64_t epochPosCount, float valid
 
 void NNUETrainer::train(TrainingParameters params)
 {
+    ENABLE_FTZ_AND_DAZ();
+
     constexpr uint32_t LoggingInterval = 200; // Number of batches between logging
 
     m_params = params;
@@ -498,6 +500,8 @@ void NNUETrainer::train(TrainingParameters params)
             INFO("Applying gamma scaling. New alpha: " << m_params.alpha)
         }
     }
+
+    DISABLE_FTZ_AND_DAZ();
 }
 
 NNUETrainer::Net* NNUETrainer::getNet()

@@ -120,4 +120,27 @@ namespace Arcanum
             return _rotl64(v, shift);
         #endif
     }
+
+    inline void ENABLE_FTZ_AND_DAZ()
+    {
+        #if __x86_64__
+        INFO("Enabling flush denormals to zero (FTZ) and denormals are zero (DAZ)")
+        // FTZ (bit 15) and DAZ (bit 6) in MXCSR avoid denormal slowdowns.
+        uint32_t mxcsr = _mm_getcsr();
+        mxcsr |= (1u << 15); // FTZ
+        mxcsr |= (1u << 6);  // DAZ
+        _mm_setcsr(mxcsr);
+        #endif
+    }
+
+    inline void DISABLE_FTZ_AND_DAZ()
+    {
+        #if __x86_64__
+        INFO("Disabling flush denormals to zero (FTZ) and denormals are zero (DAZ)")
+        uint32_t mxcsr = _mm_getcsr();
+        mxcsr &= ~(1u << 15); // FTZ
+        mxcsr &= ~(1u << 6);  // DAZ
+        _mm_setcsr(mxcsr);
+        #endif
+    }
 }
