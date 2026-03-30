@@ -544,9 +544,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             // Prune quiet positions with low history scores
             // Note that we keep counter moves and killer moves
             // in case they have a low history score
-            if(depth < 4
-            && move->isQuiet()
-            && (m_heuristics.quietHistory.get(*move, board.getTurn()) < (-3000 * depth))
+
+            int32_t historyScore = m_heuristics.quietHistory.get(*move, board.getTurn())
+            + m_heuristics.continuationHistory.get(m_searchStacks.moves, plyFromRoot, *move, board.getTurn());
+
+            if( move->isQuiet()
+            && (historyScore < -3000 * depth)
             && !m_heuristics.killerManager.contains(*move, plyFromRoot)
             && !m_heuristics.counterManager.contains(*move, prevMove, board.getTurn())
             && (moveNumber != 0))
