@@ -107,8 +107,10 @@ inline eval_t TranspositionTable::m_fromTTEval(eval_t eval, uint8_t plyFromRoot)
 
 void TranspositionTable::prefetch(hash_t hash)
 {
-    if(m_table)
-        _mm_prefetch(m_table + m_getClusterIndex(hash), _MM_HINT_T0);
+    if(m_table != nullptr)
+    {
+        _mm_prefetch(&m_table[m_getClusterIndex(hash)], _MM_HINT_T0);
+    }
 }
 
 void TranspositionTable::incrementGeneration()
@@ -118,8 +120,10 @@ void TranspositionTable::incrementGeneration()
 
 std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
 {
-    if(!m_table)
+    if(m_table == nullptr)
+    {
         return {};
+    }
 
     TTCluster* clusterPtr = static_cast<TTCluster*>(__builtin_assume_aligned(m_table + m_getClusterIndex(hash), CACHE_LINE_SIZE));
     TTCluster cluster = *clusterPtr;
@@ -148,8 +152,10 @@ std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
 
 void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t rawEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
 {
-    if(!m_table)
+    if(m_table == nullptr)
+    {
         return;
+    }
 
     TTCluster* cluster = &m_table[m_getClusterIndex(hash)];
 
