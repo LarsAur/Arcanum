@@ -56,6 +56,8 @@ void logToFile(std::string str);
 
 #define __PADDED_LOCATION__ std::setw(FILENAME_FIELD_WIDTH) << std::left << std::string(__FILENAME__) + ":" + std::to_string(__LINE__)
 
+#define HEX(_num) "0x" << std::hex << _num << std::dec
+
 #ifndef DISABLE_DEBUG
     #ifndef LOG_FILE_NAME
         #define DEBUG(_str) std::cout << DEBUG_COLOR << "[DEBUG]   " << DEFAULT_COLOR << "[" << __PADDED_LOCATION__ << "] " << _str << std::endl;
