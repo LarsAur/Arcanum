@@ -115,7 +115,7 @@ void TranspositionTable::prefetch(hash_t hash)
 
 void TranspositionTable::incrementGeneration()
 {
-    m_generation = (m_generation < UINT8_MAX) ? m_generation + 1 : m_generation;
+    m_generation = (m_generation + 1) & TTEntry::MaxGeneration; // Wrap around after reaching the max generation
 }
 
 std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
@@ -192,7 +192,7 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
     // Check if the new entry can/should be placed into the cluster
     // Find the entry with the lowest priority, and replace it if the new entry has a higher priority
     TTEntry *replace = nullptr;
-    int32_t lowestPriority = newEntry.getPriority();
+    int32_t lowestPriority = newEntry.getPriority(m_generation);
     for(size_t i = 0; i < NumClusterEntries; i++)
     {
         TTEntry* oldEntry = &cluster->entries[i];
@@ -206,7 +206,7 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
             return;
         }
 
-        int32_t priority = oldEntry->getPriority();
+        int32_t priority = oldEntry->getPriority(m_generation);
         if(priority < lowestPriority)
         {
             lowestPriority = priority;

@@ -25,6 +25,7 @@ namespace Arcanum
         static constexpr hash_t PvMask   = 0x1;
         static constexpr hash_t NumPiecesMask = 0b111110;
         static constexpr hash_t TTFlagMask = 0b11000000;
+        static constexpr uint8_t MaxGeneration = 0xff;
 
         uint8_t depth;
         uint8_t generation;
@@ -54,9 +55,16 @@ namespace Arcanum
         }
 
         // Returns how valuable it is to keep the entry in TT
-        inline int32_t getPriority() const
+        inline int32_t getPriority(uint8_t currentGeneration) const
         {
-            return depth + generation;
+            return depth - getAge(currentGeneration);
+        }
+
+        inline int8_t getAge(uint8_t currentGeneration) const
+        {
+            // Find the age of the entry with respect to the current generation
+            // This supports warp around for the generation counter
+            return (MaxGeneration + 1 + currentGeneration - generation) & MaxGeneration;
         }
 
         inline PackedMove getPackedMove() const
