@@ -249,7 +249,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         return 0;
     }
 
-    m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, rawEval, ttFlag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+    m_tt.add(bestScore, bestMove, isPv, 0, plyFromRoot, rawEval, ttFlag, board.getHash());
 
     return bestScore;
 }
@@ -356,7 +356,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             if((tbFlag == TTFlag::EXACT) || (tbFlag == TTFlag::LOWER_BOUND ? tbScore >= beta : tbScore <= alpha))
             {
                 // TODO: Might be some bad effects of using tbScore as static eval. Add some value for unknown score.
-                m_tt.add(tbScore, NULL_MOVE, isPv, depth, plyFromRoot, tbScore, tbFlag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+                m_tt.add(tbScore, NULL_MOVE, isPv, depth, plyFromRoot, tbScore, tbFlag, board.getHash());
                 return tbScore;
             }
 
@@ -735,7 +735,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(bestScore <= originalAlpha) flag = TTFlag::UPPER_BOUND;
         else if(bestScore >= beta)     flag = TTFlag::LOWER_BOUND;
 
-        m_tt.add(bestScore, bestMove, isPv, depth, plyFromRoot, rawEval, flag, m_numPiecesRoot, board.getNumPieces(), board.getHash());
+        m_tt.add(bestScore, bestMove, isPv, depth, plyFromRoot, rawEval, flag, board.getHash());
 
         if (!board.isChecked() && !bestMove.isCapture() && ((flag == TTFlag::EXACT) || (flag == (bestScore >= staticEval ? TTFlag::LOWER_BOUND : TTFlag::UPPER_BOUND)))) {
             m_heuristics.correctionHistory.update(board, bestScore, staticEval, depth);
@@ -792,7 +792,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_parameters.depth = std::clamp(m_parameters.depth, 1u, MaxSearchDepth - 1);
 
     m_tt.incrementGeneration();
-    m_numPiecesRoot = board.getNumPieces();
     m_timer.start();
 
     // Copy the search moves from the parameters
@@ -935,7 +934,7 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         }
 
         // Store the result in the transposition table
-        m_tt.add(searchScore, searchBestMove, true, depth, 0, rawEval, TTFlag::EXACT, m_numPiecesRoot, m_numPiecesRoot, board.getHash());
+        m_tt.add(searchScore, searchBestMove, true, depth, 0, rawEval, TTFlag::EXACT, board.getHash());
     }
 
     m_stats.nodes += m_numNodesSearched;

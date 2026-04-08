@@ -148,7 +148,6 @@ namespace Arcanum
             MoveOrderHeuristics m_heuristics;
             PvTable m_pvTable;
             SearchParameters m_parameters;
-            uint8_t m_numPiecesRoot; // Number of pieces in the root of the search
             SearchStats m_stats;
             uint64_t m_tbHits;
             uint64_t m_numNodesSearched; // Number of nodes searched in a search call. Used to terminate search based on number of nodes.

@@ -150,7 +150,7 @@ std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
     return {}; // Return empty optional
 }
 
-void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t rawEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash)
+void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t rawEval, TTFlag flag, hash_t hash)
 {
     if(m_table == nullptr)
     {
@@ -159,7 +159,7 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
 
     TTCluster* cluster = &m_table[m_getClusterIndex(hash)];
 
-    TTEntry newEntry(hash, move, eval, rawEval, depth, m_generation, numPieces, isPv, flag);
+    TTEntry newEntry(hash, move, eval, rawEval, depth, m_generation, isPv, flag);
 
     // Adjust the mate score based on plyFromRoot to make the score represent the mate distance from this position
     // Note: This is also done for rawEval eval as it could be a TB mate score
@@ -168,12 +168,21 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
 
     m_stats.entriesAdded++;
 
-    // Check if the entry is already in the cluster
-    // If so, try to update it
+    // Check if the entry is already in the cluster,
+    // or if there is an invalid entry where the new entry can be placed
     for(size_t i = 0; i < NumClusterEntries; i++)
     {
         TTEntry oldEntry = cluster->entries[i];
-        if(oldEntry.isValid() && (oldEntry.getHash() == newEntry.getHash()))
+
+        if(!oldEntry.isValid())
+        {
+            cluster->entries[i] = newEntry;
+            return;
+        }
+
+        // If the entry is valid and has the same hash,
+        // to update it if we consider it to have better information
+        if(oldEntry.getHash() == newEntry.getHash())
         {
             if((oldEntry.depth < newEntry.depth) || (oldEntry.isPv() < newEntry.isPv()))
             {
@@ -184,7 +193,6 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
             {
                 m_stats.blockedUpdates++;
             }
-
             return;
         }
     }
@@ -196,15 +204,6 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
     for(size_t i = 0; i < NumClusterEntries; i++)
     {
         TTEntry* oldEntry = &cluster->entries[i];
-
-        // Prioritize replacing empty entries
-        // Or positions which cannot be hit again (safe replacement)
-        if(!oldEntry->isValid() || (oldEntry->getNumPieces() > numPiecesRoot))
-        {
-            m_stats.replacements += oldEntry->isValid();
-            *oldEntry = newEntry;
-            return;
-        }
 
         int32_t priority = oldEntry->getPriority(m_generation);
         if(priority < lowestPriority)
@@ -219,11 +218,10 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
     {
         *replace = newEntry;
         m_stats.replacements++;
+        return;
     }
-    else
-    {
-        m_stats.blockedReplacements++;
-    }
+
+    m_stats.blockedReplacements++;
 }
 
 // Note: If the table has been resized to a smaller table, the stats may not be entirely accurate.

@@ -20,14 +20,13 @@ namespace Arcanum
 
         // Note: For the hash, the LSB does not matter as much as hashes
         // placed in the same cluster will have the same LSBs of the hash
-        // In fact, for the smallest non-zero TT (1MB) the 15 LSBs will match in each cluster
-        static constexpr hash_t  HashMask        = 0xFFFFFFFFFFFFC000;
+        // In fact, for the smallest non-zero TT (1MB) the 15 LSBs will match in each cluster:
+        // 1024*1024 bytes / 32 bytes per cluster = 32768 clusters. Log2(32768) = 15
+        static constexpr hash_t  HashMask        = 0xFFFFFFFFFFFF8000;
         static constexpr hash_t  PvMask          = 0b1;
         static constexpr uint8_t PvOffset        = 0;
-        static constexpr hash_t  NumPiecesMask   = 0b111110;
-        static constexpr uint8_t NumPiecesOffset = 1;
-        static constexpr hash_t  TTFlagMask      = 0b11000000;
-        static constexpr uint8_t TTFlagOffset    = 6;
+        static constexpr hash_t  TTFlagMask      = 0b110;
+        static constexpr uint8_t TTFlagOffset    = 1;
         static constexpr uint8_t MaxGeneration   = 0xff;
 
         // Total 16 bytes
@@ -36,7 +35,7 @@ namespace Arcanum
         eval_t eval;               // 2 bytes
         eval_t rawEval;            // 2 bytes
         PackedMove packedMove;     // 2 bytes
-        hash_t _hashNpFlagAndIsPv; // 8 bytes: [50 bits: hash | 2 bits: TT Flag | 5 bits: numPieces-2 | 1 bit: isPv]
+        hash_t _hashNpFlagAndIsPv; // 8 bytes: [49 bits: hash | 12 bits: unused | 2 bits: TT Flag | 1 bit: isPv]
 
         TTEntry(
             hash_t hash,
@@ -45,7 +44,6 @@ namespace Arcanum
             eval_t rawEval,
             uint8_t depth,
             uint8_t generation,
-            uint8_t numPieces,
             bool isPv,
             TTFlag flag
         ) :
@@ -57,7 +55,6 @@ namespace Arcanum
         {
             _hashNpFlagAndIsPv = (hash & HashMask)
             | (static_cast<hash_t>(flag) << TTFlagOffset)
-            | (static_cast<hash_t>(numPieces-2) << NumPiecesOffset)
             | (static_cast<hash_t>(isPv) << PvOffset);
         }
 
@@ -87,11 +84,6 @@ namespace Arcanum
         inline TTFlag getTTFlag() const
         {
             return TTFlag((_hashNpFlagAndIsPv & TTFlagMask) >> TTFlagOffset);
-        }
-
-        inline uint8_t getNumPieces() const
-        {
-            return static_cast<uint8_t>((_hashNpFlagAndIsPv & NumPiecesMask) >> NumPiecesOffset) + 2;
         }
 
         inline bool isPv() const
@@ -162,7 +154,7 @@ namespace Arcanum
             void prefetch(hash_t hash);
             void incrementGeneration();
             std::optional<TTEntry> get(hash_t hash, uint8_t plyFromRoot);
-            void add(eval_t score, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t rawEval, TTFlag flag, uint8_t numPiecesRoot, uint8_t numPieces, hash_t hash);
+            void add(eval_t score, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t rawEval, TTFlag flag, hash_t hash);
             void resize(uint32_t mbSize);
             void clear();
             void clearStats();
