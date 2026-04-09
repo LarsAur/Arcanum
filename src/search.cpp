@@ -355,8 +355,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
             if((tbFlag == TTFlag::EXACT) || (tbFlag == TTFlag::LOWER_BOUND ? tbScore >= beta : tbScore <= alpha))
             {
-                // TODO: Might be some bad effects of using tbScore as static eval. Add some value for unknown score.
-                m_tt.add(tbScore, NULL_MOVE, isPv, depth, plyFromRoot, tbScore, tbFlag, board.getHash());
+                // Use a somewhat higher depth for the TB score in the TT,
+                // Both to give it priority and to make it useful for following iterations
+                uint8_t tbDepth = std::min(uint8_t(depth + 6), uint8_t(MaxSearchDepth));
+                eval_t rawEval = m_evaluator.evaluate(board, plyFromRoot);
+                m_tt.add(tbScore, NULL_MOVE, isPv, tbDepth, plyFromRoot, rawEval, tbFlag, board.getHash());
                 return tbScore;
             }
 
