@@ -9,7 +9,7 @@ namespace Arcanum
     {
         private:
             static constexpr uint32_t TableSize = 2*64*64;
-            //  [MovedColor][MovedFrom][MovedTo][CapturedPiece]
+            //  [MovedColor][MovedFrom][MovedTo]
             int32_t* m_historyScore; // History: Count the number of times the move did cause a Beta-cut
             uint32_t m_getIndex(Color turn, square_t from, square_t to);
             int32_t m_getBonus(uint8_t depth);
