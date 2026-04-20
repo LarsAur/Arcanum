@@ -257,14 +257,14 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 template <bool isPv>
 eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove)
 {
-    if(m_shouldStop())
-    {
-        return 0;
-    }
-
     if(depth <= 0)
     {
         return m_alphaBetaQuiet<isPv>(board, alpha, beta, plyFromRoot);
+    }
+
+    if(m_shouldStop())
+    {
+        return 0;
     }
 
     m_numNodesSearched++;
