@@ -223,14 +223,14 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
             bestMove = *move;
         }
 
-        if(bestScore >= alpha)
+        if(score >= alpha)
         {
             if constexpr(isPv)
             {
                 m_pvTable.updatePv(*move, plyFromRoot);
                 ttFlag = TTFlag::EXACT;
             }
-            alpha = bestScore;
+            alpha = score;
         }
 
         if(alpha >= beta)
