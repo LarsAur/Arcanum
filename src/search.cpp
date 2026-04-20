@@ -584,7 +584,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         eval_t score;
 
         // Extend search when only a single move is available
-        uint8_t extension = numMoves == 1;
+        uint8_t extension = (numMoves == 1);
 
         // Singular extension
         if(
@@ -626,11 +626,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         m_searchStacks.moves[plyFromRoot] = *move;
 
         int32_t newDepth = depth + extension - 1;
-        totalExtensions += extension;
+        uint8_t newTotalExtensions = totalExtensions + extension;
 
         if(moveNumber == 0)
         {
-            score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, newDepth, plyFromRoot + 1, !(isPv | cutnode), totalExtensions);
+            score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, newDepth, plyFromRoot + 1, !(isPv | cutnode), newTotalExtensions);
         }
         else
         {
@@ -650,21 +650,21 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
             int32_t reducedDepth = newDepth - R;
 
-            score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, reducedDepth, plyFromRoot + 1, !cutnode, totalExtensions);
+            score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, reducedDepth, plyFromRoot + 1, !cutnode, newTotalExtensions);
             m_stats.researchesRequired += score > alpha && (isPv || newDepth > reducedDepth);
             m_stats.nullWindowSearches += 1;
 
             // Potential research of LMR returns a score > alpha
             if(score > alpha && newDepth > reducedDepth)
             {
-                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, newDepth, plyFromRoot + 1, !cutnode, totalExtensions);
+                score = -m_alphaBeta<false>(newBoard, -alpha - 1, -alpha, newDepth, plyFromRoot + 1, !cutnode, newTotalExtensions);
                 m_stats.researchesRequired += score > alpha && isPv;
                 m_stats.nullWindowSearches += 1;
             }
 
             if(score > alpha && isPv)
             {
-                score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, newDepth, plyFromRoot + 1, false, totalExtensions);
+                score = -m_alphaBeta<isPv>(newBoard, -beta, -alpha, newDepth, plyFromRoot + 1, false, newTotalExtensions);
             }
         }
 
