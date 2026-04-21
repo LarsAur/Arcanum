@@ -30,6 +30,12 @@ NNUEParser::~NNUEParser()
 
 uint32_t NNUEParser::m_getU32()
 {
+    if(m_offset + sizeof(uint32_t) > m_size)
+    {
+        ERROR("Cannot read 4 bytes from offset " << m_offset << ". Filesize: " << m_size)
+        return 0;
+    }
+
     uint32_t u32 = *reinterpret_cast<const uint32_t*>(m_data + m_offset);
     m_offset += sizeof(uint32_t);
     return u32;
@@ -48,6 +54,12 @@ bool NNUEParser::m_readHeader()
         return false;
     }
 
+    if(m_offset + sizeof(char) * expMagicSize > m_size)
+    {
+        ERROR("Cannot read " << sizeof(char) * expMagicSize << " bytes from offset " << m_offset << ". Filesize: " << m_size)
+        return false;
+    }
+
     std::string magic(m_data + m_offset, expMagicSize);
     m_offset += sizeof(char) * expMagicSize;
     if(magic != NNUEMagic)
@@ -57,6 +69,11 @@ bool NNUEParser::m_readHeader()
     }
 
     uint32_t metadataSize = m_getU32();
+    if(m_offset + sizeof(char) * metadataSize > m_size)
+    {
+        ERROR("Cannot read " << sizeof(char) * metadataSize << " bytes from offset " << m_offset << ". Filesize: " << m_size)
+        return false;
+    }
     std::string metadata(m_data + m_offset, metadataSize);
     m_offset += sizeof(char) * metadataSize;
 
@@ -68,6 +85,11 @@ bool NNUEParser::m_readHeader()
 
 bool NNUEParser::load(const std::string& filename)
 {
+    if(m_dataAllocated)
+    {
+        delete[] m_data;
+    }
+
     DEBUG("Reading NNUE: " << filename)
     #ifdef ENABLE_INCBIN
     if(filename == TOSTRING(DEFAULT_NNUE))
