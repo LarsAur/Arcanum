@@ -40,7 +40,7 @@ void Searcher::m_initializeTables()
             }
             else
             {
-                m_lmrReductions[d * MaxMoveCount + m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 4));
+                m_lmrReductions[d * MaxMoveCount + m] = static_cast<uint8_t>((std::log2(m) * std::log2(d) / 3));
             }
         }
     }
@@ -516,6 +516,13 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             continue;
         }
 
+        int32_t historyScore = 0;
+        if(move->isQuiet())
+        {
+            historyScore = m_heuristics.quietHistory.get(*move, board.getTurn())
+                         + m_heuristics.continuationHistory.get(m_searchStacks.moves, plyFromRoot, *move, board.getTurn());
+        }
+
         if(!m_datagenMode
         && !isPv
         && board.hasOfficers(board.getTurn())
@@ -547,10 +554,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
             // Prune quiet positions with low history scores
             // Note that we keep counter moves and killer moves
             // in case they have a low history score
-
-            int32_t historyScore = m_heuristics.quietHistory.get(*move, board.getTurn())
-            + m_heuristics.continuationHistory.get(m_searchStacks.moves, plyFromRoot, *move, board.getTurn());
-
             if( move->isQuiet()
             && (historyScore < -3000 * depth)
             && !m_heuristics.killerManager.contains(*move, plyFromRoot)
@@ -643,6 +646,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                 R -= newBoard.isChecked();
                 R -= m_heuristics.killerManager.contains(*move, plyFromRoot);
                 R -= m_heuristics.counterManager.contains(*move, prevMove, board.getTurn());
+                R -= historyScore / 8000;
                 R += cutnode;
                 R -= isPv;
                 R = std::max(int8_t(0), R);
