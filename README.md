@@ -4,7 +4,7 @@
 
 ## Overview
 Arcanum is a free [UCI][uci-protocol] chess engine under the GPL-3.0 license.
-Arcanum v2.6 has a rating of 3331 Elo in blitz on [CCRL][ccrl].
+Arcanum v2.7 has a rating of 3418 Elo in blitz on [CCRL][ccrl].
 
 ## Building
 Arcanum requires `c++17` and has only been tested using `clang++`. It can be compiled on Windows (Tested for Windows 11 using MinGW), and Linux (Tested for Ubuntu 22.04). Arcanum takes advantage of and requires some x86 intrinsics: `AVX2`, `FMA`, `BMI1`, `BMI2` `POPCNT` and `LZCNT`.
@@ -37,7 +37,7 @@ This creates a clean build named `<executable-name>` with version `<version>` wh
 
 ## NNUE
 Arcanum has a floating point [NNUE][nnue] which is quantized at runtime. \
-The architecture is `768->8x(512->16->1)`, where the feature set is 'flipped' based on the perspective rather than having two feature transformers.
+The architecture is `768->1024->1`, where the feature set is 'flipped' based on the perspective rather than having two feature transformers.
 The output buckets are selected based on the number of pieces left on the board.
 
 Both the inference and backpropagation is written from scratch and requires AVX2.
@@ -76,6 +76,7 @@ All of the following UCI options are available in Arcanum.
 
 | Version | CCRL[^1] Blitz | CCRL[^1] 40/15 | CEGT[^2] 40/20 |
 |---------|------------|------------|------------|
+| 2.7     | 3418       | 3377       | 3301       |
 | 2.6     | 3331	     | 3325       | 3250       |
 | 2.5     | 3278       | 3273       | 3181       |
 | 2.4     | 3198       | 3210       |            |
