@@ -154,7 +154,6 @@ namespace Arcanum
             uint8_t m_seldepth;
             uint32_t m_rootDepth;
             bool m_verbose; // Print use output and stats while searching
-            bool m_datagenMode; // Disable certain search optimizations for better data generation
             volatile bool m_stopSearch;
 
             eval_t m_adjustEval(eval_t rawEval, Board& board);
@@ -176,7 +175,6 @@ namespace Arcanum
             void resizeTT(uint32_t mbSize);
             void clear();
             void setVerbose(bool enable);
-            void setDatagenMode(bool enable);
             SearchStats getStats();
             void logStats();
             std::unordered_map<hash_t, uint8_t, HashFunction>& getHistory();

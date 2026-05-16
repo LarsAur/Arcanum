@@ -85,7 +85,6 @@ void Fengen::start(FengenParameters params)
         runner.setSearchParameters(searchParams);
         runner.setRandomSeed(time(nullptr) + id * 1000);
         runner.setTTSize(params.ttSize);
-        runner.setDatagenMode(true);
 
         while (fenCount < params.numFens)
         {

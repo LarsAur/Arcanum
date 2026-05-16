@@ -13,8 +13,7 @@ Searcher::Searcher(bool verbose) :
 m_tt(TranspositionTable()),
 m_pvTable(PvTable(MaxSearchPly)),
 m_stats(SearchStats()),
-m_verbose(verbose),
-m_datagenMode(false)
+m_verbose(verbose)
 {
     m_lmrReductions = new uint8_t[MaxSearchDepth * MaxMoveCount];
     ASSERT_OR_EXIT(m_lmrReductions != nullptr, "Failed to allocate memory for LMR reductions")
@@ -63,11 +62,6 @@ inline uint8_t Searcher::m_getReduction(uint8_t depth, uint8_t moveNumber) const
 void Searcher::setVerbose(bool enable)
 {
     m_verbose = enable;
-}
-
-void Searcher::setDatagenMode(bool enable)
-{
-    m_datagenMode = enable;
 }
 
 void Searcher::resizeTT(uint32_t mbSize)
@@ -523,8 +517,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
                          + m_heuristics.continuationHistory.get(m_searchStacks.moves, plyFromRoot, *move, board.getTurn());
         }
 
-        if(!m_datagenMode
-        && !isPv
+        if(!isPv
         && board.hasOfficers(board.getTurn())
         && !Evaluator::isLosingScore(bestScore))
         {
