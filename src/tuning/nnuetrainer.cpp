@@ -288,7 +288,7 @@ std::tuple<float, float> NNUETrainer::m_getValidationLoss(const std::string& fil
     while(i < m_params.validationSize)
     {
         Board *board = loader.getNextBoard();
-        eval_t cp = loader.getScore();
+        float cp = static_cast<float>(loader.getScore());
         Move move = loader.getMove();
         GameResult result = loader.getResult();
 
@@ -300,7 +300,7 @@ std::tuple<float, float> NNUETrainer::m_getValidationLoss(const std::string& fil
         i++;
 
         float out = m_predict(*board);
-        eval_t qout = nnue.predictBoard(*board);
+        float qout = static_cast<float>(nnue.predictBoard(*board));
 
         // Set Win-Draw-Loss target based on result
         // Normalize from [-1, 1] to [0, 1]
