@@ -14,6 +14,20 @@ namespace Arcanum
             {
                 std::string token = std::string(argv[index]);
                 toLowerCase(token);
+
+                // Singular pattern match (e.g., --flag)
+                if constexpr (std::is_same_v<T, bool>)
+                {
+                    if(pattern == token)
+                    {
+                        index++; // Only increment if the pattern matches
+                        out = true;
+                        return true;
+                    }
+                    return false;
+                }
+
+                // Pattern match with value (e.g., --option value)
                 if(pattern == token && index + 1 < argc)
                 {
                     index++; // Only increment if the pattern matches
@@ -35,7 +49,7 @@ namespace Arcanum
                     }
                     else if constexpr (std::is_same_v<T, int16_t>)
                     {
-                        out = std::stoul(std::string(argv[index++]));
+                        out = static_cast<int16_t>(std::stoul(std::string(argv[index++])));
                     }
                     else
                     {

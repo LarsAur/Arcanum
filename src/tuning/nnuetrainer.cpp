@@ -236,6 +236,11 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
 // Returns true if the position should be skipped / filtered out
 bool NNUETrainer::m_shouldFilterPosition(Board& board, Move& move, eval_t eval)
 {
+    if(!m_params.filter)
+    {
+        return false;
+    }
+
     // Filter out very high scoring positions
     if(std::abs(eval) > 10000)
     {

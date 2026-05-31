@@ -121,6 +121,7 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
     params.lambda         = 1.0f;        // Weighting between wdlTarget and cpTarget in loss function 1.0 = 100% cpTarget 0.0 = 100% wdlTarget
     params.gamma          = 1.0f;        // Scaling of learning rate over epochs
     params.gammaSteps     = 1;           // How often to apply gamma scaling
+    params.filter         = false;       // If true, checked positions, positions with captures as best move, or positions with very high evals are filtered out.
 
     int index = 2; // Skip the executable name and command
 
@@ -138,6 +139,7 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
         if(matchAndParseArg("--lambda",         params.lambda,          argc, argv, index)) { continue; }
         if(matchAndParseArg("--gamma",          params.gamma,           argc, argv, index)) { continue; }
         if(matchAndParseArg("--gammasteps",     params.gammaSteps,      argc, argv, index)) { continue; }
+        if(matchAndParseArg("--filter",         params.filter,          argc, argv, index)) { continue; }
 
         ERROR("Unknown argument: " << argv[index])
         return false;
@@ -181,6 +183,7 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
         INFO("Lambda:            " << params.lambda)
         INFO("Gamma:             " << params.gamma)
         INFO("Gamma steps:       " << params.gammaSteps)
+        INFO("Filter positions:  " << (params.filter ? "true" : "false"))
 
         NNUETrainer trainer;
         trainer.train(params);
