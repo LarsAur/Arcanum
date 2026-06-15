@@ -29,13 +29,11 @@ else
 FILENAME = $(ENGINENAME)
 endif
 
-rwildcard=$(wildcard $1$2) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/,$2))
-SOURCES := $(call rwildcard, $(SOURCEDIR)/, %.cpp)          # Recursive search all files in source directory
-SOURCES := $(filter-out %/LICENSE, $(SOURCES))              # LICENSE
-HEADERS := $(filter %.hpp, $(SOURCES))                      # Find all headers
-SOURCES := $(filter-out %.hpp, $(SOURCES))                  # Filter out header files
-SOURCES := $(filter-out %/, $(SOURCES))                     # Filter out folder
-OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))   # Create list of all object files
+rwildcard=$(wildcard $1) $(foreach d,$(wildcard $1*),$(call rwildcard,$d/))
+ALL_FILES := $(call rwildcard, $(SOURCEDIR)/)				# Recursive search all files in source directory
+SOURCES := $(filter %.cpp, $(ALL_FILES))					# Find all .cpp files
+HEADERS := $(filter %.hpp, $(ALL_FILES))					# Find all .hpp files
+OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))	# Create list of all object files
 
 .PHONY: uci run test perf release
 
