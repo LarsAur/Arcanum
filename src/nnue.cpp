@@ -116,24 +116,31 @@ void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
     FullFeatureSet featureSet;
     findFullFeatureSet(board, featureSet);
 
-    __m256i* wacc = (__m256i*) acc->acc[Color::WHITE];
-    __m256i* bacc = (__m256i*) acc->acc[Color::BLACK];
+    __m256i* wacc = reinterpret_cast<__m256i*>(acc->acc[Color::WHITE]);
+    __m256i* bacc = reinterpret_cast<__m256i*>(acc->acc[Color::BLACK]);
+    const __m256i* biases = reinterpret_cast<const __m256i*>(m_net->ftBiases);
+
 
     for(uint32_t i = 0; i < NumChunks; i++)
     {
-        *(wacc + i) = _mm256_load_si256(((__m256i*) (m_net->ftBiases)) + i);
-        *(bacc + i) = _mm256_load_si256(((__m256i*) (m_net->ftBiases)) + i);
+        const __m256i bias = _mm256_load_si256(biases + i);
+        _mm256_store_si256(wacc + i, bias);
+        _mm256_store_si256(bacc + i, bias);
     }
 
     for(uint32_t i = 0; i < featureSet.numFeatures; i++)
     {
         uint32_t wfindex = featureSet.features[Color::WHITE][i];
         uint32_t bfindex = featureSet.features[Color::BLACK][i];
+        const __m256i* wbase = reinterpret_cast<const __m256i*>(&m_net->ftWeights[wfindex * L1Size]);
+        const __m256i* bbase = reinterpret_cast<const __m256i*>(&m_net->ftWeights[bfindex * L1Size]);
 
         for(uint32_t j = 0; j < NumChunks; j++)
         {
-            *(wacc + j) = _mm256_add_epi16(*(wacc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[wfindex*L1Size])) + j));
-            *(bacc + j) = _mm256_add_epi16(*(bacc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[bfindex*L1Size])) + j));
+            const __m256i wsum = _mm256_add_epi16(_mm256_load_si256(wacc + j), _mm256_load_si256(wbase + j));
+            const __m256i bsum = _mm256_add_epi16(_mm256_load_si256(bacc + j), _mm256_load_si256(bbase + j));
+            _mm256_store_si256(wacc + j, wsum);
+            _mm256_store_si256(bacc + j, bsum);
         }
     }
 }
