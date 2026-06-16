@@ -3,6 +3,7 @@
 #include <tuning/fengen.hpp>
 #include <tuning/nnuetrainer.hpp>
 #include <tuning/datamerger.hpp>
+#include <tuning/postprocessing.hpp>
 #include <tests/test.hpp>
 
 using namespace Arcanum;
@@ -33,6 +34,14 @@ bool ArgsParser::parseArgumentsAndRunCommand(int argc, char* argv[])
     else if(command == "merge")
     {
         return parseArgumentsAndMergeData(argc, argv);
+    }
+    else if(command == "qgen")
+    {
+        return parseArgumentsAndGenerateQuiets(argc, argv);
+    }
+    else if(command == "reeval")
+    {
+        return parseArgumentsAndReeval(argc, argv);
     }
 
     INFO("Unknown command: " << command)
@@ -208,4 +217,111 @@ bool ArgsParser::parseArgumentsAndMergeData(int argc, char* argv[])
     }
 
     return merger.mergeData();
+}
+
+bool ArgsParser::parseArgumentsAndGenerateQuiets(int argc, char* argv[])
+{
+    PostProcessing::QuietGenParameters params = PostProcessing::QuietGenParameters();
+
+    int index = 2; // Skip the executable name and command
+    while(index < argc)
+    {
+        if(matchAndParseArg("--input",      params.inputPath,  argc, argv, index)) { continue; }
+        if(matchAndParseArg("--output",     params.outputPath, argc, argv, index)) { continue; }
+        if(matchAndParseArg("--numthreads", params.numThreads, argc, argv, index)) { continue; }
+        if(matchAndParseArg("--qmargin",    params.qMargin,    argc, argv, index)) { continue; }
+        if(matchAndParseArg("--margin",     params.margin,     argc, argv, index)) { continue; }
+        if(matchAndParseArg("--depth",      params.depth,      argc, argv, index)) { continue; }
+        if(matchAndParseArg("--nodes",      params.nodes,      argc, argv, index)) { continue; }
+        if(matchAndParseArg("--movetime",   params.movetime,   argc, argv, index)) { continue; }
+        if(matchAndParseArg("--offset",     params.offset,     argc, argv, index)) { continue; }
+
+        INFO("Unknown argument: " << argv[index])
+        return false;
+    }
+
+    bool valid = true;
+
+    if(params.inputPath == "")
+    { valid = false; INFO("Input path cannot be empty") }
+
+    if(params.outputPath == "")
+    { valid = false; INFO("Output path cannot be empty") }
+
+    if(params.numThreads <= 0)
+    { valid = false; INFO("Number of threads cannot be 0 or less") }
+
+    if(params.depth == 0 && params.movetime == 0 && params.nodes == 0)
+    { valid = false; INFO("Search depth, movetime and nodes cannot be 0 at the same time") }
+
+    if((params.qMargin <= 0) || (params.margin <= 0))
+    { valid = false; INFO("Margins must be larger than 0") }
+
+    if(valid)
+    {
+        INFO("Starting quiet generation with parameters:")
+        INFO("Input path:        " << params.inputPath)
+        INFO("Output path:       " << params.outputPath)
+        INFO("Num threads:       " << params.numThreads)
+        INFO("Quiet margin:      " << params.qMargin)
+        INFO("Margin:            " << params.margin)
+        INFO("Depth:             " << params.depth)
+        INFO("Movetime (ms):     " << params.movetime)
+        INFO("Nodes:             " << params.nodes)
+        INFO("Offset:            " << params.offset)
+
+        PostProcessing::generateQuiets(params);
+    }
+
+    return valid;
+}
+
+bool ArgsParser::parseArgumentsAndReeval(int argc, char* argv[])
+{
+    PostProcessing::ReEvalParameters params = PostProcessing::ReEvalParameters();
+
+    int index = 2; // Skip the executable name and command
+    while(index < argc)
+    {
+        if(matchAndParseArg("--input",      params.inputPath,  argc, argv, index)) { continue; }
+        if(matchAndParseArg("--output",     params.outputPath, argc, argv, index)) { continue; }
+        if(matchAndParseArg("--numthreads", params.numThreads, argc, argv, index)) { continue; }
+        if(matchAndParseArg("--depth",      params.depth,      argc, argv, index)) { continue; }
+        if(matchAndParseArg("--nodes",      params.nodes,      argc, argv, index)) { continue; }
+        if(matchAndParseArg("--movetime",   params.movetime,   argc, argv, index)) { continue; }
+        if(matchAndParseArg("--offset",     params.offset,     argc, argv, index)) { continue; }
+
+        INFO("Unknown argument: " << argv[index])
+        return false;
+    }
+
+    bool valid = true;
+
+    if(params.inputPath == "")
+    { valid = false; INFO("Input path cannot be empty") }
+
+    if(params.outputPath == "")
+    { valid = false; INFO("Output path cannot be empty") }
+
+    if(params.numThreads <= 0)
+    { valid = false; INFO("Number of threads cannot be 0 or less") }
+
+    if(params.depth == 0 && params.movetime == 0 && params.nodes == 0)
+    { valid = false; INFO("Search depth, movetime and nodes cannot be 0 at the same time") }
+
+    if(valid)
+    {
+        INFO("Starting re-evaluation with parameters:")
+        INFO("Input path:        " << params.inputPath)
+        INFO("Output path:       " << params.outputPath)
+        INFO("Num threads:       " << params.numThreads)
+        INFO("Depth:             " << params.depth)
+        INFO("Movetime (ms):     " << params.movetime)
+        INFO("Nodes:             " << params.nodes)
+        INFO("Offset:            " << params.offset)
+
+        PostProcessing::reeval(params);
+    }
+
+    return valid;
 }
