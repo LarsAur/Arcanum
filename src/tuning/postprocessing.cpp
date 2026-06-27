@@ -215,17 +215,22 @@ void PostProcessing::reeval(const ReEvalParameters& params)
                 Board* board = loader.getNextBoard();
                 Board boardCopy = Board(*board);
                 offset++;
+                if(offset % 10000 == 0)
+                {
+                    INFO("Reevaluated positions (Offset): " << offset);
+                }
                 loaderMutex.unlock();
 
                 SearchResult result;
                 searcher.clear();
                 Move move = searcher.search(boardCopy, searchParams, &result);
 
-                storerMutex.lock();
-                if(offset % 10000 == 0)
+                if(Evaluator::isMateScore(result.eval))
                 {
-                    INFO("Reevaluated positions (Offset): " << offset);
+                    continue;
                 }
+
+                storerMutex.lock();
                 storer.addPosition(boardCopy, move, result.eval, GameResult::DRAW);
                 storerMutex.unlock();
             }
