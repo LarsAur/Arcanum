@@ -26,6 +26,7 @@ static bool isQuietPosition(
     // Quiet search (search with low depth)
     qparams.depth = 1;
     qparams.useDepth = true;
+    searcher.clear();
     searcher.search(board, qparams, &result);
     if(std::abs(result.eval - staticEval) > qMargin)
     {
@@ -33,6 +34,7 @@ static bool isQuietPosition(
     }
 
     // A deeper search
+    searcher.clear();
     searcher.search(board, searchParams, &result);
     if(std::abs(result.eval - staticEval) > margin)
     {
