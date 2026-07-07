@@ -203,7 +203,7 @@ void PostProcessing::reeval(const ReEvalParameters& params)
     {
         threads.emplace_back([&](){
             Searcher searcher;
-            searcher.resizeTT(0);
+            searcher.resizeTT(params.ttSize);
             searcher.setVerbose(false);
 
             while(true)

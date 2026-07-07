@@ -41,13 +41,15 @@ namespace Arcanum
                 uint32_t nodes;
                 uint32_t movetime;
                 uint32_t offset;
+                uint32_t ttSize;
 
                 ReEvalParameters() :
                     numThreads(1),
                     depth(0),
                     nodes(0),
                     movetime(0),
-                    offset(0)
+                    offset(0),
+                    ttSize(0)
                 {}
             };
 

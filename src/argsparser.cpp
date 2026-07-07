@@ -290,6 +290,7 @@ bool ArgsParser::parseArgumentsAndReeval(int argc, char* argv[])
         if(matchAndParseArg("--nodes",      params.nodes,      argc, argv, index)) { continue; }
         if(matchAndParseArg("--movetime",   params.movetime,   argc, argv, index)) { continue; }
         if(matchAndParseArg("--offset",     params.offset,     argc, argv, index)) { continue; }
+        if(matchAndParseArg("--ttsize",     params.ttSize,     argc, argv, index)) { continue; }
 
         INFO("Unknown argument: " << argv[index])
         return false;
@@ -319,6 +320,7 @@ bool ArgsParser::parseArgumentsAndReeval(int argc, char* argv[])
         INFO("Movetime (ms):     " << params.movetime)
         INFO("Nodes:             " << params.nodes)
         INFO("Offset:            " << params.offset)
+        INFO("TT size:           " << params.ttSize)
 
         PostProcessing::reeval(params);
     }
