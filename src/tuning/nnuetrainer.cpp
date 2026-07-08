@@ -449,6 +449,9 @@ void NNUETrainer::train(TrainingParameters params)
 
             if(batchPosCount >= m_params.batchSize)
             {
+                // Get the average gradient for the batch
+                NET_UNARY_OP(m_gradient, scale(1.0f / batchPosCount))
+
                 m_applyGradient(++timestep);
 
                 // Reset the gradient to 0
