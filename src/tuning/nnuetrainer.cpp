@@ -398,6 +398,27 @@ void NNUETrainer::train(TrainingParameters params)
         float batchLoss        = 0.0f;
         float iterationLoss    = 0.0f;
 
+        // If the end of the dataset is reached, restart the parser
+        if(loader.eof())
+        {
+            loader.close();
+            if(!loader.open(m_params.dataset))
+            {
+                ERROR("Unable to open dataset " << m_params.dataset)
+                return;
+            }
+
+            // Skip the validation positions at the beginning of the dataset
+            uint64_t i = 0;
+            while(i < m_params.validationSize)
+            {
+                Board *board = loader.getNextBoard();
+                eval_t cp = loader.getScore();
+                Move move = loader.getMove();
+                i += !m_shouldFilterPosition(*board, move, cp);
+            }
+        }
+
         // Clear the gradient at the start of the epoch
         NET_UNARY_OP(m_gradient, setZero())
 
@@ -407,7 +428,7 @@ void NNUETrainer::train(TrainingParameters params)
         epochTimer.start();
         iterationTimer.start();
 
-        while (epochPosCount < m_params.epochSize)
+        while (m_params.useFullDataset ? !loader.eof() : (epochPosCount < m_params.epochSize))
         {
             // If the end of the dataset is reached, restart the parser
             if(loader.eof())

@@ -114,7 +114,8 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
     params.batchSize      = 20000;       // Batch size
     params.startEpoch     = 0;           // Epoch to start at (used for naming output LR scaling)
     params.endEpoch       = INT32_MAX;   // Epoch to end at. Runs for INT32_MAX epochs if not set.
-    params.epochSize      = 100'000'000; // Number of positions in each epoch
+    params.epochSize      = 0;           // Number of positions in each epoch
+    params.useFullDataset = true;        // Whether to use the full dataset or only epochSize positions per epoch
     params.validationSize = 0;           // Size of the validation set
     params.alpha          = 0.001f;      // Learning rate
     params.lambda         = 1.0f;        // Weighting between wdlTarget and cpTarget in loss function 1.0 = 100% cpTarget 0.0 = 100% wdlTarget
@@ -142,6 +143,8 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
         return false;
     }
 
+    params.useFullDataset = (params.epochSize == 0);
+
     // Validate input
     bool valid = true;
 
@@ -155,10 +158,7 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
     { valid = false; INFO("Batch size cannot be 0 or less") }
 
     if(params.endEpoch <= params.startEpoch)
-    { valid = false; INFO("End epoch must be larger than the end epoch") }
-
-    if(params.epochSize <= 0)
-    { valid = false; INFO("Epoch size has to be larger than 0") }
+    { valid = false; INFO("End epoch must be larger than the start epoch") }
 
     if(params.gammaSteps <= 0)
     { valid = false; INFO("GammaSteps has to be larger than 1. Use Gamma=1 to disable gamma scaling") }
@@ -175,7 +175,7 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
         INFO("Batch size:        " << params.batchSize)
         INFO("Start epoch:       " << params.startEpoch)
         INFO("End epoch:         " << params.endEpoch)
-        INFO("Epoch size:        " << params.epochSize)
+        INFO("Epoch size:        " << (params.useFullDataset ? "Full dataset" : std::to_string(params.epochSize)))
         INFO("Validation size:   " << params.validationSize)
         INFO("Alpha:             " << params.alpha)
         INFO("Lambda:            " << params.lambda)
