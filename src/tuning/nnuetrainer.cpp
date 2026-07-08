@@ -69,7 +69,7 @@ bool NNUETrainer::store(const std::string& filename)
     return true;
 }
 
-void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet)
+void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet, bool mirrored)
 {
     Color perspective = board.getTurn();
     featureSet.numFeatures = 0;
@@ -81,6 +81,7 @@ void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& feature
             while(pieces)
             {
                 square_t idx = popLS1B(&pieces);
+                idx = mirrored ? FLIP_FILE(idx) : idx;
                 uint32_t findex = NNUE::getFeatureIndex(idx, Color(color), Piece(type), perspective);
                 featureSet.features[featureSet.numFeatures++] = findex;
             }
@@ -88,10 +89,10 @@ void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& feature
     }
 }
 
-void NNUETrainer::m_initAccumulator(const Board& board)
+void NNUETrainer::m_initAccumulator(const Board& board, bool mirrored)
 {
     NNUE::FeatureSet featureSet;
-    m_findFeatureSet(board, featureSet);
+    m_findFeatureSet(board, featureSet, mirrored);
     float* accPtr = m_trace.acc.data();
 
     constexpr uint32_t numRegs = NNUE::L1Size / RegSize;
@@ -136,10 +137,10 @@ void NNUETrainer::randomizeNet()
     }
 }
 
-float NNUETrainer::m_predict(const Board& board)
+float NNUETrainer::m_predict(const Board& board, bool mirrored)
 {
     uint32_t bucket = NNUE::getOutputBucket(board);
-    m_initAccumulator(board);
+    m_initAccumulator(board, mirrored);
     m_trace.acc.clippedRelu(ReluClipValue);
     lastLevelFeedForward(m_net.l1Weights[bucket], m_net.l1Biases[bucket], m_trace.acc, m_trace.out);
     return *m_trace.out.data() * NNUE::NetworkScale;
@@ -158,10 +159,10 @@ inline float NNUETrainer::m_sigmoidPrime(float sigmoid)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResult result)
+float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResult result, bool mirrored)
 {
     // -- Run prediction
-    float out = m_predict(board);
+    float out = m_predict(board, mirrored);
 
     // Set Win-Draw-Loss target based on result
     // Normalize from [-1, 1] to [0, 1]
@@ -189,7 +190,7 @@ float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResul
 
     // -- Create input vector
     NNUE::FeatureSet featureSet;
-    m_findFeatureSet(board, featureSet);
+    m_findFeatureSet(board, featureSet, mirrored);
     uint32_t bucket = NNUE::getOutputBucket(board);
 
     // Calculate derivative of activation functions (Sigma prime)
@@ -299,7 +300,7 @@ std::tuple<float, float> NNUETrainer::m_getValidationLoss(const std::string& fil
 
         i++;
 
-        float out = m_predict(*board);
+        float out = m_predict(*board, false);
         float qout = static_cast<float>(nnue.predictBoard(*board));
 
         // Set Win-Draw-Loss target based on result
@@ -439,11 +440,12 @@ void NNUETrainer::train(TrainingParameters params)
                 continue;
             }
 
-            // Run back propagation
-            batchLoss += m_backPropagate(*board, cp, result);
+            // Run back propagation with board and mirrored board to augment the dataset
+            batchLoss += m_backPropagate(*board, cp, result, false);
+            batchLoss += m_backPropagate(*board, cp, result, true);
 
             // Count the number of positions in the current batch
-            batchPosCount++;
+            batchPosCount+=2;
 
             if(batchPosCount >= m_params.batchSize)
             {

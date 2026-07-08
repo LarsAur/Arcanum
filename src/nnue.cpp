@@ -9,7 +9,7 @@ uint16_t NNUE::getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pie
 {
     if(pieceColor == BLACK)
     {
-        pieceSquare = ((7 - RANK(pieceSquare)) << 3) | FILE(pieceSquare);
+        pieceSquare = FLIP_RANK(pieceSquare);
     }
 
     return (((uint16_t(pieceType) << 6) | uint16_t(pieceSquare)) << 1) | (pieceColor ^ perspective);

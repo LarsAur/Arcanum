@@ -6,6 +6,8 @@
 #define FILE(_SQUARE) ((_SQUARE) & 0b111)
 #define SQUARE(_FILE, _RANK) ((_FILE) + ((_RANK) << 3))
 #define SQUARE_BB(_FILE, _RANK) (1LL << (SQUARE(_FILE, _RANK)))
+#define FLIP_RANK(_SQUARE) (_SQUARE ^ 56)
+#define FLIP_FILE(_SQUARE) (_SQUARE ^ 7)
 
 namespace Arcanum
 {

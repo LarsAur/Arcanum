@@ -72,12 +72,12 @@ namespace Arcanum
             static std::string m_getOutputFilename(const std::string& base, uint32_t epoch);
             static void m_logLoss(float epochLoss, uint64_t epochPosCount, float validationLoss, float validationQLoss, const std::string& prefix, const std::string& filename);
 
-            float m_predict(const Board& board);
-            void m_initAccumulator(const Board& board);
-            void m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet);
+            float m_predict(const Board& board, bool mirrored);
+            void m_initAccumulator(const Board& board, bool mirrored);
+            void m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet, bool mirrored);
 
             void m_applyGradient(uint32_t timestep);
-            float m_backPropagate(const Board& board, float cpTarget, GameResult result);
+            float m_backPropagate(const Board& board, float cpTarget, GameResult result, bool mirrored);
             bool m_shouldFilterPosition(Board& board, Move& move, eval_t eval);
             std::tuple<float, float> m_getValidationLoss(const std::string& filename);
         public:
