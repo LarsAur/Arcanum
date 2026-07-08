@@ -3,9 +3,9 @@
 #include <memory.hpp>
 #include <utils.hpp>
 #include <fen.hpp>
-#include <math.h>
 #include <eval.hpp>
 #include <timer.hpp>
+#include <cmath>
 
 using namespace Arcanum;
 
@@ -147,8 +147,7 @@ float NNUETrainer::m_predict(const Board& board)
 
 inline float NNUETrainer::m_sigmoid(float v)
 {
-    constexpr float e = 2.71828182846f;
-    return 1.0f / (1.0f + pow(e, -v));
+    return 1.0f / (1.0f + expf(-v));
 }
 
 inline float NNUETrainer::m_sigmoidPrime(float sigmoid)
