@@ -109,7 +109,8 @@ bool GameRunner::m_isResignAdjudicated()
         // Set the winner based on the eval from the last search
         // If the previous eval was positive, the color making that move is the winner
         // Note that the move is performed before checking this
-        if(m_evals.at(m_evals.size() - 1) > 0 && m_board.getTurn() == Color::WHITE)
+        if(((m_evals.at(m_evals.size() - 1) > 0) && (m_board.getTurn() == Color::WHITE))
+        || ((m_evals.at(m_evals.size() - 1) < 0) && (m_board.getTurn() == Color::BLACK)))
         {
             m_result = GameResult::BLACK_WIN;
         }
