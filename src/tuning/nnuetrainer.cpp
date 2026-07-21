@@ -227,6 +227,11 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
     }
 
     // Clamp the weights of the linear layers to enable quantization at a later stage
+    constexpr float ftWeightClampMin = static_cast<float>(-INT16_MAX)/(NNUE::FTQ * 33);
+    constexpr float ftWeightClampMax = static_cast<float>(INT16_MAX)/(NNUE::FTQ * 33);
+    m_net.ftWeights.clamp(ftWeightClampMin, ftWeightClampMax);
+    m_net.ftBiases.clamp(ftWeightClampMin, ftWeightClampMax);
+
     for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
     {
         m_net.l1Weights[i].clamp(-127.0f/NNUE::LQ, 127.0f/NNUE::LQ);
@@ -243,6 +248,11 @@ bool NNUETrainer::m_shouldFilterPosition(Board& board, Move& move, eval_t eval)
 
     // Filter out very high scoring positions
     if(std::abs(eval) > 10000)
+    {
+        return true;
+    }
+
+    if(board.getNumPieces() <= 6)
     {
         return true;
     }

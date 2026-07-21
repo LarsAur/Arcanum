@@ -104,6 +104,7 @@ namespace Arcanum
             bitboard_t getOpponentPawnAttacks();
             bitboard_t getTypedPieces(Piece type, Color color) const;
             bitboard_t getColoredPieces(Color color) const;
+            bitboard_t getAllPieces() const;
             Piece getPieceAt(square_t square) const;
             Color getColorAt(square_t square) const;
             square_t getEnpassantSquare() const;

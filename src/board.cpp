@@ -1564,6 +1564,11 @@ bitboard_t Board::getColoredPieces(Color color) const
     return m_bbColoredPieces[color];
 }
 
+bitboard_t Board::getAllPieces() const
+{
+    return m_bbAllPieces;
+}
+
 Piece Board::getPieceAt(square_t square) const
 {
     return m_pieces[square];

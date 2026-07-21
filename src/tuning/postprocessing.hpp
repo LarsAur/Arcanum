@@ -53,7 +53,23 @@ namespace Arcanum
                 {}
             };
 
+            struct FilterParameters
+            {
+                std::string inputPath;
+                std::string outputPath;
+                uint32_t numThreads;
+                eval_t margin;
+                uint32_t offset;
+
+                FilterParameters() :
+                    numThreads(1),
+                    margin(0),
+                    offset(0)
+                {}
+            };
+
             static void generateQuiets(const QuietGenParameters& params);
             static void reeval(const ReEvalParameters& params);
+            static void filter(const FilterParameters& params);
     };
 }

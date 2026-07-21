@@ -65,6 +65,8 @@ namespace Arcanum
             static bool parseArgumentsAndMergeData(int argc, char* argv[]);
             static bool parseArgumentsAndGenerateQuiets(int argc, char* argv[]);
             static bool parseArgumentsAndReeval(int argc, char* argv[]);
+            static bool parseArgumentsAndFilter(int argc, char* argv[]);
+            static bool parseArgumentsAndAnalyse(int argc, char* argv[]);
         public:
             // Parses command line arguments and runs UCI if the arguments are valid
             // Returns false if the arguments are not matching any commands

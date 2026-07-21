@@ -5,6 +5,7 @@
 #include <tuning/datamerger.hpp>
 #include <tuning/postprocessing.hpp>
 #include <tests/test.hpp>
+#include <tuning/analysis.hpp>
 
 using namespace Arcanum;
 
@@ -42,6 +43,14 @@ bool ArgsParser::parseArgumentsAndRunCommand(int argc, char* argv[])
     else if(command == "reeval")
     {
         return parseArgumentsAndReeval(argc, argv);
+    }
+    else if(command == "filter")
+    {
+        return parseArgumentsAndFilter(argc, argv);
+    }
+    else if(command == "analyse")
+    {
+        return parseArgumentsAndAnalyse(argc, argv);
     }
 
     INFO("Unknown command: " << command)
@@ -323,6 +332,84 @@ bool ArgsParser::parseArgumentsAndReeval(int argc, char* argv[])
         INFO("TT size:           " << params.ttSize)
 
         PostProcessing::reeval(params);
+    }
+
+    return valid;
+}
+
+bool ArgsParser::parseArgumentsAndFilter(int argc, char* argv[])
+{
+    PostProcessing::FilterParameters params = PostProcessing::FilterParameters();
+
+    int index = 2; // Skip the executable name and command
+    while(index < argc)
+    {
+        if(matchAndParseArg("--input",      params.inputPath,  argc, argv, index)) { continue; }
+        if(matchAndParseArg("--output",     params.outputPath, argc, argv, index)) { continue; }
+        if(matchAndParseArg("--numthreads", params.numThreads, argc, argv, index)) { continue; }
+        if(matchAndParseArg("--margin",     params.margin,     argc, argv, index)) { continue; }
+        if(matchAndParseArg("--offset",     params.offset,     argc, argv, index)) { continue; }
+
+        INFO("Unknown argument: " << argv[index])
+        return false;
+    }
+
+    bool valid = true;
+
+    if(params.inputPath == "")
+    { valid = false; INFO("Input path cannot be empty") }
+
+    if(params.outputPath == "")
+    { valid = false; INFO("Output path cannot be empty") }
+
+    if(params.numThreads <= 0)
+    { valid = false; INFO("Number of threads cannot be 0 or less") }
+
+    if(params.margin <= 0)
+    { valid = false; INFO("Margin cannot be 0 or less") }
+
+    if(valid)
+    {
+        INFO("Starting filtering with parameters:")
+        INFO("Input path:        " << params.inputPath)
+        INFO("Output path:       " << params.outputPath)
+        INFO("Num threads:       " << params.numThreads)
+        INFO("Margin:            " << params.margin)
+        INFO("Offset:            " << params.offset)
+
+        PostProcessing::filter(params);
+    }
+
+    return valid;
+}
+
+bool ArgsParser::parseArgumentsAndAnalyse(int argc, char* argv[])
+{
+    Analyser analyser;
+
+    std::string inputPath;
+
+    int index = 2; // Skip the executable name and command
+    while(index < argc)
+    {
+        if(matchAndParseArg("--input", inputPath, argc, argv, index)) { continue; }
+
+        INFO("Unknown argument: " << argv[index])
+        return false;
+    }
+
+    bool valid = true;
+
+    if(inputPath == "")
+    { valid = false; INFO("Input path cannot be empty") }
+
+    if(valid)
+    {
+        INFO("Starting analysis with parameters:")
+        INFO("Input path:        " << inputPath)
+
+        analyser.analyseDataset(inputPath);
+        analyser.printResults();
     }
 
     return valid;
