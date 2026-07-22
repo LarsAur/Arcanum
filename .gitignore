@@ -11,4 +11,5 @@ __pycache__
 *.zst
 *.uci_options
 *.fnnue
-notes.txt
+*.txt
+*.binpack
