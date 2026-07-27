@@ -68,8 +68,17 @@ namespace Arcanum
                 {}
             };
 
+            struct DeduplicateParameters
+            {
+                std::string inputPath;
+                std::string outputPath;
+                uint32_t buckets;
+                uint32_t startBucket;
+            };
+
             static void generateQuiets(const QuietGenParameters& params);
             static void reeval(const ReEvalParameters& params);
             static void filter(const FilterParameters& params);
+            static void deduplicate(const DeduplicateParameters& params);
     };
 }

@@ -52,6 +52,10 @@ bool ArgsParser::parseArgumentsAndRunCommand(int argc, char* argv[])
     {
         return parseArgumentsAndAnalyse(argc, argv);
     }
+    else if (command == "deduplicate")
+    {
+        return parseArgumentsAndDeduplicate(argc, argv);
+    }
 
     INFO("Unknown command: " << command)
 
@@ -410,6 +414,53 @@ bool ArgsParser::parseArgumentsAndAnalyse(int argc, char* argv[])
 
         analyser.analyseDataset(inputPath);
         analyser.printResults();
+    }
+
+    return valid;
+}
+
+bool ArgsParser::parseArgumentsAndDeduplicate(int argc, char* argv[])
+{
+    PostProcessing::DeduplicateParameters params = PostProcessing::DeduplicateParameters();
+
+    params.buckets = 0; // Default value, must be set by user
+    params.startBucket = 0; // Default value, can be set by user
+
+    int index = 2; // Skip the executable name and command
+    while(index < argc)
+    {
+        if(matchAndParseArg("--input",   params.inputPath,  argc, argv, index)) { continue; }
+        if(matchAndParseArg("--output",  params.outputPath, argc, argv, index)) { continue; }
+        if(matchAndParseArg("--buckets", params.buckets,    argc, argv, index)) { continue; }
+        if(matchAndParseArg("--start",   params.startBucket, argc, argv, index)) { continue; }
+
+        INFO("Unknown argument: " << argv[index])
+        return false;
+    }
+
+    bool valid = true;
+
+    if(params.inputPath == "")
+    { valid = false; INFO("Input path cannot be empty") }
+
+    if(params.outputPath == "")
+    { valid = false; INFO("Output path cannot be empty") }
+
+    if(params.buckets <= 0)
+    { valid = false; INFO("Number of buckets cannot be 0 or less") }
+
+    if(params.startBucket >= params.buckets)
+    { valid = false; INFO("Start bucket must be between 0 and buckets-1") }
+
+    if(valid)
+    {
+        INFO("Starting deduplication with parameters:")
+        INFO("Input path:        " << params.inputPath)
+        INFO("Output path:       " << params.outputPath)
+        INFO("Buckets:           " << params.buckets)
+        INFO("Start bucket:      " << params.startBucket)
+
+        PostProcessing::deduplicate(params);
     }
 
     return valid;

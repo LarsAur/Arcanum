@@ -1,7 +1,9 @@
 #include <tuning/postprocessing.hpp>
 #include <tuning/dataloader.hpp>
 #include <eval.hpp>
+#include <zobrist.hpp>
 #include <thread>
+#include <set>
 
 using namespace Arcanum;
 
@@ -410,4 +412,72 @@ void PostProcessing::filter(const FilterParameters& params)
 
     loader.close();
     storer.close();
+}
+
+void PostProcessing::deduplicate(const DeduplicateParameters& params)
+{
+    DataLoader loader;
+    DataStorer storer;
+
+    uint32_t duplicateCount = 0;
+    uint32_t uniqueCount = 0;
+
+    std::set<hash_t> bucketHashes;
+
+    // Bucket the positions based on board hash, then de-duplicate each bucket separately
+    for(uint32_t i = params.startBucket; i < params.buckets; i++)
+    {
+        INFO("Processing bucket " << i << " / " << params.buckets)
+        if(!loader.open(params.inputPath))
+        {
+            ERROR("Failed to open input file: " << params.inputPath)
+            return;
+        }
+
+        if(!storer.open(params.outputPath))
+        {
+            loader.close();
+            ERROR("Failed to open output file: " << params.outputPath)
+            return;
+        }
+
+        while(!loader.eof())
+        {
+            Board* board = loader.getNextBoard();
+            GameResult result = loader.getResult();
+            Move move = loader.getMove();
+            eval_t score = loader.getScore();
+
+            // Calculate the hash as it is not pre-calulated by the DataLoader
+            hash_t hash, pawnHash, materialHash;
+            Zobrist::getHashes(*board, hash, pawnHash, materialHash);
+
+            // Check if the position does not belongs to the current bucket
+            uint64_t bucket = hash % params.buckets;
+            if(bucket != i)
+            {
+                continue;
+            }
+
+            // Check if the position is already in the bucket
+            if(bucketHashes.find(hash) != bucketHashes.end())
+            {
+                duplicateCount++;
+                continue;
+            }
+
+            bucketHashes.insert(hash);
+            storer.addPosition(*board, move, score, result);
+            uniqueCount++;
+        }
+
+        INFO("Bucket " << i << " complete. Unique positions: " << uniqueCount << ", Duplicate positions: " << duplicateCount)
+
+        bucketHashes.clear();
+        loader.close();
+        // Close to flush the data to disk after each bucket
+        storer.close();
+    }
+
+    INFO("Deduplication complete. Unique positions: " << uniqueCount << ", Duplicate positions: " << duplicateCount)
 }
