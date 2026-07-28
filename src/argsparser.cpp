@@ -36,13 +36,13 @@ bool ArgsParser::parseArgumentsAndRunCommand(int argc, char* argv[])
     {
         return parseArgumentsAndMergeData(argc, argv);
     }
-    else if(command == "qgen")
-    {
-        return parseArgumentsAndGenerateQuiets(argc, argv);
-    }
     else if(command == "reeval")
     {
         return parseArgumentsAndReeval(argc, argv);
+    }
+    else if(command == "quiesce")
+    {
+        return parseArgumentsAndQuiesce(argc, argv);
     }
     else if(command == "filter")
     {
@@ -232,63 +232,6 @@ bool ArgsParser::parseArgumentsAndMergeData(int argc, char* argv[])
     return merger.mergeData();
 }
 
-bool ArgsParser::parseArgumentsAndGenerateQuiets(int argc, char* argv[])
-{
-    PostProcessing::QuietGenParameters params = PostProcessing::QuietGenParameters();
-
-    int index = 2; // Skip the executable name and command
-    while(index < argc)
-    {
-        if(matchAndParseArg("--input",      params.inputPath,  argc, argv, index)) { continue; }
-        if(matchAndParseArg("--output",     params.outputPath, argc, argv, index)) { continue; }
-        if(matchAndParseArg("--numthreads", params.numThreads, argc, argv, index)) { continue; }
-        if(matchAndParseArg("--qmargin",    params.qMargin,    argc, argv, index)) { continue; }
-        if(matchAndParseArg("--margin",     params.margin,     argc, argv, index)) { continue; }
-        if(matchAndParseArg("--depth",      params.depth,      argc, argv, index)) { continue; }
-        if(matchAndParseArg("--nodes",      params.nodes,      argc, argv, index)) { continue; }
-        if(matchAndParseArg("--movetime",   params.movetime,   argc, argv, index)) { continue; }
-        if(matchAndParseArg("--offset",     params.offset,     argc, argv, index)) { continue; }
-
-        INFO("Unknown argument: " << argv[index])
-        return false;
-    }
-
-    bool valid = true;
-
-    if(params.inputPath == "")
-    { valid = false; INFO("Input path cannot be empty") }
-
-    if(params.outputPath == "")
-    { valid = false; INFO("Output path cannot be empty") }
-
-    if(params.numThreads <= 0)
-    { valid = false; INFO("Number of threads cannot be 0 or less") }
-
-    if(params.depth == 0 && params.movetime == 0 && params.nodes == 0)
-    { valid = false; INFO("Search depth, movetime and nodes cannot be 0 at the same time") }
-
-    if((params.qMargin <= 0) || (params.margin <= 0))
-    { valid = false; INFO("Margins must be larger than 0") }
-
-    if(valid)
-    {
-        INFO("Starting quiet generation with parameters:")
-        INFO("Input path:        " << params.inputPath)
-        INFO("Output path:       " << params.outputPath)
-        INFO("Num threads:       " << params.numThreads)
-        INFO("Quiet margin:      " << params.qMargin)
-        INFO("Margin:            " << params.margin)
-        INFO("Depth:             " << params.depth)
-        INFO("Movetime (ms):     " << params.movetime)
-        INFO("Nodes:             " << params.nodes)
-        INFO("Offset:            " << params.offset)
-
-        PostProcessing::generateQuiets(params);
-    }
-
-    return valid;
-}
-
 bool ArgsParser::parseArgumentsAndReeval(int argc, char* argv[])
 {
     PostProcessing::ReEvalParameters params = PostProcessing::ReEvalParameters();
@@ -341,9 +284,9 @@ bool ArgsParser::parseArgumentsAndReeval(int argc, char* argv[])
     return valid;
 }
 
-bool ArgsParser::parseArgumentsAndFilter(int argc, char* argv[])
+bool ArgsParser::parseArgumentsAndQuiesce(int argc, char* argv[])
 {
-    PostProcessing::FilterParameters params = PostProcessing::FilterParameters();
+    PostProcessing::QuiesceParameters params = PostProcessing::QuiesceParameters();
 
     int index = 2; // Skip the executable name and command
     while(index < argc)
@@ -351,7 +294,6 @@ bool ArgsParser::parseArgumentsAndFilter(int argc, char* argv[])
         if(matchAndParseArg("--input",      params.inputPath,  argc, argv, index)) { continue; }
         if(matchAndParseArg("--output",     params.outputPath, argc, argv, index)) { continue; }
         if(matchAndParseArg("--numthreads", params.numThreads, argc, argv, index)) { continue; }
-        if(matchAndParseArg("--margin",     params.margin,     argc, argv, index)) { continue; }
         if(matchAndParseArg("--offset",     params.offset,     argc, argv, index)) { continue; }
 
         INFO("Unknown argument: " << argv[index])
@@ -369,19 +311,15 @@ bool ArgsParser::parseArgumentsAndFilter(int argc, char* argv[])
     if(params.numThreads <= 0)
     { valid = false; INFO("Number of threads cannot be 0 or less") }
 
-    if(params.margin <= 0)
-    { valid = false; INFO("Margin cannot be 0 or less") }
-
     if(valid)
     {
-        INFO("Starting filtering with parameters:")
+        INFO("Starting quiescing with parameters:")
         INFO("Input path:        " << params.inputPath)
         INFO("Output path:       " << params.outputPath)
         INFO("Num threads:       " << params.numThreads)
-        INFO("Margin:            " << params.margin)
         INFO("Offset:            " << params.offset)
 
-        PostProcessing::filter(params);
+        PostProcessing::quiesce(params);
     }
 
     return valid;
@@ -461,6 +399,56 @@ bool ArgsParser::parseArgumentsAndDeduplicate(int argc, char* argv[])
         INFO("Start bucket:      " << params.startBucket)
 
         PostProcessing::deduplicate(params);
+    }
+
+    return valid;
+}
+
+bool ArgsParser::parseArgumentsAndFilter(int argc, char* argv[])
+{
+    PostProcessing::FilterParameters params = PostProcessing::FilterParameters();
+
+    int index = 2; // Skip the executable name and command
+    while(index < argc)
+    {
+        if(matchAndParseArg("--input",        params.inputPath,        argc, argv, index)) { continue; }
+        if(matchAndParseArg("--output",       params.outputPath,       argc, argv, index)) { continue; }
+        if(matchAndParseArg("--offset",       params.offset,           argc, argv, index)) { continue; }
+        if(matchAndParseArg("--staticmargin", params.staticMargin,     argc, argv, index)) { params.filterStaticMargin = true; continue; }
+        if(matchAndParseArg("--maxhalfmoves", params.maxHalfMoves,     argc, argv, index)) { params.filterMaxHalfMoves = true; continue; }
+        if(matchAndParseArg("--maxeval",      params.maxEval,          argc, argv, index)) { params.filterMaxEval = true;      continue; }
+        if(matchAndParseArg("--minpieces",    params.minPieces,        argc, argv, index)) { params.filterMinPieces = true;    continue; }
+        if(matchAndParseArg("--captures",     params.filterCaptures,   argc, argv, index)) { continue; }
+        if(matchAndParseArg("--checks",       params.filterChecks,     argc, argv, index)) { continue; }
+        if(matchAndParseArg("--singlemove",   params.filterSingleMove, argc, argv, index)) { continue; }
+
+        INFO("Unknown argument: " << argv[index])
+        return false;
+    }
+
+    bool valid = true;
+
+    if(params.inputPath == "")
+    { valid = false; INFO("Input path cannot be empty") }
+
+    if(params.outputPath == "")
+    { valid = false; INFO("Output path cannot be empty") }
+
+    if(valid)
+    {
+        INFO("Starting filtering with parameters:")
+        INFO("Input path:        " << params.inputPath)
+        INFO("Output path:       " << params.outputPath)
+        INFO("Static margin:     " << params.staticMargin << " " << (params.filterStaticMargin ? "enabled" : "disabled"))
+        INFO("Max half moves:    " << params.maxHalfMoves << " " << (params.filterMaxHalfMoves ? "enabled" : "disabled"))
+        INFO("Max eval:          " << params.maxEval      << " " << (params.filterMaxEval ?      "enabled" : "disabled"))
+        INFO("Min pieces:        " << params.minPieces    << " " << (params.filterMinPieces ?    "enabled" : "disabled"))
+        INFO("Filter captures:   " << (params.filterCaptures ? "true" : "false"))
+        INFO("Filter checks:     " << (params.filterChecks ? "true" : "false"))
+        INFO("Filter single move:" << (params.filterSingleMove ? "true" : "false"))
+        INFO("Offset:            " << params.offset)
+
+        PostProcessing::filter(params);
     }
 
     return valid;

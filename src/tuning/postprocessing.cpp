@@ -7,163 +7,6 @@
 
 using namespace Arcanum;
 
-static bool isQuietPosition(
-    Board& board,
-    eval_t qMargin,
-    eval_t margin,
-    SearchParameters& searchParams,
-    Searcher& searcher,
-    eval_t* eval
-){
-    if(board.isChecked())
-    {
-        return false;
-    }
-
-    SearchResult result;
-    SearchParameters qparams;
-
-    eval_t staticEval = Evaluator::nnue.predictBoard(board);
-
-    // Quiet search (search with low depth)
-    qparams.depth = 1;
-    qparams.useDepth = true;
-    searcher.clear();
-    searcher.search(board, qparams, &result);
-    if(std::abs(result.eval - staticEval) > qMargin)
-    {
-        return false;
-    }
-
-    // A deeper search
-    searcher.clear();
-    searcher.search(board, searchParams, &result);
-    if(std::abs(result.eval - staticEval) > margin)
-    {
-        return false;
-    }
-
-    *eval = result.eval;
-
-    return true;
-}
-
-void PostProcessing::generateQuiets(const QuietGenParameters& params)
-{
-    DataLoader loader;
-    DataStorer storer;
-    std::mutex loaderMutex;
-    std::mutex storerMutex;
-
-    SearchParameters searchParams;
-    searchParams.useDepth = params.depth > 0;
-    searchParams.depth = params.depth;
-    searchParams.useNodes = params.nodes > 0;
-    searchParams.nodes = params.nodes;
-    searchParams.useTime = params.movetime > 0;
-    searchParams.msTime = params.movetime;
-
-    struct Stats
-    {
-        uint64_t addedPositions;
-        uint64_t skippedPositions;
-        uint64_t offset;
-    };
-
-    Stats stats;
-    stats.addedPositions = 0;
-    stats.skippedPositions = 0;
-    stats.offset = params.offset;
-
-    if(!loader.open(params.inputPath))
-    {
-        ERROR("Failed to open input file: " << params.inputPath)
-        return;
-    }
-
-    if(!storer.open(params.outputPath))
-    {
-        loader.close();
-        ERROR("Failed to open output file: " << params.outputPath)
-        return;
-    }
-
-    // Forward the loader to the offset position
-    for(uint32_t i = 0; i < params.offset && !loader.eof(); i++)
-    {
-        loader.getNextBoard();
-    }
-
-    std::vector<std::thread> threads;
-    for(uint32_t i = 0; i < params.numThreads; i++)
-    {
-        threads.emplace_back([&](){
-            Searcher searcher;
-            searcher.resizeTT(0);
-            searcher.setVerbose(false);
-
-            while(true)
-            {
-                loaderMutex.lock();
-                if(loader.eof())
-                {
-                    loaderMutex.unlock();
-                    break;
-                }
-                Board* board = loader.getNextBoard();
-                Board boardCopy = Board(*board);
-                stats.offset++;
-                loaderMutex.unlock();
-
-                Move* moves = boardCopy.getLegalMoves();
-                boardCopy.generateCaptureInfo();
-                uint8_t numMoves = boardCopy.getNumLegalMoves();
-
-                for(uint8_t i = 0; i < numMoves; i++)
-                {
-                    eval_t eval;
-                    Move move = moves[i];
-                    Board newBoard = Board(boardCopy);
-                    newBoard.performMove(move);
-                    bool isQuiet = isQuietPosition(
-                        newBoard,
-                        params.qMargin,
-                        params.margin,
-                        searchParams,
-                        searcher,
-                        &eval
-                    );
-
-                    storerMutex.lock();
-                    if (isQuiet)
-                    {
-                        storer.addPosition(newBoard, NULL_MOVE, eval, GameResult::DRAW);
-                        stats.addedPositions++;
-                    }
-                    else
-                    {
-                        stats.skippedPositions++;
-                    }
-
-                    if((stats.addedPositions + stats.skippedPositions) % 10000 == 0)
-                    {
-                        INFO("Added positions: " << stats.addedPositions << ", Skipped positions: " << stats.skippedPositions << ", Offset: " << stats.offset);
-                    }
-                    storerMutex.unlock();
-                }
-            }
-        });
-    }
-
-    for(uint32_t i = 0; i < params.numThreads; i++)
-    {
-        threads[i].join();
-    }
-
-    loader.close();
-    storer.close();
-}
-
 void PostProcessing::reeval(const ReEvalParameters& params)
 {
     DataLoader loader;
@@ -318,7 +161,7 @@ static Board quiesceBoard(Board& board, eval_t* score)
     return boards[0];
 }
 
-void PostProcessing::filter(const FilterParameters& params)
+void PostProcessing::quiesce(const QuiesceParameters& params)
 {
     DataLoader loader;
     DataStorer storer;
@@ -372,11 +215,6 @@ void PostProcessing::filter(const FilterParameters& params)
                 loaderMutex.unlock();
 
                 if(Evaluator::isMateScore(eval))
-                {
-                    continue;
-                }
-
-                if(board.getNumPieces() <= 6)
                 {
                     continue;
                 }
@@ -480,4 +318,125 @@ void PostProcessing::deduplicate(const DeduplicateParameters& params)
     }
 
     INFO("Deduplication complete. Unique positions: " << uniqueCount << ", Duplicate positions: " << duplicateCount)
+}
+
+void PostProcessing::filter(const FilterParameters& params)
+{
+    DataLoader loader;
+    DataStorer storer;
+
+    uint32_t offset = params.offset;
+    uint32_t removed = 0;
+    uint32_t removedCaptures = 0;
+    uint32_t removedChecks = 0;
+    uint32_t removedMaxHalfMoves = 0;
+    uint32_t removedMaxEval = 0;
+    uint32_t removedMinPieces = 0;
+    uint32_t removedSingleMove = 0;
+    uint32_t removedStaticMargin = 0;
+
+    if(!loader.open(params.inputPath))
+    {
+        ERROR("Failed to open input file: " << params.inputPath)
+        return;
+    }
+
+    if(!storer.open(params.outputPath))
+    {
+        loader.close();
+        ERROR("Failed to open output file: " << params.outputPath)
+        return;
+    }
+
+    // Forward the loader to the offset position
+    for(uint32_t i = 0; i < params.offset && !loader.eof(); i++)
+    {
+        loader.getNextBoard();
+    }
+
+    while(!loader.eof())
+    {
+        Board* board = loader.getNextBoard();
+        eval_t eval = loader.getScore();
+        GameResult result = loader.getResult();
+        Move move = loader.getMove();
+
+        offset++;
+
+        if(offset % 1000000 == 0)
+        {
+            INFO("Filtered positions (Offset): " << offset << ", Removed: " << removed)
+            INFO("Removed captures: " << removedCaptures)
+            INFO("Removed checks: " << removedChecks)
+            INFO("Removed max half moves: " << removedMaxHalfMoves)
+            INFO("Removed max eval: " << removedMaxEval)
+            INFO("Removed min pieces: " << removedMinPieces)
+            INFO("Removed single move: " << removedSingleMove)
+            INFO("Removed static margin: " << removedStaticMargin)
+        }
+
+        if(params.filterCaptures && !move.isNull() && move.isCapture())
+        {
+            removed++;
+            removedCaptures++;
+            continue;
+        }
+
+        if(params.filterChecks && board->isChecked())
+        {
+            removed++;
+            removedChecks++;
+            continue;
+        }
+
+        if(params.filterMaxHalfMoves && (board->getHalfMoves() > params.maxHalfMoves))
+        {
+            removed++;
+            removedMaxHalfMoves++;
+            continue;
+        }
+
+        if(params.filterMaxEval && (std::abs(eval) > params.maxEval))
+        {
+            removed++;
+            removedMaxEval++;
+            continue;
+        }
+
+        if(params.filterMinPieces && (board->getNumPieces() < params.minPieces))
+        {
+            removed++;
+            removedMinPieces++;
+            continue;
+        }
+
+        if(params.filterSingleMove)
+        {
+            board->getLegalMoves();
+            if(board->getNumLegalMoves() <= 1)
+            {
+                removed++;
+                removedSingleMove++;
+                continue;
+            }
+        }
+
+        if(params.filterStaticMargin)
+        {
+            eval_t staticEval = Evaluator::nnue.predictBoard(*board);
+            if(std::abs(staticEval - eval) > params.staticMargin)
+            {
+                removed++;
+                removedStaticMargin++;
+                continue;
+            }
+        }
+
+        storer.addPosition(*board, move, eval, result);
+    }
+
+    loader.close();
+    storer.close();
+
+    INFO("Finished filtering positions (Offset): " << offset << ", Removed: " << removed)
 }
