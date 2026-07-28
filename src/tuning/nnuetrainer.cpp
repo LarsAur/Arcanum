@@ -345,12 +345,8 @@ void NNUETrainer::train(TrainingParameters params)
     NET_UNARY_OP(m_moments.m, setZero())
     NET_UNARY_OP(m_moments.v, setZero())
 
+    bool dataLoaded = false;
     DataLoader loader;
-    if(!loader.open(m_params.dataset))
-    {
-        ERROR("Unable to open dataset " << m_params.dataset)
-        return;
-    }
 
     uint32_t timestep = 0;
     for(uint32_t epoch = m_params.startEpoch; epoch < m_params.endEpoch; epoch++)
@@ -362,23 +358,6 @@ void NNUETrainer::train(TrainingParameters params)
         float batchLoss        = 0.0f;
         float iterationLoss    = 0.0f;
 
-        // If the end of the dataset is reached, restart the parser
-        if(loader.eof())
-        {
-            loader.close();
-            if(!loader.open(m_params.dataset))
-            {
-                ERROR("Unable to open dataset " << m_params.dataset)
-                return;
-            }
-
-            // Skip the validation positions at the beginning of the dataset
-            for(uint32_t i = 0; i < m_params.validationSize; i++)
-            {
-                Board *board = loader.getNextBoard();
-            }
-        }
-
         // Clear the gradient at the start of the epoch
         NET_UNARY_OP(m_gradient, setZero())
 
@@ -388,10 +367,10 @@ void NNUETrainer::train(TrainingParameters params)
         epochTimer.start();
         iterationTimer.start();
 
-        while (m_params.useFullDataset ? !loader.eof() : (epochPosCount < m_params.epochSize))
+        while (m_params.useFullDataset || (epochPosCount < m_params.epochSize))
         {
             // If the end of the dataset is reached, restart the parser
-            if(loader.eof())
+            if(!dataLoaded || loader.eof())
             {
                 loader.close();
                 if(!loader.open(m_params.dataset))
@@ -399,11 +378,12 @@ void NNUETrainer::train(TrainingParameters params)
                     ERROR("Unable to open dataset " << m_params.dataset)
                     return;
                 }
+                dataLoaded = true;
 
                 // Skip the validation positions at the beginning of the dataset
                 for(uint32_t i = 0; i < m_params.validationSize; i++)
                 {
-                    Board *board = loader.getNextBoard();
+                    loader.getNextBoard();
                 }
             }
 
@@ -449,6 +429,10 @@ void NNUETrainer::train(TrainingParameters params)
                 }
             }
 
+            if(m_params.useFullDataset && loader.eof())
+            {
+                break;
+            }
         }
         INFO("Epoch time: " << epochTimer.getMs() << " ms")
 
