@@ -133,7 +133,14 @@ void Analyser::m_analysePosition(Board* board)
 
     m_checkedPositions += board->isChecked();
     m_pieceCounts[numPieces]++;
-    m_rule50Counts[board->getHalfMoves()]++;
+
+    uint16_t halfMoves = board->getHalfMoves();
+    if(halfMoves > 100)
+    {
+        halfMoves = 100;
+    }
+
+    m_rule50Counts[halfMoves]++;
 }
 
 std::string Analyser::m_getPiecePositions(bool opponent, Piece pieceType) const
