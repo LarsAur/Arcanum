@@ -80,7 +80,6 @@ namespace Arcanum
 
             void m_applyGradient(uint32_t timestep);
             float m_backPropagate(const Board& board, float cpTarget, GameResult result, bool mirrored);
-            bool m_shouldFilterPosition(Board& board, Move& move, eval_t eval);
             std::tuple<float, float> m_getValidationLoss(const std::string& filename);
         public:
             bool store(const std::string& filename);

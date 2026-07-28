@@ -238,48 +238,6 @@ void NNUETrainer::m_applyGradient(uint32_t timestep)
     }
 }
 
-// Returns true if the position should be skipped / filtered out
-bool NNUETrainer::m_shouldFilterPosition(Board& board, Move& move, eval_t eval)
-{
-    if(!m_params.filter)
-    {
-        return false;
-    }
-
-    // Filter out very high scoring positions
-    if(std::abs(eval) > 10000)
-    {
-        return true;
-    }
-
-    if(board.getNumPieces() <= 6)
-    {
-        return true;
-    }
-
-    // Filter capture moves
-    // Move is null move if the move is not available
-    if(!move.isNull() && move.isCapture())
-    {
-        return true;
-    }
-
-    // Filter positions which are checked
-    if(board.isChecked())
-    {
-        return true;
-    }
-
-    // Filter positions with only one legal move
-    board.getLegalMoves();
-    if(board.getNumLegalMoves() == 1)
-    {
-        return true;
-    }
-
-    return false;
-}
-
 std::tuple<float, float> NNUETrainer::m_getValidationLoss(const std::string& filename)
 {
     if(m_params.validationSize == 0)
@@ -300,20 +258,11 @@ std::tuple<float, float> NNUETrainer::m_getValidationLoss(const std::string& fil
     float totalLoss = 0.0f;
     float totalQLoss = 0.0f;
 
-    uint64_t i = 0;
-    while(i < m_params.validationSize)
+    for (uint32_t i = 0; i < m_params.validationSize; i++)
     {
         Board *board = loader.getNextBoard();
         float cp = static_cast<float>(loader.getScore());
-        Move move = loader.getMove();
         GameResult result = loader.getResult();
-
-        if(m_shouldFilterPosition(*board, move, cp))
-        {
-            continue;
-        }
-
-        i++;
 
         float out = m_predict(*board, false);
         float qout = static_cast<float>(nnue.predictBoard(*board));
@@ -424,13 +373,9 @@ void NNUETrainer::train(TrainingParameters params)
             }
 
             // Skip the validation positions at the beginning of the dataset
-            uint64_t i = 0;
-            while(i < m_params.validationSize)
+            for(uint32_t i = 0; i < m_params.validationSize; i++)
             {
                 Board *board = loader.getNextBoard();
-                eval_t cp = loader.getScore();
-                Move move = loader.getMove();
-                i += !m_shouldFilterPosition(*board, move, cp);
             }
         }
 
@@ -456,25 +401,15 @@ void NNUETrainer::train(TrainingParameters params)
                 }
 
                 // Skip the validation positions at the beginning of the dataset
-                uint64_t i = 0;
-                while(i < m_params.validationSize)
+                for(uint32_t i = 0; i < m_params.validationSize; i++)
                 {
                     Board *board = loader.getNextBoard();
-                    eval_t cp = loader.getScore();
-                    Move move = loader.getMove();
-                    i += !m_shouldFilterPosition(*board, move, cp);
                 }
             }
 
             Board *board = loader.getNextBoard();
             eval_t cp = loader.getScore();
             GameResult result = loader.getResult();
-            Move move = loader.getMove();
-
-            if(m_shouldFilterPosition(*board, move, cp))
-            {
-                continue;
-            }
 
             // Run back propagation with board and mirrored board to augment the dataset
             batchLoss += m_backPropagate(*board, cp, result, false);
