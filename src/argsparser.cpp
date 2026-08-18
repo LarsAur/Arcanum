@@ -81,6 +81,12 @@ bool ArgsParser::parseArgumentsAndRunFengen(int argc, char* argv[])
         if(matchAndParseArg("--nodes",          params.nodes,          argc, argv, index)) { continue; }
         if(matchAndParseArg("--offset",         params.offset,         argc, argv, index)) { continue; }
         if(matchAndParseArg("--scorelimit",     params.scoreLimit,     argc, argv, index)) { continue; }
+        if(matchAndParseArg("--resigneval",     params.resignEval,     argc, argv, index)) { params.resignEnabled = true; continue; }
+        if(matchAndParseArg("--resignrepeats",  params.resignRepeats,  argc, argv, index)) { params.resignEnabled = true; continue; }
+        if(matchAndParseArg("--resignmoves",    params.resignMoves,    argc, argv, index)) { params.resignEnabled = true; continue; }
+        if(matchAndParseArg("--draweval",       params.drawEval,       argc, argv, index)) { params.drawEnabled = true; continue; }
+        if(matchAndParseArg("--drawrepeats",    params.drawRepeats,    argc, argv, index)) { params.drawEnabled = true; continue; }
+        if(matchAndParseArg("--drawmoves",      params.drawMoves,      argc, argv, index)) { params.drawEnabled = true; continue; }
         if(matchAndParseArg("--ttsize",         params.ttSize,         argc, argv, index)) { continue; }
 
         INFO("Unknown argument: " << argv[index])
@@ -112,12 +118,28 @@ bool ArgsParser::parseArgumentsAndRunFengen(int argc, char* argv[])
         INFO("Output path:       " << params.outputPath)
         INFO("Syzygy path:       " << params.syzygyPath)
         INFO("Num random moves:  " << params.numRandomMoves)
+        INFO("Randomize limit:   " << params.scoreLimit)
         INFO("Offset:            " << params.offset)
         INFO("Num fens:          " << params.numFens)
         INFO("Num threads:       " << params.numThreads)
         INFO("Depth:             " << params.depth)
         INFO("Movetime (ms):     " << params.movetime)
         INFO("Nodes:             " << params.nodes)
+        INFO("TT size (MB):      " << params.ttSize)
+        INFO("Resign enabled:    " << (params.resignEnabled ? "true" : "false"))
+        if(params.resignEnabled)
+        {
+            INFO("Resign eval:       " << params.resignEval)
+            INFO("Resign repeats:    " << params.resignRepeats)
+            INFO("Resign moves:      " << params.resignMoves)
+        }
+        INFO("Draw enabled:      " << (params.drawEnabled ? "true" : "false"))
+        if(params.drawEnabled)
+        {
+            INFO("Draw eval:         " << params.drawEval)
+            INFO("Draw repeats:      " << params.drawRepeats)
+            INFO("Draw moves:        " << params.drawMoves)
+        }
 
         Fengen::start(params);
     }
