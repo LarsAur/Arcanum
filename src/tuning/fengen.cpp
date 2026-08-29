@@ -76,9 +76,6 @@ void Fengen::start(FengenParameters params)
         std::string startfen;
         GameRunner runner;
 
-        readLock.lock();
-        readLock.unlock();
-
         runner.setDrawAdjudication(params.drawEnabled, params.drawEval, params.drawRepeats, params.drawMoves);
         runner.setResignAdjudication(params.resignEnabled, params.resignEval, params.resignRepeats, params.resignMoves);
         runner.setMoveLimit(300);
@@ -118,6 +115,10 @@ void Fengen::start(FengenParameters params)
             if(params.numRandomMoves > 0)
             {
                 runner.randomizeInitialPosition(params.numRandomMoves, board, params.scoreLimit);
+            }
+            else
+            {
+                runner.setInitialPosition(board);
             }
 
             // Play the game
