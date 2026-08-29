@@ -6,6 +6,7 @@
 #include <eval.hpp>
 #include <timer.hpp>
 #include <cmath>
+#include <thread>
 
 using namespace Arcanum;
 
@@ -89,11 +90,11 @@ void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& feature
     }
 }
 
-void NNUETrainer::m_initAccumulator(const Board& board, bool mirrored)
+void NNUETrainer::m_initAccumulator(const Board& board, Trace& trace, bool mirrored)
 {
     NNUE::FeatureSet featureSet;
     m_findFeatureSet(board, featureSet, mirrored);
-    float* accPtr = m_trace.acc.data();
+    float* accPtr = trace.acc.data();
 
     constexpr uint32_t numRegs = NNUE::L1Size / RegSize;
     __m256 regs[numRegs];
@@ -137,13 +138,13 @@ void NNUETrainer::randomizeNet()
     }
 }
 
-float NNUETrainer::m_predict(const Board& board, bool mirrored)
+float NNUETrainer::m_predict(const Board& board, Trace& trace, bool mirrored)
 {
     uint32_t bucket = NNUE::getOutputBucket(board);
-    m_initAccumulator(board, mirrored);
-    m_trace.acc.clippedRelu(ReluClipValue);
-    lastLevelFeedForward(m_net.l1Weights[bucket], m_net.l1Biases[bucket], m_trace.acc, m_trace.out);
-    return *m_trace.out.data() * NNUE::NetworkScale;
+    m_initAccumulator(board, trace, mirrored);
+    trace.acc.clippedRelu(ReluClipValue);
+    lastLevelFeedForward(m_net.l1Weights[bucket], m_net.l1Biases[bucket], trace.acc, trace.out);
+    return *trace.out.data() * NNUE::NetworkScale;
 }
 
 inline float NNUETrainer::m_sigmoid(float v)
@@ -159,10 +160,18 @@ inline float NNUETrainer::m_sigmoidPrime(float sigmoid)
 }
 
 // http://neuralnetworksanddeeplearning.com/chap2.html
-float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResult result, bool mirrored)
+float NNUETrainer::m_backPropagate(
+    const Board& board,
+    float cpTarget,
+    GameResult result,
+    Trace& trace,
+    BackPropagationData& backPropData,
+    Net& gradient,
+    bool mirrored
+)
 {
     // -- Run prediction
-    float out = m_predict(board, mirrored);
+    float out = m_predict(board, trace, mirrored);
 
     // Set Win-Draw-Loss target based on result
     // Normalize from [-1, 1] to [0, 1]
@@ -194,36 +203,36 @@ float NNUETrainer::m_backPropagate(const Board& board, float cpTarget, GameResul
     uint32_t bucket = NNUE::getOutputBucket(board);
 
     // Calculate derivative of activation functions (Sigma prime)
-    m_backPropData.accumulatorReLuPrime.copy(m_trace.acc);
-    m_backPropData.accumulatorReLuPrime.clippedReluPrime(ReluClipValue);
+    backPropData.accumulatorReLuPrime.copy(trace.acc);
+    backPropData.accumulatorReLuPrime.clippedReluPrime(ReluClipValue);
 
     // Calculate deltas (d_l = W_l+1^T * d_l+1) * sigma prime (Z_l)
 
-    m_backPropData.delta2.set(0, 0, sigmoidPrime * lossPrime);
+    backPropData.delta2.set(0, 0, sigmoidPrime * lossPrime);
 
-    multiplyTransposeA(m_net.l1Weights[bucket], m_backPropData.delta2, m_backPropData.delta1);
-    m_backPropData.delta1.hadamard(m_backPropData.accumulatorReLuPrime);
+    multiplyTransposeA(m_net.l1Weights[bucket], backPropData.delta2, backPropData.delta1);
+    backPropData.delta1.hadamard(backPropData.accumulatorReLuPrime);
 
     // Calculation of gradient
 
-    multiplyTransposeBAccumulate(m_backPropData.delta2, m_trace.acc, m_gradient.l1Weights[bucket]);
-    calcAndAccFtGradient(featureSet, m_backPropData.delta1, m_gradient.ftWeights);
+    multiplyTransposeBAccumulate(backPropData.delta2, trace.acc, gradient.l1Weights[bucket]);
+    calcAndAccFtGradient(featureSet, backPropData.delta1, gradient.ftWeights);
 
     // Accumulate the change
-    m_gradient.l1Biases[bucket].add(m_backPropData.delta2);
-    m_gradient.ftBiases.add(m_backPropData.delta1);
+    gradient.l1Biases[bucket].add(backPropData.delta2);
+    gradient.ftBiases.add(backPropData.delta1);
 
     return loss;
 }
 
-void NNUETrainer::m_applyGradient(uint32_t timestep)
+void NNUETrainer::m_applyGradient(uint32_t timestep, Net& gradient)
 {
-    m_net.ftWeights.adamUpdate(m_params.alpha, timestep, m_gradient.ftWeights, m_moments.m.ftWeights, m_moments.v.ftWeights);
-    m_net.ftBiases.adamUpdate(m_params.alpha, timestep, m_gradient.ftBiases, m_moments.m.ftBiases, m_moments.v.ftBiases);
+    m_net.ftWeights.adamUpdate(m_params.alpha, timestep, gradient.ftWeights, m_moments.m.ftWeights, m_moments.v.ftWeights, m_params.batchSize);
+    m_net.ftBiases.adamUpdate(m_params.alpha, timestep, gradient.ftBiases, m_moments.m.ftBiases, m_moments.v.ftBiases, m_params.batchSize);
     for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++)
     {
-        m_net.l1Weights[i].adamUpdate(m_params.alpha, timestep, m_gradient.l1Weights[i], m_moments.m.l1Weights[i], m_moments.v.l1Weights[i]);
-        m_net.l1Biases [i].adamUpdate(m_params.alpha, timestep, m_gradient.l1Biases [i], m_moments.m.l1Biases[i],  m_moments.v.l1Biases[i]);
+        m_net.l1Weights[i].adamUpdate(m_params.alpha, timestep, gradient.l1Weights[i], m_moments.m.l1Weights[i], m_moments.v.l1Weights[i], m_params.batchSize);
+        m_net.l1Biases [i].adamUpdate(m_params.alpha, timestep, gradient.l1Biases [i], m_moments.m.l1Biases[i],  m_moments.v.l1Biases[i], m_params.batchSize);
     }
 
     // Clamp the weights of the linear layers to enable quantization at a later stage
@@ -258,13 +267,14 @@ std::tuple<float, float> NNUETrainer::m_getValidationLoss(const std::string& fil
     float totalLoss = 0.0f;
     float totalQLoss = 0.0f;
 
+    Trace trace;
     for (uint32_t i = 0; i < m_params.validationSize; i++)
     {
         Board *board = loader.getNextBoard();
         float cp = static_cast<float>(loader.getScore());
         GameResult result = loader.getResult();
 
-        float out = m_predict(*board, false);
+        float out = m_predict(*board, trace, false);
         float qout = static_cast<float>(nnue.predictBoard(*board));
 
         // Set Win-Draw-Loss target based on result
@@ -315,6 +325,71 @@ void NNUETrainer::m_logLoss(float epochLoss, uint64_t epochPosCount, float valid
     os.close();
 }
 
+bool NNUETrainer::m_runBatch(DataLoader& loader)
+{
+    bool passed = true;
+    std::mutex mtx;
+
+    std::function <void(uint32_t)> threadFunc = [this, &mtx, &loader, &passed](uint32_t threadId)
+    {
+        // Clear the gradients and loss for this thread
+        m_losses[threadId] = 0.0f;
+        NET_UNARY_OP(m_gradients[threadId], setZero())
+
+        // The batch size is divided between the threads
+        // TODO: This might lead to less than batchSize positions being processed
+        // if the batch size is not divisible by the number of threads. This should be fixed by having the last thread process the remaining positions.
+        uint32_t threadBatchSize = m_params.batchSize / m_params.numThreads;
+        for(uint32_t j = 0; j < threadBatchSize; j+=2)
+        {
+            // Get the next board and move from the data loader
+            mtx.lock();
+            if(loader.eof())
+            {
+                passed = false;
+                mtx.unlock();
+                break;
+            }
+
+            Board board = Board(*loader.getNextBoard());
+            eval_t cp = loader.getScore();
+            GameResult result = loader.getResult();
+            mtx.unlock();
+
+            // Run back propagation with board and mirrored board to augment the dataset
+            m_losses[threadId] += m_backPropagate(board, cp, result, m_traces[threadId], m_backPropData[threadId], m_gradients[threadId], false);
+            m_losses[threadId] += m_backPropagate(board, cp, result, m_traces[threadId], m_backPropData[threadId], m_gradients[threadId], true);
+        }
+    };
+
+    // TODO: Make a thread pool instead of creating new threads for each batch
+    // Run the batch in parallel across multiple threads
+    std::vector<std::thread> threads;
+    for(uint32_t i = 1; i < m_params.numThreads; i++)
+    {
+        threads.emplace_back(threadFunc, i);
+    }
+
+    // Run the first thread in the main thread
+    threadFunc(0);
+
+    // Wait for all threads to finish
+    for(auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    // Aggregate the gradients from all threads into the first gradient
+    // TODO: This could also be done in parallel by merging sets of ranges per thread.
+    for(uint32_t i = 1; i < m_params.numThreads; i++)
+    {
+        NET_BINARY_OP(m_gradients[0], add, m_gradients[i])
+        m_losses[0] += m_losses[i];
+    }
+
+    return passed;
+}
+
 void NNUETrainer::train(TrainingParameters params)
 {
     ENABLE_FTZ_AND_DAZ();
@@ -340,8 +415,12 @@ void NNUETrainer::train(TrainingParameters params)
         randomizeNet();
     }
 
-    // Initialize the gradients
-    NET_UNARY_OP(m_gradient, setZero())
+    // Allocate the gradients and backpropagation data
+    m_traces.resize(m_params.numThreads);
+    m_gradients.resize(m_params.numThreads);
+    m_backPropData.resize(m_params.numThreads);
+    m_losses.resize(m_params.numThreads);
+
     NET_UNARY_OP(m_moments.m, setZero())
     NET_UNARY_OP(m_moments.v, setZero())
 
@@ -352,14 +431,9 @@ void NNUETrainer::train(TrainingParameters params)
     for(uint32_t epoch = m_params.startEpoch; epoch < m_params.endEpoch; epoch++)
     {
         uint64_t epochPosCount = 0LL;
-        uint64_t batchPosCount = 0LL;
         uint64_t iterationBatchCount = 0LL;
         float epochLoss        = 0.0f;
-        float batchLoss        = 0.0f;
         float iterationLoss    = 0.0f;
-
-        // Clear the gradient at the start of the epoch
-        NET_UNARY_OP(m_gradient, setZero())
 
         // Start timers
         Timer epochTimer;
@@ -387,33 +461,17 @@ void NNUETrainer::train(TrainingParameters params)
                 }
             }
 
-            Board *board = loader.getNextBoard();
-            eval_t cp = loader.getScore();
-            GameResult result = loader.getResult();
+            bool batchSuccess = m_runBatch(loader);
 
-            // Run back propagation with board and mirrored board to augment the dataset
-            batchLoss += m_backPropagate(*board, cp, result, false);
-            batchLoss += m_backPropagate(*board, cp, result, true);
-
-            // Count the number of positions in the current batch
-            batchPosCount+=2;
-
-            if(batchPosCount >= m_params.batchSize)
+            // Batch fails if it reaches the end of the dataset
+            if(batchSuccess)
             {
-                // Get the average gradient for the batch
-                NET_UNARY_OP(m_gradient, scale(1.0f / batchPosCount))
-
-                m_applyGradient(++timestep);
-
-                // Reset the gradient to 0
-                NET_UNARY_OP(m_gradient, setZero())
+                m_applyGradient(++timestep, m_gradients[0]);
 
                 // Aggregate the loss and position count
-                epochPosCount += batchPosCount;
-                epochLoss     += batchLoss;
-                iterationLoss += batchLoss;
-                batchPosCount  = 0;
-                batchLoss      = 0.0f;
+                epochPosCount += m_params.batchSize;
+                epochLoss     += m_losses[0];
+                iterationLoss += m_losses[0];
                 iterationBatchCount++;
 
                 if(iterationBatchCount >= LoggingInterval)

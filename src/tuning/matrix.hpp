@@ -156,7 +156,8 @@ namespace Arcanum
                 uint32_t t,
                 Matrix<rows, cols>& gradient,
                 Matrix<rows, cols>& m,
-                Matrix<rows, cols>& v
+                Matrix<rows, cols>& v,
+                uint32_t batchSize
             )
             {
                 // ADAM Optimizer: https://arxiv.org/pdf/1412.6980.pdf
@@ -166,10 +167,11 @@ namespace Arcanum
 
                 // Calculate the bias correction
                 const float corrAlpha = alpha * std::sqrt(1.0f - std::pow(beta2, t)) / (1.0f - std::pow(beta1, t));
+                const float batchSizeInv = 1.0f / batchSize;
 
                 for(uint32_t i = 0; i < cols * rows; i++)
                 {
-                    const float grad = gradient.m_data[i];
+                    const float grad = gradient.m_data[i] * batchSizeInv;
 
                     // M_t = B1 * M_t-1 + (1 - B1) * g_t
                     float m_t = beta1 * m.m_data[i] + (1.0f - beta1) * grad;

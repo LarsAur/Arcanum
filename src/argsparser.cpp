@@ -166,6 +166,7 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
     params.gamma          = 1.0f;        // Scaling of learning rate over epochs
     params.gammaSteps     = 1;           // How often to apply gamma scaling
     params.filter         = false;       // If true, checked positions, positions with captures as best move, or positions with very high evals are filtered out.
+    params.numThreads     = 1;           // Number of threads to use for training. Each thread will have its own copy of gradients and traces. The batch size is divided between the threads.
 
     int index = 2; // Skip the executable name and command
 
@@ -184,6 +185,7 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
         if(matchAndParseArg("--gamma",          params.gamma,           argc, argv, index)) { continue; }
         if(matchAndParseArg("--gammasteps",     params.gammaSteps,      argc, argv, index)) { continue; }
         if(matchAndParseArg("--filter",         params.filter,          argc, argv, index)) { continue; }
+        if(matchAndParseArg("--numthreads",     params.numThreads,      argc, argv, index)) { continue; }
 
         ERROR("Unknown argument: " << argv[index])
         return false;
@@ -212,6 +214,9 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
     if((params.lambda < 0) || (params.lambda > 1))
     { valid = false; INFO("Lambda has to be between 0 and 1 (inclusive)") }
 
+    if(params.numThreads <= 0)
+    { valid = false; INFO("Number of threads cannot be 0 or less") }
+
     if(valid)
     {
         INFO("Starting NNUE trainer with parameters:")
@@ -228,6 +233,7 @@ bool ArgsParser::parseArgumentsAndRunNnueTrainer(int argc, char* argv[])
         INFO("Gamma:             " << params.gamma)
         INFO("Gamma steps:       " << params.gammaSteps)
         INFO("Filter positions:  " << (params.filter ? "true" : "false"))
+        INFO("Num threads:       " << params.numThreads)
 
         NNUETrainer trainer;
         trainer.train(params);

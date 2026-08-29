@@ -23,6 +23,7 @@ namespace Arcanum
         float gamma;  // Scaling for learning rate. Applied every gammaSteps epoch. alpha = alpha * gamma. Set to 1 to disable
         uint32_t gammaSteps; // Number of epochs between applying gamma.
         bool filter; // If true, checked positions, positions with captures as best move, or positions with very high evals are filtered out.
+        uint32_t numThreads; // Number of threads to use for training. Each thread will have its own copy of gradients and traces. The batch size is divided between the threads.
     };
 
     class NNUETrainer
@@ -60,12 +61,12 @@ namespace Arcanum
                 Net v;
             };
 
-            Trace m_trace;
+            std::vector<Trace> m_traces;
+            std::vector<Net> m_gradients;
+            std::vector<BackPropagationData> m_backPropData;
+            std::vector<float> m_losses;
             Net m_net;
-
-            Net m_gradient;
             AdamMoments m_moments;
-            BackPropagationData m_backPropData;
 
             TrainingParameters m_params;
 
@@ -74,12 +75,13 @@ namespace Arcanum
             static std::string m_getOutputFilename(const std::string& base, uint32_t epoch);
             static void m_logLoss(float epochLoss, uint64_t epochPosCount, float validationLoss, float validationQLoss, const std::string& prefix, const std::string& filename);
 
-            float m_predict(const Board& board, bool mirrored);
-            void m_initAccumulator(const Board& board, bool mirrored);
+            float m_predict(const Board& board, Trace& trace, bool mirrored);
+            void m_initAccumulator(const Board& board, Trace& trace, bool mirrored);
             void m_findFeatureSet(const Board& board, NNUE::FeatureSet& featureSet, bool mirrored);
 
-            void m_applyGradient(uint32_t timestep);
-            float m_backPropagate(const Board& board, float cpTarget, GameResult result, bool mirrored);
+            bool m_runBatch(DataLoader& loader);
+            void m_applyGradient(uint32_t timestep, Net& gradient);
+            float m_backPropagate(const Board& board, float cpTarget, GameResult result, Trace& trace, BackPropagationData& backPropData, Net& gradient, bool mirrored);
             std::tuple<float, float> m_getValidationLoss(const std::string& filename);
         public:
             bool store(const std::string& filename);
