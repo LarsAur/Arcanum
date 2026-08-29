@@ -12,19 +12,19 @@ using namespace Arcanum;
 #define NET_BINARY_OP(_net1, _op, _net2) \
 _net1.ftWeights._op(_net2.ftWeights); \
 _net1.ftBiases ._op(_net2.ftBiases ); \
-for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++) \
+for(uint32_t _i = 0; _i < NNUE::NumOutputBuckets; _i++) \
 { \
-_net1.l1Weights[i]._op(_net2.l1Weights[i]); \
-_net1.l1Biases [i]._op(_net2.l1Biases [i]); \
+_net1.l1Weights[_i]._op(_net2.l1Weights[_i]); \
+_net1.l1Biases [_i]._op(_net2.l1Biases [_i]); \
 }
 
 #define NET_UNARY_OP(_net1, _op) \
 _net1.ftWeights._op; \
 _net1.ftBiases ._op; \
-for(uint32_t i = 0; i < NNUE::NumOutputBuckets; i++) \
+for(uint32_t _i = 0; _i < NNUE::NumOutputBuckets; _i++) \
 { \
-_net1.l1Weights[i]._op; \
-_net1.l1Biases [i]._op; \
+_net1.l1Weights[_i]._op; \
+_net1.l1Biases [_i]._op; \
 }
 
 bool NNUETrainer::load(const std::string& filename)
