@@ -138,6 +138,13 @@ void NNUETrainer::randomizeNet()
     }
 }
 
+float NNUETrainer::predict(const Board& board)
+{
+    // Ensure there is at least one trace available
+    if(m_traces.size() == 0) { m_traces.resize(1); }
+    return m_predict(board, m_traces[0], false);
+}
+
 float NNUETrainer::m_predict(const Board& board, Trace& trace, bool mirrored)
 {
     uint32_t bucket = NNUE::getOutputBucket(board);

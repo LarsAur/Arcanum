@@ -88,6 +88,7 @@ namespace Arcanum
             bool load(const std::string& filename);
             void randomizeNet();
             void train(TrainingParameters params);
+            float predict(const Board& board);
             Net* getNet();
     };
 }
