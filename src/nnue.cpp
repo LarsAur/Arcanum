@@ -4,7 +4,7 @@
 using namespace Arcanum;
 
 // Calculate the feature indices of the board with the white perspective
-// To the the feature indices of the black perspective, xor the indices with 1
+// To the feature indices of the black perspective, xor the indices with 1
 uint16_t NNUE::getFeatureIndex(square_t pieceSquare, Color pieceColor, Piece pieceType, Color perspective)
 {
     if(pieceColor == BLACK)
@@ -270,16 +270,11 @@ void NNUE::m_accAddAddSubSub(const Accumulator* acc, Accumulator* nextAcc, const
 
 eval_t NNUE::predict(const Accumulator* acc, const Board& board)
 {
-    alignas(64) uint8_t clampedAcc[L1Size];
-    alignas(64) int32_t l1Out[1];
-
     uint32_t bucket = getOutputBucket(board);
 
-    m_clampAcc(acc->acc[board.getTurn()], clampedAcc);
+    int32_t l1Out = m_l1AffineTransform(acc->acc[board.getTurn()], m_net->l1Weights[bucket], m_net->l1Biases[bucket]);
 
-    m_l1AffineTransform(clampedAcc, m_net->l1Weights[bucket], m_net->l1Biases[bucket], l1Out);
-
-    return static_cast<eval_t>((*l1Out * NetworkScale) / (FTQ * LQ));
+    return static_cast<eval_t>((l1Out * NetworkScale) / (FTQ * LQ));
 }
 
 eval_t NNUE::predictBoard(const Board& board)
@@ -289,62 +284,40 @@ eval_t NNUE::predictBoard(const Board& board)
     return predict(&acc, board);
 }
 
-inline void NNUE::m_clampAcc(const int16_t* in, uint8_t* out)
+// The clipped ReLU is fused into the transform to avoid a round-trip through a temporary buffer
+inline int32_t NNUE::m_l1AffineTransform(const int16_t* in, const int16_t* weights, const int32_t* biases)
 {
-    constexpr uint32_t NumChunks = L1Size / 16;
+    constexpr uint32_t ChunkSize = sizeof(__m256i) / sizeof(in[0]);
+    constexpr uint32_t NumInChunks  = L1Size / ChunkSize;
 
-    const __m256i* in256 = (__m256i*) in;
-    __m256i* out256 = (__m256i*) out;
-
-    for(uint32_t i = 0; i < NumChunks / 2; i++)
-    {
-        __m256i acc1 = _mm256_load_si256(in256 + 2*i);
-        __m256i acc2 = _mm256_load_si256(in256 + 2*i + 1);
-
-        // Convert the two 16-bit vectors to 8-bit
-        // Note that this shuffles the output [a1,a2,a3,a4], [b1,b2,b3,b4] -> [(a1,a2), (b1,b2), (a3, a4), (b3, b4)]
-        // When using _mm256_packus_epi16 over _mm256_packs_epi16, the values are clamped to [0, 255], so there is no
-        // need to manually perform the clipped ReLU operation
-        static_assert(FTQ == 255, "Adjust clamping when FTQ is changed");
-        __m256i acc8bit = _mm256_packus_epi16(acc1, acc2);
-
-        // Unshuffle the shuffled output from above
-        // 64-bit chunks are moved according to the select signal
-        constexpr uint8_t select = 0b11011000; // 0, 2, 1, 3 (LSB first)
-        acc8bit = _mm256_permute4x64_epi64(acc8bit, select);
-
-        _mm256_store_si256(out256 + i, acc8bit);
-    }
-}
-
-inline void NNUE::m_l1AffineTransform(const uint8_t* in, const int8_t* weights, const int32_t* biases, int32_t* out)
-{
-    constexpr uint32_t NumInChunks  = L1Size / 32;
+    const __m256i zero = _mm256_setzero_si256();
+    const __m256i clip = _mm256_set1_epi16(FTQ);
 
     const __m256i* in256 = reinterpret_cast<const __m256i*>(in);
     const __m256i* w256  = reinterpret_cast<const __m256i*>(weights);
 
-    __m256i acc = _mm256_setzero_si256();
-    const __m256i ones16 = _mm256_set1_epi16(1);
+    __m256i acc0 = _mm256_setzero_si256();
+    __m256i acc1 = _mm256_setzero_si256();
 
-    for(uint32_t j = 0; j < NumInChunks; j++)
+    for(uint32_t j = 0; j < NumInChunks; j += 2)
     {
-        __m256i factors8 = _mm256_load_si256(in256 + j);
-        __m256i weights8 = _mm256_load_si256(w256 + j);
+        __m256i factors0 = _mm256_load_si256(in256 + j);
+        __m256i factors1 = _mm256_load_si256(in256 + j + 1);
 
-        // Note: The first argument is treated as unsigned bytes, and the second as signed bytes
-        __m256i sum16 = _mm256_maddubs_epi16(factors8, weights8);
+        factors0 = _mm256_min_epi16(_mm256_max_epi16(factors0, zero), clip);
+        factors1 = _mm256_min_epi16(_mm256_max_epi16(factors1, zero), clip);
 
-        // Collapse adjacent 16-bit lanes into 32-bit partial sums.
-        __m256i sum32 = _mm256_madd_epi16(sum16, ones16);
-        acc = _mm256_add_epi32(acc, sum32);
+        acc0 = _mm256_add_epi32(acc0, _mm256_madd_epi16(factors0, _mm256_load_si256(w256 + j)));
+        acc1 = _mm256_add_epi32(acc1, _mm256_madd_epi16(factors1, _mm256_load_si256(w256 + j + 1)));
     }
+
+    __m256i acc = _mm256_add_epi32(acc0, acc1);
 
     // Horizontal sum over the 8 int32 lanes.
     __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(acc), _mm256_extracti128_si256(acc, 1));
     sum128 = _mm_hadd_epi32(sum128, sum128);
     sum128 = _mm_hadd_epi32(sum128, sum128);
-    *out = _mm_cvtsi128_si32(sum128) + biases[0];
+    return _mm_cvtsi128_si32(sum128) + biases[0];
 }
 
 void NNUE::load(const std::string filename)
