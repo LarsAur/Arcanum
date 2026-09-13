@@ -22,7 +22,7 @@ inline uint32_t PvTable::m_tableIndex(uint32_t plyFromRoot, uint32_t ply) const
 
 void PvTable::updatePv(const Move& move, uint32_t plyFromRoot)
 {
-    if(plyFromRoot >= m_maxPvLength)
+    if(plyFromRoot + 1 >= m_maxPvLength)
     {
         WARNING("Ply from root is too large when updating PV: " << plyFromRoot)
         return;
@@ -37,6 +37,11 @@ void PvTable::updatePv(const Move& move, uint32_t plyFromRoot)
 
 std::string PvTable::getPvLine()
 {
+    if(m_pvLengths[0] == 0)
+    {
+        return "";
+    }
+
     std::string str;
     for(uint8_t i = 0; i < m_pvLengths[0] - 1; i++)
     {
