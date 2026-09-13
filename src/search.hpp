@@ -157,16 +157,16 @@ namespace Arcanum
             std::atomic<bool> m_stopSearch;
 
             eval_t m_adjustEval(eval_t rawEval, Board& board);
-            bool m_isDraw(const Board& board, uint8_t plyFromRoot) const;
+            bool m_isDraw(const Board& board, uint32_t plyFromRoot) const;
             bool m_shouldStop();
             void m_sendUciInfo(const Board& board, eval_t score, uint32_t depth, Syzygy::WDLResult tbResult);
             void m_initializeTables();
             uint8_t m_getReduction(uint8_t depth, uint8_t moveNumber) const;
 
             template <bool isPv>
-            eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove = NULL_MOVE);
+            eval_t m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, uint32_t plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove = NULL_MOVE);
             template <bool isPv>
-            eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot);
+            eval_t m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, uint32_t plyFromRoot);
         public:
             Searcher(bool verbose = true);
             ~Searcher();

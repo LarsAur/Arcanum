@@ -87,7 +87,7 @@ eval_t Searcher::m_adjustEval(eval_t rawEval, Board& board)
 }
 
 template <bool isPv>
-eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int plyFromRoot)
+eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, uint32_t plyFromRoot)
 {
     if(m_shouldStop())
     {
@@ -186,6 +186,11 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
         return staticEval;
     }
 
+    if(plyFromRoot >= MaxSearchPly - 1)
+    {
+        return staticEval;
+    }
+
     // Push the board on the search stack
     m_searchStacks.hashes     [plyFromRoot] = board.getHash();
     m_searchStacks.staticEvals[plyFromRoot] = staticEval;
@@ -249,7 +254,7 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, int p
 }
 
 template <bool isPv>
-eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, int plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove)
+eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth, uint32_t plyFromRoot, bool cutnode, uint8_t totalExtensions, Move skipMove)
 {
     if(depth <= 0)
     {
@@ -394,6 +399,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     if(numMoves == 0)
     {
         return skipMove.isNull() ? staticEval : alpha;
+    }
+
+    if(plyFromRoot >= MaxSearchPly - 1)
+    {
+        return staticEval;
     }
 
     board.generateCaptureInfo();
@@ -745,7 +755,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     return bestScore;
 }
 
-inline bool Searcher::m_isDraw(const Board& board, uint8_t plyFromRoot) const
+inline bool Searcher::m_isDraw(const Board& board, uint32_t plyFromRoot) const
 {
     // Check for repeated positions in the current search
     // * Only check for boards backwards until captures occur (halfMoves)
