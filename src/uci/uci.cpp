@@ -105,6 +105,14 @@ void UCI::go(std::istringstream& is)
             {
                 toLowerCase(token);
                 Move move = getMoveFromUciString(token, board);
+
+                if(move.isNull() || (parameters.numSearchMoves >= MaxMoveCount - 1))
+                {
+                    // Undo the last read token from the input stream
+                    is.seekg(-token.size(), std::ios_base::cur);
+                    break;
+                };
+
                 parameters.searchMoves[parameters.numSearchMoves++] = move;
             }
         }
@@ -356,7 +364,26 @@ Move UCI::getMoveFromUciString(const std::string& uciStr, const Board& board)
 {
     if((uciStr.length() < 4) || (uciStr.length() > 5))
     {
-        WARNING("UCI string has to be 4 or 5 characters long: " << uciStr)
+        return NULL_MOVE;
+    }
+
+    if(uciStr[0] < 'a' || uciStr[0] > 'h')
+    {
+        return NULL_MOVE;
+    }
+
+    if(uciStr[1] < '1' || uciStr[1] > '8')
+    {
+        return NULL_MOVE;
+    }
+
+    if(uciStr[2] < 'a' || uciStr[2] > 'h')
+    {
+        return NULL_MOVE;
+    }
+
+    if(uciStr[3] < '1' || uciStr[3] > '8')
+    {
         return NULL_MOVE;
     }
 
@@ -373,7 +400,6 @@ Move UCI::getMoveFromUciString(const std::string& uciStr, const Board& board)
             case 'b': promoteInfo = MoveInfoBit::PROMOTE_BISHOP; break;
             case 'n': promoteInfo = MoveInfoBit::PROMOTE_KNIGHT; break;
             default:
-                WARNING("Invalid promotion piece in UCI string: " << uciStr)
                 return NULL_MOVE;
         }
     }
