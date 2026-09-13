@@ -154,7 +154,7 @@ namespace Arcanum
             uint8_t m_seldepth;
             uint32_t m_rootDepth;
             bool m_verbose; // Print use output and stats while searching
-            volatile bool m_stopSearch;
+            std::atomic<bool> m_stopSearch;
 
             eval_t m_adjustEval(eval_t rawEval, Board& board);
             bool m_isDraw(const Board& board, uint8_t plyFromRoot) const;
