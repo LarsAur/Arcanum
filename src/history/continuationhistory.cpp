@@ -21,12 +21,18 @@ inline uint32_t ContinuationHistory::m_getIndex(Color turn, Piece prevPiece, squ
 
 void ContinuationHistory::m_addBonus(const Move& move, const Move& prevMove, Color turn, int32_t bonus)
 {
+    // Filter prev null moves as they do not have a moved piece or destination square
+    if(prevMove.isNull()) return;
+
     uint32_t index = m_getIndex(turn, prevMove.movedPiece(), prevMove.to, move.movedPiece(), move.to);
     m_scores[index] += bonus - (m_scores[index] * std::abs(bonus) / 16384);
 }
 
 int32_t ContinuationHistory::m_getScore(const Move& move, const Move& prevMove, Color turn)
 {
+    // Filter prev null moves as they do not have a moved piece or destination square
+    if(prevMove.isNull()) return 0;
+
     uint32_t index = m_getIndex(turn, prevMove.movedPiece(), prevMove.to, move.movedPiece(), move.to);
     return m_scores[index];
 }
