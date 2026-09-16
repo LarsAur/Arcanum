@@ -28,7 +28,7 @@ void CorrectionHistory::update(const Board& board, eval_t bestScore, eval_t stat
 {
     // Pawn correction
     uint32_t index = m_getPawnIndex(board.getPawnHash(), board.getTurn());
-    eval_t correction = (bestScore - staticEval);
+    int32_t correction = (bestScore - staticEval);
     eval_t bonus = std::clamp(correction * depth / 8, -CorrectionLimit, CorrectionLimit);
     m_pawnCorrections[index] += bonus - m_pawnCorrections[index] * abs(bonus) / CorrectionLimit;
 }

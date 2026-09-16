@@ -747,7 +747,11 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
         m_tt.add(bestScore, bestMove, isPv, depth, plyFromRoot, rawEval, flag, board.getHash());
 
-        if (!board.isChecked() && !bestMove.isCapture() && ((flag == TTFlag::EXACT) || (flag == (bestScore >= staticEval ? TTFlag::LOWER_BOUND : TTFlag::UPPER_BOUND)))) {
+        if (!board.isChecked()
+        && !Evaluator::isMateScore(bestScore)
+        && !bestMove.isCapture()
+        && !bestMove.isNull()
+        && ((flag == TTFlag::EXACT) || (flag == (bestScore >= staticEval ? TTFlag::LOWER_BOUND : TTFlag::UPPER_BOUND)))) {
             m_heuristics.correctionHistory.update(board, bestScore, staticEval, depth);
         }
     }
