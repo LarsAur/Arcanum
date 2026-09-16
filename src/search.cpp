@@ -398,7 +398,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
 
     if(numMoves == 0)
     {
-        return skipMove.isNull() ? staticEval : alpha;
+        return staticEval;
     }
 
     if(plyFromRoot >= MaxSearchPly - 1)
