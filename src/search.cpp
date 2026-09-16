@@ -77,7 +77,7 @@ void Searcher::clear()
 
 eval_t Searcher::m_adjustEval(eval_t rawEval, Board& board)
 {
-    if(board.isChecked() || Evaluator::isMateScore(rawEval))
+    if(board.isChecked() || Evaluator::isMateScore(rawEval) || !board.hasLegalMove())
     {
         return rawEval;
     }
