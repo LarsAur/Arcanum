@@ -45,7 +45,7 @@ namespace Arcanum
         class UCI
         {
             private:
-                static bool isSearching;
+                static std::atomic<bool> isSearching;
                 static std::thread searchThread;
                 static Board       board;
                 static Searcher    searcher;

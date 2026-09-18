@@ -11,7 +11,7 @@
 using namespace Arcanum;
 using namespace Arcanum::Interface;
 
-bool        UCI::isSearching = false;
+std::atomic<bool> UCI::isSearching = false;
 std::thread UCI::searchThread;
 Board       UCI::board(FEN::startpos);
 Searcher    UCI::searcher;
@@ -151,14 +151,19 @@ void UCI::go(std::istringstream& is)
 
     if(!UCI::isSearching)
     {
+        if(UCI::searchThread.joinable())
+        {
+            UCI::searchThread.join();
+        }
+
         // Set isSearching before creating the thread.
         // This is to make sure it is set before returning from go.
         UCI::isSearching = true;
-        UCI::searchThread = std::thread([&](SearchParameters _parameters) {
-            UCI::searcher.search(board, _parameters);
+        UCI::searchThread = std::thread([&](SearchParameters _parameters, Board _board) {
+            UCI::searcher.search(_board, _parameters);
             // Set isSearching to false when the search is done in the thread
             UCI::isSearching = false;
-        }, parameters);
+        }, parameters, board);
     }
 }
 
