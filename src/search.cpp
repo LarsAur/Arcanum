@@ -410,7 +410,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
     bool isChecked = board.isChecked();
     bool isImproving = (plyFromRoot > 1) && (staticEval > m_searchStacks.staticEvals[plyFromRoot - 2]);
     bool isWorsening = (plyFromRoot > 1) && (staticEval < m_searchStacks.staticEvals[plyFromRoot - 2]);
-    bool opponentHasEasyCapture = board.hasEasyCapture(Color(board.getTurn()^1));
     Move prevMove = m_searchStacks.moves[plyFromRoot-1];
     bool isNullMoveSearch = prevMove.isNull();
 
@@ -424,7 +423,9 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         // Reverse futility pruning
         if(!Evaluator::isCloseToMate(board, beta) && depth < 9)
         {
-            if(staticEval - 150 * (depth - !opponentHasEasyCapture)  >= beta)
+            bool opponentHasEasyCapture = board.hasEasyCapture(Color(board.getTurn()^1));
+            eval_t futilityMargin = std::max(50, 100 * depth - 100 * (!opponentHasEasyCapture));
+            if(staticEval - futilityMargin >= beta)
             {
                 m_stats.reverseFutilityCutoffs++;
                 return (staticEval + beta) / 2;
