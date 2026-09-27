@@ -1,6 +1,10 @@
 #include <nnue.hpp>
 #include <tuning/nnueformat.hpp>
 
+#if defined(USE_NEON)
+#include <arm_neon.h>
+#endif
+
 using namespace Arcanum;
 
 // Calculate the feature indices of the board with the white perspective
@@ -143,6 +147,38 @@ void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
             _mm256_store_si256(bacc + j, bsum);
         }
     }
+#elif defined(USE_NEON)
+    constexpr uint32_t NumChunks = L1Size / 8;
+
+    FullFeatureSet featureSet;
+    findFullFeatureSet(board, featureSet);
+
+    int16_t* wacc = acc->acc[Color::WHITE];
+    int16_t* bacc = acc->acc[Color::BLACK];
+    const int16_t* biases = m_net->ftBiases;
+
+    for(uint32_t i = 0; i < NumChunks; i++)
+    {
+        const int16x8_t bias = vld1q_s16(biases + i * 8);
+        vst1q_s16(wacc + i * 8, bias);
+        vst1q_s16(bacc + i * 8, bias);
+    }
+
+    for(uint32_t i = 0; i < featureSet.numFeatures; i++)
+    {
+        uint32_t wfindex = featureSet.features[Color::WHITE][i];
+        uint32_t bfindex = featureSet.features[Color::BLACK][i];
+        const int16_t* wbase = &m_net->ftWeights[wfindex * L1Size];
+        const int16_t* bbase = &m_net->ftWeights[bfindex * L1Size];
+
+        for(uint32_t j = 0; j < NumChunks; j++)
+        {
+            const int16x8_t wsum = vaddq_s16(vld1q_s16(wacc + j * 8), vld1q_s16(wbase + j * 8));
+            const int16x8_t bsum = vaddq_s16(vld1q_s16(bacc + j * 8), vld1q_s16(bbase + j * 8));
+            vst1q_s16(wacc + j * 8, wsum);
+            vst1q_s16(bacc + j * 8, bsum);
+        }
+    }
 #else // Scalar fallback
     FullFeatureSet featureSet;
     findFullFeatureSet(board, featureSet);
@@ -208,6 +244,23 @@ void NNUE::m_accAddSub(const Accumulator* acc, Accumulator* nextAcc, const Delta
         out = _mm256_sub_epi16(out, _mm256_load_si256(ftSubBase0 + i));
         _mm256_store_si256(nextAcc256 + i, out);
     }
+#elif defined(USE_NEON)
+    constexpr uint32_t NumChunks = L1Size / 8;
+
+    const int16_t* accBase     = acc->acc[perspective];
+    int16_t* nextAccBase       = nextAcc->acc[perspective];
+
+    const int16_t* ftAddBase0 = &m_net->ftWeights[deltaFeatures.added[perspective][0] * L1Size];
+    const int16_t* ftSubBase0 = &m_net->ftWeights[deltaFeatures.removed[perspective][0] * L1Size];
+
+    for(uint32_t i = 0; i < NumChunks; i++)
+    {
+        uint32_t offset = i * 8;
+        int16x8_t out = vld1q_s16(accBase + offset);
+        out = vaddq_s16(out, vld1q_s16(ftAddBase0 + offset));
+        out = vsubq_s16(out, vld1q_s16(ftSubBase0 + offset));
+        vst1q_s16(nextAccBase + offset, out);
+    }
 #else // Scalar fallback
     uint16_t findexAdd = deltaFeatures.added[perspective][0];
     uint16_t findexSub = deltaFeatures.removed[perspective][0];
@@ -241,6 +294,25 @@ void NNUE::m_accAddSubSub(const Accumulator* acc, Accumulator* nextAcc, const De
         out = _mm256_sub_epi16(out, _mm256_load_si256(ftSubBase0 + i));
         out = _mm256_sub_epi16(out, _mm256_load_si256(ftSubBase1 + i));
         _mm256_store_si256(nextAcc256 + i, out);
+    }
+#elif defined(USE_NEON)
+    constexpr uint32_t NumChunks = L1Size / 8;
+
+    const int16_t* accBase     = acc->acc[perspective];
+    int16_t* nextAccBase       = nextAcc->acc[perspective];
+
+    const int16_t* ftAddBase0 = &m_net->ftWeights[deltaFeatures.added[perspective][0] * L1Size];
+    const int16_t* ftSubBase0 = &m_net->ftWeights[deltaFeatures.removed[perspective][0] * L1Size];
+    const int16_t* ftSubBase1 = &m_net->ftWeights[deltaFeatures.removed[perspective][1] * L1Size];
+
+    for(uint32_t i = 0; i < NumChunks; i++)
+    {
+        uint32_t offset = i * 8;
+        int16x8_t out = vld1q_s16(accBase + offset);
+        out = vaddq_s16(out, vld1q_s16(ftAddBase0 + offset));
+        out = vsubq_s16(out, vld1q_s16(ftSubBase0 + offset));
+        out = vsubq_s16(out, vld1q_s16(ftSubBase1 + offset));
+        vst1q_s16(nextAccBase + offset, out);
     }
 #else // Scalar fallback
     uint16_t findexAdd = deltaFeatures.added[perspective][0];
@@ -279,6 +351,27 @@ void NNUE::m_accAddAddSubSub(const Accumulator* acc, Accumulator* nextAcc, const
         out = _mm256_sub_epi16(out, _mm256_load_si256(ftSubBase0 + i));
         out = _mm256_sub_epi16(out, _mm256_load_si256(ftSubBase1 + i));
         _mm256_store_si256(nextAcc256 + i, out);
+    }
+#elif defined(USE_NEON)
+    constexpr uint32_t NumChunks = L1Size / 8;
+
+    const int16_t* accBase     = acc->acc[perspective];
+    int16_t* nextAccBase       = nextAcc->acc[perspective];
+
+    const int16_t* ftAddBase0 = &m_net->ftWeights[deltaFeatures.added[perspective][0] * L1Size];
+    const int16_t* ftAddBase1 = &m_net->ftWeights[deltaFeatures.added[perspective][1] * L1Size];
+    const int16_t* ftSubBase0 = &m_net->ftWeights[deltaFeatures.removed[perspective][0] * L1Size];
+    const int16_t* ftSubBase1 = &m_net->ftWeights[deltaFeatures.removed[perspective][1] * L1Size];
+
+    for(uint32_t i = 0; i < NumChunks; i++)
+    {
+        uint32_t offset = i * 8;
+        int16x8_t out = vld1q_s16(accBase + offset);
+        out = vaddq_s16(out, vld1q_s16(ftAddBase0 + offset));
+        out = vaddq_s16(out, vld1q_s16(ftAddBase1 + offset));
+        out = vsubq_s16(out, vld1q_s16(ftSubBase0 + offset));
+        out = vsubq_s16(out, vld1q_s16(ftSubBase1 + offset));
+        vst1q_s16(nextAccBase + offset, out);
     }
 #else // Scalar fallback
     uint16_t findexAdd0 = deltaFeatures.added[perspective][0];
@@ -350,6 +443,33 @@ inline int32_t NNUE::m_l1AffineTransform(const int16_t* in, const int16_t* weigh
     sum128 = _mm_hadd_epi32(sum128, sum128);
     sum128 = _mm_hadd_epi32(sum128, sum128);
     return _mm_cvtsi128_si32(sum128) + biases[0];
+#elif defined(USE_NEON)
+    constexpr uint32_t NumChunks = L1Size / 8;
+
+    const int16_t* inBase     = in;
+    const int16_t* wBase      = weights;
+
+    int32x4_t acc0 = vdupq_n_s32(0);
+    int32x4_t acc1 = vdupq_n_s32(0);
+
+    for(uint32_t i = 0; i < NumChunks; i += 2)
+    {
+        uint32_t offset = i * 8;
+        int16x8_t factors0 = vld1q_s16(inBase + offset);
+        int16x8_t factors1 = vld1q_s16(inBase + offset + 8);
+
+        factors0 = vminq_s16(vmaxq_s16(factors0, vdupq_n_s16(0)), vdupq_n_s16(FTQ));
+        factors1 = vminq_s16(vmaxq_s16(factors1, vdupq_n_s16(0)), vdupq_n_s16(FTQ));
+
+        acc0 = vaddq_s32(acc0, vmull_s16(vget_low_s16(factors0), vget_low_s16(vld1q_s16(wBase + offset))));
+        acc0 = vaddq_s32(acc0, vmull_s16(vget_high_s16(factors0), vget_high_s16(vld1q_s16(wBase + offset))));
+        acc1 = vaddq_s32(acc1, vmull_s16(vget_low_s16(factors1), vget_low_s16(vld1q_s16(wBase + offset + 8))));
+        acc1 = vaddq_s32(acc1, vmull_s16(vget_high_s16(factors1), vget_high_s16(vld1q_s16(wBase + offset + 8))));
+    }
+
+    int32x4_t acc = vaddq_s32(acc0, acc1);
+    int32_t sum = vgetq_lane_s32(acc, 0) + vgetq_lane_s32(acc, 1) + vgetq_lane_s32(acc, 2) + vgetq_lane_s32(acc, 3);
+    return sum + biases[0];
 #else // Scalar fallback
     int32_t acc = 0;
     for(uint32_t i = 0; i < L1Size; i++)
