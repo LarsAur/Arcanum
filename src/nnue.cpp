@@ -111,6 +111,7 @@ NNUE::~NNUE()
 
 void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
 {
+#if defined(USE_AVX2)
     constexpr uint32_t NumChunks = L1Size / 16;
 
     FullFeatureSet featureSet;
@@ -119,7 +120,6 @@ void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
     __m256i* wacc = reinterpret_cast<__m256i*>(acc->acc[Color::WHITE]);
     __m256i* bacc = reinterpret_cast<__m256i*>(acc->acc[Color::BLACK]);
     const __m256i* biases = reinterpret_cast<const __m256i*>(m_net->ftBiases);
-
 
     for(uint32_t i = 0; i < NumChunks; i++)
     {
@@ -143,51 +143,34 @@ void NNUE::initializeAccumulator(Accumulator* acc, const Board& board)
             _mm256_store_si256(bacc + j, bsum);
         }
     }
+#else // Scalar fallback
+    FullFeatureSet featureSet;
+    findFullFeatureSet(board, featureSet);
+
+    int16_t* wacc = acc->acc[Color::WHITE];
+    int16_t* bacc = acc->acc[Color::BLACK];
+    const int16_t* biases = m_net->ftBiases;
+
+    for(uint32_t i = 0; i < L1Size; i++)
+    {
+        wacc[i] = biases[i];
+        bacc[i] = biases[i];
+    }
+
+    for(uint32_t i = 0; i < featureSet.numFeatures; i++)
+    {
+        uint32_t wfindex = featureSet.features[Color::WHITE][i];
+        uint32_t bfindex = featureSet.features[Color::BLACK][i];
+        for(uint32_t j = 0; j < L1Size; j++)
+        {
+            wacc[j] += m_net->ftWeights[wfindex * L1Size + j];
+            bacc[j] += m_net->ftWeights[bfindex * L1Size + j];
+        }
+    }
+#endif
 }
 
 // The board should be in the state before the move is performed
-void NNUE::incrementAccumulator(Accumulator* acc, Accumulator* nextAcc, const Board& board, const Move& move)
-{
-    constexpr uint32_t NumChunks = L1Size / 16;
-
-    DeltaFeatures delta;
-    findDeltaFeatures(board, move, delta);
-
-    __m256i* wacc = (__m256i*) acc->acc[Color::WHITE];
-    __m256i* bacc = (__m256i*) acc->acc[Color::BLACK];
-    __m256i* wnextAcc = (__m256i*) nextAcc->acc[Color::WHITE];
-    __m256i* bnextAcc = (__m256i*) nextAcc->acc[Color::BLACK];
-
-    // Copy from the old accumulator to the new accumulator
-    for(uint32_t i = 0; i < NumChunks; i++)
-    {
-        *(wnextAcc + i) = _mm256_load_si256(wacc + i);
-        *(bnextAcc + i) = _mm256_load_si256(bacc + i);
-    }
-
-    for(uint32_t i = 0; i < delta.numAdded; i++)
-    {
-        uint32_t wfindex = delta.added[Color::WHITE][i];
-        uint32_t bfindex = delta.added[Color::BLACK][i];
-        for(uint32_t j = 0; j < NumChunks; j++)
-        {
-            *(wnextAcc + j) = _mm256_add_epi16(*(wnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[wfindex*L1Size])) + j));
-            *(bnextAcc + j) = _mm256_add_epi16(*(bnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[bfindex*L1Size])) + j));
-        }
-    }
-
-    for(uint32_t i = 0; i < delta.numRemoved; i++)
-    {
-        uint32_t wfindex = delta.removed[Color::WHITE][i];
-        uint32_t bfindex = delta.removed[Color::BLACK][i];
-        for(uint32_t j = 0; j < NumChunks; j++)
-        {
-            *(wnextAcc + j) = _mm256_sub_epi16(*(wnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[wfindex*L1Size])) + j));
-            *(bnextAcc + j) = _mm256_sub_epi16(*(bnextAcc + j), _mm256_load_si256(((__m256i*) (&m_net->ftWeights[bfindex*L1Size])) + j));
-        }
-    }
-}
-
 void NNUE::incrementAccumulatorPerspective(const Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective)
 {
     uint8_t funcIndex = deltaFeatures.numRemoved << 2 | deltaFeatures.numAdded;
@@ -210,6 +193,7 @@ void NNUE::incrementAccumulatorPerspective(const Accumulator* acc, Accumulator* 
 
 void NNUE::m_accAddSub(const Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective)
 {
+#if defined(USE_AVX2)
     constexpr uint32_t NumChunks = L1Size / 16;
 
     const __m256i* acc256     = reinterpret_cast<const __m256i*>(acc->acc[perspective]);
@@ -224,10 +208,24 @@ void NNUE::m_accAddSub(const Accumulator* acc, Accumulator* nextAcc, const Delta
         out = _mm256_sub_epi16(out, _mm256_load_si256(ftSubBase0 + i));
         _mm256_store_si256(nextAcc256 + i, out);
     }
+#else // Scalar fallback
+    uint16_t findexAdd = deltaFeatures.added[perspective][0];
+    uint16_t findexSub = deltaFeatures.removed[perspective][0];
+    for(uint32_t j = 0; j < L1Size; j++)
+    {
+        // Initialize the next accumulator with the current accumulator value
+        nextAcc->acc[perspective][j] = acc->acc[perspective][j];
+        // Add the contribution from the added feature
+        nextAcc->acc[perspective][j] += m_net->ftWeights[findexAdd * L1Size + j];
+        // Subtract the contribution from the removed feature
+        nextAcc->acc[perspective][j] -= m_net->ftWeights[findexSub * L1Size + j];
+    }
+#endif
 }
 
 void NNUE::m_accAddSubSub(const Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective)
 {
+#if defined(USE_AVX2)
     constexpr uint32_t NumChunks = L1Size / 16;
 
     const __m256i* acc256     = reinterpret_cast<const __m256i*>(acc->acc[perspective]);
@@ -244,10 +242,26 @@ void NNUE::m_accAddSubSub(const Accumulator* acc, Accumulator* nextAcc, const De
         out = _mm256_sub_epi16(out, _mm256_load_si256(ftSubBase1 + i));
         _mm256_store_si256(nextAcc256 + i, out);
     }
+#else // Scalar fallback
+    uint16_t findexAdd = deltaFeatures.added[perspective][0];
+    uint16_t findexSub0 = deltaFeatures.removed[perspective][0];
+    uint16_t findexSub1 = deltaFeatures.removed[perspective][1];
+    for(uint32_t j = 0; j < L1Size; j++)
+    {
+        // Initialize the next accumulator with the current accumulator value
+        nextAcc->acc[perspective][j] = acc->acc[perspective][j];
+        // Add the contribution from the added feature
+        nextAcc->acc[perspective][j] += m_net->ftWeights[findexAdd * L1Size + j];
+        // Subtract the contribution from the removed features
+        nextAcc->acc[perspective][j] -= m_net->ftWeights[findexSub0 * L1Size + j];
+        nextAcc->acc[perspective][j] -= m_net->ftWeights[findexSub1 * L1Size + j];
+    }
+#endif
 }
 
 void NNUE::m_accAddAddSubSub(const Accumulator* acc, Accumulator* nextAcc, const DeltaFeatures& deltaFeatures, Color perspective)
 {
+#if defined(USE_AVX2)
     constexpr uint32_t NumChunks = L1Size / 16;
 
     const __m256i* acc256     = reinterpret_cast<const __m256i*>(acc->acc[perspective]);
@@ -266,6 +280,23 @@ void NNUE::m_accAddAddSubSub(const Accumulator* acc, Accumulator* nextAcc, const
         out = _mm256_sub_epi16(out, _mm256_load_si256(ftSubBase1 + i));
         _mm256_store_si256(nextAcc256 + i, out);
     }
+#else // Scalar fallback
+    uint16_t findexAdd0 = deltaFeatures.added[perspective][0];
+    uint16_t findexAdd1 = deltaFeatures.added[perspective][1];
+    uint16_t findexSub0 = deltaFeatures.removed[perspective][0];
+    uint16_t findexSub1 = deltaFeatures.removed[perspective][1];
+    for(uint32_t j = 0; j < L1Size; j++)
+    {
+        // Initialize the next accumulator with the current accumulator value
+        nextAcc->acc[perspective][j] = acc->acc[perspective][j];
+        // Add the contribution from the added features
+        nextAcc->acc[perspective][j] += m_net->ftWeights[findexAdd0 * L1Size + j];
+        nextAcc->acc[perspective][j] += m_net->ftWeights[findexAdd1 * L1Size + j];
+        // Subtract the contribution from the removed features
+        nextAcc->acc[perspective][j] -= m_net->ftWeights[findexSub0 * L1Size + j];
+        nextAcc->acc[perspective][j] -= m_net->ftWeights[findexSub1 * L1Size + j];
+    }
+#endif
 }
 
 eval_t NNUE::predict(const Accumulator* acc, const Board& board)
@@ -287,6 +318,7 @@ eval_t NNUE::predictBoard(const Board& board)
 // The clipped ReLU is fused into the transform to avoid a round-trip through a temporary buffer
 inline int32_t NNUE::m_l1AffineTransform(const int16_t* in, const int16_t* weights, const int32_t* biases)
 {
+#if defined(USE_AVX2)
     constexpr uint32_t ChunkSize = sizeof(__m256i) / sizeof(in[0]);
     constexpr uint32_t NumInChunks  = L1Size / ChunkSize;
 
@@ -318,6 +350,16 @@ inline int32_t NNUE::m_l1AffineTransform(const int16_t* in, const int16_t* weigh
     sum128 = _mm_hadd_epi32(sum128, sum128);
     sum128 = _mm_hadd_epi32(sum128, sum128);
     return _mm_cvtsi128_si32(sum128) + biases[0];
+#else // Scalar fallback
+    int32_t acc = 0;
+    for(uint32_t i = 0; i < L1Size; i++)
+    {
+        int32_t val = static_cast<int32_t>(in[i]);
+        val = std::min(std::max(val, 0), static_cast<int32_t>(FTQ));
+        acc += val * static_cast<int32_t>(weights[i]);
+    }
+    return acc + biases[0];
+#endif
 }
 
 void NNUE::load(const std::string filename)
