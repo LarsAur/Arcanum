@@ -26,12 +26,12 @@ TranspositionTable::~TranspositionTable()
     }
 }
 
-void TranspositionTable::resize(uint32_t mbSize)
+void TranspositionTable::resize(size_t mbSize)
 {
     if(m_mbSize == mbSize) return;
 
     TTCluster* newTable = nullptr;
-    size_t numClusters = (mbSize * 1024 * 1024) / sizeof(TTCluster);
+    size_t numClusters = (mbSize * 1024ULL * 1024ULL) / sizeof(TTCluster);
     size_t numEntries = NumClusterEntries * numClusters;
 
     if(mbSize != 0)

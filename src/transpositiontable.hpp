@@ -139,7 +139,7 @@ namespace Arcanum
             static_assert(sizeof(TTCluster) == NumClusterBytes, "The size of TTCluster is not correct. Padding might be needed");
 
             TTCluster* m_table;
-            uint32_t m_mbSize;
+            size_t m_mbSize;
             size_t m_numClusters;
             size_t m_numEntries;
             TTStats m_stats;
@@ -155,7 +155,7 @@ namespace Arcanum
             void incrementGeneration();
             std::optional<TTEntry> get(hash_t hash, uint8_t plyFromRoot);
             void add(eval_t score, Move move, bool isPv, uint8_t depth, uint8_t plyFromRoot, eval_t rawEval, TTFlag flag, hash_t hash);
-            void resize(uint32_t mbSize);
+            void resize(size_t mbSize);
             void clear();
             void clearStats();
             TTStats getStats();
