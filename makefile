@@ -5,15 +5,19 @@ RELEASEDIR ?= releases
 SOURCEDIR = src
 HEADERDIR = src
 DEFAULT_NNUE = arcanum-net-v6.0.fnnue
+ARCH ?= x86_64
 CXX = clang++
 
-DEFINES += -DIS_64BIT
+ifeq ($(ARCH),x86_64)
 DEFINES += -DUSE_AVX2 -mavx2 -mfma
 DEFINES += -DUSE_BMI -mbmi
 DEFINES += -DUSE_BMI2 -mbmi2
 DEFINES += -DUSE_POPCNT -mpopcnt
 DEFINES += -DUSE_LZCNT -mlzcnt
 DEFINES += -DUSE_PREFETCH
+else ifeq ($(ARCH),arm64)
+DEFINES += -DUSE_NEON
+endif
 
 DEFINES += -DARCANUM_VERSION=$(VERSION)
 DEFINES += -DDEFAULT_NNUE=$(DEFAULT_NNUE)
