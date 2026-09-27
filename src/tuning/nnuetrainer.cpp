@@ -7,6 +7,7 @@
 #include <timer.hpp>
 #include <cmath>
 #include <thread>
+#include <mutex>
 
 using namespace Arcanum;
 

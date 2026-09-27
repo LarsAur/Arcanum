@@ -4,6 +4,7 @@
 #include <zobrist.hpp>
 #include <thread>
 #include <set>
+#include <mutex>
 
 using namespace Arcanum;
 
