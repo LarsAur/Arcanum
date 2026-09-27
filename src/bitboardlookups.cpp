@@ -252,8 +252,8 @@ void generateRookLookups()
                 if((j << 1) & (1 << k)) break;
             }
 
-            rookFileMoves[(i << 6) | j] = fileMove;
-            rookRankMoves[(i << 6) | j] = rankMove;
+            BitboardLookups::rookFileMoves[(i << 6) | j] = fileMove;
+            BitboardLookups::rookRankMoves[(i << 6) | j] = rankMove;
         }
     }
 #endif
@@ -379,27 +379,27 @@ void generateBishopLookups()
     {
         int rank = RANK(i);
         int file = FILE(i);
-        diagonal[i] = 0LL;
-        antiDiagonal[i] = 0LL;
+        BitboardLookups::diagonal[i] = 0LL;
+        BitboardLookups::antiDiagonal[i] = 0LL;
 
         for(int j = 1; j < 8; j++)
         {
             if(rank + j < 8 && file + j < 8)
             {
-                diagonal[i] |= SQUARE_BB(file + k, rank + k);
+                BitboardLookups::diagonal[i] |= SQUARE_BB(file + j, rank + j);
             }
             if(rank - j >=0 && file - j >=0)
             {
-                diagonal[i] |= SQUARE_BB(file - k, rank - k);
+                BitboardLookups::diagonal[i] |= SQUARE_BB(file - j, rank - j);
             }
 
-            if(rank + j < 8 && file - j >= 0)
-            {
-                antiDiagonal[i] |= SQUARE_BB(file + k, rank - k);
-            }
             if(rank - j >= 0 && file + j < 8)
             {
-                antiDiagonal[i] |= SQUARE_BB(file + k, rank - k);
+                BitboardLookups::antiDiagonal[i] |= SQUARE_BB(file + j, rank - j);
+            }
+            if(rank + j < 8 && file - j >= 0)
+            {
+                BitboardLookups::antiDiagonal[i] |= SQUARE_BB(file - j, rank + j);
             }
         }
     }
@@ -462,7 +462,7 @@ void generateBishopLookups()
                 if((j << 1) & (1 << (file + k))) break;
             }
 
-            bishopMoves[(file << 6) | j] |= bishopMove;
+            BitboardLookups::bishopMoves[(file << 6) | j] |= bishopMove;
         }
     }
     #endif
