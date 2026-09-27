@@ -222,14 +222,16 @@ namespace Arcanum
                 }
             }
 
-            void prefetchCol(uint32_t col)
+            void prefetchCol([[maybe_unused]] uint32_t col)
             {
+            #if defined(USE_PREFETCH)
                 constexpr uint32_t elementsPerCacheLine = CACHE_LINE_SIZE / sizeof(float);
                 float* colStart = m_data + col*rows;
 
                 #pragma GCC unroll 16
                 for(uint32_t i = 0; i < rows; i+=elementsPerCacheLine)
                     _mm_prefetch(colStart + i, _MM_HINT_T0);
+            #endif // defined(USE_PREFETCH)
             }
 
             void copy(float* ptr)
