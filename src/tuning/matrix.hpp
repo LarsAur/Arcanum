@@ -73,6 +73,7 @@ namespace Arcanum
 
             void add(Matrix<rows, cols>& matrix)
             {
+            #if defined(USE_AVX2)
                 constexpr uint32_t regSize = 256 / 32;
                 constexpr uint32_t r = (rows * cols) % regSize;
                 constexpr uint32_t m = (rows * cols) - r;
@@ -82,6 +83,10 @@ namespace Arcanum
 
                 for(uint32_t i = m; i < m + r; i++)
                     m_data[i] += matrix.m_data[i];
+            #else
+                for(uint32_t i = 0; i < cols * rows; i++)
+                    m_data[i] += matrix.m_data[i];
+            #endif
             }
 
             void madd(float scalar, Matrix<rows, cols>& matrix)
@@ -222,14 +227,16 @@ namespace Arcanum
                 }
             }
 
-            void prefetchCol(uint32_t col)
+            void prefetchCol([[maybe_unused]] uint32_t col)
             {
+            #if defined(USE_PREFETCH)
                 constexpr uint32_t elementsPerCacheLine = CACHE_LINE_SIZE / sizeof(float);
                 float* colStart = m_data + col*rows;
 
                 #pragma GCC unroll 16
                 for(uint32_t i = 0; i < rows; i+=elementsPerCacheLine)
                     _mm_prefetch(colStart + i, _MM_HINT_T0);
+            #endif // defined(USE_PREFETCH)
             }
 
             void copy(float* ptr)
@@ -263,6 +270,7 @@ namespace Arcanum
     template <uint32_t rows, uint32_t cols>
     void calcAndAccFtGradient(NNUE::FeatureSet& featureSet, Matrix<rows, 1>& delta, Matrix<rows, cols>& gradient)
     {
+    #if defined(USE_AVX2)
         constexpr uint32_t regSize = 256 / 32;
         constexpr uint32_t numRegs = rows / regSize;
 
@@ -288,9 +296,22 @@ namespace Arcanum
                 _mm256_store_ps(gData + rows * feature + i * regSize, segment);
             }
         }
+    #else
+        float* dData   = delta.data();
+        float* gData   = gradient.data();
 
+        for(uint8_t k = 0; k < featureSet.numFeatures; k++)
+        {
+            uint32_t feature = featureSet.features[k];
+            for(uint32_t i = 0; i < rows; i++)
+            {
+                gData[i + rows * feature] += dData[i];
+            }
+        }
+    #endif
     }
 
+    #if defined(USE_AVX2)
     template<class T> static inline void Log(const __m256 & value)
     {
         const size_t n = sizeof(__m256i) / sizeof(T);
@@ -299,10 +320,12 @@ namespace Arcanum
         for (int i = 0; i < n; i++)
             std::cout << buffer[i] << " ";
     }
+    #endif
 
     template <unsigned int in, unsigned int out>
     void feedForwardReLu(Matrix<out, in>& weights, Matrix<out,1>& biases, Matrix<in,1>& input, Matrix<out,1>& output)
     {
+    #if defined(USE_AVX2)
         float* inputPtr   = input.data();
         float* biasesPtr  = biases.data();
         float* weightsPtr = weights.data();
@@ -334,11 +357,29 @@ namespace Arcanum
             regs[i] = _mm256_max_ps(zero, regs[i]);
             _mm256_store_ps(outputPtr + i*regSize, regs[i]);
         }
+    #else
+        float* inputPtr   = input.data();
+        float* biasesPtr  = biases.data();
+        float* weightsPtr = weights.data();
+        float* outputPtr  = output.data();
+
+        for(uint32_t i = 0; i < out; i++)
+        {
+            outputPtr[i] = biasesPtr[i];
+            for(uint32_t j = 0; j < in; j++)
+            {
+                outputPtr[i] += weightsPtr[i*in + j] * inputPtr[j];
+            }
+            // ReLU
+            outputPtr[i] = std::max(0.0f, outputPtr[i]);
+        }
+    #endif
     }
 
     template <unsigned int in, unsigned int out>
     void feedForwardClippedReLu(Matrix<out, in>& weights, Matrix<out,1>& biases, Matrix<in,1>& input, Matrix<out,1>& output, float clip)
     {
+    #if defined(USE_AVX2)
         float* inputPtr   = input.data();
         float* biasesPtr  = biases.data();
         float* weightsPtr = weights.data();
@@ -373,11 +414,30 @@ namespace Arcanum
             regs[i] = _mm256_min_ps(clipValue, regs[i]);
             _mm256_store_ps(outputPtr + i*regSize, regs[i]);
         }
+    #else
+        float* inputPtr   = input.data();
+        float* biasesPtr  = biases.data();
+        float* weightsPtr = weights.data();
+        float* outputPtr  = output.data();
+
+        for(uint32_t i = 0; i < out; i++)
+        {
+            outputPtr[i] = biasesPtr[i];
+            for(uint32_t j = 0; j < in; j++)
+            {
+                outputPtr[i] += weightsPtr[i*in + j] * inputPtr[j];
+            }
+            // Clipped ReLU
+            outputPtr[i] = std::max(0.0f, outputPtr[i]);
+            outputPtr[i] = std::min(clip, outputPtr[i]);
+        }
+    #endif
     }
 
     template <unsigned int in>
     void lastLevelFeedForward(Matrix<1,in>& weights, Matrix<1,1>& biases, Matrix<in,1>& input, Matrix<1,1>& output)
     {
+    #if defined(USE_AVX2)
         float* inputPtr   = input.data();
         float* weightsPtr = weights.data();
         float* outputPtr  = output.data();
@@ -399,6 +459,17 @@ namespace Arcanum
         _mm256_store_ps(buffer, res);
         for (uint32_t i = 0; i < regSize; i++)
             outputPtr[0] += buffer[i];
+    #else
+        float* inputPtr   = input.data();
+        float* weightsPtr = weights.data();
+        float* outputPtr  = output.data();
+
+        outputPtr[0] = biases.data()[0];
+        for(uint32_t i = 0; i < in; i++)
+        {
+            outputPtr[0] += weightsPtr[i] * inputPtr[i];
+        }
+    #endif
     }
 
     template <uint32_t n, uint32_t m, uint32_t p>

@@ -93,6 +93,7 @@ void NNUETrainer::m_findFeatureSet(const Board& board, NNUE::FeatureSet& feature
 
 void NNUETrainer::m_initAccumulator(const Board& board, Trace& trace, bool mirrored)
 {
+#if defined(USE_AVX2)
     NNUE::FeatureSet featureSet;
     m_findFeatureSet(board, featureSet, mirrored);
     float* accPtr = trace.acc.data();
@@ -122,6 +123,28 @@ void NNUETrainer::m_initAccumulator(const Board& board, Trace& trace, bool mirro
     {
         _mm256_store_ps(accPtr + RegSize*i, regs[i]);
     }
+#else
+    NNUE::FeatureSet featureSet;
+    m_findFeatureSet(board, featureSet, mirrored);
+
+    float* accPtr     = trace.acc.data();
+    float* biasesPtr  = m_net.ftBiases.data();
+    float* weightsPtr = m_net.ftWeights.data();
+
+    for(uint32_t i = 0; i < NNUE::L1Size; i++)
+    {
+        accPtr[i] = biasesPtr[i];
+    }
+
+    for(uint32_t i = 0; i < featureSet.numFeatures; i++)
+    {
+        uint16_t findex = featureSet.features[i];
+        for(uint32_t j = 0; j < NNUE::L1Size; j++)
+        {
+            accPtr[j] += weightsPtr[findex * NNUE::L1Size + j];
+        }
+    }
+#endif
 }
 
 void NNUETrainer::randomizeNet()

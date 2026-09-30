@@ -105,12 +105,14 @@ inline eval_t TranspositionTable::m_fromTTEval(eval_t eval, uint8_t plyFromRoot)
     return eval;
 }
 
-void TranspositionTable::prefetch(hash_t hash)
+void TranspositionTable::prefetch([[maybe_unused]] hash_t hash)
 {
+#if defined(USE_PREFETCH)
     if(m_table != nullptr)
     {
         _mm_prefetch(&m_table[m_getClusterIndex(hash)], _MM_HINT_T0);
     }
+#endif
 }
 
 void TranspositionTable::incrementGeneration()

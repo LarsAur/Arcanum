@@ -182,7 +182,7 @@ square_t BinpackParser::m_getNthSetBitIndex(bitboard_t bb, uint8_t n)
 // Returns the minimum number of bits required to represent the value
 uint8_t BinpackParser::m_getMinRepBits(uint8_t value)
 {
-    return MS1B(value) + 1;
+    return MINREP(value);
 }
 
 

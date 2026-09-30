@@ -75,13 +75,13 @@ namespace Arcanum
         // Shift the file down to the first rank and get the 6 middle squares
         const bitboard_t fileOccupied = (allPiecesBitboard >> (rank8 + 1)) & 0b111111LL;
         // Read the move bitboard and shift it to the correct rank
-        const bitboard_t fileMoves = rookFileMoves[(file << 6) | fileOccupied] << rank8;
+        const bitboard_t fileMoves = BitboardLookups::rookFileMoves[(file << 6) | fileOccupied] << rank8;
 
         // Shift the file to the A file and mask it
         const bitboard_t rankOccupied = (allPiecesBitboard >> file) & (0x0101010101010101LL);
         // Find the occupancy index using https://www.chessprogramming.org/Kindergarten_Bitboards
         const bitboard_t rankOccupiedIdx = (rankOccupied * 0x4081020408000LL) >> 58;
-        const bitboard_t rankMoves = rookRankMoves[(rank8 << 3) | rankOccupiedIdx] << file;
+        const bitboard_t rankMoves = BitboardLookups::rookRankMoves[(rank8 << 3) | rankOccupiedIdx] << file;
 
         return fileMoves | rankMoves;
     #endif
@@ -97,11 +97,11 @@ namespace Arcanum
         const uint8_t file = FILE(bishopIdx);
 
         constexpr static bitboard_t bFile = 0x0202020202020202LL;
-        const bitboard_t diagonalOccupancy     = ((diagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
-        const bitboard_t antiDiagonalOccupancy = ((antiDiagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
+        const bitboard_t diagonalOccupancy     = ((BitboardLookups::diagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
+        const bitboard_t antiDiagonalOccupancy = ((BitboardLookups::antiDiagonal[bishopIdx] & allPiecesBitboard) * bFile) >> 58;
         const bitboard_t moves = (
-            (diagonal[bishopIdx] & bishopMoves[file << 6 | diagonalOccupancy]) |
-            (antiDiagonal[bishopIdx] & bishopMoves[file << 6 | antiDiagonalOccupancy])
+            (BitboardLookups::diagonal[bishopIdx] & BitboardLookups::bishopMoves[file << 6 | diagonalOccupancy]) |
+            (BitboardLookups::antiDiagonal[bishopIdx] & BitboardLookups::bishopMoves[file << 6 | antiDiagonalOccupancy])
         );
 
         return moves;

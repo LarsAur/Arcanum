@@ -123,7 +123,7 @@ void BinpackEncoder::m_flushBitbuffer()
 
 uint8_t BinpackEncoder::m_getMinRepBits(uint8_t value)
 {
-    return MS1B(value) + 1;
+    return MINREP(value);
 }
 
 // Source: https://github.com/official-stockfish/Stockfish/blob/tools/docs/binpack.md
