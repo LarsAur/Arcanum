@@ -29,7 +29,9 @@ RELEASE_DEFINES += -DDISABLE_DEBUG
 override CFLAGS += -std=c++17 -O3 -Wall -Wextra -pedantic $(DEFINES)
 LDFLAGS = --static -lstdc++ -lm
 
-ifeq ($(OS),Windows_NT)
+ifeq ($(ARCH),arm64)
+FILENAME = $(ENGINENAME)
+else ifeq ($(OS),Windows_NT)
 FILENAME = $(ENGINENAME).exe
 else
 FILENAME = $(ENGINENAME)
