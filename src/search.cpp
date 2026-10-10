@@ -216,6 +216,12 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, uint3
         eval_t score = -m_alphaBetaQuiet<isPv>(newBoard, -beta, -alpha, plyFromRoot + 1);
         m_evaluator.popMoveFromAccumulator();
 
+        // The score is invalid if the search was stopped, avoid polluting heuristics
+        if(m_shouldStop())
+        {
+            return 0;
+        }
+
         if(score > bestScore)
         {
             bestScore = score;
@@ -677,6 +683,12 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         }
 
         m_evaluator.popMoveFromAccumulator();
+
+        // The score is invalid if the search was stopped, avoid polluting heuristics
+        if(m_shouldStop())
+        {
+            return 0;
+        }
 
         if(score > alpha)
         {
