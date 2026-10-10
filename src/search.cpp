@@ -962,6 +962,17 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
         // Store the result in the transposition table
         m_tt.add(searchScore, searchBestMove, true, depth, 0, rawEval, TTFlag::EXACT, board.getHash());
+
+        // Check if the soft time limit has been reached
+        if(m_parameters.useSoftTime)
+        {
+            int64_t adjustedSoftTime = m_parameters.softTime;
+            if(m_timer.getMs() >= adjustedSoftTime)
+            {
+                m_stopSearch = true;
+                break;
+            }
+        }
     }
 
     m_stats.nodes += m_numNodesSearched;

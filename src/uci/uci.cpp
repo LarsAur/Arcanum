@@ -94,7 +94,6 @@ void UCI::go(std::istringstream& is)
     int64_t inc[2] = {0, 0};
     int64_t movesToGo = -1;
     int32_t perftDepth = 0;
-    bool requireTimeAlloc[2] = {false, false};
 
     while(is >> token)
     {
@@ -116,13 +115,13 @@ void UCI::go(std::istringstream& is)
                 parameters.searchMoves[parameters.numSearchMoves++] = move;
             }
         }
-        else if(token == "wtime"     ) { is >> time[Color::WHITE]; requireTimeAlloc[Color::WHITE] = true; }
-        else if(token == "btime"     ) { is >> time[Color::BLACK]; requireTimeAlloc[Color::BLACK] = true; }
+        else if(token == "wtime"     ) { is >> time[Color::WHITE]; }
+        else if(token == "btime"     ) { is >> time[Color::BLACK]; }
         else if(token == "winc"      ) { is >> inc[Color::WHITE]; }
         else if(token == "binc"      ) { is >> inc[Color::BLACK]; }
         else if(token == "depth"     ) { is >> parameters.depth;  parameters.useDepth = true; }
         else if(token == "nodes"     ) { is >> parameters.nodes;  parameters.useNodes = true; }
-        else if(token == "movetime"  ) { is >> parameters.msTime; parameters.useTime  = true; }
+        else if(token == "movetime"  ) { is >> parameters.msTime; }
         else if(token == "movestogo" ) { is >> movesToGo;            }
         else if(token == "perft"     ) { is >> perftDepth;           }
         else if(token == "infinite"  ) { parameters.infinite = true; }
@@ -138,15 +137,25 @@ void UCI::go(std::istringstream& is)
         return;
     }
 
-    // Subtract moveOverhead from moveTime
-    if(parameters.msTime != 0) parameters.msTime = std::max(parameters.msTime - optionMoveOverhead.value, int64_t(1));
-
-    // Allocate time
     Color turn = board.getTurn();
-    if(requireTimeAlloc[turn])
+    if(parameters.msTime > 0)
     {
         parameters.useTime = true;
-        parameters.msTime = getAllocatedTime(time[turn], inc[turn], movesToGo, parameters.msTime, optionMoveOverhead.value);
+        parameters.msTime = TimeManager::getMoveTimeAllocation(parameters.msTime, optionMoveOverhead.value);
+    }
+    else if((movesToGo > 0) && (time[turn] > 0))
+    {
+        parameters.useTime = true;
+        parameters.useSoftTime = true;
+        parameters.softTime = TimeManager::getTimeAllocationMovesToGo(time[turn], inc[turn], movesToGo, optionMoveOverhead.value);
+        parameters.msTime = TimeManager::getMaxTimeAllocationMovesToGo(time[turn], inc[turn], movesToGo, optionMoveOverhead.value);
+    }
+    else if(time[turn] > 0)
+    {
+        parameters.useTime = true;
+        parameters.useSoftTime = true;
+        parameters.softTime = TimeManager::getTimeAllocation(time[turn], inc[turn], optionMoveOverhead.value);
+        parameters.msTime = TimeManager::getMaxTimeAllocation(time[turn], inc[turn], optionMoveOverhead.value);
     }
 
     if(!UCI::isSearching)

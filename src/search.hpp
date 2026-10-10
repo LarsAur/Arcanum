@@ -106,10 +106,13 @@ namespace Arcanum
     struct SearchParameters
     {
         bool useTime;
+        bool useSoftTime;
         bool useNodes;
         bool useDepth;
+        bool useSoftTimeLimit;
 
         int64_t msTime;
+        int64_t softTime;
         uint64_t nodes;
         uint32_t depth;
         uint32_t mate; // TODO: This requires a search with only exact pruning
@@ -119,9 +122,12 @@ namespace Arcanum
 
         SearchParameters() :
             useTime(false),
+            useSoftTime(false),
             useNodes(false),
             useDepth(false),
+            useSoftTimeLimit(false),
             msTime(0),
+            softTime(0),
             nodes(0),
             depth(0),
             mate(0),
