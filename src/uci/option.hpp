@@ -5,6 +5,12 @@
 #include <algorithm>
 #include <functional>
 
+#ifdef ENABLE_TUNING
+#define TUNABLE_PARAM(name, def, min, max) static Arcanum::Interface::SpinOption name {#name, def, min, max};
+#else
+#define TUNABLE_PARAM(name, def, min, max) static constexpr int32_t name = def;
+#endif
+
 namespace Arcanum
 {
     namespace Interface
@@ -57,6 +63,8 @@ namespace Arcanum
                     value = std::clamp(std::stoi(str), m_min, m_max);
                     m_callback();
                 }
+
+                inline operator int32_t() const { return value; }
         };
 
         class CheckOption : public Option

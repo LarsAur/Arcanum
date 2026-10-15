@@ -26,6 +26,8 @@ DEFINES += -DENABLE_INCBIN # Remove to disable using incbin for DEFAULT_NNUE
 RELEASE_DEFINES += -DLOG_FILE_NAME=$(ENGINENAME)
 RELEASE_DEFINES += -DDISABLE_DEBUG
 
+TUNING_DEFINES += -DENABLE_TUNING
+
 override CFLAGS += -std=c++17 -O3 -Wall -Wextra -pedantic $(DEFINES)
 LDFLAGS = --static -lstdc++ -lm
 
@@ -43,7 +45,7 @@ SOURCES := $(filter %.cpp, $(ALL_FILES))					# Find all .cpp files
 HEADERS := $(filter %.hpp, $(ALL_FILES))					# Find all .hpp files
 OBJECTS := $(addprefix $(BUILDDIR)/,$(SOURCES:%.cpp=%.o))	# Create list of all object files
 
-.PHONY: uci run test perf release
+.PHONY: uci run test perf release tunable
 
 all: $(BUILDDIR)/$(FILENAME)
 
@@ -58,6 +60,9 @@ selfplay: $(BUILDDIR)/$(FILENAME)
 
 enginetest: $(BUILDDIR)/$(FILENAME)
 	./$^ test --engine
+
+tunable:
+	make -j "CFLAGS=$(RELEASE_DEFINES) $(TUNING_DEFINES)" VERSION="Tunable"
 
 release: $(RELEASEDIR)
 	make clean
