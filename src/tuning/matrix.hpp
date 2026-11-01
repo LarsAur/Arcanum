@@ -217,9 +217,9 @@ namespace Arcanum
                 // https://paperswithcode.com/method/he-initialization
                 // Use normal distribution with variance of 2/N.
                 // I.e standard deviation of sqrt(2/N).
-                // N is number of inputs. I.e #Rows.
+                // N is number of inputs. I.e #Cols.
                 std::default_random_engine generator;
-                std::normal_distribution<float> distribution(0.0f, std::sqrt(2.0f / rows));
+                std::normal_distribution<float> distribution(0.0f, std::sqrt(2.0f / cols));
                 for(uint32_t i = 0; i < rows * cols; i++)
                 {
                     while(m_data[i] == 0)
