@@ -61,6 +61,7 @@ namespace Arcanum
                 static void drawboard();
                 static void help();
                 static Move getMoveFromUciString(const std::string& uciStr, const Board& board);
+                static void findSearchMoves(std::istringstream& is, SearchParameters& parameters);
             public:
                 // Options
                 static SpinOption   optionHash;
@@ -73,6 +74,7 @@ namespace Arcanum
 
                 static void sendBestMove(const Move& move);
                 static void sendInfo(const SearchInfo& info);
+                static void sendInfoString(const std::string& info);
                 static void loop();
         };
     }

@@ -2,6 +2,9 @@
 
 using namespace Arcanum;
 
+// Syzygy tablebase probing for root positions.
+// Only the moves provided in 'moves' will be filtered.
+// If no moves match, the probe will fail and the moves list will not be altered.
 Syzygy::WDLResult Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMoves)
 {
     constexpr static uint32_t PyrrhicToArcanumPromotion[5] = {
@@ -40,7 +43,8 @@ Syzygy::WDLResult Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMove
     }
 
     // Find a move with the same WDL value as the root position
-    numMoves = 0;
+    uint8_t numMatchingMoves = 0;
+    Move matchingMoves[MaxMoveCount];
     for (int i = 0; i < MaxMoveCount && results[i] != TB_RESULT_FAILED; i++)
     {
         if (TB_GET_WDL(results[i]) == TB_GET_WDL(result))
@@ -48,15 +52,31 @@ Syzygy::WDLResult Syzygy::TBProbeDTZ(Board& board, Move* moves, uint8_t& numMove
             square_t to    = TB_GET_TO(results[i]);
             square_t from  = TB_GET_FROM(results[i]);
             uint32_t promo = PyrrhicToArcanumPromotion[TB_GET_PROMOTES(results[i])];
-            moves[numMoves++] = board.generateMoveWithInfo(from, to, promo);
+
+            // Filter the provided moves
+            for (int j = 0; j < numMoves; j++)
+            {
+                if (moves[j] == Move(from, to, promo))
+                {
+                    matchingMoves[numMatchingMoves++] = moves[j];
+                    break;
+                }
+            }
         }
     }
 
     // Check if any maching moves are found
     // Assuming some moves could fail probing
-    if(numMoves == 0)
+    if(numMatchingMoves == 0)
     {
         return Syzygy::WDLResult::FAILED;
+    }
+
+    // Copy the matching moves back if any were found
+    numMoves = numMatchingMoves;
+    for (int i = 0; i < numMatchingMoves; i++)
+    {
+        moves[i] = matchingMoves[i];
     }
 
     switch (TB_GET_WDL(result))

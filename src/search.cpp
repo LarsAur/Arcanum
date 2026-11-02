@@ -825,22 +825,23 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
     m_tt.incrementGeneration();
     m_timer.start();
 
-    // Copy the search moves from the parameters
-    Move* moves = m_parameters.searchMoves;
-    uint8_t numMoves = m_parameters.numSearchMoves;
+    // Find all legal moves
+    // This is needed even if the moves are provided, as it also initializes
+    // parts of the internal board state which such as pinners and blocker, which SEE and moveordering relies on.
+    Move* moves = board.getLegalMoves();
+    uint8_t numMoves = board.getNumLegalMoves();
+    board.generateCaptureInfo();
 
-    // Only generate moves or probe tablebase if no search moves are provided
-    Syzygy::WDLResult tbResult = Syzygy::WDLResult::FAILED;
-    if(numMoves == 0)
+    // If search moves are provided, override the generated moves.
+    if(m_parameters.numSearchMoves > 0)
     {
-        tbResult = Syzygy::TBProbeDTZ(board, moves, numMoves);
-        if(tbResult == Syzygy::WDLResult::FAILED)
-        {
-            moves = board.getLegalMoves();
-            numMoves = board.getNumLegalMoves();
-            board.generateCaptureInfo();
-        }
+        moves = m_parameters.searchMoves;
+        numMoves = m_parameters.numSearchMoves;
     }
+
+    // Probe the Syzygy tablebase.
+    // If it fails, it will not affect the moves list
+    Syzygy::WDLResult tbResult = Syzygy::TBProbeDTZ(board, moves, numMoves);
 
     m_evaluator.initAccumulatorStack(board);
     eval_t rawEval = m_evaluator.evaluate(board, 0);
