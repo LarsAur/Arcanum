@@ -10,8 +10,8 @@ using namespace Arcanum;
 INCBIN(char, EmbeddedNNUE, TOSTRING(DEFAULT_NNUE));
 #endif
 
-static const char* NNUEMagic = "Arcanum FNNUE v6";
-static const char* NNUEDescription = "768->1024->1 Quantizable";
+static const char* NNUEMagic = "Arcanum FNNUE v7";
+static const char* NNUEDescription = "768->1024x8->1 Quantizable";
 
 NNUEParser::NNUEParser() :
     m_data(nullptr),

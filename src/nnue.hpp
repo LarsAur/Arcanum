@@ -14,7 +14,7 @@ namespace Arcanum
             static constexpr int32_t NetworkScale = 400;
             static constexpr int32_t FTQ = 255; // Quantization factor of the feature transformer
             static constexpr int32_t LQ = 64;   // Quantization factor of the linear layers
-            static constexpr uint32_t NumOutputBuckets = 1;
+            static constexpr uint32_t NumOutputBuckets = 8;
 
             struct Accumulator
             {
