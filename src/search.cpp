@@ -228,11 +228,11 @@ eval_t Searcher::m_alphaBetaQuiet(Board& board, eval_t alpha, eval_t beta, uint3
         if(score > bestScore)
         {
             bestScore = score;
-            bestMove = *move;
         }
 
-        if(score >= alpha)
+        if(score > alpha)
         {
+            bestMove = *move;
             if constexpr(isPv)
             {
                 m_pvTable.updatePv(*move, plyFromRoot);
@@ -696,6 +696,7 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(score > alpha)
         {
             alpha = score;
+            bestMove = *move;
             if constexpr(isPv)
             {
                 m_pvTable.updatePv(*move, plyFromRoot);
@@ -705,7 +706,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if(score > bestScore)
         {
             bestScore = score;
-            bestMove = *move;
         }
 
         // Beta-Cutoff
@@ -766,7 +766,6 @@ eval_t Searcher::m_alphaBeta(Board& board, eval_t alpha, eval_t beta, int depth,
         if (!board.isChecked()
         && !Evaluator::isMateScore(bestScore)
         && !bestMove.isCapture()
-        && !bestMove.isNull()
         && ((flag == TTFlag::EXACT) || (flag == (bestScore >= staticEval ? TTFlag::LOWER_BOUND : TTFlag::UPPER_BOUND)))) {
             m_heuristics.correctionHistory.update(board, bestScore, staticEval, depth);
         }

@@ -183,12 +183,18 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
         }
 
         // If the entry is valid and has the same hash,
-        // to update it if we consider it to have better information
+        // update it if we consider it to have better information
         if(oldEntry.getHash() == newEntry.getHash())
         {
             if((oldEntry.depth < newEntry.depth) || (oldEntry.isPv() < newEntry.isPv()))
             {
                 m_stats.updates++;
+                // Preserve the old move if the new move is a null move
+                if(move.isNull())
+                {
+                    newEntry.packedMove = cluster->entries[i].packedMove;
+                }
+
                 cluster->entries[i] = newEntry;
             }
             else
