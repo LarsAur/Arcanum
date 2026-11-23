@@ -860,8 +860,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
         uint8_t bestMoveIndex = 0;
         eval_t alpha = -Evaluator::MateScore;
         eval_t beta = Evaluator::MateScore;
-        eval_t aspirationWindowAlpha = 35;
-        eval_t aspirationWindowBeta  = 35;
+        eval_t alphaDelta = 35;
+        eval_t betaDelta = 35;
+        eval_t windowAlpha = searchScore - alphaDelta;
+        eval_t windowBeta  = searchScore + betaDelta;
 
         bool rerun = true;
         while(rerun && !m_shouldStop())
@@ -878,10 +880,10 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
 
             // Aspiration window
             // Stop using aspiration if the search score or window size is too high
-            bool useAspAlpha = depth > 5 && std::abs(searchScore) < 900 && aspirationWindowAlpha < 600;
-            bool useAspBeta  = depth > 5 && std::abs(searchScore) < 900 && aspirationWindowBeta < 600;
-            alpha = useAspAlpha ? (searchScore - aspirationWindowAlpha) : -Evaluator::MateScore;
-            beta  = useAspBeta  ? (searchScore + aspirationWindowBeta ) : Evaluator::MateScore;
+            bool useAlphaWindow = depth > 5 && std::abs(searchScore) < 900 && alphaDelta < 600;
+            bool useBetaWindow = depth > 5 && std::abs(searchScore) < 900 && betaDelta < 600;
+            alpha = useAlphaWindow ? windowAlpha : -Evaluator::MateScore;
+            beta  = useBetaWindow ? windowBeta  : Evaluator::MateScore;
 
             m_heuristics.killerManager.clearPly(1);
 
@@ -900,18 +902,6 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
                 if(i == 0)
                 {
                     score = -m_alphaBeta<true>(newBoard, -beta, -alpha, depth - 1, 1, false, 0);
-
-                    // Aspiration window
-                    // Check if the score is lower than alpha for the first move
-                    if(useAspAlpha && score <= alpha)
-                    {
-                        rerun = true;
-                        aspirationWindowAlpha += aspirationWindowAlpha;
-                        m_evaluator.popMoveFromAccumulator();
-                        m_stats.aspirationAlphaFails++;
-                        moveNodeCount[moveIndex] += m_numNodesSearched - nodesBefore;
-                        break;
-                    }
                 }
                 else
                 {
@@ -934,10 +924,13 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
                 // Check if the score was outside the aspiration window
                 // It is important to break before the best move is assigned,
                 // to avoid returning a move which is outside the window when search is stopped
-                if(useAspBeta && (score >= beta))
+                if(useBetaWindow && (score >= beta))
                 {
                     rerun = true;
-                    aspirationWindowBeta += aspirationWindowBeta;
+                    betaDelta += betaDelta;
+                    windowBeta  = std::min<int32_t>(int32_t(searchScore) + int32_t(betaDelta), Evaluator::MateScore);
+                    bestMove = NULL_MOVE;
+                    bestMoveIndex = 0;
                     m_stats.aspirationBetaFails++;
                     break;
                 }
@@ -949,6 +942,15 @@ Move Searcher::search(Board board, SearchParameters parameters, SearchResult* se
                     bestMove = *move;
                     bestMoveIndex = moveIndex;
                 }
+            }
+
+            // Note: !m_shouldStop() is only needed to keep the stats accurate
+            if(useAlphaWindow && (alpha <= windowAlpha) && !rerun && !m_shouldStop())
+            {
+                rerun = true;
+                alphaDelta += alphaDelta;
+                windowAlpha = std::max<int32_t>(int32_t(searchScore) - int32_t(alphaDelta), -Evaluator::MateScore);
+                m_stats.aspirationAlphaFails++;
             }
         }
 
