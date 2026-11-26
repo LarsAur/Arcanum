@@ -64,7 +64,7 @@ namespace Arcanum
             return depth - getAge(currentGeneration);
         }
 
-        inline int8_t getAge(uint8_t currentGeneration) const
+        inline uint8_t getAge(uint8_t currentGeneration) const
         {
             // Find the age of the entry with respect to the current generation
             // This supports warp around for the generation counter

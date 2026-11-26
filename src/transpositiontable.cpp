@@ -138,6 +138,9 @@ std::optional<TTEntry> TranspositionTable::get(hash_t hash, uint8_t plyFromRoot)
 
         if(entry.isValid() && entry.getHash() == (hash & TTEntry::HashMask))
         {
+            // Update the generation of the entry to the current generation
+            cluster.entries[i].generation = m_generation;
+
             TTEntry retEntry = entry;
             // Adjust the mate score based on plyFromRoot to make the score represent the mate distance from the root position
             // Note: This is also done for raw eval as it could be a TB mate score
@@ -186,7 +189,13 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
         // update it if we consider it to have better information
         if(oldEntry.getHash() == newEntry.getHash())
         {
-            if((oldEntry.depth < newEntry.depth) || (oldEntry.isPv() < newEntry.isPv()))
+            // Update the generation of the entry to the current generation
+            cluster->entries[i].generation = m_generation;
+
+            if((oldEntry.depth < newEntry.depth + 4)
+            || (oldEntry.isPv() < newEntry.isPv())
+            || (newEntry.getTTFlag() == TTFlag::EXACT)
+            || (oldEntry.getAge(m_generation) != 0))
             {
                 m_stats.updates++;
                 // Preserve the old move if the new move is a null move
@@ -207,9 +216,9 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
 
     // Check if the new entry can/should be placed into the cluster
     // Find the entry with the lowest priority, and replace it if the new entry has a higher priority
-    TTEntry *replace = nullptr;
-    int32_t lowestPriority = newEntry.getPriority(m_generation);
-    for(size_t i = 0; i < NumClusterEntries; i++)
+    TTEntry *replace = &cluster->entries[0];
+    int32_t lowestPriority = cluster->entries[0].getPriority(m_generation);
+    for(size_t i = 1; i < NumClusterEntries; i++)
     {
         TTEntry* oldEntry = &cluster->entries[i];
 
@@ -222,14 +231,9 @@ void TranspositionTable::add(eval_t eval, Move move, bool isPv, uint8_t depth, u
     }
 
     // Replace if a suitable replacement is found
-    if(replace)
-    {
-        *replace = newEntry;
-        m_stats.replacements++;
-        return;
-    }
+    *replace = newEntry;
+    m_stats.replacements++;
 
-    m_stats.blockedReplacements++;
 }
 
 // Note: If the table has been resized to a smaller table, the stats may not be entirely accurate.
